@@ -1,7 +1,14 @@
 import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { router } from '@inertiajs/react';
 import { CalendarDays, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -60,6 +67,9 @@ export default function CalendarioFestivos({ mesInicial, anioInicial, puedeEdita
     const [toggling, setToggling] = useState<string | null>(null); // fecha que está procesando
     const [nombreNuevo, setNombreNuevo] = useState('Festivo personalizado');
 
+    // Estado del diálogo de confirmación
+    const [confirm, setConfirm] = useState<{ fecha: string; esQuitar: boolean } | null>(null);
+
     // ── Cargar festivos del mes/año ────────────────────────────────────────────
     const cargarFestivos = useCallback(async (m: number, a: number) => {
         setCargando(true);
@@ -68,7 +78,18 @@ export default function CalendarioFestivos({ mesInicial, anioInicial, puedeEdita
                 headers: { Accept: 'application/json' },
             });
             const data = await res.json();
-            setFestivos(data.festivos ?? []);
+            // Deduplicar por fecha: si una fecha aparece como 'custom' Y 'automatico',
+            // el custom tiene prioridad (es demarcable por el usuario)
+            const raw: FestivoItem[] = data.festivos ?? [];
+            const dedup = new Map<string, FestivoItem>();
+            for (const f of raw) {
+                const existing = dedup.get(f.fecha);
+                // custom tiene prioridad: sobreescribe cualquier automático previo
+                if (!existing || f.tipo === 'custom') {
+                    dedup.set(f.fecha, f);
+                }
+            }
+            setFestivos([...dedup.values()]);
         } catch {
             setFestivos([]);
         } finally {
@@ -106,6 +127,15 @@ export default function CalendarioFestivos({ mesInicial, anioInicial, puedeEdita
         const festivo = festivos.find(f => f.fecha === fecha);
         if (festivo?.tipo === 'automatico') return; // los automáticos no se modifican
 
+        // Mostrar diálogo de confirmación en lugar de actuar directamente
+        setConfirm({ fecha, esQuitar: festivo?.tipo === 'custom' });
+    };
+
+    // ── Ejecutar el toggle tras confirmación ──────────────────────────────────
+    const confirmarToggle = async () => {
+        if (!confirm) return;
+        const { fecha } = confirm;
+        setConfirm(null);
         setToggling(fecha);
         try {
             const csrfMeta = document.querySelector('meta[name="csrf-token"]');
@@ -142,6 +172,7 @@ export default function CalendarioFestivos({ mesInicial, anioInicial, puedeEdita
     const autoCount   = festivos.filter(f => f.tipo === 'automatico').length;
 
     return (
+        <>
         <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-2 text-xs">
@@ -251,8 +282,12 @@ export default function CalendarioFestivos({ mesInicial, anioInicial, puedeEdita
                                     key={fecha}
                                     className={clases}
                                     onClick={() => toggleDia(fecha)}
-                                    disabled={procesando || !puedeEditar || tipo === 'automatico' || esDOM(esDom) || esSab}
-                                    title={festivo ? nombre : (puedeEditar ? 'Clic para marcar como festivo' : undefined)}
+                                    disabled={procesando || !puedeEditar || tipo === 'automatico' || (tipo !== 'custom' && (esDOM(esDom) || esSab))}
+                                    title={
+                                        tipo === 'automatico' ? nombre
+                                        : tipo === 'custom' ? (puedeEditar ? `Clic para demarcar: ${nombre}` : nombre)
+                                        : (puedeEditar ? 'Clic para marcar como festivo' : undefined)
+                                    }
                                     type="button"
                                 >
                                     {procesando
@@ -265,9 +300,16 @@ export default function CalendarioFestivos({ mesInicial, anioInicial, puedeEdita
                                         </span>
                                     )}
                                     {tipo === 'custom' && (
-                                        <span className="absolute bottom-0.5 left-0 right-0 text-[8px] text-violet-600 text-center leading-none truncate px-0.5">
-                                            custom
-                                        </span>
+                                        <>
+                                            <span className="absolute bottom-0.5 left-0 right-0 text-[8px] text-violet-600 text-center leading-none truncate px-0.5">
+                                                custom
+                                            </span>
+                                            {puedeEditar && (
+                                                <span className="absolute top-0.5 right-0.5 text-[9px] font-bold text-violet-400 leading-none">
+                                                    ✕
+                                                </span>
+                                            )}
+                                        </>
                                     )}
                                 </button>
                             );
@@ -284,7 +326,7 @@ export default function CalendarioFestivos({ mesInicial, anioInicial, puedeEdita
                     {puedeEditar && (
                         <div className="flex items-center gap-2">
                             <span className="inline-block h-3 w-3 rounded bg-violet-100 border border-violet-400" />
-                            Festivo personalizado (clic para quitar)
+                            Festivo personalizado — clic para demarcar <span className="font-bold text-violet-500">✕</span>
                         </div>
                     )}
                     <div className="flex items-center gap-2">
@@ -318,6 +360,37 @@ export default function CalendarioFestivos({ mesInicial, anioInicial, puedeEdita
                 </div>
             </SheetContent>
         </Sheet>
+
+        {/* Diálogo de confirmación para marcar/desmarcar festivo */}
+        <Dialog open={!!confirm} onOpenChange={(open) => { if (!open) setConfirm(null); }}>
+            <DialogContent className="sm:max-w-sm">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                        <CalendarDays className="h-5 w-5 text-amber-500" />
+                        {confirm?.esQuitar ? 'Demarcar festivo' : 'Marcar como festivo'}
+                    </DialogTitle>
+                    <DialogDescription className="text-sm">
+                        {confirm?.esQuitar
+                            ? <>¿Querés <strong>demarcar</strong> el día <strong>{confirm.fecha.slice(8)}</strong> y quitarlo de los festivos personalizados? Esta acción puede afectar los cálculos de ausentismo del mes.</>
+                            : <>¿Querés marcar el día <strong>{confirm?.fecha.slice(8)}</strong> como festivo personalizado con el nombre <strong>"{nombreNuevo}"</strong>? Esta acción puede afectar los cálculos de ausentismo del mes.</>
+                        }
+                    </DialogDescription>
+                </DialogHeader>
+                <DialogFooter className="gap-2 sm:gap-0">
+                    <Button variant="outline" size="sm" onClick={() => setConfirm(null)}>
+                        Cancelar
+                    </Button>
+                    <Button
+                        size="sm"
+                        variant={confirm?.esQuitar ? 'destructive' : 'default'}
+                        onClick={confirmarToggle}
+                    >
+                        {confirm?.esQuitar ? 'Sí, demarcar' : 'Sí, marcar como festivo'}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+        </>
     );
 }
 

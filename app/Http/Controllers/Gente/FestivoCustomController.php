@@ -22,9 +22,20 @@ class FestivoCustomController extends Controller
         $mes  = $request->integer('mes', (int) now()->month);
         $anio = $request->integer('anio', (int) now()->year);
 
+        // Festivos custom guardados en BD para el mismo mes/año
+        $customRaw = FestivoCustom::whereYear('fecha', $anio)
+            ->whereMonth('fecha', $mes)
+            ->orderBy('fecha')
+            ->get();
+
+        // Fechas con registro custom — tienen prioridad y ocultan el automático
+        $fechasCustom = $customRaw->pluck('fecha')->map(fn ($f) => $f->format('Y-m-d'))->flip()->toArray();
+
         // Festivos automáticos del año (Colombia / Nariño / Pasto)
+        // Se excluyen los que el usuario ya tiene registrados como custom
         $automaticos = collect($service->festivosDelAnio($anio))
             ->filter(fn ($nombre, $fecha) => (int) substr($fecha, 5, 2) === $mes)
+            ->reject(fn ($nombre, $fecha) => isset($fechasCustom[$fecha]))
             ->map(fn ($nombre, $fecha) => [
                 'fecha'      => $fecha,
                 'nombre'     => $nombre,
@@ -33,19 +44,15 @@ class FestivoCustomController extends Controller
             ])
             ->values();
 
-        // Festivos custom guardados en BD para el mismo mes/año
-        $custom = FestivoCustom::whereYear('fecha', $anio)
-            ->whereMonth('fecha', $mes)
-            ->orderBy('fecha')
-            ->get()
-            ->map(fn ($f) => [
-                'fecha'      => $f->fecha->format('Y-m-d'),
-                'nombre'     => $f->nombre,
-                'tipo'       => 'custom',
-                'id'         => $f->id,
-            ]);
+        // Mapear los custom
+        $custom = $customRaw->map(fn ($f) => [
+            'fecha'  => $f->fecha->format('Y-m-d'),
+            'nombre' => $f->nombre,
+            'tipo'   => 'custom',
+            'id'     => $f->id,
+        ]);
 
-        // Unir y ordenar por fecha
+        // Unir y ordenar por fecha — no puede haber duplicados
         $todos = $automaticos->merge($custom)->sortBy('fecha')->values();
 
         return response()->json([

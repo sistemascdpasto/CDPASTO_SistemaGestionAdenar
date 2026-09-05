@@ -5,7 +5,7 @@ import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, Sid
 import { colaboradoresReadOnlySubmodule, geovictoriaAsistenciaReadOnlySubmodule, modules, type ModuleDef, type SubModuleDef } from '@/data/modules';
 import { type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { BellRing, Calendar, GraduationCap, HeartPulse, LayoutGrid, Route, Star, Stethoscope, TestTube, Truck, User, UserCog } from 'lucide-react';
+import { BellRing, Calendar, GraduationCap, HeartPulse, LayoutGrid, Route, Star, Stethoscope, TestTube, Trophy, Truck, User, UserCog } from 'lucide-react';
 import AppLogo from './app-logo';
 
 const footerNavItems: NavItem[] = [
@@ -84,6 +84,7 @@ export function AppSidebar() {
                   { title: 'Mis Rutas', url: '/portal/rutas', icon: Truck, color: '#3F7A22' },
                   { title: 'Mis Planeaciones de Ruta', url: '/portal/mis-rutas-reparto', icon: Route, color: '#D4102A' },
                   { title: 'Mis Estrellas del Camión', url: '/portal/mis-indicadores-reparto', icon: Star, color: '#D4102A' },
+                  { title: 'Mi Plan Premiación', url: '/portal/mi-plan-premiacion', icon: Trophy, color: '#D97706' },
                   { title: 'Mi Compensación Diaria', url: '/portal/mi-compensacion', icon: Calendar, color: '#0891B2' },
                   { title: 'Condición de Salud', url: '/portal/condicion-salud', icon: HeartPulse, color: '#3F7A22' },
                   { title: 'Encuesta de Morbilidad', url: '/portal/encuesta-morbilidad', icon: Stethoscope, color: '#3F7A22' },

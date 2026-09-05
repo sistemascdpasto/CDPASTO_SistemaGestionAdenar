@@ -1,5 +1,6 @@
 import HeadingSmall from '@/components/heading-small';
 import CalendarioFestivos from '@/components/gente/CalendarioFestivos';
+import GraficoBarrasMes from '@/components/gente/GraficoBarrasMes';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,7 +19,7 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/react';
 import { Award, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Download, Flame, GraduationCap, Medal, Percent, Search, ShieldCheck, Trophy, Users } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
@@ -107,6 +108,7 @@ interface Filters {
     search: string;
     estado: string;
     cargo: string;
+    meses_checklist: string;
 }
 
 interface Props {
@@ -124,12 +126,19 @@ const parseCargosFilter = (filterStr?: string): string[] => {
     return filterStr.split(',').map((s) => s.trim()).filter(Boolean);
 };
 
+const parseMesesChecklistFilter = (filterStr?: string): number[] => {
+    if (!filterStr) return [];
+    return filterStr.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => n >= 1 && n <= 12);
+};
+
 export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peores2 = [], cargos = [], filters, puede_editar = false }: Props) {
     const [mes, setMes] = useState<number>(filters.mes);
     const [anio, setAnio] = useState<number>(filters.anio);
     const [search, setSearch] = useState<string>(filters.search || '');
+    const [formulasAbiertas, setFormulasAbiertas] = useState<boolean>(false);
     const [estado, setEstado] = useState<string>(filters.estado || 'todos');
     const [selectedCargos, setSelectedCargos] = useState<string[]>(parseCargosFilter(filters.cargo));
+    const [selectedMesesChecklist, setSelectedMesesChecklist] = useState<number[]>(parseMesesChecklistFilter(filters.meses_checklist));
 
     // Paginación
     const [currentPage, setCurrentPage] = useState<number>(1);
@@ -163,9 +172,27 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
         { key: 'total',             label: 'TOTAL 100%',                 pilar: 'TOTAL' },
     ];
 
-    const [colsVisibles, setColsVisibles] = useState<Set<ColKey>>(
-        new Set(COLUMNAS_DEF.map(c => c.key))
-    );
+    const STORAGE_KEY = 'plan-premiacion:cols-visibles';
+    const allKeys = COLUMNAS_DEF.map(c => c.key);
+
+    const [colsVisibles, setColsVisibles] = useState<Set<ColKey>>(() => {
+        try {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) {
+                const parsed: ColKey[] = JSON.parse(stored);
+                // Filtrar claves inválidas por si el schema cambió
+                const valid = parsed.filter(k => allKeys.includes(k));
+                if (valid.length > 0) return new Set(valid);
+            }
+        } catch {
+            // Si hay algún error de parseo, usar default
+        }
+        return new Set(allKeys);
+    });
+
+    useEffect(() => {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify([...colsVisibles]));
+    }, [colsVisibles]);
 
     const toggleCol = (key: ColKey) => {
         setColsVisibles(prev => {
@@ -207,9 +234,10 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
         }
     };
 
-    const handleFilter = (newMes = mes, newAnio = anio, newSearch = search, newEstado = estado, newCargos = selectedCargos) => {
+    const handleFilter = (newMes = mes, newAnio = anio, newSearch = search, newEstado = estado, newCargos = selectedCargos, newMesesChecklist = selectedMesesChecklist) => {
         setCurrentPage(1);
         const cargoParam = newCargos.length > 0 ? newCargos.join(',') : '';
+        const checklistParam = newMesesChecklist.length > 0 ? newMesesChecklist.join(',') : '';
         router.get(
             '/modules/gente/plan-premiacion',
             {
@@ -218,6 +246,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                 search: newSearch,
                 estado: newEstado === 'todos' ? '' : newEstado,
                 cargo: cargoParam,
+                meses_checklist: checklistParam,
             },
             { preserveState: true, replace: true },
         );
@@ -226,24 +255,45 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
         setSearch(val);
-        handleFilter(mes, anio, val, estado, selectedCargos);
+        handleFilter(mes, anio, val, estado, selectedCargos, selectedMesesChecklist);
     };
 
     const handleMesChange = (val: string) => {
         const m = parseInt(val, 10);
         setMes(m);
-        handleFilter(m, anio, search, estado, selectedCargos);
+        handleFilter(m, anio, search, estado, selectedCargos, selectedMesesChecklist);
     };
 
     const handleAnioChange = (val: string) => {
         const a = parseInt(val, 10);
         setAnio(a);
-        handleFilter(mes, a, search, estado, selectedCargos);
+        handleFilter(mes, a, search, estado, selectedCargos, selectedMesesChecklist);
     };
 
     const handleEstadoChange = (val: string) => {
         setEstado(val);
-        handleFilter(mes, anio, search, val, selectedCargos);
+        handleFilter(mes, anio, search, val, selectedCargos, selectedMesesChecklist);
+    };
+
+    const handleToggleMesChecklist = (mesNum: number) => {
+        let next: number[];
+        if (mesNum === 0) {
+            next = [];
+        } else if (selectedMesesChecklist.includes(mesNum)) {
+            next = selectedMesesChecklist.filter((m) => m !== mesNum);
+        } else {
+            next = [...selectedMesesChecklist, mesNum];
+        }
+        setSelectedMesesChecklist(next);
+        handleFilter(mes, anio, search, estado, selectedCargos, next);
+    };
+
+    const getMesesChecklistLabel = () => {
+        if (selectedMesesChecklist.length === 0) return 'Todos los meses';
+        if (selectedMesesChecklist.length === 1) {
+            return MESES.find((m) => m.value === selectedMesesChecklist[0])?.label ?? 'Mes seleccionado';
+        }
+        return `${selectedMesesChecklist.length} meses`;
     };
 
     const handleToggleCargo = (cargoItem: string) => {
@@ -256,7 +306,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
             next = [...selectedCargos, cargoItem];
         }
         setSelectedCargos(next);
-        handleFilter(mes, anio, search, estado, next);
+        handleFilter(mes, anio, search, estado, next, selectedMesesChecklist);
     };
 
     const getCargoLabel = () => {
@@ -287,10 +337,50 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                 Evaluación mensual de participación ACI, porcentaje OWD Ruta y promedio de Calificaciones por módulo.
                             </p>
                         </div>
-                        <div className="flex flex-col gap-1 rounded-lg bg-amber-500/15 px-4 py-2 text-xs font-semibold text-amber-900 dark:bg-amber-900/40 dark:text-amber-200">
-                            <div><Percent className="inline mr-1 h-3.5 w-3.5 text-amber-600 dark:text-amber-400" /><strong>ACI:</strong> (Realizadas ÷ 32) × 100</div>
-                            <div><ShieldCheck className="inline mr-1 h-3.5 w-3.5 text-blue-600 dark:text-blue-400" /><strong>OWD Ruta:</strong> OK = 100% | No OK = 0%</div>
-                            <div><GraduationCap className="inline mr-1 h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" /><strong>Calificaciones:</strong> Promedio de notas asociadas</div>
+                        <div className="min-w-[260px]">
+                            <button
+                                type="button"
+                                onClick={() => setFormulasAbiertas(v => !v)}
+                                className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-200 transition-colors mb-1"
+                            >
+                                <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${formulasAbiertas ? 'rotate-180' : ''}`} />
+                                {formulasAbiertas ? 'Ocultar fórmulas' : 'Ver fórmulas de cálculo'}
+                            </button>
+                            {formulasAbiertas && (
+                                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] font-medium text-slate-700 dark:text-slate-300 rounded-lg border border-amber-200/60 bg-amber-500/10 dark:border-amber-900/40 dark:bg-amber-950/20 px-3 py-2">
+                                    {/* SEGURIDAD 35% */}
+                                    <div className="col-span-2 mt-1 mb-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+                                        <ShieldCheck className="h-3 w-3" /> Seguridad 35%
+                                    </div>
+                                    <div><span className="font-bold text-emerald-700 dark:text-emerald-400">ACI</span> <span className="text-slate-500">(10%)</span> — Realizadas ÷ 32 × 100</div>
+                                    <div><span className="font-bold text-emerald-700 dark:text-emerald-400">OWD Ruta</span> <span className="text-slate-500">(15%)</span> — Sin NO OK = 100% | Con NO OK = 0%</div>
+                                    <div><span className="font-bold text-emerald-700 dark:text-emerald-400">Calificaciones</span> <span className="text-slate-500">(10%)</span> — Promedio de notas por módulo</div>
+
+                                    {/* GENTE 15% */}
+                                    <div className="col-span-2 mt-2 mb-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                                        <Users className="h-3 w-3" /> Gente 15%
+                                    </div>
+                                    <div><span className="font-bold text-amber-600 dark:text-amber-400">DPO Academy</span> <span className="text-slate-500">(5%)</span> — Sin registro = 100% | En listado = 0%</div>
+                                    <div><span className="font-bold text-amber-600 dark:text-amber-400">Ausentismo</span> <span className="text-slate-500">(5%)</span> — Sin incapacidad = 100% | Con incapacidad = 0%</div>
+                                    <div><span className="font-bold text-amber-600 dark:text-amber-400">Malas Marcaciones</span> <span className="text-slate-500">(5%)</span> — Sin corrección = 100% | Con corrección = 0%</div>
+
+                                    {/* REPARTO 35% */}
+                                    <div className="col-span-2 mt-2 mb-0.5 text-[10px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-400 flex items-center gap-1">
+                                        <Medal className="h-3 w-3" /> Reparto 35%
+                                    </div>
+                                    <div><span className="font-bold text-rose-700 dark:text-rose-400">Rechazos</span> <span className="text-slate-500">(11%)</span> — ≥ 2.3% rechazos = 100% | &lt; 2.3% = 0%</div>
+                                    <div><span className="font-bold text-rose-700 dark:text-rose-400">SAC</span> <span className="text-slate-500">(8%)</span> — Sin casos = 100% | Con casos = 0%</div>
+                                    <div><span className="font-bold text-rose-700 dark:text-rose-400">Adherencia Tiempo</span> <span className="text-slate-500">(8%)</span> — ≥ 83% adherencia = 100% | &lt; 83% = 0%</div>
+                                    <div><span className="font-bold text-rose-700 dark:text-rose-400">RMD</span> <span className="text-slate-500">(8%)</span> — Promedio ≥ 4 = 100% | &lt; 4 = 0%</div>
+
+                                    {/* FLOTA 15% */}
+                                    <div className="col-span-2 mt-2 mb-0.5 text-[10px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400 flex items-center gap-1">
+                                        <CheckCircle2 className="h-3 w-3" /> Flota 15%
+                                    </div>
+                                    <div><span className="font-bold text-blue-700 dark:text-blue-400">Checklist Pre</span> <span className="text-slate-500">(7.5%)</span> — Promedio % adherencia CL pre operacional</div>
+                                    <div><span className="font-bold text-blue-700 dark:text-blue-400">Checklist Post</span> <span className="text-slate-500">(7.5%)</span> — Promedio % adherencia CL post operacional</div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -303,22 +393,6 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                     <CardContent>
                         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5 w-full">
-                                <div>
-                                    <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Mes</label>
-                                    <Select value={String(mes)} onValueChange={handleMesChange}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Seleccionar Mes" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {MESES.map((m) => (
-                                                <SelectItem key={m.value} value={String(m.value)}>
-                                                    {m.label}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
                                 <div>
                                     <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Año</label>
                                     <Select value={String(anio)} onValueChange={handleAnioChange}>
@@ -372,6 +446,46 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                     </DropdownMenu>
                                 </div>
 
+                                <div>
+                                    <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                                        Checklist
+                                        {selectedMesesChecklist.length > 0 && (
+                                            <span className="rounded bg-blue-100 px-1 py-0.5 text-[9px] font-bold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                                                {selectedMesesChecklist.length} mes{selectedMesesChecklist.length !== 1 ? 'es' : ''}
+                                            </span>
+                                        )}
+                                    </label>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="outline" className="w-full justify-between font-normal text-xs h-9 px-3">
+                                                <span className="truncate">{getMesesChecklistLabel()}</span>
+                                                <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="start" className="w-48 max-h-64 overflow-y-auto">
+                                            <DropdownMenuLabel className="text-xs">Meses del Checklist</DropdownMenuLabel>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuCheckboxItem
+                                                checked={selectedMesesChecklist.length === 0}
+                                                onCheckedChange={() => handleToggleMesChecklist(0)}
+                                                className="text-xs font-semibold"
+                                            >
+                                                Todos los meses
+                                            </DropdownMenuCheckboxItem>
+                                            <DropdownMenuSeparator />
+                                            {MESES.map((m) => (
+                                                <DropdownMenuCheckboxItem
+                                                    key={m.value}
+                                                    checked={selectedMesesChecklist.includes(m.value)}
+                                                    onCheckedChange={() => handleToggleMesChecklist(m.value)}
+                                                    className="text-xs"
+                                                >
+                                                    {m.label}
+                                                </DropdownMenuCheckboxItem>
+                                            ))}
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </div>
 
                                 <div>
                                     <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Buscar Colaborador</label>
@@ -422,6 +536,14 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                                 <DropdownMenuSeparator />
                                             </div>
                                         ))}
+                                        <div className="px-2 py-1">
+                                            <button
+                                                onClick={() => setColsVisibles(new Set(allKeys))}
+                                                className="w-full rounded text-[11px] text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 underline text-center py-0.5 transition-colors"
+                                            >
+                                                Mostrar todas
+                                            </button>
+                                        </div>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
 
@@ -503,6 +625,9 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                         </CardContent>
                     </Card>
                 )}
+
+                {/* Gráfico de Barras del Mes */}
+                <GraficoBarrasMes colaboradores={colaboradores} mes={mes} anio={anio} />
 
                 {/* Tabla Principal */}
                 <Card>
@@ -616,9 +741,14 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                         </TableRow>
                                     ) : (
                                         paginatedColabs.map((colab) => (
-                                            <TableRow key={colab.id}>
+                                            <TableRow key={colab.id} className="cursor-pointer hover:bg-amber-50/50 dark:hover:bg-amber-950/10 transition-colors">
                                                 <TableCell className="font-semibold text-slate-900 dark:text-slate-100">
-                                                    {colab.nombre_completo}
+                                                    <a
+                                                        href={`/modules/gente/plan-premiacion/${colab.id}?mes=${mes}&anio=${anio}`}
+                                                        className="flex items-center gap-1 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
+                                                    >
+                                                        {colab.nombre_completo}
+                                                    </a>
                                                 </TableCell>
 
                                                 <TableCell className="text-slate-700 dark:text-slate-300">

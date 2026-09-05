@@ -126,6 +126,8 @@ Route::middleware(['auth', 'active', 'role:Administrador|Seguridad|Reparto|Flota
             ->name('plan-premiacion.index');
         Route::get('plan-premiacion/exportar', [PlanPremiacionController::class, 'exportar'])
             ->name('plan-premiacion.exportar');
+        Route::get('plan-premiacion/{colaborador}', [PlanPremiacionController::class, 'show'])
+            ->name('plan-premiacion.show');
 
         // Festivos custom — lectura (disponible para todos los roles que ven plan premiación)
         Route::get('festivos-custom', [FestivoCustomController::class, 'index'])

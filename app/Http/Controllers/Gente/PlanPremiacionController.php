@@ -26,6 +26,13 @@ class PlanPremiacionController extends Controller
         $cargosSeleccionados = array_values(array_filter(array_map('trim', explode(',', $filtroCargo)), fn ($c) => $c !== '' && $c !== 'todos'));
         $filtroEstado = $request->string('estado')->trim()->toString(); // 'todos', 'meta_alcanzada', 'en_progreso', 'sin_participacion'
 
+        // Meses independientes para el checklist (vacío = todos los meses del año)
+        $mesesChecklistStr = $request->string('meses_checklist')->trim()->toString();
+        $mesesChecklist = array_values(array_filter(
+            array_map('intval', explode(',', $mesesChecklistStr)),
+            fn ($m) => $m >= 1 && $m <= 12
+        ));
+
         $cargosDisponibles = Colaborador::where('is_active', true)
             ->whereNotNull('cargo')
             ->where('cargo', '!=', '')
@@ -223,9 +230,13 @@ class PlanPremiacionController extends Controller
         }
 
         // 8. Registros Eventos Tripulación (Rechazos, Adherencia Tiempo, RMD, Checklist Pre y Post)
+        // El checklist puede consultarse en meses distintos al mes principal
         $eventosTripulacionRaw = DB::table('eventos_tripulacion')
-            ->whereMonth('fecha', $mes)
-            ->whereYear('fecha', $anio)
+            ->when(
+                !empty($mesesChecklist),
+                fn ($q) => $q->whereIn(DB::raw('MONTH(fecha)'), $mesesChecklist)->whereYear('fecha', $anio),
+                fn ($q) => $q->whereYear('fecha', $anio)
+            )
             ->get([
                 'documento',
                 'nombre',
@@ -664,6 +675,7 @@ class PlanPremiacionController extends Controller
                 'search' => $search,
                 'estado' => $filtroEstado,
                 'cargo' => $filtroCargo,
+                'meses_checklist' => $mesesChecklistStr,
             ],
         ]);
     }
@@ -1075,6 +1087,174 @@ class PlanPremiacionController extends Controller
             'Content-Type'        => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
             'Cache-Control'       => 'max-age=0',
+        ]);
+    }
+
+    /**
+     * Vista de detalle del plan premiación para un colaborador específico.
+     * GET /modules/gente/plan-premiacion/{colaborador}?mes=X&anio=Y
+     */
+    public function show(Request $request, Colaborador $colaborador): Response
+    {
+        $mes  = $request->integer('mes')  ?: (int) now()->month;
+        $anio = $request->integer('anio') ?: (int) now()->year;
+
+        // ── ACIs del mes ─────────────────────────────────────────────────────
+        $aciRealizadas = Aci::whereMonth('fecha_incidente', $mes)
+            ->whereYear('fecha_incidente', $anio)
+            ->where('colaborador_id', $colaborador->id)
+            ->count();
+
+        $porcentajeAci = round(($aciRealizadas / self::META_BASE) * 100, 1);
+
+        // ── Historial ACI últimos 6 meses ──────────────────────────────────
+        $historialAci = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $fecha  = Carbon::create($anio, $mes, 1)->subMonths($i);
+            $count  = Aci::whereMonth('fecha_incidente', $fecha->month)
+                ->whereYear('fecha_incidente', $fecha->year)
+                ->where('colaborador_id', $colaborador->id)
+                ->count();
+            $historialAci[] = [
+                'mes'    => $fecha->translatedFormat('M Y'),
+                'total'  => $count,
+                'pct'    => round(($count / self::META_BASE) * 100, 1),
+                'cumple' => $count >= self::META_BASE,
+            ];
+        }
+
+        // ── OWD Ruta del mes ──────────────────────────────────────────────
+        $normStr = function ($txt): string {
+            $str = mb_strtoupper(trim((string) $txt), 'UTF-8');
+            $str = str_replace(['Á','É','Í','Ó','Ú','Ü','Ñ'], ['A','E','I','O','U','U','N'], $str);
+            return preg_replace('/[^A-Z0-9]/', '', $str) ?? $str;
+        };
+
+        $preguntasRuta = DB::table('evaluacion_owd_preguntas')
+            ->join('evaluaciones_owd', 'evaluacion_owd_preguntas.evaluacion_owd_id', '=', 'evaluaciones_owd.id')
+            ->whereMonth('evaluaciones_owd.fecha_evaluacion', $mes)
+            ->whereYear('evaluaciones_owd.fecha_evaluacion', $anio)
+            ->where(function ($q) {
+                $q->whereRaw("LOWER(TRIM(evaluacion_owd_preguntas.actividad)) = 'ruta'")
+                  ->orWhereRaw("LOWER(TRIM(evaluacion_owd_preguntas.actividad)) = '\"ruta\"'")
+                  ->orWhereRaw("LOWER(TRIM(evaluacion_owd_preguntas.actividad)) = '[\"ruta\"]'");
+            })
+            ->where(function ($q) use ($colaborador) {
+                $q->where('evaluaciones_owd.colaborador_id', $colaborador->id)
+                  ->orWhere('evaluaciones_owd.qr_safety', $colaborador->codigo_qr_skap);
+            })
+            ->select('evaluacion_owd_preguntas.puntuacion', 'evaluaciones_owd.fecha_evaluacion')
+            ->get();
+
+        $okCount   = $preguntasRuta->filter(fn ($p) => str_contains(strtolower((string) $p->puntuacion), 'ok') && !str_contains(strtolower((string) $p->puntuacion), 'no ok'))->count();
+        $noOkCount = $preguntasRuta->filter(fn ($p) => str_contains(strtolower((string) $p->puntuacion), 'no ok'))->count();
+        $totalOwd  = $okCount + $noOkCount;
+        $owdRuta   = $totalOwd > 0 ? ($noOkCount > 0 ? 0.0 : 100.0) : null;
+
+        // ── Calificaciones ────────────────────────────────────────────────
+        $promedioCalif = DB::table('colaborador_calificaciones')
+            ->where('identificacion', $colaborador->cedula)
+            ->whereNotNull('nota_modulo')
+            ->avg('nota_modulo');
+        $promedioCalif = $promedioCalif !== null ? round((float) $promedioCalif, 1) : null;
+
+        // ── DPO Academy ───────────────────────────────────────────────────
+        $estaEnDpo = DB::table('dpo_academy')
+            ->where(function ($q) use ($colaborador, $normStr) {
+                $q->where('colaborador_id', $colaborador->id)
+                  ->orWhereRaw('UPPER(REGEXP_REPLACE(qr_safety,"[^A-Z0-9]","")) = ?', [$normStr($colaborador->codigo_qr_skap ?? '')])
+                  ->orWhereRaw('UPPER(REGEXP_REPLACE(nombre,"[^A-Z0-9]","")) = ?', [$normStr($colaborador->nombre_completo ?? '')]);
+            })
+            ->exists();
+
+        // ── Eventos Tripulación ───────────────────────────────────────────
+        $evento = DB::table('eventos_tripulacion')
+            ->whereMonth('fecha', $mes)
+            ->whereYear('fecha', $anio)
+            ->where(function ($q) use ($colaborador, $normStr) {
+                $q->whereRaw('UPPER(REGEXP_REPLACE(documento,"[^A-Z0-9]","")) = ?', [$normStr($colaborador->cedula)])
+                  ->orWhereRaw('UPPER(REGEXP_REPLACE(nombre,"[^A-Z0-9]","")) = ?', [$normStr($colaborador->nombre_completo ?? '')]);
+            })
+            ->select(['rechazos','adherencia_tiempo','rmd','adherencia_checklist_pre','adherencia_checklist_post'])
+            ->first();
+
+        // ── Ausentismo ────────────────────────────────────────────────────
+        $ausentismo = DB::table('ausentismos')
+            ->whereMonth('fecha', $mes)
+            ->whereYear('fecha', $anio)
+            ->where(function ($q) use ($colaborador) {
+                $q->where('colaborador_id', $colaborador->id)
+                  ->orWhere('identificador', $colaborador->cedula);
+            })
+            ->get();
+
+        $tieneIncapacidad = $ausentismo->contains(function ($row) {
+            $vacios = ['','00:00','00:00:00','0','--:--'];
+            return in_array(trim((string)($row->entro_1 ?? '')), $vacios, true)
+                && in_array(trim((string)($row->entro_2 ?? '')), $vacios, true);
+        });
+        $porcentajeAusentismo = $ausentismo->isEmpty() ? null : ($tieneIncapacidad ? 0.0 : 100.0);
+
+        // ── Malas Marcaciones ─────────────────────────────────────────────
+        $tieneMalasMarcaciones = DB::table('correcciones_marcaciones')
+            ->where(function ($q) use ($colaborador, $normStr) {
+                $q->whereRaw('UPPER(REGEXP_REPLACE(identificacion,"[^A-Z0-9]","")) = ?', [$normStr($colaborador->cedula)])
+                  ->orWhereRaw('UPPER(REGEXP_REPLACE(nombre_completo,"[^A-Z0-9]","")) = ?', [$normStr($colaborador->nombre_completo ?? '')]);
+            })
+            ->exists();
+
+        // ── SAC ───────────────────────────────────────────────────────────
+        $casosSac = DB::table('sac')
+            ->whereMonth('fecha', $mes)
+            ->whereYear('fecha', $anio)
+            ->where('colaborador_id', $colaborador->id)
+            ->count();
+
+        // ── Armar métricas por pilar ──────────────────────────────────────
+        $metricas = [
+            // SEGURIDAD
+            'aci'            => ['valor' => $porcentajeAci, 'label' => "{$porcentajeAci}%", 'pilar' => 'Seguridad', 'peso' => 10, 'emoji' => '🛡️', 'titulo' => 'ACI', 'meta_desc' => '(Realizadas ÷ 32) × 100'],
+            'owd'            => ['valor' => $owdRuta, 'label' => $owdRuta !== null ? "{$owdRuta}%" : 'N/A', 'pilar' => 'Seguridad', 'peso' => 15, 'emoji' => '✅', 'titulo' => 'OWD Ruta', 'meta_desc' => 'Sin NO OK = 100% | Con NO OK = 0%'],
+            'calificaciones' => ['valor' => $promedioCalif, 'label' => $promedioCalif !== null ? "{$promedioCalif}%" : 'N/A', 'pilar' => 'Seguridad', 'peso' => 10, 'emoji' => '🎓', 'titulo' => 'Calificaciones', 'meta_desc' => 'Promedio de notas por módulo'],
+            // GENTE
+            'dpo'            => ['valor' => $estaEnDpo ? 0.0 : 100.0, 'label' => $estaEnDpo ? '0%' : '100%', 'pilar' => 'Gente', 'peso' => 5, 'emoji' => '📚', 'titulo' => 'DPO Academy', 'meta_desc' => 'Sin registro = 100% | En listado = 0%'],
+            'ausentismo'     => ['valor' => $porcentajeAusentismo, 'label' => $porcentajeAusentismo !== null ? "{$porcentajeAusentismo}%" : 'N/A', 'pilar' => 'Gente', 'peso' => 5, 'emoji' => '📅', 'titulo' => 'Ausentismo', 'meta_desc' => 'Sin incapacidad = 100%'],
+            'marcaciones'    => ['valor' => $tieneMalasMarcaciones ? 0.0 : 100.0, 'label' => $tieneMalasMarcaciones ? '0%' : '100%', 'pilar' => 'Gente', 'peso' => 5, 'emoji' => '🕐', 'titulo' => 'Malas Marcaciones', 'meta_desc' => 'Sin corrección = 100%'],
+            // REPARTO
+            'rechazos'       => ['valor' => $evento?->rechazos !== null ? (float)$evento->rechazos >= 2.3 ? 100.0 : 0.0 : null, 'label' => $evento?->rechazos !== null ? ((float)$evento->rechazos >= 2.3 ? '100%' : '0%') : 'N/A', 'pilar' => 'Reparto', 'peso' => 11, 'emoji' => '🔄', 'titulo' => 'Rechazos', 'meta_desc' => '≥ 2.3% rechazos = 100%'],
+            'sac'            => ['valor' => $casosSac === 0 ? 100.0 : 0.0, 'label' => $casosSac === 0 ? '100%' : '0%', 'pilar' => 'Reparto', 'peso' => 8, 'emoji' => '🎧', 'titulo' => 'SAC', 'meta_desc' => 'Sin casos = 100%'],
+            'adherencia'     => ['valor' => $evento?->adherencia_tiempo !== null ? ((float)$evento->adherencia_tiempo >= 83 ? 100.0 : 0.0) : null, 'label' => $evento?->adherencia_tiempo !== null ? ((float)$evento->adherencia_tiempo >= 83 ? '100%' : '0%') : 'N/A', 'pilar' => 'Reparto', 'peso' => 8, 'emoji' => '⏰', 'titulo' => 'Adherencia Tiempo', 'meta_desc' => '≥ 83% = 100%'],
+            'rmd'            => ['valor' => $evento?->rmd !== null ? ((float)$evento->rmd >= 4 ? 100.0 : 0.0) : null, 'label' => $evento?->rmd !== null ? ((float)$evento->rmd >= 4 ? '100%' : '0%') : 'N/A', 'pilar' => 'Reparto', 'peso' => 8, 'emoji' => '🏆', 'titulo' => 'RMD', 'meta_desc' => 'Promedio ≥ 4 = 100%'],
+            // FLOTA
+            'cl_pre'         => ['valor' => $evento?->adherencia_checklist_pre !== null ? round((float)$evento->adherencia_checklist_pre, 1) : null, 'label' => $evento?->adherencia_checklist_pre !== null ? round((float)$evento->adherencia_checklist_pre, 1).'%' : 'N/A', 'pilar' => 'Flota', 'peso' => 7.5, 'emoji' => '🔍', 'titulo' => 'Checklist Pre', 'meta_desc' => 'Promedio adherencia CL pre operacional'],
+            'cl_post'        => ['valor' => $evento?->adherencia_checklist_post !== null ? round((float)$evento->adherencia_checklist_post, 1) : null, 'label' => $evento?->adherencia_checklist_post !== null ? round((float)$evento->adherencia_checklist_post, 1).'%' : 'N/A', 'pilar' => 'Flota', 'peso' => 7.5, 'emoji' => '🏁', 'titulo' => 'Checklist Post', 'meta_desc' => 'Promedio adherencia CL post operacional'],
+        ];
+
+        // Meses disponibles para el selector
+        $mesesDisponibles = [];
+        for ($i = 11; $i >= 0; $i--) {
+            $f = Carbon::create($anio, $mes, 1)->subMonths($i);
+            $mesesDisponibles[] = [
+                'value' => (int)$f->month,
+                'label' => $f->translatedFormat('F Y'),
+            ];
+        }
+
+        return Inertia::render('gente/plan-premiacion/show', [
+            'colaborador' => [
+                'id'             => $colaborador->id,
+                'nombre_completo'=> $colaborador->nombre_completo,
+                'cedula'         => $colaborador->cedula,
+                'cargo'          => $colaborador->cargo ?? 'Sin cargo',
+                'area'           => $colaborador->area ?? 'General',
+                'imagen'         => $colaborador->imagen ?? null,
+                'aci_realizadas' => $aciRealizadas,
+            ],
+            'metricas'           => $metricas,
+            'historial_aci'      => $historialAci,
+            'mes'                => $mes,
+            'anio'               => $anio,
+            'meses_disponibles'  => $mesesDisponibles,
         ]);
     }
 }

@@ -187,6 +187,26 @@ export default function ColaboradorDashboard({
                     </Reveal>
                 )}
 
+                {/* Plan Premiación */}
+                <Reveal delay={300}>
+                    <Card className="border-amber-200/70 bg-gradient-to-r from-amber-500/5 to-transparent dark:border-amber-800/40 dark:from-amber-950/20">
+                        <CardContent className="flex items-center justify-between gap-4 py-4">
+                            <div className="flex items-center gap-3">
+                                <div className="flex size-10 items-center justify-center rounded-full bg-amber-500/15 text-xl">
+                                    🏆
+                                </div>
+                                <div>
+                                    <p className="text-sm font-semibold text-foreground">Plan Premiación</p>
+                                    <p className="text-xs text-muted-foreground">Revisa tus indicadores y metas del mes</p>
+                                </div>
+                            </div>
+                            <Button variant="outline" size="sm" asChild className="border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-950/30">
+                                <Link href="/portal/mi-plan-premiacion">Ver mis resultados</Link>
+                            </Button>
+                        </CardContent>
+                    </Card>
+                </Reveal>
+
                 <div className="space-y-3">
                     <HeadingSmall title="Últimas pruebas de alcoholemia" description="Tus 5 pruebas más recientes." />
                     <div className="rounded-lg border border-sidebar-border/70 dark:border-sidebar-border">
