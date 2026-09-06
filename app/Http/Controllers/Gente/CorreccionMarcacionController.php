@@ -236,13 +236,20 @@ class CorreccionMarcacionController extends Controller
                 ]);
             }
 
-            $mensaje = "Importación completada: {$resultado['guardados']} registros guardados de {$resultado['total']} filas procesadas. ";
-            if (!empty($resultado['no_encontrados'])) {
-                $mensaje .= "{$resultado['no_encontrados']} identificación(es) no encontrada(s) en colaboradores.";
+            $mensaje = "Importación completada: {$resultado['guardados']} registros guardados de {$resultado['total']} filas procesadas.";
+
+            if (!empty($resultado['duplicados'])) {
+                $mensaje .= " {$resultado['duplicados']} registro(s) omitido(s) por duplicado (misma identificación, fecha y hora ya existían).";
             }
 
+            if (!empty($resultado['mensaje_no_encontradas'])) {
+                $mensaje .= " {$resultado['mensaje_no_encontradas']}";
+            }
+
+            $tipo = (!empty($resultado['no_encontradas'])) ? 'warning' : 'success';
+
             return redirect()->route('gente.correccion-marcaciones.index')
-                ->with('status', ['message' => $mensaje, 'type' => 'success']);
+                ->with('status', ['message' => $mensaje, 'type' => $tipo]);
         } catch (Throwable $e) {
             Log::error('CorreccionMarcacion importar error: ' . $e->getMessage());
             return back()->with('status', [

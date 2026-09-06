@@ -244,6 +244,13 @@ class SacController extends Controller
             }
         }
 
+        // Palabras clave que indican filas de totales/resumen de tabla dinámica — se ignoran
+        $filasTotalesPatrones = [
+            'etiquetas de fila', 'etiquetas de columna',
+            'total general', 'gran total', 'subtotal',
+            'total ', '(en blanco)',
+        ];
+
         $nuevos = 0;
         $batchData = [];
 
@@ -257,6 +264,28 @@ class SacController extends Controller
                 }
             }
             if (!$hasData) continue;
+
+            // Detectar y saltar filas de totales / resumen de tabla dinámica
+            $primerValor = mb_strtolower(trim((string)(reset($row) ?? '')), 'UTF-8');
+            $primerValor = strtr($primerValor, ['á'=>'a','é'=>'e','í'=>'i','ó'=>'o','ú'=>'u','ñ'=>'n']);
+            $esFila_total = false;
+            foreach ($filasTotalesPatrones as $patron) {
+                if (str_starts_with($primerValor, $patron) || $primerValor === rtrim($patron)) {
+                    $esFila_total = true;
+                    break;
+                }
+            }
+            if ($esFila_total) continue;
+
+            // Si el valor que iría al campo 'anio' no parece un año (4 dígitos entre 2000-2099), saltar
+            $anioColLetter = array_search('anio', $columnIndexMap);
+            if ($anioColLetter !== false) {
+                $anioVal = trim((string)($row[$anioColLetter] ?? ''));
+                if ($anioVal !== '' && (!is_numeric($anioVal) || (int)$anioVal < 2000 || (int)$anioVal > 2099)) {
+                    Log::debug("SAC import: fila {$rowIndex} omitida — valor de año inválido: '{$anioVal}'");
+                    continue;
+                }
+            }
 
             $record = [];
             foreach ($columnIndexMap as $colLetter => $field) {
@@ -504,8 +533,16 @@ class SacController extends Controller
 
     private function fuzzyMatchHeader(string $normHeader): ?string
     {
+        // Solo hacer fuzzy match si el encabezado normalizado es razonablemente corto
+        // (evita que textos largos de datos coincidan con claves cortas)
+        if (mb_strlen($normHeader) > 60) return null;
+
         foreach (self::COLUMN_MAP as $key => $field) {
-            if ($key === $normHeader || str_contains($normHeader, $key) || str_contains($key, $normHeader)) {
+            $normKey = $this->normalizeHeader($key);
+            // Coincidencia exacta tiene prioridad
+            if ($normKey === $normHeader) return $field;
+            // Coincidencia parcial solo si la clave tiene más de 4 caracteres
+            if (mb_strlen($normKey) > 4 && (str_contains($normHeader, $normKey) || str_contains($normKey, $normHeader))) {
                 return $field;
             }
         }

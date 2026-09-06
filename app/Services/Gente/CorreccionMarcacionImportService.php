@@ -49,8 +49,10 @@ class CorreccionMarcacionImportService
         $str = trim((string)$raw);
         if ($str === '') return null;
 
-        // Caso 2: formato ISO Y-m-d / Y/m/d
+        // Caso 2: formato ISO Y-m-d / Y/m/d y variaciones
         $normalizado = str_replace(['/', '.', ' '], '-', $str);
+        // Quitar la parte de hora si viene adjunta
+        $soloFecha = explode('-', $normalizado);
         $formatos = [
             'Y-m-d', 'd-m-Y', 'm-d-Y',
             'Y-m-d H:i:s', 'd-m-Y H:i:s',
@@ -58,8 +60,12 @@ class CorreccionMarcacionImportService
         ];
         foreach ($formatos as $fmt) {
             $dt = \DateTime::createFromFormat($fmt, $normalizado);
-            if ($dt && $dt->format($fmt) === $normalizado) {
-                return $dt->format('Y-m-d');
+            if ($dt !== false) {
+                // Verificar que no haya desbordamiento (ej: mes 13)
+                $errors = \DateTime::getLastErrors();
+                if (empty($errors['warnings']) && empty($errors['errors'])) {
+                    return $dt->format('Y-m-d');
+                }
             }
         }
 
@@ -307,6 +313,7 @@ class CorreccionMarcacionImportService
                 'no_encontrados' => $procesadas - $encontrados,
                 'errores' => $errores,
                 'validas' => $validas,
+                'identificaciones_unicas' => count(array_unique(array_filter(array_column($filas, 'identificacion')))),
                 'filas' => $filas,
                 'columnas_detectadas' => $colMap,
             ];
@@ -326,6 +333,10 @@ class CorreccionMarcacionImportService
      * o re-importa desde el archivo. Requiere que el usuario haya aceptado
      * el preview. Se re-ejecuta la validación contra colaboradores para
      * garantizar la consistencia.
+     *
+     * Solo se guardan los registros cuya cédula existe en colaboradores.
+     * Se deduplica por (identificacion, fecha, hora) — no se insertan duplicados
+     * respecto a lo que ya hay en la tabla.
      */
     public function importarDesdeArchivo(string $rutaArchivo, ?int $usuarioId = null): array
     {
@@ -337,10 +348,20 @@ class CorreccionMarcacionImportService
             return $preview;
         }
 
+        // Solo filas con colaborador encontrado y sin error de identificación/fecha
         $filasValidas = array_values(array_filter(
             $preview['filas'],
             fn($f) => $f['error_validacion'] === null && $f['colaborador_encontrado']
         ));
+
+        // Cédulas no encontradas para incluir en el mensaje
+        $noEncontradas = array_values(array_unique(array_map(
+            fn($f) => $f['identificacion'],
+            array_filter(
+                $preview['filas'],
+                fn($f) => $f['error_validacion'] === 'Identificación no encontrada en colaboradores'
+            )
+        )));
 
         Log::info('CorreccionMarcacion importarDesdeArchivo:', [
             'preview_total' => count($preview['filas']),
@@ -357,7 +378,7 @@ class CorreccionMarcacionImportService
             ]);
             return [
                 'ok' => false,
-                'error' => 'No hay filas válidas para guardar. Verifica errores de validación o que las cédulas existan en colaboradores.',
+                'error' => 'No hay filas válidas para guardar. Verifica que las filas tengan identificación y fecha correctas.',
                 'total' => count($preview['filas']),
                 'guardados' => 0,
             ];
@@ -366,44 +387,82 @@ class CorreccionMarcacionImportService
         DB::beginTransaction();
         try {
             $now = now()->toDateTimeString();
-            $chunkSize = 200;
-            $chunks = array_chunk($filasValidas, $chunkSize);
-            $totalGuardados = 0;
 
-            foreach ($chunks as $batch) {
-                $payload = [];
-                foreach ($batch as $f) {
-                    $payload[] = [
-                        'identificacion'        => $f['identificacion'],
-                        'fecha'                 => $f['fecha'],
-                        'hora'                  => $f['hora'],
-                        'tipo'                  => $f['tipo'],
-                        'centro_costo'          => $f['centro_costo'],
-                        'comentario'            => $f['comentario'],
-                        'nombre_completo'       => $f['nombre_completo'],
-                        'cargo'                 => $f['cargo'],
-                        'colaborador_encontrado' => true,
-                        'error_validacion'      => null,
-                        'usuario_importo_id'    => $usuarioId,
-                        'created_at'            => $now,
-                        'updated_at'            => $now,
-                    ];
+            // Cargar claves existentes en BD para deduplicar: (identificacion, fecha, hora)
+            $existentes = DB::table('correcciones_marcaciones')
+                ->select(['identificacion', 'fecha', 'hora'])
+                ->get()
+                ->mapWithKeys(fn ($r) => [
+                    $r->identificacion . '|' . $r->fecha . '|' . ($r->hora ?? '') => true,
+                ])
+                ->toArray();
+
+            $chunkSize = 200;
+            $totalGuardados = 0;
+            $duplicados = 0;
+            $payload = [];
+
+            foreach ($filasValidas as $f) {
+                $claveUnica = $f['identificacion'] . '|' . $f['fecha'] . '|' . ($f['hora'] ?? '');
+
+                // Saltar si ya existe en BD o ya apareció en este mismo archivo
+                if (isset($existentes[$claveUnica])) {
+                    $duplicados++;
+                    continue;
                 }
+
+                // Marcar como procesada para evitar duplicados dentro del propio archivo
+                $existentes[$claveUnica] = true;
+
+                $payload[] = [
+                    'identificacion'         => $f['identificacion'],
+                    'fecha'                  => $f['fecha'],
+                    'hora'                   => $f['hora'],
+                    'tipo'                   => $f['tipo'],
+                    'centro_costo'           => $f['centro_costo'],
+                    'comentario'             => $f['comentario'],
+                    'nombre_completo'        => $f['nombre_completo'],
+                    'cargo'                  => $f['cargo'],
+                    'colaborador_encontrado' => true,
+                    'error_validacion'       => null,
+                    'usuario_importo_id'     => $usuarioId,
+                    'created_at'             => $now,
+                    'updated_at'             => $now,
+                ];
+
+                if (count($payload) >= $chunkSize) {
+                    CorreccionMarcacion::insert($payload);
+                    $totalGuardados += count($payload);
+                    $payload = [];
+                }
+            }
+
+            if (!empty($payload)) {
                 CorreccionMarcacion::insert($payload);
                 $totalGuardados += count($payload);
             }
 
             DB::commit();
 
-            Log::info("CorreccionMarcacionImport: {$totalGuardados} registros guardados.");
+            Log::info("CorreccionMarcacionImport: {$totalGuardados} guardados, {$duplicados} duplicados omitidos.");
+
+            // Construir mensaje con cédulas no encontradas
+            $mensajeNoEncontradas = '';
+            if (!empty($noEncontradas)) {
+                $lista = implode(', ', array_slice($noEncontradas, 0, 20));
+                $extra = count($noEncontradas) > 20 ? ' y ' . (count($noEncontradas) - 20) . ' más' : '';
+                $mensajeNoEncontradas = 'Cédulas no encontradas en colaboradores (' . count($noEncontradas) . '): ' . $lista . $extra . '.';
+            }
 
             return [
-                'ok' => true,
-                'total'       => count($preview['filas']),
-                'guardados'   => $totalGuardados,
-                'errores'     => count($preview['filas']) - $totalGuardados,
-                'encontrados' => $preview['encontrados'],
-                'no_encontrados' => $preview['no_encontrados'],
+                'ok'               => true,
+                'total'            => count($preview['filas']),
+                'guardados'        => $totalGuardados,
+                'duplicados'       => $duplicados,
+                'no_encontradas'   => $noEncontradas,
+                'mensaje_no_encontradas' => $mensajeNoEncontradas,
+                'encontrados'      => $preview['encontrados'],
+                'no_encontrados'   => $preview['no_encontrados'] ?? 0,
             ];
         } catch (Throwable $e) {
             DB::rollBack();

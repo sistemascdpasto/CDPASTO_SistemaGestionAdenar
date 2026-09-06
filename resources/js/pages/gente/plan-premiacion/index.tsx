@@ -187,6 +187,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
         } catch {
             // Si hay algún error de parseo, usar default
         }
+        
         return new Set(allKeys);
     });
 
@@ -391,8 +392,23 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                         <CardTitle className="text-base font-semibold">Filtros y Búsqueda</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5 w-full">
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6 w-full">
+                                <div>
+                                    <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Mes</label>
+                                    <Select value={String(mes)} onValueChange={handleMesChange}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Seleccionar Mes" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {MESES.map((m) => (
+                                                <SelectItem key={m.value} value={String(m.value)}>
+                                                    {m.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
                                 <div>
                                     <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Año</label>
                                     <Select value={String(anio)} onValueChange={handleAnioChange}>
