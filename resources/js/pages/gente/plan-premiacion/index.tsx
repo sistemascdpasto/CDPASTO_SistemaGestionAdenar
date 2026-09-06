@@ -249,7 +249,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                 cargo: cargoParam,
                 meses_checklist: checklistParam,
             },
-            { preserveState: true, replace: true },
+            { preserveState: false, replace: true },
         );
     };
 
@@ -570,7 +570,6 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                     </a>
                                 </Button>
                             </div>
-                        </div>
                     </CardContent>
                 </Card>
 
