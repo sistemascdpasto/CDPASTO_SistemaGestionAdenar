@@ -18,7 +18,7 @@ import {
     type DocumentInfo,
 } from '@/pages/seguridad/colaboradores/colaborador-form-fields';
 import { type BreadcrumbItem, type SharedData } from '@/types';
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import {
     AlertTriangle,
     CheckCircle2,

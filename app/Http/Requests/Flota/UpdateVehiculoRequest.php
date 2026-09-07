@@ -26,6 +26,8 @@ class UpdateVehiculoRequest extends FormRequest
             'modelo' => ['nullable', 'string', 'max:100'],
             'capacidad_pallets' => ['nullable', 'integer', 'min:0', 'max:1000'],
             'imagen' => ['nullable', 'image', 'max:2048'],
+            'fecha_vencimiento_soat' => ['nullable', 'date'],
+            'fecha_vencimiento_tecnomecanica' => ['nullable', 'date'],
             'documento_soat' => ['nullable', 'array'],
             'documento_soat.*' => ['file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
             'documento_rtm' => ['nullable', 'array'],

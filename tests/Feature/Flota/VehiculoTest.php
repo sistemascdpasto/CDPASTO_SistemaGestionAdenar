@@ -78,6 +78,34 @@ class VehiculoTest extends TestCase
         $this->assertSoftDeleted($vehiculo);
     }
 
+    public function test_it_stores_and_updates_the_document_expiry_dates(): void
+    {
+        Storage::fake('public');
+        $user = $this->actingAsFlota();
+
+        $this->actingAs($user)->post(route('flota.vehiculos.store'), [
+            'placa' => 'EXP123',
+            'is_active' => true,
+            'fecha_vencimiento_soat' => '2026-12-31',
+            'fecha_vencimiento_tecnomecanica' => '2027-03-15',
+        ])->assertRedirect(route('flota.vehiculos.index'));
+
+        $vehiculo = Vehiculo::where('placa', 'EXP123')->firstOrFail();
+        $this->assertSame('2026-12-31', $vehiculo->fecha_vencimiento_soat->toDateString());
+        $this->assertSame('2027-03-15', $vehiculo->fecha_vencimiento_tecnomecanica->toDateString());
+
+        $this->actingAs($user)->put(route('flota.vehiculos.update', $vehiculo), [
+            'placa' => 'EXP123',
+            'is_active' => true,
+            'fecha_vencimiento_soat' => '2028-01-10',
+            'fecha_vencimiento_tecnomecanica' => '',
+        ])->assertRedirect(route('flota.vehiculos.index'));
+
+        $vehiculo->refresh();
+        $this->assertSame('2028-01-10', $vehiculo->fecha_vencimiento_soat->toDateString());
+        $this->assertNull($vehiculo->fecha_vencimiento_tecnomecanica);
+    }
+
     public function test_it_can_toggle_vehiculo_availability(): void
     {
         $user = $this->actingAsFlota();

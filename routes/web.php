@@ -21,6 +21,7 @@ require __DIR__.'/flota.php';
 require __DIR__.'/capacitaciones.php';
 require __DIR__.'/reparto.php';
 require __DIR__.'/gente.php';
+require __DIR__.'/cinco-porques.php';
 
 Route::middleware(['auth', 'active'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');

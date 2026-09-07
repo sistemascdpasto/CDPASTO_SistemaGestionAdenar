@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link } from '@inertiajs/react';
-import { AlertTriangle, BellRing, Truck, User } from 'lucide-react';
+import { AlertTriangle, BellRing, User } from 'lucide-react';
 
 const breadcrumbs: BreadcrumbItem[] = [{ title: 'Dashboard', href: '/dashboard' }];
 
@@ -62,7 +62,6 @@ interface ColaboradorDashboardProps {
     indiceRiesgo: IndiceRiesgo;
     ultimasPruebas: PruebaRow[];
     alertasPendientes: number;
-    asignacionConductor: { apto_rutas_criticas: string | null } | null;
 }
 
 export default function ColaboradorDashboard({
@@ -72,7 +71,6 @@ export default function ColaboradorDashboard({
     indiceRiesgo,
     ultimasPruebas,
     alertasPendientes,
-    asignacionConductor,
 }: ColaboradorDashboardProps) {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -167,25 +165,6 @@ export default function ColaboradorDashboard({
                         </Card>
                     </Reveal>
                 </div>
-
-                {asignacionConductor && (
-                    <Reveal delay={280}>
-                        <Card className="border-sidebar-border/70 dark:border-sidebar-border">
-                            <CardHeader className="flex flex-row items-center gap-2 space-y-0">
-                                <Truck className="size-4 text-muted-foreground" />
-                                <CardTitle className="text-sm font-medium text-muted-foreground">Evaluación de conductor</CardTitle>
-                            </CardHeader>
-                            <CardContent className="flex items-center justify-between gap-4">
-                                <p className="text-sm text-muted-foreground">
-                                    Apto para rutas críticas: <span className="font-medium text-foreground">{asignacionConductor.apto_rutas_criticas ?? '—'}</span>
-                                </p>
-                                <Button variant="outline" size="sm" asChild>
-                                    <Link href="/portal/rutas">Ver detalle</Link>
-                                </Button>
-                            </CardContent>
-                        </Card>
-                    </Reveal>
-                )}
 
                 {/* Plan Premiación */}
                 <Reveal delay={300}>

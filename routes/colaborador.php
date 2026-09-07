@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Colaborador\CapacitacionController;
 use App\Http\Controllers\Colaborador\CompensacionColaboradorController;
 use App\Http\Controllers\Colaborador\CompensacionVariableColaboradorController;
 use App\Http\Controllers\Colaborador\CondicionSaludController;
@@ -14,7 +15,6 @@ Route::middleware(['auth', 'active', 'role:Colaborador|Administrador|Seguridad']
         Route::get('/', [PortalController::class, 'index'])->name('index');
         Route::get('perfil', [PortalController::class, 'perfil'])->name('perfil');
         Route::get('pruebas', [PortalController::class, 'pruebas'])->name('pruebas');
-        Route::get('rutas', [PortalController::class, 'rutas'])->name('rutas');
         Route::get('mis-rutas-reparto', [PortalController::class, 'misRutasReparto'])->name('mis-rutas-reparto');
         Route::get('mis-indicadores-reparto', [PortalController::class, 'misIndicadoresReparto'])->name('mis-indicadores-reparto');
         Route::get('mi-plan-premiacion', [PortalController::class, 'miPlanPremiacion'])->name('mi-plan-premiacion');
@@ -31,15 +31,15 @@ Route::middleware(['auth', 'active', 'role:Colaborador|Administrador|Seguridad']
         Route::get('encuesta-morbilidad/historial', [EncuestaMorbilidadController::class, 'historial'])
             ->name('encuesta-morbilidad.historial');
         // Capacitaciones para colaboradores
-        Route::get('capacitaciones', [\App\Http\Controllers\Colaborador\CapacitacionController::class, 'index'])
+        Route::get('capacitaciones', [CapacitacionController::class, 'index'])
             ->name('capacitaciones.index');
-        Route::get('capacitaciones/carpetas/{carpeta}', [\App\Http\Controllers\Colaborador\CapacitacionController::class, 'showCarpeta'])
+        Route::get('capacitaciones/carpetas/{carpeta}', [CapacitacionController::class, 'showCarpeta'])
             ->name('capacitaciones.carpetas.show');
-        Route::post('capacitaciones/materiales/{material}/marcar-revisada', [\App\Http\Controllers\Colaborador\CapacitacionController::class, 'marcarRevisada'])
+        Route::post('capacitaciones/materiales/{material}/marcar-revisada', [CapacitacionController::class, 'marcarRevisada'])
             ->name('capacitaciones.materiales.marcar-revisada');
-        Route::get('capacitaciones/materiales/{material}/descargar', [\App\Http\Controllers\Colaborador\CapacitacionController::class, 'descargar'])
+        Route::get('capacitaciones/materiales/{material}/descargar', [CapacitacionController::class, 'descargar'])
             ->name('capacitaciones.materiales.descargar');
-        
+
         Route::get('mi-compensacion', [CompensacionColaboradorController::class, 'index'])
             ->name('mi-compensacion.index');
 

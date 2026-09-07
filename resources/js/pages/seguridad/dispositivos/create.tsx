@@ -23,7 +23,7 @@ export default function CreateDispositivo() {
         fecha_vencimiento_certificado: '',
         documento: null,
         valor_min: '0',
-        valor_max: '4',
+        valor_max: '0.1',
         estado: 'Disponible',
         imagenes: [],
         deleted_imagenes_indices: [],

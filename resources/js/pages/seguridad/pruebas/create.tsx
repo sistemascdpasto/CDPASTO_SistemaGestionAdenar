@@ -1,6 +1,13 @@
 import HeadingSmall from '@/components/heading-small';
 import InputError from '@/components/input-error';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -11,7 +18,7 @@ import { SeccionCard } from '@/pages/seguridad/colaboradores/colaborador-form-fi
 import { ColaboradorSearchSelect, type ColaboradorOption } from '@/pages/seguridad/pruebas/colaborador-search-select';
 import { FirmaPad, type FirmaPadHandle } from '@/pages/seguridad/pruebas/firma-pad';
 import { type BreadcrumbItem } from '@/types';
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, useForm } from '@inertiajs/react';
 import { CalendarClock, Camera, ClipboardList, Gauge, LoaderCircle, Paperclip, PenTool, ShieldCheck, Users, X } from 'lucide-react';
 import { FormEventHandler, useRef, useState } from 'react';
 
@@ -115,9 +122,11 @@ function EvidenciaUploader({
                         <img
                             src={path}
                             alt={`Guardada ${index + 1}`}
-                            className="h-24 w-full rounded-lg border border-border object-cover transition-transform group-hover:scale-105"
+                            className="border-border h-24 w-full rounded-lg border object-cover transition-transform group-hover:scale-105"
                         />
-                        <span className="absolute left-1 top-1 rounded bg-emerald-600 px-1.5 py-0.5 text-xs text-white dark:bg-emerald-500">Guardada</span>
+                        <span className="absolute top-1 left-1 rounded bg-emerald-600 px-1.5 py-0.5 text-xs text-white dark:bg-emerald-500">
+                            Guardada
+                        </span>
                         {canDeleteSaved && (
                             <button
                                 type="button"
@@ -125,7 +134,7 @@ function EvidenciaUploader({
                                     e.stopPropagation();
                                     onToggleSaved(index);
                                 }}
-                                className={`absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full text-white shadow transition-colors ${
+                                className={`absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full text-white shadow transition-colors ${
                                     deletedIndices.includes(index) ? 'bg-muted-foreground' : 'bg-red-500 hover:bg-red-600'
                                 }`}
                             >
@@ -145,7 +154,7 @@ function EvidenciaUploader({
                         <button
                             type="button"
                             onClick={() => onRemoveNew(index)}
-                            className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white shadow hover:bg-red-600"
+                            className="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white shadow hover:bg-red-600"
                         >
                             <X className="h-3 w-3" />
                         </button>
@@ -154,9 +163,9 @@ function EvidenciaUploader({
                 <button
                     type="button"
                     onClick={() => inputRef.current?.click()}
-                    className="flex h-24 w-full flex-col items-center justify-center rounded-lg border-2 border-dashed border-border text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+                    className="border-border text-muted-foreground hover:border-primary hover:text-primary flex h-24 w-full flex-col items-center justify-center rounded-lg border-2 border-dashed transition-colors"
                 >
-                    <span className="text-2xl font-light leading-none">+</span>
+                    <span className="text-2xl leading-none font-light">+</span>
                     <span className="mt-1 text-xs">Agregar</span>
                 </button>
             </div>
@@ -228,7 +237,12 @@ function PdfUploader({
                     >
                         <Paperclip className="size-4 shrink-0" />
                         <span className="max-w-[180px] truncate">{item.file.name}</span>
-                        <button type="button" onClick={() => onRemoveNew(index)} aria-label={`Quitar ${item.file.name}`} className="text-sky-600 hover:text-red-600">
+                        <button
+                            type="button"
+                            onClick={() => onRemoveNew(index)}
+                            aria-label={`Quitar ${item.file.name}`}
+                            className="text-sky-600 hover:text-red-600"
+                        >
                             <X className="size-3.5" />
                         </button>
                     </div>
@@ -236,7 +250,7 @@ function PdfUploader({
                 <button
                     type="button"
                     onClick={() => inputRef.current?.click()}
-                    className="flex items-center gap-1.5 rounded-lg border-2 border-dashed border-border px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+                    className="border-border text-muted-foreground hover:border-primary hover:text-primary flex items-center gap-1.5 rounded-lg border-2 border-dashed px-3 py-2 text-sm transition-colors"
                 >
                     <Paperclip className="size-4" />
                     Adjuntar PDF
@@ -249,12 +263,10 @@ function PdfUploader({
 export default function CreatePrueba({
     colaboradores,
     dispositivosDisponibles,
-    filters,
     prueba,
 }: {
     colaboradores: ColaboradorOption[];
     dispositivosDisponibles: DispositivoOption[];
-    filters: { turno: string };
     prueba?: PruebaData;
 }) {
     const breadcrumbs: BreadcrumbItem[] = prueba
@@ -388,10 +400,6 @@ export default function CreatePrueba({
         setDeleteType(null);
     };
 
-    const filtrarPorTurno = (turno: string) => {
-        router.get(route('seguridad.pruebas.create'), { turno: turno === 'todos' ? '' : turno }, { preserveState: true, replace: true });
-    };
-
     const requiereConsentimiento = !data.es_programacion;
     const puedeGuardar = !requiereConsentimiento || data.consentimiento_aceptado;
 
@@ -419,27 +427,16 @@ export default function CreatePrueba({
             <div className="flex h-full flex-1 flex-col gap-6 rounded-xl p-4">
                 <HeadingSmall
                     title={prueba ? 'Editar prueba de alcoholemia' : 'Registrar prueba de alcoholemia'}
-                    description={prueba ? 'Modifica los datos de la prueba y guarda los cambios.' : 'Selecciona al colaborador y completa los datos de la prueba.'}
+                    description={
+                        prueba
+                            ? 'Modifica los datos de la prueba y guarda los cambios.'
+                            : 'Selecciona al colaborador y completa los datos de la prueba.'
+                    }
                 />
 
                 <form onSubmit={submit} className="grid gap-6">
                     <SeccionCard icon={Users} titulo="Colaborador y tipo de prueba" tono="verde">
-                        <div className="grid gap-4 sm:grid-cols-3">
-                            <div className="grid gap-2">
-                                <Label htmlFor="turno-filter">Filtrar por turno</Label>
-                                <Select value={filters.turno || 'todos'} onValueChange={filtrarPorTurno}>
-                                    <SelectTrigger id="turno-filter">
-                                        <SelectValue placeholder="Todos los turnos" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="todos">Todos los turnos</SelectItem>
-                                        <SelectItem value="manana">Mañana</SelectItem>
-                                        <SelectItem value="tarde">Tarde</SelectItem>
-                                        <SelectItem value="noche">Noche</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
+                        <div className="grid gap-4 sm:grid-cols-2">
                             <ColaboradorSearchSelect
                                 id="colaborador_search"
                                 label="Colaborador"
@@ -468,20 +465,20 @@ export default function CreatePrueba({
                         {colaboradorSeleccionado && (
                             <div className="mt-4 grid gap-3 rounded-lg border border-emerald-200 bg-white/60 p-3 text-sm sm:grid-cols-4 dark:border-emerald-500/20 dark:bg-black/10">
                                 <div>
-                                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Identificación</p>
-                                    <p className="font-medium text-foreground">{colaboradorSeleccionado.cedula}</p>
+                                    <p className="text-muted-foreground text-[11px] tracking-wide uppercase">Identificación</p>
+                                    <p className="text-foreground font-medium">{colaboradorSeleccionado.cedula}</p>
                                 </div>
                                 <div>
-                                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Nombres</p>
-                                    <p className="font-medium text-foreground">{colaboradorSeleccionado.nombres}</p>
+                                    <p className="text-muted-foreground text-[11px] tracking-wide uppercase">Nombres</p>
+                                    <p className="text-foreground font-medium">{colaboradorSeleccionado.nombres}</p>
                                 </div>
                                 <div>
-                                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Apellidos</p>
-                                    <p className="font-medium text-foreground">{colaboradorSeleccionado.apellidos}</p>
+                                    <p className="text-muted-foreground text-[11px] tracking-wide uppercase">Apellidos</p>
+                                    <p className="text-foreground font-medium">{colaboradorSeleccionado.apellidos}</p>
                                 </div>
                                 <div>
-                                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Cargo</p>
-                                    <p className="font-medium text-foreground">{colaboradorSeleccionado.cargo ?? '—'}</p>
+                                    <p className="text-muted-foreground text-[11px] tracking-wide uppercase">Cargo</p>
+                                    <p className="text-foreground font-medium">{colaboradorSeleccionado.cargo ?? '—'}</p>
                                 </div>
                             </div>
                         )}
@@ -600,7 +597,7 @@ export default function CreatePrueba({
                                         checked={data.consentimiento_aceptado}
                                         onCheckedChange={(checked) => setData('consentimiento_aceptado', checked === true)}
                                     />
-                                    <Label htmlFor="consentimiento_aceptado" className="font-normal leading-snug">
+                                    <Label htmlFor="consentimiento_aceptado" className="leading-snug font-normal">
                                         {CONSENTIMIENTO_TEXTO}
                                     </Label>
                                 </div>
@@ -622,7 +619,13 @@ export default function CreatePrueba({
                     <div className="flex justify-end">
                         <Button type="submit" disabled={processing || !puedeGuardar}>
                             {processing && <LoaderCircle className="size-4 animate-spin" />}
-                            {data.es_programacion ? (prueba ? 'Actualizar programación' : 'Programar prueba') : prueba ? 'Actualizar prueba' : 'Registrar prueba'}
+                            {data.es_programacion
+                                ? prueba
+                                    ? 'Actualizar programación'
+                                    : 'Programar prueba'
+                                : prueba
+                                  ? 'Actualizar prueba'
+                                  : 'Registrar prueba'}
                         </Button>
                     </div>
                 </form>
@@ -633,7 +636,7 @@ export default function CreatePrueba({
                     <div className="relative w-full max-w-4xl" onClick={(e) => e.stopPropagation()}>
                         <button
                             onClick={() => setSelectedImage(null)}
-                            className="absolute right-4 top-4 z-10 rounded-full bg-black/50 p-2 text-white hover:bg-black/75"
+                            className="absolute top-4 right-4 z-10 rounded-full bg-black/50 p-2 text-white hover:bg-black/75"
                         >
                             <X className="h-6 w-6" />
                         </button>

@@ -113,6 +113,8 @@ export default function ColaboradoresIndex({
     catalogos: WizardCatalogos;
 }) {
     const { auth } = usePage<SharedData>().props;
+    // Crear/importar/editar/eliminar colaboradores es exclusivo de Gente
+    // (Administrador siempre pasa).
     const canManageColaboradores = auth.isAdmin || auth.roles.includes('Gente');
 
     const [search, setSearch] = useState(filters.search);

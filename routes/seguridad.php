@@ -6,10 +6,12 @@ use App\Http\Controllers\Seguridad\AciImportController;
 use App\Http\Controllers\Seguridad\AciIndicadorController;
 use App\Http\Controllers\Seguridad\AlcoholimetroController;
 use App\Http\Controllers\Seguridad\AlertaController;
-use App\Http\Controllers\Seguridad\AsignacionConductorController;
 use App\Http\Controllers\Seguridad\CargoExamenController;
 use App\Http\Controllers\Seguridad\ConceptoAptitudController;
 use App\Http\Controllers\Seguridad\CondicionSaludController;
+use App\Http\Controllers\Seguridad\EncuestaMorbilidadController;
+use App\Http\Controllers\Seguridad\EncuestaMorbilidadPreguntaController;
+use App\Http\Controllers\Seguridad\EncuestaMorbilidadSeccionController;
 use App\Http\Controllers\Seguridad\EvaluacionMedicaController;
 use App\Http\Controllers\Seguridad\EvaluacionMedicaExportController;
 use App\Http\Controllers\Seguridad\EvaluacionOwdController;
@@ -18,13 +20,11 @@ use App\Http\Controllers\Seguridad\EvaluacionOwdExportController;
 use App\Http\Controllers\Seguridad\EvaluacionOwdImportacionController;
 use App\Http\Controllers\Seguridad\EvaluacionOwdImportController;
 use App\Http\Controllers\Seguridad\EvaluacionOwdIndicadorController;
-use App\Http\Controllers\Seguridad\EncuestaMorbilidadController;
-use App\Http\Controllers\Seguridad\EncuestaMorbilidadPreguntaController;
-use App\Http\Controllers\Seguridad\EncuestaMorbilidadSeccionController;
-use App\Http\Controllers\Seguridad\ExamenCatalogoController;
-use App\Http\Controllers\Seguridad\EstadoColaboradorController;
 use App\Http\Controllers\Seguridad\EvaluacionRecomendacionController;
+use App\Http\Controllers\Seguridad\ExamenCatalogoController;
 use App\Http\Controllers\Seguridad\ExamenMedicoIndicadorController;
+use App\Http\Controllers\Seguridad\GlossaryTermController;
+use App\Http\Controllers\Seguridad\IndicadorController;
 use App\Http\Controllers\Seguridad\PlanAccionOwdController;
 use App\Http\Controllers\Seguridad\PlanAccionOwdSeguimientoController;
 use App\Http\Controllers\Seguridad\PruebaAlcoholemiaController;
@@ -32,7 +32,6 @@ use App\Http\Controllers\Seguridad\PublicVerificationController;
 use App\Http\Controllers\Seguridad\RecomendacionCatalogoController;
 use App\Http\Controllers\Seguridad\RecomendacionSeguimientoController;
 use App\Http\Controllers\Seguridad\RutaCriticaController;
-use App\Http\Controllers\Seguridad\GlossaryTermController;
 use Illuminate\Support\Facades\Route;
 
 // HU037: verificación pública del QR — intencionalmente fuera del grupo `auth`.
@@ -65,9 +64,7 @@ Route::middleware(['auth', 'active', 'role:Administrador|Seguridad'])
         Route::get('alertas/bell', [AlertaController::class, 'bell'])->name('alertas.bell');
         Route::patch('alertas/{alerta}/atender', [AlertaController::class, 'atender'])->name('alertas.atender');
 
-        Route::resource('asignaciones-conductores', AsignacionConductorController::class)->except(['show', 'update', 'destroy']);
-
-        Route::get('indicador', [EstadoColaboradorController::class, 'index'])->name('indicador.index');
+        Route::get('indicador', [IndicadorController::class, 'index'])->name('indicador.index');
         Route::resource('glosario', GlossaryTermController::class);
 
         Route::get('rutas-criticas', [RutaCriticaController::class, 'index'])

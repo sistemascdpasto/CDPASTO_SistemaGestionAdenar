@@ -36,22 +36,18 @@ class PruebaAlcoholemiaController extends Controller
         ]);
     }
 
-    public function create(Request $request): Response
+    public function create(): Response
     {
-        $turno = $request->string('turno')->trim()->toString();
-
         return Inertia::render('seguridad/pruebas/create', [
             'colaboradores' => Colaborador::query()
                 ->completos()
                 ->where('is_active', true)
-                ->when($turno !== '', fn ($query) => $query->where('turno', $turno))
                 ->orderBy('nombres')
                 ->get(['id', 'nombres', 'apellidos', 'cedula', 'turno', 'cargo']),
             'dispositivosDisponibles' => Alcoholimetro::query()
                 ->where('estado', 'Disponible')
                 ->orderBy('codigo')
                 ->get(['id', 'codigo', 'valor_min', 'valor_max']),
-            'filters' => ['turno' => $turno],
         ]);
     }
 
@@ -91,10 +87,8 @@ class PruebaAlcoholemiaController extends Controller
         );
     }
 
-    public function edit(PruebaAlcoholemia $prueba, Request $request): Response
+    public function edit(PruebaAlcoholemia $prueba): Response
     {
-        $turno = $request->string('turno')->trim()->toString();
-
         $dispositivosDisponibles = Alcoholimetro::query()
             ->where(function ($query) use ($prueba) {
                 $query->where('estado', 'Disponible');
@@ -107,22 +101,20 @@ class PruebaAlcoholemiaController extends Controller
             ->get(['id', 'codigo', 'valor_min', 'valor_max']);
 
         $pruebaData = $prueba->load(['colaborador', 'alcoholimetro', 'responsable'])->toArray();
-        
+
         // Agregar rutas de evidencias con /storage/
         if ($prueba->evidencia_path) {
-            $pruebaData['evidencia_path'] = '/storage/' . $prueba->evidencia_path;
+            $pruebaData['evidencia_path'] = '/storage/'.$prueba->evidencia_path;
         }
-        $pruebaData['evidencias_paths'] = $prueba->evidencias()->pluck('path')->map(fn($path) => '/storage/' . $path)->toArray();
+        $pruebaData['evidencias_paths'] = $prueba->evidencias()->pluck('path')->map(fn ($path) => '/storage/'.$path)->toArray();
 
         return Inertia::render('seguridad/pruebas/create', [
             'colaboradores' => Colaborador::query()
                 ->completos()
                 ->where('is_active', true)
-                ->when($turno !== '', fn ($query) => $query->where('turno', $turno))
                 ->orderBy('nombres')
                 ->get(['id', 'nombres', 'apellidos', 'cedula', 'turno', 'cargo']),
             'dispositivosDisponibles' => $dispositivosDisponibles,
-            'filters' => ['turno' => $turno],
             'prueba' => $pruebaData,
         ]);
     }
@@ -146,7 +138,7 @@ class PruebaAlcoholemiaController extends Controller
 
         // Eliminar evidencias marcadas para eliminación
         $deletedIndices = $request->input('deleted_evidencias_indices', []);
-        if (!empty($deletedIndices)) {
+        if (! empty($deletedIndices)) {
             $evidencias = $prueba->evidencias()->get();
             foreach ($deletedIndices as $index) {
                 if (isset($evidencias[$index])) {

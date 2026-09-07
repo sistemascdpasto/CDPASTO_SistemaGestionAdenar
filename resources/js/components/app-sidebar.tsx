@@ -5,32 +5,45 @@ import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, Sid
 import { colaboradoresReadOnlySubmodule, geovictoriaAsistenciaReadOnlySubmodule, modules, type ModuleDef, type SubModuleDef } from '@/data/modules';
 import { type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { BellRing, Calendar, DollarSign, GraduationCap, HeartPulse, LayoutGrid, Route, Star, Stethoscope, TestTube, Trophy, Truck, User, UserCog } from 'lucide-react';
+import {
+    BellRing,
+    Calendar,
+    DollarSign,
+    GraduationCap,
+    HeartPulse,
+    LayoutGrid,
+    ListChecks,
+    Route,
+    Star,
+    Stethoscope,
+    TestTube,
+    Trophy,
+    User,
+    UserCog,
+} from 'lucide-react';
 import AppLogo from './app-logo';
 
-const footerNavItems: NavItem[] = [
-
-];
+const footerNavItems: NavItem[] = [];
 
 function buildSubNavItems(submodules: SubModuleDef[], moduleSlug: string, color: string, userRoles: string[]): NavItem[] {
     return submodules
         .filter((sub) => !sub.allowedRoles || sub.allowedRoles.some((r) => userRoles.includes(r)))
         .map((sub) =>
-        sub.submodules
-            ? {
-                  title: sub.title,
-                  url: '#',
-                  icon: sub.icon,
-                  color,
-                  items: buildSubNavItems(sub.submodules, moduleSlug, color, userRoles),
-              }
-            : {
-                  title: sub.title,
-                  url: sub.slug ? `/modules/${sub.moduleSlugOverride ?? moduleSlug}/${sub.slug}` : `/modules/${moduleSlug}`,
-                  icon: sub.icon,
-                  color,
-              },
-    );
+            sub.submodules
+                ? {
+                      title: sub.title,
+                      url: '#',
+                      icon: sub.icon,
+                      color,
+                      items: buildSubNavItems(sub.submodules, moduleSlug, color, userRoles),
+                  }
+                : {
+                      title: sub.title,
+                      url: sub.href ?? (sub.slug ? `/modules/${sub.moduleSlugOverride ?? moduleSlug}/${sub.slug}` : `/modules/${moduleSlug}`),
+                      icon: sub.icon,
+                      color,
+                  },
+        );
 }
 
 export function AppSidebar() {
@@ -82,8 +95,8 @@ export function AppSidebar() {
         ...(auth.isColaborador
             ? [
                   { title: 'Mi Perfil', url: '/portal/perfil', icon: User, color: '#3F7A22' },
+                  { title: '5 Por Qué', url: '/cinco-porques', icon: ListChecks, color: '#D4102A' },
                   { title: 'Mis Pruebas', url: '/portal/pruebas', icon: TestTube, color: '#3F7A22' },
-                  { title: 'Mis Rutas', url: '/portal/rutas', icon: Truck, color: '#3F7A22' },
                   { title: 'Mis Planeaciones de Ruta', url: '/portal/mis-rutas-reparto', icon: Route, color: '#D4102A' },
                   { title: 'Mis Estrellas del Camión', url: '/portal/mis-indicadores-reparto', icon: Star, color: '#D4102A' },
                   { title: 'Mi Plan Premiación', url: '/portal/mi-plan-premiacion', icon: Trophy, color: '#D97706' },
