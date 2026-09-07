@@ -40,7 +40,7 @@ function buildSubNavItems(submodules: SubModuleDef[], moduleSlug: string, color:
                   }
                 : {
                       title: sub.title,
-                      url: sub.slug ? `/modules/${sub.moduleSlugOverride ?? moduleSlug}/${sub.slug}` : `/modules/${moduleSlug}`,
+                      url: sub.href ?? (sub.slug ? `/modules/${sub.moduleSlugOverride ?? moduleSlug}/${sub.slug}` : `/modules/${moduleSlug}`),
                       icon: sub.icon,
                       color,
                   },
@@ -93,12 +93,10 @@ export function AppSidebar() {
             color: mod.accent,
             items: buildSubNavItems(mod.submodules, mod.slug, mod.accent, auth.isAdmin ? ['Administrador'] : auth.roles),
         })),
-        ...(auth.roles.includes('Colaborador') || auth.roles.includes('Reparto') || auth.isAdmin
-            ? [{ title: '5 Por Qué', url: '/cinco-porques', icon: ListChecks, color: '#D4102A' }]
-            : []),
         ...(auth.isColaborador
             ? [
                   { title: 'Mi Perfil', url: '/portal/perfil', icon: User, color: '#3F7A22' },
+                  { title: '5 Por Qué', url: '/cinco-porques', icon: ListChecks, color: '#D4102A' },
                   { title: 'Mis Pruebas', url: '/portal/pruebas', icon: TestTube, color: '#3F7A22' },
                   { title: 'Mis Rutas', url: '/portal/rutas', icon: Truck, color: '#3F7A22' },
                   { title: 'Mis Planeaciones de Ruta', url: '/portal/mis-rutas-reparto', icon: Route, color: '#D4102A' },

@@ -4,13 +4,13 @@ import {
     BadgeCheck,
     Ban,
     BarChart3,
-    BookOpen,
     BellRing,
+    BookOpen,
     CalendarDays,
     Car,
-    Clock,
     ClipboardCheck,
     ClipboardList,
+    Clock,
     Cpu,
     DollarSign,
     FileSpreadsheet,
@@ -58,6 +58,12 @@ export interface SubModuleDef {
      * como de costumbre.
      */
     moduleSlugOverride?: string;
+    /**
+     * URL absoluta a usar en el sidebar en vez de la ruta calculada
+     * `/modules/<slug>/<sub-slug>` (para submódulos que viven en su propia
+     * ruta fuera del prefijo del módulo, ej. `/cinco-porques`).
+     */
+    href?: string;
     /**
      * Lista de roles que pueden ver este submódulo en el sidebar.
      * Si se omite, el ítem es visible para todos los usuarios con acceso
@@ -141,7 +147,6 @@ export const modules: ModuleDef[] = [
             { title: 'Glosario', slug: 'glosario', icon: BookOpen },
 
             { title: 'Mapa de Rutas Críticas', slug: 'rutas-criticas', icon: Map },
-
         ],
     },
     {
@@ -162,6 +167,7 @@ export const modules: ModuleDef[] = [
             { title: 'Resumen Ejecutivo', slug: 'indicadores-resumen', icon: BarChart3 },
             { title: 'Compensación Variable', slug: 'compensacion-variable', icon: DollarSign, allowedRoles: ['Administrador', 'Colaborador'] },
             { title: 'Compensación Variable Diaria', slug: 'compensacion-variable-diaria', icon: CalendarDays },
+            { title: '5 Por Qué', slug: 'cinco-porques', href: '/cinco-porques', icon: ListChecks },
         ],
     },
     {
@@ -203,9 +209,7 @@ export const modules: ModuleDef[] = [
         slug: 'capacitaciones',
         icon: GraduationCap,
         accent: '#0D9488',
-        submodules: [
-            { title: 'Materiales y Carpetas', slug: '', icon: Folder },
-        ],
+        submodules: [{ title: 'Materiales y Carpetas', slug: '', icon: Folder }],
     },
 ];
 
