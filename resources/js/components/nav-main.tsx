@@ -14,9 +14,22 @@ import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import { ChevronRight } from 'lucide-react';
 
-/** ¿La url actual coincide con este ítem o con alguno de sus descendientes? */
+/** Compara sin querystring y aceptando subrutas (`/x` cubre `/x/detalle`). */
+function urlPertenece(itemUrl: string, url: string): boolean {
+    if (itemUrl === '#' || itemUrl === '' || itemUrl === '/') return false;
+    const actual = url.split('?')[0];
+    return actual === itemUrl || actual.startsWith(itemUrl.replace(/\/$/, '') + '/');
+}
+
+/**
+ * ¿La url actual coincide con este ítem o con alguno de sus descendientes?
+ * Se usa tanto para marcar el ítem activo como para decidir si un grupo
+ * colapsable arranca abierto — clave porque el layout (y por tanto el
+ * sidebar) se re-monta en cada navegación, así que `defaultOpen` se vuelve a
+ * evaluar cada vez.
+ */
 function containsUrl(item: NavItem, url: string): boolean {
-    if (item.url === url) return true;
+    if (urlPertenece(item.url, url)) return true;
     return item.items?.some((child) => containsUrl(child, url)) ?? false;
 }
 
@@ -68,7 +81,10 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
             <SidebarGroupLabel>Platform</SidebarGroupLabel>
             <SidebarMenu>
                 {items.map((item) => {
-                    const isGroupActive = page.url.startsWith(item.url);
+                    // Activo si la URL es del módulo o de cualquiera de sus
+                    // submódulos — incluidos los que viven en su propia ruta
+                    // fuera del prefijo del módulo (ej. "5 Por Qué" → /cinco-porques).
+                    const isGroupActive = containsUrl(item, page.url);
 
                     // Con el sidebar retraído a solo íconos no hay espacio para desplegar
                     // los submódulos, así que el ícono navega directo a la vista general
@@ -102,7 +118,10 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                                     />
                                 )}
                                 <CollapsibleTrigger asChild>
-                                    <SidebarMenuButton isActive={isGroupActive} style={isGroupActive && item.color ? { color: item.color } : undefined}>
+                                    <SidebarMenuButton
+                                        isActive={isGroupActive}
+                                        style={isGroupActive && item.color ? { color: item.color } : undefined}
+                                    >
                                         {item.icon && <item.icon />}
                                         <span>{item.title}</span>
                                         <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />

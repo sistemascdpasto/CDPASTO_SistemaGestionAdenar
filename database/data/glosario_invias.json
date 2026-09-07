@@ -1,0 +1,530 @@
+[
+    {
+        "nombre": "Accesibilidad",
+        "definicion": "Característica que permite en cualquier espacio o ambiente exterior o interior, el fácil desplazamiento de la población en general y el uso en forma confiable y segura de los servicios instalados en esos ambientes; incluye la eliminación de barreras físicas, actitudinales y de comunicación."
+    },
+    {
+        "nombre": "Acceso controlado",
+        "definicion": "Características de ciertas autopistas o caminos de tipo especial, que permiten la salida o el acceso a la misma solo en puntos específicos. Por lo general las propiedades colindantes a lo largo del derecho de vía no tienen acceso directo a la arteria principal."
+    },
+    {
+        "nombre": "Acera o andén",
+        "definicion": "Parte de la vía dedicada al tránsito de peatones."
+    },
+    {
+        "nombre": "Adelantamiento",
+        "definicion": "Maniobra mediante la cual un vehículo sobrepasa a otro, que lo antecedía en el mismo carril de una calzada."
+    },
+    {
+        "nombre": "Alcantarilla",
+        "definicion": "Tipo de obra de cruce o de drenaje transversal, que tienen por objeto dar paso rápido al agua que, por no poder desviarse en otra forma, tenga que cruzar de un lado a otro del camino."
+    },
+    {
+        "nombre": "Altura libre",
+        "definicion": "Distancia vertical entre la calzada y un obstáculo superior."
+    },
+    {
+        "nombre": "Asentamientos",
+        "definicion": "Es el desplazamiento vertical relativo del suelo ante la imposición de cargas, la disipación de presiones, la acción del drenaje, etc. Los asentamientos afectan de manera grave la estabilidad de las estructuras."
+    },
+    {
+        "nombre": "Autopista",
+        "definicion": "Vía especialmente diseñada para altas velocidades de operación con los sentidos de flujos aislados por medio de separadores, sin intersecciones a nivel y con control total de accesos."
+    },
+    {
+        "nombre": "Bahía",
+        "definicion": "Zona de transición entre la calzada y andén, destinada al estacionamiento provisional de vehículos. Banderero: Persona que se ubica temporalmente al lado de la vía para dar paso en ambos sentidos, cuando se ejecutan obras viales."
+    },
+    {
+        "nombre": "Banca",
+        "definicion": "Distancia horizontal, medida normalmente al eje, entre los extremos exteriores de las cunetas o los bordes laterales."
+    },
+    {
+        "nombre": "Base de topografía",
+        "definicion": "Punto del corredor de ruta, de coordenadas x, y y z conocidas, que sirve como estación para el levantamiento topográfico de dicho corredor y eventualmente en las etapas de localización del proyecto."
+    },
+    {
+        "nombre": "Berma",
+        "definicion": "Fajas comprendidas entre los bordes de la calzada y las cunetas. Sirven de confinamiento lateral de la superficie de rodadura, controlan la humedad y las posibles erosiones de la calzada."
+    },
+    {
+        "nombre": "Berma (segundo significado)",
+        "definicion": "Parte exterior de la vía destinada al soporte lateral de la calzada y destinada ocasionalmente para el estacionamiento de vehículos en caso de emergencia. Bifurcación: División de una vía en ramales, uno de los cuales, cuando menos, se aparta de la dirección original."
+    },
+    {
+        "nombre": "Bifurcación",
+        "definicion": "División de una vía en ramales, uno de los cuales, cuando menos, se aparta de la dirección original."
+    },
+    {
+        "nombre": "Bombeo",
+        "definicion": "Pendiente transversal en las entretangencias horizontales de la vía, que tiene por objeto facilitar el escurrimiento superficial del agua. Esta pendiente, va generalmente del eje hacia los bordes."
+    },
+    {
+        "nombre": "Bordillo o sardinel",
+        "definicion": "Elemento de concreto, asfalto u otros materiales ubicado a nivel superior de la calzada y que sirve para delimitar"
+    },
+    {
+        "nombre": "Brecha",
+        "definicion": "Tiempo que transcurre entre el paso, por un punto fijo de una vía, del extremo posterior de un vehículo y el delantero del vehículo que lo precede en la vía. Se asigna al vehículo de atrás si éste sigue al de delante."
+    },
+    {
+        "nombre": "Caissons",
+        "definicion": "Cimentación profunda que tiene como función transmitir las cargas a estratos con buena capacidad portante por medio de la punta. La sección transversal de estas estructuras es considerable con respecto a otros tipos de cimentación profunda como los pilotes."
+    },
+    {
+        "nombre": "Calle o carrera",
+        "definicion": "Vía urbana de tránsito público, que incluye toda la zona comprendida entre los linderos frontales de las propiedades"
+    },
+    {
+        "nombre": "Calzada",
+        "definicion": "Zona de la vía destinada a la circulación de vehículos. Generalmente pavimentada o acondicionada con algún tipo de material de afirmado."
+    },
+    {
+        "nombre": "Capacidad",
+        "definicion": "Número máximo de vehículos que puede circular, por un punto o tramo uniforme de la vía en los dos sentidos por unidad de tiempo, bajo las condiciones imperantes de vía y de tránsito."
+    },
+    {
+        "nombre": "Capacidad portante",
+        "definicion": "Es la capacidad del suelo de fundación de soportar las cargas sin que se produzca la falla de este."
+    },
+    {
+        "nombre": "Carretera",
+        "definicion": "Infraestructura del transporte cuya finalidad es permitir la circulación de vehículos en condiciones de continuidad en el espacio y el tiempo, con niveles adecuados de seguridad y de comodidad. Puede estar constituida por una o varias calzadas, uno o varios sentidos de circulación o uno o varios carriles en cada sentido, de acuerdo con las exigencias de la demanda de tránsito y la clasificación funcional de la misma."
+    },
+    {
+        "nombre": "Carril",
+        "definicion": "Parte de la calzada destinada al tránsito de una sola fila de vehículos."
+    },
+    {
+        "nombre": "Cebra",
+        "definicion": "Demarcación de franja peatonal en forma de una sucesión de líneas sobre la calzada paralelas a los carriles de tránsito vehicular, sirve para indicar la trayectoria que debe atravesar la vía."
+    },
+    {
+        "nombre": "Ciclo de semáforo",
+        "definicion": "Tiempo total que requiere una sucesión completa de los intervalos de un semáforo."
+    },
+    {
+        "nombre": "Ciclorruta",
+        "definicion": "Vía destinada al tránsito de bicicletas de forma exclusiva."
+    },
+    {
+        "nombre": "Ciclovía",
+        "definicion": "Vía o sección de la calzada destinada ocasionalmente para el tránsito de bicicletas, triciclos y peatones."
+    },
+    {
+        "nombre": "Coluvión",
+        "definicion": "Depósito de materiales transportados por la acción de diferentes mecanismos como la gravedad, el agua y el viento, o una combinación de ellos."
+    },
+    {
+        "nombre": "Cono de tránsito",
+        "definicion": "Dispositivo en forma de cono truncado que se usa en serie para desviar o encauzar el tránsito. Suele ser de material flexible y resistente a golpes, con el fin de que no se deteriore fácilmente ni cause daño a los vehículos."
+    },
+    {
+        "nombre": "Corona",
+        "definicion": "Corresponde al conjunto formado por la calzada y las bermas."
+    },
+    {
+        "nombre": "Cruce o intersección de vías",
+        "definicion": "Área de uso público formada por la intersección de dos o más vías."
+    },
+    {
+        "nombre": "Cuneta",
+        "definicion": "Zanjas, revestidas o no, construidas paralelamente a las bermas, destinadas a facilitar el drenaje superficial longitudinal de la carretera. Su geometría puede variar según las condiciones de la vía y del área que drenan."
+    },
+    {
+        "nombre": "Curva de transición",
+        "definicion": "Son aquellas que proporcionan una transición o cambio gradual en la curvatura de la vía, desde un tramo recto hasta una curvatura de grado determinado, o viceversa. Son ventajosas porque mejoran la operación de los vehículos y la comodidad de los pasajeros, por cuanto hacen que varíe en forma gradual y suave, creciente o decreciente, la fuerza centrífuga entre la recta y la curva circular, o viceversa."
+    },
+    {
+        "nombre": "Curva horizontal",
+        "definicion": "Trayectoria que une dos tangentes horizontales consecutivas. Puede estar constituida por un empalme básico o por la combinación de dos o más de ellos."
+    },
+    {
+        "nombre": "Curva vertical",
+        "definicion": "Curvas utilizadas para empalmar dos tramos de pendientes constantes determinadas, con el fin de suavizar la transición de una pendiente a otra en el movimiento vertical de los vehículos; permiten la seguridad, comodidad y la mejor apariencia de la vía. Casi siempre se usan arcos parabólicos porque producen un cambio constante de la pendiente."
+    },
+    {
+        "nombre": "Delineador",
+        "definicion": "Dispositivo que demarca los límites de una determinada zona de vía."
+    },
+    {
+        "nombre": "Demarcación",
+        "definicion": "Elemento que sirve para diferenciar un área de otra, bien sea mediante color, textura o cambio de material."
+    },
+    {
+        "nombre": "Demarcación de paso peatonal a nivel",
+        "definicion": "Señalización aplicada a la calzada para indicar la trayectoria que deben seguir los peatones al travesar la misma (incluye la cebra)."
+    },
+    {
+        "nombre": "Derecho de vía",
+        "definicion": "Faja de terreno destinada a la construcción de la vía y sus futuras ampliaciones."
+    },
+    {
+        "nombre": "Detector",
+        "definicion": "Dispositivo que se coloca en una vía para registrar automáticamente el paso o presencia de vehículos."
+    },
+    {
+        "nombre": "Detenerse",
+        "definicion": "Interrupción momentánea de la marcha de un vehículo con el motor andando y el conductor en su sitio."
+    },
+    {
+        "nombre": "Diaclasa",
+        "definicion": "Discontinuidad de la roca originada por fuerzas tectónicas, que no implica desplazamiento significantes."
+    },
+    {
+        "nombre": "Diseño de la sección transversal",
+        "definicion": "Definición de la ubicación y dimensiones de los elementos que forman la carretera, y su relación con el terreno natural, en cada punto de ella sobre una sección normal al alineamiento horizontal."
+    },
+    {
+        "nombre": "Diseño en peñil",
+        "definicion": "Proyección del eje real o espacial de la vía sobre una superficie vertical paralela al mismo."
+    },
+    {
+        "nombre": "Diseño en planta",
+        "definicion": "Proyección sobre un plano horizontal de su eje real o espacial. Dicho eje horizontal está constituido por una serie de tramos rectos denominados tangentes, enlazados entre sí por trayectorias curvas."
+    },
+    {
+        "nombre": "Dispositivos para la regulación del tránsito",
+        "definicion": "Son los mecanismos físicos o marcas especiales, que indican la forma correcta como deben circular los usuarios de las calles y carreteras. Los mensajes de los dispositivos para la regulación del tránsito se dan por medio de símbolos, elementos y leyendas de fácil y rápida interpretación."
+    },
+    {
+        "nombre": "Empalme",
+        "definicion": "Conexión de una vía con otras, acondicionada para el tránsito vehicular."
+    },
+    {
+        "nombre": "Empalme básico",
+        "definicion": "Trayectorias horizontales que integran la curva horizontal. Un empalme básico puede ser circular, circular compuesto, espiral clotoide, espiral - círculo - espiral, espiral - espiral, espiral - espiral inversa y arco de espiral que une dos círculos de igual sentido."
+    },
+    {
+        "nombre": "Energía cinética",
+        "definicion": "Es la energía que posee un cuerpo en movimiento. La cantidad de energía depende de la masa del cuerpo en movimiento y de su velocidad."
+    },
+    {
+        "nombre": "Estabilidad al deslizamiento",
+        "definicion": "Es la capacidad de una estructura de resistir las fuerzas que podrían originar un movimiento horizontal de ésta."
+    },
+    {
+        "nombre": "Estabilidad al volcamiento",
+        "definicion": "Es la capacidad de una estructura de resistir las fuerzas que podrían originar una rotación de ésta con respecto a un punto de giro, localizado en la parte inferior de la estructura de contención."
+    },
+    {
+        "nombre": "Estacionamiento de un vehículo",
+        "definicion": "Parada de un vehículo en la parte lateral de la vía o de un sitio destinado para tal fin, que implique apagar el motor."
+    },
+    {
+        "nombre": "Estacionarse",
+        "definicion": "Acto mediante el cual un conductor deja su vehículo parado en cierto lugar y se aleja de él."
+    },
+    {
+        "nombre": "Estoperol",
+        "definicion": "Dispositivo que se ubica sobre el pavimento en forma horizontal o perpendicular al sentido del flujo vehicular para encauzar el tránsito o como reductor de velocidad."
+    },
+    {
+        "nombre": "Estratificación",
+        "definicion": "Estructura de una roca sedimentada originada por el depósito de las diferentes capas de sedimentos que la conforman."
+    },
+    {
+        "nombre": "Estudio de impacto ambiental.",
+        "definicion": "Estudio cuya finalidad es la determinación detallada de los efectos producidos por el proyecto vial, la elaboración del Plan de Manejo Ambiental, y el cálculo de los costos de las obras de mitigación ambiental."
+    },
+    {
+        "nombre": "Fase de semáforo",
+        "definicion": "Parte del ciclo del semáforo que consta de: a) un intervalo durante el cual recibe siempre el derecho de paso un movimiento o combinación de movimientos vehiculares o peatonales, y b) uno o más intervalos de transición como el amarillo o amarillo más todo rojo."
+    },
+    {
+        "nombre": "Glorieta",
+        "definicion": "Intersección en donde no hay cruces a nivel directos, sino maniobras dentro de cruces y movimientos alrededor de una isleta o plazoleta central."
+    },
+    {
+        "nombre": "Gálibo",
+        "definicion": "Altura existente entre el fondo de viga y el fondo del lecho en el caso del cruce sobre ríos o esteras. En pasos a desnivel sobre un camino, es la distancia entre la menor cota de fondo de vigas y la cota más alta del pavimento del camino sobre el cual se cruza."
+    },
+    {
+        "nombre": "Intersección",
+        "definicion": "Dispositivos viales en los que dos o más carreteras se encuentran ya sea en un mismo nivelo bien en distintos, produciéndose cruces y cambios de trayectorias de los vehículos que por ellos circulan."
+    },
+    {
+        "nombre": "Isla",
+        "definicion": "(Isleta de tránsito): Área restringida, ubicada entre carriles de tránsito, destinada a encauzar el movimiento de vehículos o también como refugio de peatones."
+    },
+    {
+        "nombre": "Leyenda",
+        "definicion": "Texto contenido en una señal de transito."
+    },
+    {
+        "nombre": "Llaves o espolones",
+        "definicion": "Elementos de los muros de contención construidos debajo de la plaza de cimentación para mejorar la resistencia al deslizamiento."
+    },
+    {
+        "nombre": "Lloraderos",
+        "definicion": "Tuberías instaladas en las estructuras de contención, para drenar las aguas de infiltración y disipar los excesos de presión que puedan generar esta agua en la masa de suelo contenida."
+    },
+    {
+        "nombre": "Longitud de aplanamiento",
+        "definicion": "Longitud necesaria para que el carril exterior pierda su bombeo o se aplane con respecto al eje de rotación."
+    },
+    {
+        "nombre": "Línea de borde",
+        "definicion": "Demarcación sobre la calzada que indica el borde exterior del pavimento."
+    },
+    {
+        "nombre": "Línea de chaflanes",
+        "definicion": "Líneas que unen las estacas de chaflán consecutivas, las cuales indican hasta dónde se extiende lateralmente el movimiento de tierras por causa de los cortes o de los terraplenes."
+    },
+    {
+        "nombre": "Línea de pare (Línea de detención)",
+        "definicion": "Marca de tránsito sobre la calzada ante la cual deben detenerse los vehículos."
+    },
+    {
+        "nombre": "Línea de pendiente",
+        "definicion": "Es aquella línea que, pasando por los puntos obligados del proyecto, conserva la pendiente uniforme especificada y que de coincidir con el eje de la vía, los cortes y los terraplenes serían mínimos, razón por la cual también se le conoce con el nombre de línea de ceros."
+    },
+    {
+        "nombre": "Marcas viales",
+        "definicion": "Elemento señalizador colocado o pintado sobre el pavimento o en elementos adyacentes al mismo, consistentes en líneas, dibujos, colores, palabras o símbolos; para indicar, advertir o guiar el tránsito."
+    },
+    {
+        "nombre": "Meteorización",
+        "definicion": "Proceso de degradación de una roca debido a la acción de factores físicos, químicos o biológicos."
+    },
+    {
+        "nombre": "Nivel de servicio",
+        "definicion": "Refleja las condiciones operativas del tránsito vehicular en relación con variables tales como la velocidad y tiempo de recorrido, la libertad de maniobra, la comodidad, los deseos del usuario y la seguridad vial."
+    },
+    {
+        "nombre": "Obras de drenaje",
+        "definicion": "Obras proyectadas para eliminar el exceso de agua superficial sobre la franja de la carretera y restituir la red de drenaje natural, la cual puede verse afectada por el trazado."
+    },
+    {
+        "nombre": "Obras de subdrenaje",
+        "definicion": "Obras proyectadas para eliminar el exceso de agua del suelo a fin de garantizar la estabilidad de la banca y de los taludes de la carretera. Ello se consigue interceptando los flujos subterráneos, y haciendo descender el nivel freático."
+    },
+    {
+        "nombre": "Orla",
+        "definicion": "Línea delgada que separa el borde del tablero con el fondo de la señal."
+    },
+    {
+        "nombre": "Parqueadero",
+        "definicion": "Lugar público o privado destinado al estacionamiento de vehículos."
+    },
+    {
+        "nombre": "Paso a nivel",
+        "definicion": "Intersección a un mismo nivel de una vía con una vía férrea."
+    },
+    {
+        "nombre": "Paso peatonal a nivel",
+        "definicion": "Zona de la calzada delimitada por dispositivos y áreas especiales con destino al cruce de peatones."
+    },
+    {
+        "nombre": "Pavimento",
+        "definicion": "Conjunto de capas superpuestas, relativamente horizontales, que se diseñan y construyen técnicamente con materiales apropiados y adecuadamente compactados. Estas estructuras estratificadas se apoyan sobre la Subrasante de una vía y deben resistir adecuadamente los esfuerzos que las cargas repetidas del tránsito le transmite durante el período para el cual fue diseñada la estructura y el efecto degradante de los agentes climáticos."
+    },
+    {
+        "nombre": "Pavimento flexible",
+        "definicion": "Tipo de pavimento constituido por una capa de rodadura bituminosa apoyada generalmente sobre capas de material no ligado."
+    },
+    {
+        "nombre": "Pavimento rígido",
+        "definicion": "Es aquel que fundamentalmente está constituido por una losa de concreto hidráulico, apoyada sobre la subrasante o sobre una capa de material seleccionado, la cual se denomina subbase del pavimento rígido."
+    },
+    {
+        "nombre": "Peatón",
+        "definicion": "Persona que transita a pie por una vía."
+    },
+    {
+        "nombre": "Pedestal",
+        "definicion": "Un zócalo, una base que soporta un poste."
+    },
+    {
+        "nombre": "Pendiente relativa de la rampa de peraltes",
+        "definicion": "Máxima diferencia algebraica entre las pendientes longitudinales de los bordes de la calzada y el eje de la misma."
+    },
+    {
+        "nombre": "Pendiente transversal del terreno",
+        "definicion": "Corresponde a las inclinaciones naturales del terreno, medidas en el sentido transversal del eje de la vía."
+    },
+    {
+        "nombre": "Peralte",
+        "definicion": "Inclinación dada al perfil transversal de una carretera en los tramos en curva horizontal para contrarrestar el efecto de la fuerza centrífuga que actúa sobre un vehículo en movimiento. También contribuye al escurrimiento del agua lluvia."
+    },
+    {
+        "nombre": "Pictograma",
+        "definicion": "Escritura ideográfica en la que se dibujan en forma simple los objetos."
+    },
+    {
+        "nombre": "Pilotes",
+        "definicion": "Cimentación profunda que tiene como función la transmisión de cargas a estratos competentes por medio de fricción o punto o la combinación de los dos. Son elementos esbeltos con diversas formas de sección transversal."
+    },
+    {
+        "nombre": "Pontón",
+        "definicion": "Estructura de drenaje cuya luz medida paralela al eje de la carretera es menor o igual a diez metros (10m)."
+    },
+    {
+        "nombre": "Poste",
+        "definicion": "Soporte vertical que tiene como finalidad ubicar a una determinada altura el tablero de una señal de tránsito."
+    },
+    {
+        "nombre": "Prelación",
+        "definicion": "Prioridad o preferencia que tiene una vía o vehículo con relación a otras vías o vehículos."
+    },
+    {
+        "nombre": "Puente",
+        "definicion": "Estructura de drenaje cuya luz mayor, medida paralela al eje de la carretera, es mayor de diez metros (10 m)."
+    },
+    {
+        "nombre": "Puerto seco",
+        "definicion": "Sitio geográfico existente en las divisorias de aguas entre vertientes. Generalmente se establecen como puntos de control secundarios para el trazado de corredores de ruta ya que corresponden a los lugares de menor cota, posibilitando la disminución de las pendientes ylo desarrollo del eje de la carretera."
+    },
+    {
+        "nombre": "Rampa",
+        "definicion": "Ramal de intercambio con pendiente, destinado a empalmar una vía con otra a niveles diferentes."
+    },
+    {
+        "nombre": "Rasante",
+        "definicion": "Es la proyección vertical del desarrollo del eje de la superficie de rodadura de la vía."
+    },
+    {
+        "nombre": "Replanteo",
+        "definicion": "Actividades topográficas encaminadas a localizar un proyecto vial en el terreno para su posterior construcción. Se apoya en los planos de diseño y en las bases de topografía empleadas previamente en el levantamiento del corredor vial."
+    },
+    {
+        "nombre": "Retrorreflexion",
+        "definicion": "Propiedad física en el cual un rayo de luz que incide sobre una superficie retroreflectiva, es devuelto en la misma dirección al rayo de luz incidente."
+    },
+    {
+        "nombre": "Rocería",
+        "definicion": "Actividad de mantenimiento rutinario encaminada a mantener baja la vegetación de las zonas laterales de la vía."
+    },
+    {
+        "nombre": "Semáforo",
+        "definicion": "Son dispositivos que proporcionan indicaciones visuales para el control del tránsito de vehículos y peatones en intersecciones. Las indicaciones se hacen a través de luces con lentes de diferentes colores. El color verde corresponde a la indicación de \"siga\" y el color rojo a \"pare\" , el color amarillo normalmente sirve de transición entre las fases de \"siga\" y \"pare\". Los lentes con luces de colores diferentes se ordenan verticalmente en una secuencia convencional y preestablecida de la siguiente manera: rojo, amarillo y verde."
+    },
+    {
+        "nombre": "Separador",
+        "definicion": "Zonas verdes o zonas duras colocadas paralelamente al eje de la carretera, para separar direcciones opuestas de tránsito (separador central o mediana) o. para separar calzadas destinadas al mismo sentido de tránsito (calzadas laterales)."
+    },
+    {
+        "nombre": "Señal de tránsito",
+        "definicion": "Dispositivo físico o marca vial que indica la forma correcta como deben transitar los usuarios de las vías y se instala a nivel de la vía para transmitir órdenes o instrucciones mediante palabras o símbolos. Señal informativa ubicada sobre estructuras especiales que le permiten una visibilidad a mayores distancias, por contener mensajes de mayor tamaño y estar a una altura superior a las demás señales de tránsito."
+    },
+    {
+        "nombre": "Señal sonora",
+        "definicion": "Aquella que esta diseñada para ser percibida mediante el sentido del oido."
+    },
+    {
+        "nombre": "Señal visual.",
+        "definicion": "Aquella que esta diseñada para ser percibida mediante el sentido de la vista"
+    },
+    {
+        "nombre": "Señalización vertical",
+        "definicion": "Placas fijadas en postes o estructuras instaladas sobre la vía o adyacentes a ella, que mediante símbolos o leyendas determinadas cumplen la función de prevenir a los usuarios sobre la existencia de peligros y su naturaleza, reglamentar las prohibiciones o restricciones respecto del uso de las vías, asi como brindar la información necesaria para guiar a los usuarios de las mismas."
+    },
+    {
+        "nombre": "Sobreancho",
+        "definicion": "Aumento en la sección transversal de una calzada en las curvas, con la finalidad de mantener la distancia lateral entre los vehículos en movimiento."
+    },
+    {
+        "nombre": "Subrasante",
+        "definicion": "Superficie especialmente acondicionada sobre la cual se apoya la estructura del pavimento."
+    },
+    {
+        "nombre": "Suburbana, zona.",
+        "definicion": "Zona de transición entre la urbana y la rural."
+    },
+    {
+        "nombre": "Suelo residual",
+        "definicion": "Es el material resultante de la meteorización de la roca sin que haya a lugar ningún mecanismo de transporte. Sobre este tipo de suelo se pueden definir claramente varios horizontes, que indican el grado de degradación de la roca parental."
+    },
+    {
+        "nombre": "Símbolo",
+        "definicion": "Figura con que se representa un concepto."
+    },
+    {
+        "nombre": "Tacha de demarcación (clavo, botón)",
+        "definicion": "Dispositivos pegados sobre el pavimento o marcadores que pueden ser usados como elementos de guía, como complemento a la demarcación y en algunos casos como sustitución, con el fin de mejorar las condiciones de visibilidad de la señalización horizontal."
+    },
+    {
+        "nombre": "Tachón",
+        "definicion": "Dispositivo que se coloca sobre el pavimento para encauzar el tránsito."
+    },
+    {
+        "nombre": "Talud",
+        "definicion": "Paramento o superficie inclinada que limita lateralmente un corte o un terraplén."
+    },
+    {
+        "nombre": "Tangente vertical",
+        "definicion": "Tramos rectos del eje del alineamiento vertical, los cuales están enlazados entre sí por curvas verticales."
+    },
+    {
+        "nombre": "Techo",
+        "definicion": "Dispositivo que con sus caras forma un ángulo y se usa en serie para desviar o encauzar el tránsito protegiendo líneas de demarcación en el proceso de secado. Suele construirse en lámina metálica."
+    },
+    {
+        "nombre": "Termoplástico",
+        "definicion": "Material plástico que se aplica en caliente, para formar una película de espesor variable generalmente usado en sustitución de la pintura."
+    },
+    {
+        "nombre": "Textura",
+        "definicion": "Característica de la superficie de un material con relación al tacto."
+    },
+    {
+        "nombre": "Tramo homogéneo",
+        "definicion": "Longitud del trazado de la carretera al que por las características topográficas se le asigna una determinada Velocidad de Diseño (VTR)."
+    },
+    {
+        "nombre": "Transición del peralte",
+        "definicion": "Tramo de la vía en la que es necesario realizar un cambio de inclinación de la calzada, para pasar de una sección transversal con bombeo normal a otra con peralte."
+    },
+    {
+        "nombre": "Transporte",
+        "definicion": "Es el acarreo de personas, animales o cosas de un punto a otro a través de un medio físico."
+    },
+    {
+        "nombre": "Tránsito",
+        "definicion": "Acción de desplazamiento de personas, vehículos y animales por las vías."
+    },
+    {
+        "nombre": "Túnel",
+        "definicion": "Cavidad subterránea o subacuática que como solución vial implica una operación vehicular a cielo cerrado."
+    },
+    {
+        "nombre": "Urbana, zona",
+        "definicion": "Zona en la que gran parte del terreno está ocupado por edificaciones."
+    },
+    {
+        "nombre": "Vehículo",
+        "definicion": "Todo aparato montado sobre ruedas que permite el transporte de personas o mercancías de un punto a otro."
+    },
+    {
+        "nombre": "Vehículo de diseño",
+        "definicion": "Tipo de vehículo cuyo peso, dimensiones y características de operación se usan para establecer los controles de diseño que acomoden vehículos del tipo designado. Con propósitos de diseño geométrico, el vehículo de diseño debe ser uno, se podría decir que imaginario, cuyas dimensiones y radio mínimo de giro sean mayores que los de la mayoría de vehículos de su clase."
+    },
+    {
+        "nombre": "Velocidad de diseño",
+        "definicion": "Velocidad guía o de referencia de un tramo homogéneo de carretera, que permite definir las características geométricas mínimas de todos los elementos del trazado, en condiciones de seguridad y comodidad."
+    },
+    {
+        "nombre": "Velocidad de operación",
+        "definicion": "Velocidad promedio que desarrollan el 85% de los usuarios en un tramo determinado de una vía."
+    },
+    {
+        "nombre": "Visibilidad",
+        "definicion": "Condición que debe ofrecer el proyecto de una carretera al conductor de un vehículo de poder ver hacia delante la distancia suficiente para realizar una circulación segura y eficiente."
+    },
+    {
+        "nombre": "Vía férrea",
+        "definicion": "Vía diseñada para el transito de vehículos sobre rieles, con prelación sobre todas las demás vías del sistema vial. Velocidad seleccionada para proyectar y relacionar entre sí las características físicas de una vía que influyen en la marcha de los vehículos."
+    },
+    {
+        "nombre": "Zona de conflicto",
+        "definicion": "Área de intersección entre dos flujos de transito."
+    },
+    {
+        "nombre": "Zona de estacionamiento restringido",
+        "definicion": "Parte de la vía delimitada por autoridad competente en zonas adyacentes a instalaciones militares o de policía, teatros, bancos, hospitales, entidades oficiales y de socorro, iglesias, establecimientos industriales y comerciales."
+    },
+    {
+        "nombre": "Zona escolar",
+        "definicion": "Zona de la vía situada frente al un establecimiento de enseñanza y que se extiende cincuenta metros al frente y a los lados de los lugares de acceso al establecimiento."
+    }
+]
