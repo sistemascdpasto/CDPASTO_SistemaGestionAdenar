@@ -4,7 +4,9 @@ use App\Http\Controllers\Capacitaciones\CarpetaController;
 use App\Http\Controllers\Capacitaciones\MaterialController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth', 'active', 'role:Administrador|Seguridad'])
+// Capacitaciones es un recurso transversal: accesible a todos los pilares
+// (aparece como submódulo dentro de cada sección del sidebar).
+Route::middleware(['auth', 'active', 'role:Administrador|Seguridad|Reparto|Gente|Flota'])
     ->prefix('modules/capacitaciones')
     ->name('capacitaciones.')
     ->group(function () {

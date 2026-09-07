@@ -2,7 +2,14 @@ import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
-import { colaboradoresReadOnlySubmodule, geovictoriaAsistenciaReadOnlySubmodule, modules, type ModuleDef, type SubModuleDef } from '@/data/modules';
+import {
+    capacitacionesSubmodule,
+    colaboradoresReadOnlySubmodule,
+    geovictoriaAsistenciaReadOnlySubmodule,
+    modules,
+    type ModuleDef,
+    type SubModuleDef,
+} from '@/data/modules';
 import { type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import {
@@ -64,20 +71,22 @@ export function AppSidebar() {
     // pero solo para Reparto (no Seguridad/Flota, que no lo necesitan).
     const showGeovictoriaReadOnlyLink = !auth.isAdmin && !auth.roles.includes('Gente') && auth.roles.includes('Reparto');
 
-    const visibleModules: ModuleDef[] = auth.isAdmin
-        ? modules
-        : modules
-              .filter((mod) => auth.accessibleModules.includes(mod.slug))
-              .map((mod) => {
-                  const inyectados: SubModuleDef[] = [];
-                  if (showColaboradoresReadOnlyLink && mod.slug !== 'gente') {
-                      inyectados.push(colaboradoresReadOnlySubmodule);
-                  }
-                  if (showGeovictoriaReadOnlyLink && mod.slug === 'reparto') {
-                      inyectados.push(geovictoriaAsistenciaReadOnlySubmodule);
-                  }
-                  return inyectados.length > 0 ? { ...mod, submodules: [...inyectados, ...mod.submodules] } : mod;
-              });
+    // Capacitaciones es transversal: se inyecta como submódulo dentro de la
+    // sección de cada pilar visible en vez de vivir suelto en el sidebar.
+    const inyectarSubmodulos = (mod: ModuleDef): ModuleDef => {
+        const inyectados: SubModuleDef[] = [];
+        if (showColaboradoresReadOnlyLink && mod.slug !== 'gente') {
+            inyectados.push(colaboradoresReadOnlySubmodule);
+        }
+        if (showGeovictoriaReadOnlyLink && mod.slug === 'reparto') {
+            inyectados.push(geovictoriaAsistenciaReadOnlySubmodule);
+        }
+        return { ...mod, submodules: [...inyectados, ...mod.submodules, capacitacionesSubmodule] };
+    };
+
+    const visibleModules: ModuleDef[] = (auth.isAdmin ? modules : modules.filter((mod) => auth.accessibleModules.includes(mod.slug))).map(
+        inyectarSubmodulos,
+    );
 
     const mainNavItems: NavItem[] = [
         {
