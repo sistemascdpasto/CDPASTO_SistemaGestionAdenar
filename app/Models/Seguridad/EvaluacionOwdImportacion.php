@@ -20,6 +20,7 @@ class EvaluacionOwdImportacion extends Model
         'registros_sin_coincidencia_qr',
         'registros_error',
         'columnas_nuevas_detectadas',
+        'qrs_sin_coincidencia',
     ];
 
     protected function casts(): array
@@ -32,6 +33,7 @@ class EvaluacionOwdImportacion extends Model
             'registros_sin_coincidencia_qr' => 'integer',
             'registros_error' => 'integer',
             'columnas_nuevas_detectadas' => 'array',
+            'qrs_sin_coincidencia' => 'array',
         ];
     }
 

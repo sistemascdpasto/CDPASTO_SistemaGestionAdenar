@@ -12,14 +12,13 @@ class AciController extends Controller
 {
     public function index(Request $request): Response
     {
-        $filtros = $request->only(['folio', 'mes', 'anio', 'colaborador', 'area', 'tipo_riesgo', 'centro']);
+        $filtros = $request->only(['folio', 'fecha_desde', 'fecha_hasta', 'colaborador', 'tipo_riesgo']);
 
         $acis = Aci::query()
             ->with('colaborador:id,nombres,apellidos,cedula,centro')
             ->when($filtros['folio'] ?? null, fn ($query, $folio) => $query->where('folio', 'like', "%{$folio}%"))
-            ->when($filtros['mes'] ?? null, fn ($query, $mes) => $query->whereMonth('fecha_incidente', $mes))
-            ->when($filtros['anio'] ?? null, fn ($query, $anio) => $query->whereYear('fecha_incidente', $anio))
-            ->when($filtros['area'] ?? null, fn ($query, $area) => $query->where('area', $area))
+            ->when($filtros['fecha_desde'] ?? null, fn ($query, $fecha) => $query->whereDate('fecha_incidente', '>=', $fecha))
+            ->when($filtros['fecha_hasta'] ?? null, fn ($query, $fecha) => $query->whereDate('fecha_incidente', '<=', $fecha))
             ->when($filtros['tipo_riesgo'] ?? null, fn ($query, $tipo) => $query->where('tipo_riesgo', 'like', "%{$tipo}%"))
             ->when(
                 $filtros['colaborador'] ?? null,
@@ -30,10 +29,6 @@ class AciController extends Controller
                         ->orWhere('codigo_qr_skap', 'like', "%{$texto}%");
                 }),
             )
-            ->when(
-                $filtros['centro'] ?? null,
-                fn ($query, $centro) => $query->whereHas('colaborador', fn ($q) => $q->where('centro', $centro)),
-            )
             ->latest('fecha_incidente')
             ->paginate(15)
             ->withQueryString();
@@ -41,10 +36,6 @@ class AciController extends Controller
         return Inertia::render('seguridad/acis/index', [
             'acis' => $acis,
             'filters' => $filtros,
-            'catalogos' => [
-                'areas' => config('seguridad.acis.areas'),
-                'centros' => config('seguridad.colaboradores.centros'),
-            ],
         ]);
     }
 

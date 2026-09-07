@@ -50,28 +50,22 @@ interface Filtros {
     mes?: string;
     anio?: string;
     colaborador?: string;
-    area?: string;
     tipo_riesgo?: string;
-    centro?: string;
 }
 
 export default function AcisIndex({
     acis,
     filters,
-    catalogos,
 }: {
     acis: AcisPaginator;
     filters: Filtros;
-    catalogos: { areas: string[]; centros: string[] };
 }) {
     const [form, setForm] = useState<Filtros>({
         folio: filters.folio ?? '',
         mes: filters.mes ?? '',
         anio: filters.anio ?? '',
         colaborador: filters.colaborador ?? '',
-        area: filters.area ?? '',
         tipo_riesgo: filters.tipo_riesgo ?? '',
-        centro: filters.centro ?? '',
     });
     const isFirst = useRef(true);
     const debouncedForm = useDebouncedValue(form, 400);
@@ -80,12 +74,6 @@ export default function AcisIndex({
         if (isFirst.current) { isFirst.current = false; return; }
         router.get(route('seguridad.acis.index'), debouncedForm, { preserveState: true, replace: true });
     }, [JSON.stringify(debouncedForm)]);
-
-    const limpiarFiltros = () => {
-        const vacio: Filtros = { folio: '', mes: '', anio: '', colaborador: '', area: '', tipo_riesgo: '', centro: '' };
-        setForm(vacio);
-        router.get(route('seguridad.acis.index'), {}, { preserveState: true, replace: true });
-    };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -103,7 +91,7 @@ export default function AcisIndex({
                     />
                 </div>
 
-                <form className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-7">
+                <form className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-5">
                     <Input
                         placeholder="Folio"
                         value={form.folio}
@@ -133,37 +121,6 @@ export default function AcisIndex({
                         value={form.anio}
                         onChange={(e) => setForm({ ...form, anio: e.target.value })}
                     />
-                    <Select value={form.area || 'todas'} onValueChange={(v) => setForm({ ...form, area: v === 'todas' ? '' : v })}>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Área" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="todas">Todas las áreas</SelectItem>
-                            {catalogos.areas.map((area) => (
-                                <SelectItem key={area} value={area}>
-                                    {area}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <Select value={form.centro || 'todos'} onValueChange={(v) => setForm({ ...form, centro: v === 'todos' ? '' : v })}>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Centro" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="todos">Todos los centros</SelectItem>
-                            {catalogos.centros.map((centro) => (
-                                <SelectItem key={centro} value={centro}>
-                                    {centro}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <div className="col-span-2 flex gap-2 md:col-span-4 lg:col-span-7">
-                        <Button type="button" variant="outline" onClick={limpiarFiltros}>
-                            Limpiar
-                        </Button>
-                    </div>
                 </form>
 
                 <div className="rounded-lg border border-sidebar-border/70 dark:border-sidebar-border">

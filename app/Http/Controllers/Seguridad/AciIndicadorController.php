@@ -14,7 +14,7 @@ use Inertia\Response;
 
 class AciIndicadorController extends Controller
 {
-    private const META_MENSUAL = 4;
+    private const META_MENSUAL = 32;
 
     public function index(Request $request): Response
     {

@@ -62,6 +62,7 @@ Route::middleware(['auth', 'active', 'role:Administrador|Seguridad'])
         Route::post('condiciones-salud/{condicion}/firmar', [CondicionSaludController::class, 'firmar'])->name('condiciones-salud.firmar');
 
         Route::get('alertas', [AlertaController::class, 'index'])->name('alertas.index');
+        Route::get('alertas/bell', [AlertaController::class, 'bell'])->name('alertas.bell');
         Route::patch('alertas/{alerta}/atender', [AlertaController::class, 'atender'])->name('alertas.atender');
 
         Route::resource('asignaciones-conductores', AsignacionConductorController::class)->except(['show', 'update', 'destroy']);

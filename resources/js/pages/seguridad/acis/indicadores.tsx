@@ -99,7 +99,7 @@ export default function AcisIndicadores({
     const kpis = [
         { label: 'Total ACI del mes', valor: resumen.total_aci_mes, icon: ClipboardList, color: '#3F7A22' },
         {
-            label: 'Cumplimiento meta (4 ACI)',
+            label: 'Cumplimiento meta (32 ACI)',
             valor: `${resumen.porcentaje_cumplimiento}% (${resumen.cumplen_meta}/${resumen.colaboradores_en_programa})`,
             icon: Target,
             color: '#0369A1',

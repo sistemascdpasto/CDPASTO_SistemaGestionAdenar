@@ -116,6 +116,7 @@ class EvaluacionOwdImportService
             'nuevos' => 0,
             'duplicados' => 0,
             'sin_coincidencia_qr' => 0,
+            'qrs_sin_coincidencia' => [],   // [{qr, evaluado}]
             'errores' => 0,
         ];
 
@@ -141,6 +142,7 @@ class EvaluacionOwdImportService
             'registros_sin_coincidencia_qr' => $registro['sin_coincidencia_qr'],
             'registros_error' => $registro['errores'],
             'columnas_nuevas_detectadas' => $columnasNuevas !== [] ? $columnasNuevas : null,
+            'qrs_sin_coincidencia' => $registro['qrs_sin_coincidencia'] !== [] ? $registro['qrs_sin_coincidencia'] : null,
         ]);
 
         $resultado['registros_leidos'] += $registro['leidos'];
@@ -188,6 +190,12 @@ class EvaluacionOwdImportService
             // Si el QR del evaluado no existe en BD, se descarta la fila
             if (! $colaborador) {
                 $registro['sin_coincidencia_qr']++;
+                // Guardar qr + nombre del evaluado para reportarlo
+                $evaluadoNombre = trim((string) ($valores['evaluado'] ?? ''));
+                $registro['qrs_sin_coincidencia'][$qrSafety] = [
+                    'qr'      => $qrSafety,
+                    'evaluado' => $evaluadoNombre !== '' ? $evaluadoNombre : null,
+                ];
                 return;
             }
 
