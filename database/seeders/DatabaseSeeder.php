@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
     {
         $this->call(RoleSeeder::class);
         $this->call(GlossarySeeder::class);
+        $this->call(GlosarioInviasSeeder::class);
         $this->call(WebScrapingSourceSeeder::class);
         $this->call(RecomendacionSeeder::class);
 

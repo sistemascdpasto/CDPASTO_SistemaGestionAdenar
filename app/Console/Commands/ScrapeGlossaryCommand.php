@@ -15,6 +15,12 @@ class ScrapeGlossaryCommand extends Command
 
     protected $description = 'Descarga y sincroniza terminos del glosario desde las fuentes web configuradas';
 
+    /**
+     * Tope de páginas por fuente (?genPag=N). El glosario de INVÍAS más
+     * extenso ronda las 2-3 páginas por letra; 20 deja margen de sobra.
+     */
+    private const MAX_PAGINAS = 20;
+
     public function handle(): int
     {
         $query = WebScrapingSource::active();
@@ -41,76 +47,90 @@ class ScrapeGlossaryCommand extends Command
             $this->info("Procesando fuente: {$source->nombre_fuente} ({$source->url})");
 
             try {
-                $response = Http::timeout(30)
-                    ->withHeaders(['User-Agent' => 'Mozilla/5.0 (compatible; AdenarGlossaryBot/1.0)'])
-                    ->get($source->url);
+                // El glosario de INVÍAS pagina con ?genPag=N (10 términos por
+                // página). Se recorren las páginas hasta que una no traiga
+                // términos nuevos (INVÍAS devuelve la última página si el
+                // número se pasa del rango).
+                $vistos = [];
 
-                if (! $response->successful()) {
-                    throw new \RuntimeException("HTTP {$response->status()}");
-                }
+                for ($pagina = 1; $pagina <= self::MAX_PAGINAS; $pagina++) {
+                    $url = $this->urlPaginada($source->url, $pagina);
 
-                $crawler = new Crawler($response->body(), $source->url);
-                $elements = $crawler->filter($source->selector_css);
+                    $response = Http::timeout(30)
+                        ->withHeaders(['User-Agent' => 'Mozilla/5.0 (compatible; AdenarGlossaryBot/1.0)'])
+                        ->get($url);
 
-                if ($elements->count() === 0) {
-                    $this->warn("No se encontraron elementos con el selector CSS '{$source->selector_css}'.");
-                    continue;
-                }
+                    if (! $response->successful()) {
+                        if ($pagina === 1) {
+                            throw new \RuntimeException("HTTP {$response->status()}");
+                        }
+                        break;
+                    }
 
-                $elements->each(function (Crawler $node) use ($source, &$inserted, &$updated, &$errors) {
-                    try {
-                        $nombre = trim($node->text(''));
+                    $elements = (new Crawler($response->body(), $url))->filter($source->selector_css);
 
-                        $definicion = null;
-                        $sibling = $node->getNode(0)->nextSibling;
+                    if ($elements->count() === 0) {
+                        if ($pagina === 1) {
+                            $this->warn("No se encontraron elementos con el selector CSS '{$source->selector_css}'.");
+                        }
+                        break;
+                    }
 
-                        while ($sibling !== null) {
-                            if ($sibling->nodeType === XML_ELEMENT_NODE) {
-                                $definicion = trim($sibling->textContent);
-                                $definicion = preg_replace('/[\x{00A0}\s]+/u', ' ', $definicion);
-                                $definicion = trim($definicion);
-                                break;
+                    $nuevosEnPagina = 0;
+
+                    $elements->each(function (Crawler $node) use ($source, &$inserted, &$updated, &$errors, &$vistos, &$nuevosEnPagina) {
+                        try {
+                            $nombre = trim($node->text(''));
+                            $clave = mb_strtolower($nombre);
+
+                            if ($nombre === '' || isset($vistos[$clave])) {
+                                return;
                             }
-                            $sibling = $sibling->nextSibling;
-                        }
+                            $vistos[$clave] = true;
+                            $nuevosEnPagina++;
 
-                        if ($nombre === '' || $definicion === null || $definicion === '') {
-                            return;
-                        }
+                            $definicion = $this->definicionSiguiente($node);
 
-                        $existing = GlossaryTerm::withTrashed()
-                            ->where('nombre', $nombre)
-                            ->where('categoria', $source->categoria)
-                            ->first();
-
-                        if ($existing) {
-                            if ($existing->isManual()) {
+                            if ($definicion === null || $definicion === '') {
                                 return;
                             }
 
-                            $changed = $existing->definicion !== $definicion;
+                            $existing = GlossaryTerm::withTrashed()
+                                ->where('nombre', $nombre)
+                                ->where('categoria', $source->categoria)
+                                ->first();
 
-                            if ($changed) {
-                                $existing->update([
+                            if ($existing) {
+                                if ($existing->isManual()) {
+                                    return;
+                                }
+
+                                if ($existing->definicion !== $definicion) {
+                                    $existing->update(['definicion' => $definicion]);
+                                    $updated++;
+                                }
+                            } else {
+                                GlossaryTerm::create([
+                                    'nombre' => $nombre,
                                     'definicion' => $definicion,
+                                    'representacion' => null,
+                                    'categoria' => $source->categoria,
+                                    'source' => 'scraped',
                                 ]);
-                                $updated++;
+                                $inserted++;
                             }
-                        } else {
-                            GlossaryTerm::create([
-                                'nombre' => $nombre,
-                                'definicion' => $definicion,
-                                'representacion' => null,
-                                'categoria' => $source->categoria,
-                                'source' => 'scraped',
-                            ]);
-                            $inserted++;
+                        } catch (\Throwable $e) {
+                            $errors++;
+                            Log::error("Error procesando termino de {$source->nombre_fuente}: {$e->getMessage()}");
                         }
-                    } catch (\Throwable $e) {
-                        $errors++;
-                        Log::error("Error procesando termino de {$source->nombre_fuente}: {$e->getMessage()}");
+                    });
+
+                    if ($nuevosEnPagina === 0) {
+                        break;
                     }
-                });
+
+                    usleep(300000);
+                }
 
                 $source->update(['ultimo_scrape' => now()]);
 
@@ -126,5 +146,34 @@ class ScrapeGlossaryCommand extends Command
         Log::info("Glossary scraping completed: Inserted={$inserted}, Updated={$updated}, Errors={$errors}");
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Para la página 1 usa la URL de la fuente tal cual (compatibilidad). Para
+     * las siguientes agrega ?genPag=N (paginación de INVÍAS).
+     */
+    private function urlPaginada(string $url, int $pagina): string
+    {
+        if ($pagina <= 1) {
+            return $url;
+        }
+
+        return rtrim($url, '/').'/?genPag='.$pagina;
+    }
+
+    private function definicionSiguiente(Crawler $node): ?string
+    {
+        $sibling = $node->getNode(0)?->nextSibling;
+
+        while ($sibling !== null) {
+            if ($sibling->nodeType === XML_ELEMENT_NODE) {
+                $texto = preg_replace('/[\x{00A0}\s]+/u', ' ', trim($sibling->textContent));
+
+                return trim((string) $texto);
+            }
+            $sibling = $sibling->nextSibling;
+        }
+
+        return null;
     }
 }
