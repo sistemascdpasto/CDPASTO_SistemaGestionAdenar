@@ -7,7 +7,8 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
 import { Eye } from 'lucide-react';
-import { FormEventHandler, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
@@ -54,11 +55,13 @@ export default function EncuestasMorbilidadIndex({ encuestas, filters }: { encue
         mes: filters.mes ?? '',
         anio: filters.anio ?? '',
     });
+    const isFirst = useRef(true);
+    const debouncedForm = useDebouncedValue(form, 400);
 
-    const aplicarFiltros: FormEventHandler = (e) => {
-        e.preventDefault();
-        router.get(route('seguridad.encuestas-morbilidad.index'), form, { preserveState: true, replace: true });
-    };
+    useEffect(() => {
+        if (isFirst.current) { isFirst.current = false; return; }
+        router.get(route('seguridad.encuestas-morbilidad.index'), debouncedForm, { preserveState: true, replace: true });
+    }, [JSON.stringify(debouncedForm)]);
 
     const limpiarFiltros = () => {
         const vacio: Filtros = { colaborador: '', mes: '', anio: '' };
@@ -85,7 +88,7 @@ export default function EncuestasMorbilidadIndex({ encuestas, filters }: { encue
                     </div>
                 </div>
 
-                <form onSubmit={aplicarFiltros} className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                <form className="grid grid-cols-2 gap-3 md:grid-cols-4">
                     <Input
                         placeholder="Colaborador (nombre o cédula)"
                         className="col-span-2"
@@ -95,7 +98,6 @@ export default function EncuestasMorbilidadIndex({ encuestas, filters }: { encue
                     <Input placeholder="Mes" value={form.mes} onChange={(e) => setForm({ ...form, mes: e.target.value })} />
                     <Input placeholder="Año" value={form.anio} onChange={(e) => setForm({ ...form, anio: e.target.value })} />
                     <div className="col-span-2 flex gap-2 md:col-span-4">
-                        <Button type="submit">Filtrar</Button>
                         <Button type="button" variant="outline" onClick={limpiarFiltros}>
                             Limpiar
                         </Button>

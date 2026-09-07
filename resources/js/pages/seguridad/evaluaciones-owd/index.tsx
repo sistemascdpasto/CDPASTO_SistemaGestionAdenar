@@ -10,7 +10,8 @@ import { ImportarEvaluacionesOwdDialog } from '@/pages/seguridad/evaluaciones-ow
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
 import { Download, Eye, Upload } from 'lucide-react';
-import { FormEventHandler, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
@@ -115,11 +116,13 @@ export default function EvaluacionesOwdIndex({
         agencia: '', type: '', pillar: '', proceso: '', actividad: '', puntuacion: '', plan_accion: '',
     };
     const [form, setForm] = useState<Filtros>({ ...vacio, ...filters });
+    const isFirst = useRef(true);
+    const debouncedForm = useDebouncedValue(form, 400);
 
-    const aplicarFiltros: FormEventHandler = (e) => {
-        e.preventDefault();
-        router.get(route('seguridad.evaluaciones-owd.index'), form, { preserveState: true, replace: true });
-    };
+    useEffect(() => {
+        if (isFirst.current) { isFirst.current = false; return; }
+        router.get(route('seguridad.evaluaciones-owd.index'), debouncedForm, { preserveState: true, replace: true });
+    }, [JSON.stringify(debouncedForm)]);
 
     const limpiarFiltros = () => {
         setForm(vacio);
@@ -157,7 +160,7 @@ export default function EvaluacionesOwdIndex({
                     </div>
                 </div>
 
-                <form onSubmit={aplicarFiltros} className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-6">
+                <form className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-6">
                     <Input
                         placeholder="Colaborador (nombre o QR)"
                         className="col-span-2"
@@ -301,7 +304,6 @@ export default function EvaluacionesOwdIndex({
                     </Select>
 
                     <div className="col-span-2 flex gap-2 md:col-span-4 lg:col-span-6">
-                        <Button type="submit">Filtrar</Button>
                         <Button type="button" variant="outline" onClick={limpiarFiltros}>
                             Limpiar
                         </Button>

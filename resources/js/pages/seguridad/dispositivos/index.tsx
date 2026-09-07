@@ -1,4 +1,3 @@
-import HeadingSmall from '@/components/heading-small';
 import { IconActionButton } from '@/components/icon-action-button';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -73,9 +72,17 @@ export default function DispositivosIndex({ dispositivos, filters }: { dispositi
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Dispositivos" />
-            <div className="flex h-full flex-1 flex-col gap-6 rounded-xl p-4">
+            <div className="flex h-full flex-1 flex-col gap-6 px-4 pb-10 sm:px-6">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <HeadingSmall title="Dispositivos" description="Administra los alcoholímetros disponibles para las pruebas." />
+                    <div className="flex items-center gap-2.5">
+                        <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-green-700">
+                            <AlertTriangle className="size-4 text-white" />
+                        </div>
+                        <div>
+                            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Dispositivos</p>
+                            <p className="text-xs text-gray-400">Administra los alcoholímetros disponibles para las pruebas.</p>
+                        </div>
+                    </div>
                     <Button asChild>
                         <Link href={route('seguridad.dispositivos.create')}>
                             <Plus className="size-4" />
@@ -91,7 +98,7 @@ export default function DispositivosIndex({ dispositivos, filters }: { dispositi
                     </Button>
                 </form>
 
-                <div className="rounded-lg border border-sidebar-border/70 dark:border-sidebar-border">
+                <div className="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
                     <Table>
                         <TableHeader>
                             <TableRow>

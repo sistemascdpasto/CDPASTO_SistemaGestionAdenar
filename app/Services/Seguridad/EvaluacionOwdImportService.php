@@ -196,7 +196,9 @@ class EvaluacionOwdImportService
                 ? $colaboradoresPorQr->get($qrSafetyEvaluador)
                 : null;
 
-            $claveEvaluacion = "{$qrSafetyEvaluador}|{$qrSafety}|{$fechaEvaluacion}";
+            $type = trim((string) ($valores['type'] ?? ''));
+
+            $claveEvaluacion = "{$qrSafetyEvaluador}|{$qrSafety}|{$fechaEvaluacion}|{$type}";
             $registro['evaluaciones'][$claveEvaluacion] = true;
 
             $datosCabecera = $this->mapearCabecera($valores, $fechaEvaluacion);
@@ -207,6 +209,7 @@ class EvaluacionOwdImportService
                 'qr_safety_evaluador' => $qrSafetyEvaluador !== '' ? $qrSafetyEvaluador : null,
                 'qr_safety' => $qrSafety,
                 'fecha_evaluacion' => $fechaEvaluacion,
+                'type' => $type !== '' ? $type : null,
             ], $datosCabecera);
 
             $evaluacionesTocadas[$evaluacionOwd->id] = $evaluacionOwd;
@@ -217,6 +220,8 @@ class EvaluacionOwdImportService
                 ->where('proceso', $datosPregunta['proceso'])
                 ->where('actividad', $datosPregunta['actividad'])
                 ->where('tarea', $datosPregunta['tarea'])
+                ->where('puntuacion', $datosPregunta['puntuacion'])
+                ->where('descripcion', $datosPregunta['descripcion'])
                 ->where('version', $datosPregunta['version'])
                 ->exists();
 

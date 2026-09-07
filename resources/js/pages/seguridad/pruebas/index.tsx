@@ -56,23 +56,13 @@ interface Filters {
 
 export default function PruebasIndex({ pruebas, filters }: { pruebas: PruebasPaginator; filters: Filters }) {
     const [form, setForm] = useState(filters);
-    const debouncedColaborador = useDebouncedValue(form.colaborador);
+    const debouncedForm = useDebouncedValue(form, 400);
     const isFirstRender = useRef(true);
-    const formRef = useRef(form);
-    formRef.current = form;
 
     useEffect(() => {
-        if (isFirstRender.current) {
-            isFirstRender.current = false;
-            return;
-        }
-        router.get(route('seguridad.pruebas.index'), { ...formRef.current, colaborador: debouncedColaborador }, { preserveState: true, replace: true });
-    }, [debouncedColaborador]);
-
-    const submitFilters: FormEventHandler = (e) => {
-        e.preventDefault();
-        router.get(route('seguridad.pruebas.index'), { ...form }, { preserveState: true, replace: true });
-    };
+        if (isFirstRender.current) { isFirstRender.current = false; return; }
+        router.get(route('seguridad.pruebas.index'), { ...debouncedForm }, { preserveState: true, replace: true });
+    }, [JSON.stringify(debouncedForm)]);
 
     const exportUrl = (ruta: string) => route(ruta, { ...form });
 
@@ -98,7 +88,7 @@ export default function PruebasIndex({ pruebas, filters }: { pruebas: PruebasPag
                     </div>
                 </div>
 
-                <form onSubmit={submitFilters} className="grid gap-3 rounded-lg border border-sidebar-border/70 p-4 sm:grid-cols-2 lg:grid-cols-5 dark:border-sidebar-border">
+                <form className="grid gap-3 rounded-lg border border-sidebar-border/70 p-4 sm:grid-cols-2 lg:grid-cols-5 dark:border-sidebar-border">
                     <div className="grid gap-1.5">
                         <Label htmlFor="colaborador">Colaborador o cédula</Label>
                         <Input
@@ -146,7 +136,6 @@ export default function PruebasIndex({ pruebas, filters }: { pruebas: PruebasPag
                     </div>
 
                     <div className="flex flex-wrap items-end gap-2 sm:col-span-2 lg:col-span-5">
-                        <Button type="submit">Filtrar</Button>
                         <Button type="button" variant="outline" asChild>
                             <a href={exportUrl('seguridad.pruebas.exportar-pdf')}>
                                 <FileText className="size-4" />

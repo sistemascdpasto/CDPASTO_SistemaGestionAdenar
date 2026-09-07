@@ -22,7 +22,6 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     AlertTriangle,
     CheckCircle2,
-    ClipboardCheck,
     Download,
     FileSpreadsheet,
     FileText,
@@ -213,8 +212,7 @@ export default function ColaboradorShow({
 
     const { auth } = usePage<SharedData>().props;
     // Mismo criterio que en el listado: escritura sobre el colaborador es
-    // exclusiva de Gente; "crear evaluación" y "condición de salud" son
-    // funciones de Seguridad, ajenas al módulo de colaboradores.
+    // exclusiva de Gente; "condición de salud" es función de Seguridad.
     const canManageColaboradores = auth.isAdmin || auth.roles.includes('Gente');
     const canEvaluar = auth.isAdmin || auth.roles.includes('Seguridad');
 
@@ -260,14 +258,6 @@ export default function ColaboradorShow({
                             >
                                 <Power className="mr-2 size-4" />
                                 {colaborador.is_active ? 'Desactivar' : 'Activar'}
-                            </Button>
-                        )}
-                        {canEvaluar && (
-                            <Button variant="outline" asChild>
-                                <Link href={route('seguridad.asignaciones-conductores.create', { colaborador_id: colaborador.id, cedula: colaborador.cedula })}>
-                                    <ClipboardCheck className="mr-2 size-4" />
-                                    Crear evaluación
-                                </Link>
                             </Button>
                         )}
                         {canEvaluar && (

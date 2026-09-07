@@ -16,7 +16,7 @@ import { ImportarColaboradoresDialog } from '@/pages/gente/colaboradores/importa
 import { type WizardCatalogos } from '@/pages/gente/colaboradores/wizard/catalogos';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { ArrowRight, AlertTriangle, Briefcase, ClipboardCheck, Eye, FileWarning, Pencil, Plus, Search, Trash2, Upload, Users, UserCheck, UserX } from 'lucide-react';
+import { ArrowRight, AlertTriangle, Briefcase, Eye, FileWarning, Pencil, Plus, Search, Trash2, Upload, Users, UserCheck, UserX } from 'lucide-react';
 import { FormEventHandler, useEffect, useRef, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -113,11 +113,7 @@ export default function ColaboradoresIndex({
     catalogos: WizardCatalogos;
 }) {
     const { auth } = usePage<SharedData>().props;
-    // Crear/importar/editar/eliminar colaboradores es exclusivo de Gente
-    // (Administrador siempre pasa). "Evaluar" abre asignaciones-conductores,
-    // que sigue siendo exclusivo de Seguridad.
     const canManageColaboradores = auth.isAdmin || auth.roles.includes('Gente');
-    const canEvaluar = auth.isAdmin || auth.roles.includes('Seguridad');
 
     const [search, setSearch] = useState(filters.search);
     const [viewMode, setViewMode] = useState<ViewMode>('lista');
@@ -557,13 +553,6 @@ export default function ColaboradoresIndex({
                                                             href={route('gente.colaboradores.edit', colaborador.id)}
                                                         />
                                                     )}
-                                                    {canEvaluar && (
-                                                        <IconActionButton
-                                                            icon={ClipboardCheck}
-                                                            label="Evaluar"
-                                                            href={route('seguridad.asignaciones-conductores.create', { colaborador_id: colaborador.id, cedula: colaborador.cedula })}
-                                                        />
-                                                    )}
                                                     {canManageColaboradores && (
                                                         <Dialog>
                                                             <TooltipProvider delayDuration={200}>
@@ -684,14 +673,6 @@ export default function ColaboradoresIndex({
                                         )
                                     ) : (
                                         <div className="mt-4 flex flex-wrap gap-1">
-                                            {canEvaluar && (
-                                                <IconActionButton
-                                                    icon={ClipboardCheck}
-                                                    label="Evaluar"
-                                                    variant="outline"
-                                                    href={route('seguridad.asignaciones-conductores.create', { colaborador_id: colaborador.id, cedula: colaborador.cedula })}
-                                                />
-                                            )}
                                             <IconActionButton
                                                 icon={Eye}
                                                 label="Ver"

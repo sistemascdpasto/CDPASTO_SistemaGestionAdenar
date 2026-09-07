@@ -91,7 +91,6 @@ export const modules: ModuleDef[] = [
                     { title: 'Pruebas de Alcoholemia', slug: 'pruebas', icon: TestTube },
                 ],
             },
-            { title: 'Asignaciones de conductores', slug: 'asignaciones-conductores', icon: Truck },
             { title: 'Condiciones de Salud', slug: 'condiciones-salud', icon: HeartPulse },
             { title: 'Indicador', slug: 'indicador', icon: Activity },
             { title: 'Alertas', slug: 'alertas', icon: BellRing },

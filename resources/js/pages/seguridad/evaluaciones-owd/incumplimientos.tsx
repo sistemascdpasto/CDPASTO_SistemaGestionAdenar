@@ -8,7 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
-import { FormEventHandler, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
@@ -66,11 +67,13 @@ export default function EvaluacionesOwdIncumplimientos({
 }) {
     const vacio: Filtros = { mes: '', anio: '', pillar: '', agencia: '', proceso: '' };
     const [form, setForm] = useState<Filtros>({ ...vacio, ...filtros });
+    const isFirst = useRef(true);
+    const debouncedForm = useDebouncedValue(form, 400);
 
-    const aplicarFiltros: FormEventHandler = (e) => {
-        e.preventDefault();
-        router.get(route('seguridad.evaluaciones-owd.incumplimientos'), form, { preserveState: true, replace: true });
-    };
+    useEffect(() => {
+        if (isFirst.current) { isFirst.current = false; return; }
+        router.get(route('seguridad.evaluaciones-owd.incumplimientos'), debouncedForm, { preserveState: true, replace: true });
+    }, [JSON.stringify(debouncedForm)]);
 
     const limpiarFiltros = () => {
         setForm(vacio);
@@ -86,7 +89,7 @@ export default function EvaluacionesOwdIncumplimientos({
                     description="Preguntas evaluadas como 'No OK', agrupadas para detectar las principales problemáticas."
                 />
 
-                <form onSubmit={aplicarFiltros} className="grid grid-cols-2 gap-3 md:grid-cols-5">
+                <form className="grid grid-cols-2 gap-3 md:grid-cols-5">
                     <Select value={form.mes || 'todos'} onValueChange={(v) => setForm({ ...form, mes: v === 'todos' ? '' : v })}>
                         <SelectTrigger>
                             <SelectValue placeholder="Mes" />
@@ -130,7 +133,6 @@ export default function EvaluacionesOwdIncumplimientos({
                     <Input placeholder="Proceso" value={form.proceso} onChange={(e) => setForm({ ...form, proceso: e.target.value })} />
 
                     <div className="col-span-2 flex gap-2 md:col-span-5">
-                        <Button type="submit">Filtrar</Button>
                         <Button type="button" variant="outline" onClick={limpiarFiltros}>
                             Limpiar
                         </Button>

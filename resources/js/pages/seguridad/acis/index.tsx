@@ -9,7 +9,8 @@ import { ImportarAcisDialog } from '@/pages/seguridad/acis/importar-dialog';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
 import { Eye, Upload } from 'lucide-react';
-import { FormEventHandler, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
@@ -72,11 +73,13 @@ export default function AcisIndex({
         tipo_riesgo: filters.tipo_riesgo ?? '',
         centro: filters.centro ?? '',
     });
+    const isFirst = useRef(true);
+    const debouncedForm = useDebouncedValue(form, 400);
 
-    const aplicarFiltros: FormEventHandler = (e) => {
-        e.preventDefault();
-        router.get(route('seguridad.acis.index'), form, { preserveState: true, replace: true });
-    };
+    useEffect(() => {
+        if (isFirst.current) { isFirst.current = false; return; }
+        router.get(route('seguridad.acis.index'), debouncedForm, { preserveState: true, replace: true });
+    }, [JSON.stringify(debouncedForm)]);
 
     const limpiarFiltros = () => {
         const vacio: Filtros = { folio: '', mes: '', anio: '', colaborador: '', area: '', tipo_riesgo: '', centro: '' };
@@ -100,7 +103,7 @@ export default function AcisIndex({
                     />
                 </div>
 
-                <form onSubmit={aplicarFiltros} className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-7">
+                <form className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-7">
                     <Input
                         placeholder="Folio"
                         value={form.folio}
@@ -157,7 +160,6 @@ export default function AcisIndex({
                         </SelectContent>
                     </Select>
                     <div className="col-span-2 flex gap-2 md:col-span-4 lg:col-span-7">
-                        <Button type="submit">Filtrar</Button>
                         <Button type="button" variant="outline" onClick={limpiarFiltros}>
                             Limpiar
                         </Button>
