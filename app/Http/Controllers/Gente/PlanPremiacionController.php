@@ -41,14 +41,11 @@ class PlanPremiacionController extends Controller
         // Meses para el checklist (puede ser distinto — usa los mismos por defecto)
         $mesesChecklist = $mesesSeleccionados;
 
-        $cargosDisponibles = Colaborador::where('is_active', true)
-            ->whereNotNull('cargo')
-            ->where('cargo', '!=', '')
-            ->distinct()
-            ->orderBy('cargo')
-            ->pluck('cargo')
-            ->values()
-            ->all();
+        $cargosDisponibles = [
+            'Auxiliar de Reparto',
+            'Conductor de Reparto',
+            'Responsable de Reparto',
+        ];
 
         // 1. Obtener colaboradores activos
         $queryColaboradores = Colaborador::query()

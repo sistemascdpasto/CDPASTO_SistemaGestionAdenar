@@ -124,7 +124,7 @@ export default function GraficoBarrasMes({ colaboradores, mes, anio }: Props) {
         ? sorted.reduce((acc, c) => acc + c.calificacion_total, 0) / sorted.length
         : 0;
 
-    const chartHeight = Math.max(300, Math.min(480, slice.length * 18 + 120));
+    const chartHeight = Math.max(200, Math.min(320, slice.length * 10 + 80));
 
     return (
         <Card>
@@ -196,17 +196,17 @@ export default function GraficoBarrasMes({ colaboradores, mes, anio }: Props) {
                 <ResponsiveContainer width="100%" height={chartHeight}>
                     <BarChart
                         data={data}
-                        margin={{ top: 10, right: 20, left: 0, bottom: 64 }}
+                        margin={{ top: 8, right: 16, left: 0, bottom: 48 }}
                         barCategoryGap="18%"
                     >
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                         <XAxis
                             dataKey="nombre"
                             tick={{ fontSize: 10, fill: '#64748b' }}
-                            angle={-40}
+                            angle={-35}
                             textAnchor="end"
                             interval={0}
-                            height={68}
+                            height={52}
                         />
                         <YAxis
                             domain={[0, 100]}
