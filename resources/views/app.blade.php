@@ -1,9 +1,15 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+{{-- La app es 100% en español y no tiene i18n. Se fuerza lang="es" y se
+     desactiva la traducción automática del navegador: Google Translate
+     reescribe los nodos de texto del DOM (los envuelve en <font>), y cuando
+     React vuelve a reconciliar tras navegar rompe con errores de
+     insertBefore/removeChild → pantalla en blanco hasta recargar. --}}
+<html lang="es" translate="no" class="notranslate">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
+        <meta name="google" content="notranslate">
 
         <title inertia>{{ config('app.name', 'Laravel') }}</title>
 
