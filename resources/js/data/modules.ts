@@ -33,7 +33,6 @@ import {
     Star,
     Stethoscope,
     TestTube,
-    Timer,
     Trophy,
     Truck,
     UserCheck,
@@ -97,9 +96,8 @@ export const modules: ModuleDef[] = [
                     { title: 'Pruebas de Alcoholemia', slug: 'pruebas', icon: TestTube },
                 ],
             },
-            { title: 'Asignaciones de conductores', slug: 'asignaciones-conductores', icon: Truck },
             { title: 'Condiciones de Salud', slug: 'condiciones-salud', icon: HeartPulse },
-            { title: 'Indicador', slug: 'indicador', icon: Activity },
+            { title: 'Tablero de Indicadores', slug: 'indicador', icon: BarChart3 },
             { title: 'Alertas', slug: 'alertas', icon: BellRing },
             {
                 title: 'ACIS',
@@ -141,9 +139,6 @@ export const modules: ModuleDef[] = [
                     { title: 'Catálogo de Preguntas', slug: 'encuestas-morbilidad-preguntas', icon: ListChecks },
                 ],
             },
-            { title: 'Jornada Laboral', slug: 'jornada-laboral', icon: Timer },
-            { title: 'Excesos en Curvas', slug: 'excesos-en-curvas', icon: AlertTriangle },
-
             { title: 'Glosario', slug: 'glosario', icon: BookOpen },
 
             { title: 'Mapa de Rutas Críticas', slug: 'rutas-criticas', icon: Map },

@@ -18,11 +18,10 @@ import {
     type DocumentInfo,
 } from '@/pages/seguridad/colaboradores/colaborador-form-fields';
 import { type BreadcrumbItem, type SharedData } from '@/types';
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import {
     AlertTriangle,
     CheckCircle2,
-    ClipboardCheck,
     Download,
     FileSpreadsheet,
     FileText,
@@ -260,14 +259,6 @@ export default function ColaboradorShow({
                             >
                                 <Power className="mr-2 size-4" />
                                 {colaborador.is_active ? 'Desactivar' : 'Activar'}
-                            </Button>
-                        )}
-                        {canEvaluar && (
-                            <Button variant="outline" asChild>
-                                <Link href={route('seguridad.asignaciones-conductores.create', { colaborador_id: colaborador.id, cedula: colaborador.cedula })}>
-                                    <ClipboardCheck className="mr-2 size-4" />
-                                    Crear evaluación
-                                </Link>
                             </Button>
                         )}
                         {canEvaluar && (

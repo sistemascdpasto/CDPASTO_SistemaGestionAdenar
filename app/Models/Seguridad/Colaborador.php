@@ -186,11 +186,6 @@ class Colaborador extends Model
         return $this->hasMany(ColaboradorDocumento::class);
     }
 
-    public function asignacionesConductor(): HasMany
-    {
-        return $this->hasMany(AsignacionConductor::class);
-    }
-
     public function llamadosAtencion(): HasMany
     {
         return $this->hasMany(ColaboradorLlamadoAtencion::class);

@@ -18,7 +18,6 @@ import {
     Stethoscope,
     TestTube,
     Trophy,
-    Truck,
     User,
     UserCog,
 } from 'lucide-react';
@@ -98,7 +97,6 @@ export function AppSidebar() {
                   { title: 'Mi Perfil', url: '/portal/perfil', icon: User, color: '#3F7A22' },
                   { title: '5 Por Qué', url: '/cinco-porques', icon: ListChecks, color: '#D4102A' },
                   { title: 'Mis Pruebas', url: '/portal/pruebas', icon: TestTube, color: '#3F7A22' },
-                  { title: 'Mis Rutas', url: '/portal/rutas', icon: Truck, color: '#3F7A22' },
                   { title: 'Mis Planeaciones de Ruta', url: '/portal/mis-rutas-reparto', icon: Route, color: '#D4102A' },
                   { title: 'Mis Estrellas del Camión', url: '/portal/mis-indicadores-reparto', icon: Star, color: '#D4102A' },
                   { title: 'Mi Plan Premiación', url: '/portal/mi-plan-premiacion', icon: Trophy, color: '#D97706' },
