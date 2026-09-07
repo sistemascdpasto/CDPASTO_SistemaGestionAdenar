@@ -52,9 +52,8 @@ class PlanPremiacionController extends Controller
             ->where('is_active', true)
             ->select(['id', 'cedula', 'nombres', 'apellidos', 'cargo', 'area', 'codigo_qr_skap']);
 
-        if (!empty($cargosSeleccionados)) {
-            $queryColaboradores->whereIn('cargo', $cargosSeleccionados);
-        }
+        // Siempre filtrar solo por los tres cargos de reparto
+        $queryColaboradores->whereIn('cargo', $cargosDisponibles);
 
         if ($search !== '') {
             $queryColaboradores->where(function ($q) use ($search) {
@@ -670,7 +669,6 @@ class PlanPremiacionController extends Controller
             ],
             'top3' => $top3,
             'peores2' => $peores2,
-            'cargos' => $cargosDisponibles,
             'puede_editar' => $request->user()?->hasAnyRole(['Administrador', 'Gente']) ?? false,
             'filters' => [
                 'mes' => $mes,
@@ -700,9 +698,8 @@ class PlanPremiacionController extends Controller
             ->where('is_active', true)
             ->select(['id', 'cedula', 'nombres', 'apellidos', 'cargo', 'area', 'codigo_qr_skap']);
 
-        if (!empty($cargosSeleccionados)) {
-            $queryCol->whereIn('cargo', $cargosSeleccionados);
-        }
+        // Siempre filtrar solo por los tres cargos de reparto
+        $queryCol->whereIn('cargo', ['Auxiliar de Reparto', 'Conductor de Reparto', 'Responsable de Reparto']);
 
         $colaboradores = $queryCol->get();
 

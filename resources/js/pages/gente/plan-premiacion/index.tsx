@@ -108,7 +108,6 @@ interface Filters {
     search: string;
     estado: string;
     cargo: string;
-    meses_checklist: string;
 }
 
 interface Props {
@@ -138,11 +137,6 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
     const [formulasAbiertas, setFormulasAbiertas] = useState<boolean>(false);
     const [estado, setEstado] = useState<string>(filters.estado || 'todos');
     const [selectedCargos, setSelectedCargos] = useState<string[]>(parseCargosFilter(filters.cargo));
-    const [selectedMesesChecklist, setSelectedMesesChecklist] = useState<number[]>(
-        parseMesesChecklistFilter(filters.meses_checklist).length > 0
-            ? parseMesesChecklistFilter(filters.meses_checklist)
-            : [new Date().getMonth() + 1]
-    );
 
     // Paginación
     const [currentPage, setCurrentPage] = useState<number>(1);
@@ -239,10 +233,9 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
         }
     };
 
-    const handleFilter = (newMes = mes, newAnio = anio, newSearch = search, newEstado = estado, newCargos = selectedCargos, newMesesChecklist = selectedMesesChecklist) => {
+    const handleFilter = (newMes = mes, newAnio = anio, newSearch = search, newEstado = estado, newCargos = selectedCargos) => {
         setCurrentPage(1);
         const cargoParam = newCargos.length > 0 ? newCargos.join(',') : '';
-        const checklistParam = newMesesChecklist.length > 0 ? newMesesChecklist.join(',') : '';
         router.get(
             '/modules/gente/plan-premiacion',
             {
@@ -251,7 +244,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                 search: newSearch,
                 estado: newEstado === 'todos' ? '' : newEstado,
                 cargo: cargoParam,
-                meses_checklist: checklistParam,
+                meses_checklist: String(newMes),
             },
             { preserveState: false, replace: true },
         );
@@ -260,45 +253,24 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
         setSearch(val);
-        handleFilter(mes, anio, val, estado, selectedCargos, selectedMesesChecklist);
+        handleFilter(mes, anio, val, estado, selectedCargos);
     };
 
     const handleMesChange = (val: string) => {
         const m = parseInt(val, 10);
         setMes(m);
-        handleFilter(m, anio, search, estado, selectedCargos, selectedMesesChecklist);
+        handleFilter(m, anio, search, estado, selectedCargos);
     };
 
     const handleAnioChange = (val: string) => {
         const a = parseInt(val, 10);
         setAnio(a);
-        handleFilter(mes, a, search, estado, selectedCargos, selectedMesesChecklist);
+        handleFilter(mes, a, search, estado, selectedCargos);
     };
 
     const handleEstadoChange = (val: string) => {
         setEstado(val);
-        handleFilter(mes, anio, search, val, selectedCargos, selectedMesesChecklist);
-    };
-
-    const handleToggleMesChecklist = (mesNum: number) => {
-        let next: number[];
-        if (mesNum === 0) {
-            next = [];
-        } else if (selectedMesesChecklist.includes(mesNum)) {
-            next = selectedMesesChecklist.filter((m) => m !== mesNum);
-        } else {
-            next = [...selectedMesesChecklist, mesNum];
-        }
-        setSelectedMesesChecklist(next);
-        handleFilter(mes, anio, search, estado, selectedCargos, next);
-    };
-
-    const getMesesChecklistLabel = () => {
-        if (selectedMesesChecklist.length === 0) return 'Todos los meses';
-        if (selectedMesesChecklist.length === 1) {
-            return MESES.find((m) => m.value === selectedMesesChecklist[0])?.label ?? 'Mes seleccionado';
-        }
-        return `${selectedMesesChecklist.length} meses`;
+        handleFilter(mes, anio, search, val, selectedCargos);
     };
 
     const handleToggleCargo = (cargoItem: string) => {
@@ -311,7 +283,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
             next = [...selectedCargos, cargoItem];
         }
         setSelectedCargos(next);
-        handleFilter(mes, anio, search, estado, next, selectedMesesChecklist);
+        handleFilter(mes, anio, search, estado, next);
     };
 
     const getCargoLabel = () => {
@@ -320,14 +292,12 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
         return `${selectedCargos.length} Cargos seleccionados`;
     };
 
-    const cargoParam = selectedCargos.length > 0 ? selectedCargos.join(',') : '';
-    const checklistParam = selectedMesesChecklist.length > 0 ? selectedMesesChecklist.join(',') : '';
+    const cargoParam = '';
     const exportUrl = [
         `/modules/gente/plan-premiacion/exportar`,
         `?mes=${mes}`,
         `&anio=${anio}`,
-        cargoParam ? `&cargo=${encodeURIComponent(cargoParam)}` : '',
-        checklistParam ? `&meses_checklist=${encodeURIComponent(checklistParam)}` : '',
+        `&meses_checklist=${mes}`,
         search ? `&search=${encodeURIComponent(search)}` : '',
         estado && estado !== 'todos' ? `&estado=${encodeURIComponent(estado)}` : '',
     ].join('');
@@ -405,7 +375,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                         <CardTitle className="text-base font-semibold">Filtros y Búsqueda</CardTitle>
                     </CardHeader>
                     <CardContent>
-                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5 w-full">
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 w-full">
                                 <div>
                                     <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Año</label>
                                     <Select value={String(anio)} onValueChange={handleAnioChange}>
@@ -423,81 +393,19 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                 </div>
 
                                 <div>
-                                    <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Cargo</label>
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="outline" className="w-full justify-between font-normal text-xs h-9 px-3">
-                                                <span className="truncate">{getCargoLabel()}</span>
-                                                <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="start" className="w-56 max-h-60 overflow-y-auto">
-                                            <DropdownMenuLabel className="text-xs">Filtrar por Cargo</DropdownMenuLabel>
-                                            <DropdownMenuSeparator />
-                                            <DropdownMenuCheckboxItem
-                                                checked={selectedCargos.length === 0}
-                                                onCheckedChange={() => handleToggleCargo('todos')}
-                                                className="text-xs font-semibold"
-                                            >
-                                                Todos los Cargos
-                                            </DropdownMenuCheckboxItem>
-                                            <DropdownMenuSeparator />
-                                            {Array.isArray(cargos) &&
-                                                cargos
-                                                    .filter((c) => Boolean(c && typeof c === 'string' && c.trim() !== ''))
-                                                    .map((c) => (
-                                                        <DropdownMenuCheckboxItem
-                                                            key={c}
-                                                            checked={selectedCargos.includes(c)}
-                                                            onCheckedChange={() => handleToggleCargo(c)}
-                                                            className="text-xs"
-                                                        >
-                                                            {c}
-                                                        </DropdownMenuCheckboxItem>
-                                                    ))}
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </div>
-
-                                <div>
-                                    <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                                        Mes
-                                        {selectedMesesChecklist.length > 0 && (
-                                            <span className="rounded bg-amber-100 px-1 py-0.5 text-[9px] font-bold text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
-                                                {selectedMesesChecklist.length} mes{selectedMesesChecklist.length !== 1 ? 'es' : ''}
-                                            </span>
-                                        )}
-                                    </label>
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="outline" className="w-full justify-between font-normal text-xs h-9 px-3">
-                                                <span className="truncate">{getMesesChecklistLabel()}</span>
-                                                <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="start" className="w-48 max-h-64 overflow-y-auto">
-                                            <DropdownMenuLabel className="text-xs">Filtrar por Mes</DropdownMenuLabel>
-                                            <DropdownMenuSeparator />
-                                            <DropdownMenuCheckboxItem
-                                                checked={selectedMesesChecklist.length === 0}
-                                                onCheckedChange={() => handleToggleMesChecklist(0)}
-                                                className="text-xs font-semibold"
-                                            >
-                                                Todos los meses
-                                            </DropdownMenuCheckboxItem>
-                                            <DropdownMenuSeparator />
+                                    <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Mes</label>
+                                    <Select value={String(mes)} onValueChange={handleMesChange}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Seleccionar Mes" />
+                                        </SelectTrigger>
+                                        <SelectContent>
                                             {MESES.map((m) => (
-                                                <DropdownMenuCheckboxItem
-                                                    key={m.value}
-                                                    checked={selectedMesesChecklist.includes(m.value)}
-                                                    onCheckedChange={() => handleToggleMesChecklist(m.value)}
-                                                    className="text-xs"
-                                                >
+                                                <SelectItem key={m.value} value={String(m.value)}>
                                                     {m.label}
-                                                </DropdownMenuCheckboxItem>
+                                                </SelectItem>
                                             ))}
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
+                                        </SelectContent>
+                                    </Select>
                                 </div>
 
                                 <div>
@@ -638,10 +546,16 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                     </Card>
                 )}
 
-                {/* Gráfico de Barras del Mes */}
-                <GraficoBarrasMes colaboradores={colaboradores} mes={mes} anio={anio} />
+                {/* Gráfico + Tabla lado a lado */}
+                <div className="flex gap-6 items-start">
 
-                {/* Tabla Principal */}
+                    {/* Gráfico — mitad del ancho, sticky */}
+                    <div className="w-1/2 shrink-0 sticky top-6 self-start">
+                        <GraficoBarrasMes colaboradores={colaboradores} mes={mes} anio={anio} />
+                    </div>
+
+                    {/* Tabla Principal — mitad del ancho, scrolleable */}
+                    <div className="w-1/2 min-w-0">
                 <Card>
                     <CardHeader className="pb-3">
                         <div className="flex items-center justify-between flex-wrap gap-2">
@@ -1227,6 +1141,8 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                         )}
                     </CardContent>
                 </Card>
+                    </div>
+                </div>
             </div>
         </AppLayout>
     );
