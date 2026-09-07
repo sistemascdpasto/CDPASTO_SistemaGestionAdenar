@@ -22,6 +22,9 @@ export default function CreateVehiculo() {
         capacidad_pallets: '',
         imagen: null,
 
+        fecha_vencimiento_soat: '',
+        fecha_vencimiento_tecnomecanica: '',
+
         documento_soat: [],
         documento_rtm: [],
         documento_codigo_qr: [],

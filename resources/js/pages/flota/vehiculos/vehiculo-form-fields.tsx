@@ -2,9 +2,9 @@ import InputError from '@/components/input-error';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Download, FileText, IdCard, ImageIcon, Plus, ShieldCheck, Truck, X } from 'lucide-react';
-import { useRef, useState } from 'react';
 import { type InertiaFormProps } from '@inertiajs/react';
+import { CalendarClock, Download, FileText, IdCard, ImageIcon, Plus, ShieldCheck, Truck, X } from 'lucide-react';
+import { useRef, useState } from 'react';
 
 export interface VehiculoFormData {
     placa: string;
@@ -12,6 +12,9 @@ export interface VehiculoFormData {
     modelo: string;
     capacidad_pallets: string;
     imagen: File | null;
+
+    fecha_vencimiento_soat: string;
+    fecha_vencimiento_tecnomecanica: string;
 
     documento_soat: File[];
     documento_rtm: File[];
@@ -34,9 +37,21 @@ interface VehiculoFormFieldsProps extends Pick<InertiaFormProps<VehiculoFormData
     existingDocumentos?: Partial<Record<DocumentKey, DocumentInfo[]>>;
 }
 
-export const DOCUMENTO_FIELDS: { key: DocumentKey; label: string; icon: typeof ShieldCheck }[] = [
-    { key: 'documento_soat', label: 'SOAT', icon: ShieldCheck },
-    { key: 'documento_rtm', label: 'Revisión Tecnicomecánica (RTM)', icon: FileText },
+export const DOCUMENTO_FIELDS: {
+    key: DocumentKey;
+    label: string;
+    icon: typeof ShieldCheck;
+    fechaKey?: DocumentKey;
+    fechaLabel?: string;
+}[] = [
+    { key: 'documento_soat', label: 'SOAT', icon: ShieldCheck, fechaKey: 'fecha_vencimiento_soat', fechaLabel: 'Fecha de vencimiento del SOAT' },
+    {
+        key: 'documento_rtm',
+        label: 'Revisión Tecnicomecánica (RTM)',
+        icon: FileText,
+        fechaKey: 'fecha_vencimiento_tecnomecanica',
+        fechaLabel: 'Fecha de vencimiento de la tecnomecánica',
+    },
     { key: 'documento_codigo_qr', label: 'Documentación código QR', icon: FileText },
     { key: 'documento_licencia_transito', label: 'Licencia de tránsito (Tarjeta de propiedad)', icon: IdCard },
 ];
@@ -54,6 +69,10 @@ function DocumentoUploader({
     disabled,
     onChange,
     error,
+    fechaLabel,
+    fechaValue,
+    onFechaChange,
+    fechaError,
 }: {
     fieldKey: DocumentKey;
     label: string;
@@ -63,6 +82,10 @@ function DocumentoUploader({
     disabled?: boolean;
     onChange: (files: File[]) => void;
     error?: string;
+    fechaLabel?: string;
+    fechaValue?: string;
+    onFechaChange?: (value: string) => void;
+    fechaError?: string;
 }) {
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -77,9 +100,9 @@ function DocumentoUploader({
     };
 
     return (
-        <div className="grid gap-2 rounded-xl border border-border p-4">
+        <div className="border-border grid gap-2 rounded-xl border p-4">
             <div className="flex items-center gap-2">
-                <Icon className="size-4 text-muted-foreground" />
+                <Icon className="text-muted-foreground size-4" />
                 <Label className="text-sm font-medium">{label}</Label>
             </div>
 
@@ -91,7 +114,7 @@ function DocumentoUploader({
                                 href={documentUrl(documento.path)}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="inline-flex items-center gap-1.5 text-primary underline underline-offset-4"
+                                className="text-primary inline-flex items-center gap-1.5 underline underline-offset-4"
                             >
                                 <Download className="size-3.5" />
                                 {documento.path.split('/').pop()}
@@ -104,7 +127,7 @@ function DocumentoUploader({
             {files.length > 0 && (
                 <ul className="grid gap-1 text-sm">
                     {files.map((file, index) => (
-                        <li key={`${fieldKey}-nuevo-${index}`} className="flex items-center justify-between gap-2 text-muted-foreground">
+                        <li key={`${fieldKey}-nuevo-${index}`} className="text-muted-foreground flex items-center justify-between gap-2">
                             <span className="truncate">{file.name}</span>
                             <button
                                 type="button"
@@ -132,13 +155,31 @@ function DocumentoUploader({
                 type="button"
                 onClick={() => inputRef.current?.click()}
                 disabled={disabled}
-                className="inline-flex w-fit items-center gap-1.5 rounded-md border border-dashed border-input px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-emerald-300 hover:text-foreground disabled:opacity-50"
+                className="border-input text-muted-foreground hover:text-foreground inline-flex w-fit items-center gap-1.5 rounded-md border border-dashed px-3 py-1.5 text-xs font-medium transition-colors hover:border-emerald-300 disabled:opacity-50"
             >
                 <Plus className="size-3.5" />
                 Agregar archivo(s)
             </button>
 
             <InputError message={error} />
+
+            {fechaLabel && onFechaChange && (
+                <div className="border-border mt-2 grid gap-1.5 border-t pt-3">
+                    <Label htmlFor={`${fieldKey}-fecha`} className="flex items-center gap-1.5 text-xs font-medium">
+                        <CalendarClock className="text-muted-foreground size-3.5" />
+                        {fechaLabel}
+                    </Label>
+                    <Input
+                        id={`${fieldKey}-fecha`}
+                        type="date"
+                        value={fechaValue ?? ''}
+                        onChange={(e) => onFechaChange(e.target.value)}
+                        disabled={disabled}
+                        className="w-fit"
+                    />
+                    <InputError message={fechaError} />
+                </div>
+            )}
         </div>
     );
 }
@@ -158,14 +199,14 @@ export function VehiculoFormFields({ data, setData, errors, processing, readonly
 
     return (
         <div className="grid gap-6">
-            <div className="rounded-2xl border border-border bg-card p-4 sm:p-6">
+            <div className="border-border bg-card rounded-2xl border p-4 sm:p-6">
                 <div className="mb-5 flex items-center gap-3">
-                    <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                    <div className="bg-muted text-muted-foreground flex size-10 shrink-0 items-center justify-center rounded-full">
                         <Truck className="size-5" />
                     </div>
                     <div>
-                        <p className="text-sm font-semibold text-foreground">Información del camión</p>
-                        <p className="text-xs text-muted-foreground">Datos básicos del vehículo</p>
+                        <p className="text-foreground text-sm font-semibold">Información del camión</p>
+                        <p className="text-muted-foreground text-xs">Datos básicos del vehículo</p>
                     </div>
                 </div>
 
@@ -175,7 +216,7 @@ export function VehiculoFormFields({ data, setData, errors, processing, readonly
                             <div className="grid gap-2">
                                 <Label htmlFor="placa">Placa</Label>
                                 {readonlyPlaca ? (
-                                    <div className="flex h-9 w-full items-center rounded-md border border-input bg-muted px-3 text-sm text-muted-foreground">
+                                    <div className="border-input bg-muted text-muted-foreground flex h-9 w-full items-center rounded-md border px-3 text-sm">
                                         {data.placa}
                                     </div>
                                 ) : (
@@ -254,14 +295,14 @@ export function VehiculoFormFields({ data, setData, errors, processing, readonly
                 </div>
             </div>
 
-            <div className="rounded-2xl border border-border bg-card p-4 sm:p-6">
+            <div className="border-border bg-card rounded-2xl border p-4 sm:p-6">
                 <div className="mb-5 flex items-center gap-3">
-                    <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                    <div className="bg-muted text-muted-foreground flex size-10 shrink-0 items-center justify-center rounded-full">
                         <FileText className="size-5" />
                     </div>
                     <div>
-                        <p className="text-sm font-semibold text-foreground">Documentos</p>
-                        <p className="text-xs text-muted-foreground">Puedes subir uno o más archivos por documento</p>
+                        <p className="text-foreground text-sm font-semibold">Documentos</p>
+                        <p className="text-muted-foreground text-xs">Puedes subir uno o más archivos por documento</p>
                     </div>
                 </div>
 
@@ -277,6 +318,10 @@ export function VehiculoFormFields({ data, setData, errors, processing, readonly
                             disabled={processing}
                             onChange={(files) => setData(doc.key, files)}
                             error={errors[doc.key]}
+                            fechaLabel={doc.fechaLabel}
+                            fechaValue={doc.fechaKey ? (data[doc.fechaKey] as string) : undefined}
+                            onFechaChange={doc.fechaKey ? (value) => setData(doc.fechaKey as DocumentKey, value) : undefined}
+                            fechaError={doc.fechaKey ? errors[doc.fechaKey] : undefined}
                         />
                     ))}
                 </div>

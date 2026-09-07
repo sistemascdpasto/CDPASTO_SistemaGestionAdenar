@@ -15,6 +15,9 @@ interface EditableVehiculo {
     capacidad_pallets: number | null;
     is_active: boolean;
 
+    fecha_vencimiento_soat: string | null;
+    fecha_vencimiento_tecnomecanica: string | null;
+
     documento_soat: DocumentInfo[];
     documento_rtm: DocumentInfo[];
     documento_codigo_qr: DocumentInfo[];
@@ -35,6 +38,9 @@ export default function EditVehiculo({ vehiculo }: { vehiculo: EditableVehiculo 
         modelo: vehiculo.modelo ?? '',
         capacidad_pallets: vehiculo.capacidad_pallets?.toString() ?? '',
         imagen: null,
+
+        fecha_vencimiento_soat: vehiculo.fecha_vencimiento_soat ?? '',
+        fecha_vencimiento_tecnomecanica: vehiculo.fecha_vencimiento_tecnomecanica ?? '',
 
         documento_soat: [],
         documento_rtm: [],

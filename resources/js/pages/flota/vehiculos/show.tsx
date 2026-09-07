@@ -8,7 +8,7 @@ import AppLayout from '@/layouts/app-layout';
 import { DOCUMENTO_FIELDS, type DocumentInfo } from '@/pages/flota/vehiculos/vehiculo-form-fields';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link } from '@inertiajs/react';
-import { Download, FileText, Truck } from 'lucide-react';
+import { CalendarClock, Download, FileText, Truck } from 'lucide-react';
 import { useState } from 'react';
 
 interface VehiculoDetalle {
@@ -19,6 +19,9 @@ interface VehiculoDetalle {
     capacidad_pallets: number | null;
     imagen: string | null;
     is_active: boolean;
+
+    fecha_vencimiento_soat: string | null;
+    fecha_vencimiento_tecnomecanica: string | null;
 
     documento_soat: DocumentInfo[];
     documento_rtm: DocumentInfo[];
@@ -40,6 +43,44 @@ function esPdf(path: string): boolean {
 
 type DocumentoPreview = { url: string; label: string; esPdf: boolean };
 
+function formatearFecha(fecha: string): string {
+    const [year, month, day] = fecha.split('-').map(Number);
+    return new Date(year, month - 1, day).toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric' });
+}
+
+function diasPara(fecha: string): number {
+    const [year, month, day] = fecha.split('-').map(Number);
+    const objetivo = new Date(year, month - 1, day);
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    return Math.round((objetivo.getTime() - hoy.getTime()) / 86_400_000);
+}
+
+function VencimientoRow({ label, fecha, diasAlerta }: { label: string; fecha: string | null; diasAlerta: number }) {
+    if (!fecha) {
+        return (
+            <div className="flex items-center justify-between gap-4">
+                <span className="text-muted-foreground text-sm">{label}</span>
+                <span className="text-muted-foreground text-sm">Sin registrar</span>
+            </div>
+        );
+    }
+
+    const dias = diasPara(fecha);
+    const variant = dias < 0 ? 'destructive' : dias <= diasAlerta ? 'secondary' : 'default';
+    const estado = dias < 0 ? 'Vencido' : dias === 0 ? 'Vence hoy' : `Faltan ${dias} días`;
+
+    return (
+        <div className="flex items-center justify-between gap-4">
+            <span className="text-foreground text-sm font-medium">{label}</span>
+            <div className="flex items-center gap-2">
+                <span className="text-muted-foreground text-sm">{formatearFecha(fecha)}</span>
+                <Badge variant={variant}>{estado}</Badge>
+            </div>
+        </div>
+    );
+}
+
 export default function VehiculoShow({ vehiculo }: { vehiculo: VehiculoDetalle }) {
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Dashboard', href: '/dashboard' },
@@ -58,13 +99,9 @@ export default function VehiculoShow({ vehiculo }: { vehiculo: VehiculoDetalle }
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-4">
                         {vehiculo.imagen ? (
-                            <SafeImage
-                                src={`/storage/${vehiculo.imagen}`}
-                                alt={vehiculo.placa}
-                                className="h-24 w-32 rounded-lg object-cover"
-                            />
+                            <SafeImage src={`/storage/${vehiculo.imagen}`} alt={vehiculo.placa} className="h-24 w-32 rounded-lg object-cover" />
                         ) : (
-                            <div className="flex h-24 w-32 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                            <div className="bg-muted text-muted-foreground flex h-24 w-32 items-center justify-center rounded-lg">
                                 <Truck className="size-8" />
                             </div>
                         )}
@@ -74,9 +111,7 @@ export default function VehiculoShow({ vehiculo }: { vehiculo: VehiculoDetalle }
                                 description={[vehiculo.truck_type, vehiculo.modelo].filter(Boolean).join(' · ') || 'Sin datos adicionales'}
                             />
                             <div className="flex flex-wrap gap-1.5">
-                                {vehiculo.capacidad_pallets !== null && (
-                                    <Badge variant="secondary">{vehiculo.capacidad_pallets} pallets</Badge>
-                                )}
+                                {vehiculo.capacidad_pallets !== null && <Badge variant="secondary">{vehiculo.capacidad_pallets} pallets</Badge>}
                                 <Badge variant={vehiculo.is_active ? 'default' : 'destructive'}>
                                     {vehiculo.is_active ? 'Disponible' : 'No disponible'}
                                 </Badge>
@@ -90,7 +125,20 @@ export default function VehiculoShow({ vehiculo }: { vehiculo: VehiculoDetalle }
 
                 <Card className="border-sidebar-border/70 dark:border-sidebar-border">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                        <CardTitle className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
+                            <CalendarClock className="size-4" />
+                            Vencimientos
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="grid gap-3">
+                        <VencimientoRow label="SOAT" fecha={vehiculo.fecha_vencimiento_soat} diasAlerta={15} />
+                        <VencimientoRow label="Revisión tecnicomecánica (RTM)" fecha={vehiculo.fecha_vencimiento_tecnomecanica} diasAlerta={30} />
+                    </CardContent>
+                </Card>
+
+                <Card className="border-sidebar-border/70 dark:border-sidebar-border">
+                    <CardHeader>
+                        <CardTitle className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
                             <FileText className="size-4" />
                             Documentos
                         </CardTitle>
@@ -104,7 +152,7 @@ export default function VehiculoShow({ vehiculo }: { vehiculo: VehiculoDetalle }
 
                                     return (
                                         <div key={doc.key} className="space-y-2">
-                                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{doc.label}</p>
+                                            <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">{doc.label}</p>
                                             <div className="flex flex-wrap gap-x-3 gap-y-1">
                                                 {documentos.map((documento, index) => {
                                                     const url = resolverUrl(documento.path);
@@ -116,7 +164,7 @@ export default function VehiculoShow({ vehiculo }: { vehiculo: VehiculoDetalle }
                                                             key={`${doc.key}-${index}`}
                                                             type="button"
                                                             onClick={() => setPreview({ url, label: `${doc.label} — ${label}`, esPdf: pdf })}
-                                                            className="inline-flex items-center gap-1 text-sm text-primary underline underline-offset-4"
+                                                            className="text-primary inline-flex items-center gap-1 text-sm underline underline-offset-4"
                                                         >
                                                             <FileText className="size-3.5" />
                                                             {label}
@@ -129,7 +177,7 @@ export default function VehiculoShow({ vehiculo }: { vehiculo: VehiculoDetalle }
                                 })}
                             </div>
                         ) : (
-                            <p className="text-sm text-muted-foreground">No se han cargado documentos.</p>
+                            <p className="text-muted-foreground text-sm">No se han cargado documentos.</p>
                         )}
                     </CardContent>
                 </Card>
@@ -149,7 +197,7 @@ export default function VehiculoShow({ vehiculo }: { vehiculo: VehiculoDetalle }
                         )}
                     </DialogTitle>
                     {preview?.esPdf ? (
-                        <iframe src={preview.url} title={preview.label} className="h-[75vh] w-full rounded-md border border-border" />
+                        <iframe src={preview.url} title={preview.label} className="border-border h-[75vh] w-full rounded-md border" />
                     ) : (
                         preview && <img src={preview.url} alt={preview.label} className="max-h-[75vh] w-full rounded-md object-contain" />
                     )}
