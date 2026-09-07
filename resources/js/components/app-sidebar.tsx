@@ -5,32 +5,46 @@ import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, Sid
 import { colaboradoresReadOnlySubmodule, geovictoriaAsistenciaReadOnlySubmodule, modules, type ModuleDef, type SubModuleDef } from '@/data/modules';
 import { type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { BellRing, Calendar, DollarSign, GraduationCap, HeartPulse, LayoutGrid, Route, Star, Stethoscope, TestTube, Trophy, Truck, User, UserCog } from 'lucide-react';
+import {
+    BellRing,
+    Calendar,
+    DollarSign,
+    GraduationCap,
+    HeartPulse,
+    LayoutGrid,
+    ListChecks,
+    Route,
+    Star,
+    Stethoscope,
+    TestTube,
+    Trophy,
+    Truck,
+    User,
+    UserCog,
+} from 'lucide-react';
 import AppLogo from './app-logo';
 
-const footerNavItems: NavItem[] = [
-
-];
+const footerNavItems: NavItem[] = [];
 
 function buildSubNavItems(submodules: SubModuleDef[], moduleSlug: string, color: string, userRoles: string[]): NavItem[] {
     return submodules
         .filter((sub) => !sub.allowedRoles || sub.allowedRoles.some((r) => userRoles.includes(r)))
         .map((sub) =>
-        sub.submodules
-            ? {
-                  title: sub.title,
-                  url: '#',
-                  icon: sub.icon,
-                  color,
-                  items: buildSubNavItems(sub.submodules, moduleSlug, color, userRoles),
-              }
-            : {
-                  title: sub.title,
-                  url: sub.slug ? `/modules/${sub.moduleSlugOverride ?? moduleSlug}/${sub.slug}` : `/modules/${moduleSlug}`,
-                  icon: sub.icon,
-                  color,
-              },
-    );
+            sub.submodules
+                ? {
+                      title: sub.title,
+                      url: '#',
+                      icon: sub.icon,
+                      color,
+                      items: buildSubNavItems(sub.submodules, moduleSlug, color, userRoles),
+                  }
+                : {
+                      title: sub.title,
+                      url: sub.slug ? `/modules/${sub.moduleSlugOverride ?? moduleSlug}/${sub.slug}` : `/modules/${moduleSlug}`,
+                      icon: sub.icon,
+                      color,
+                  },
+        );
 }
 
 export function AppSidebar() {
@@ -79,6 +93,9 @@ export function AppSidebar() {
             color: mod.accent,
             items: buildSubNavItems(mod.submodules, mod.slug, mod.accent, auth.isAdmin ? ['Administrador'] : auth.roles),
         })),
+        ...(auth.roles.includes('Colaborador') || auth.roles.includes('Reparto') || auth.isAdmin
+            ? [{ title: '5 Por Qué', url: '/cinco-porques', icon: ListChecks, color: '#D4102A' }]
+            : []),
         ...(auth.isColaborador
             ? [
                   { title: 'Mi Perfil', url: '/portal/perfil', icon: User, color: '#3F7A22' },
