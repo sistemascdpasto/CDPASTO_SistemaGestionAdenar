@@ -58,6 +58,13 @@ export interface SubModuleDef {
      * como de costumbre.
      */
     moduleSlugOverride?: string;
+    /**
+     * Lista de roles que pueden ver este submódulo en el sidebar.
+     * Si se omite, el ítem es visible para todos los usuarios con acceso
+     * al módulo padre. 'Administrador' siempre tiene acceso independientemente
+     * de este campo (se controla en app-sidebar.tsx).
+     */
+    allowedRoles?: string[];
 }
 
 export interface ModuleDef {
@@ -153,7 +160,7 @@ export const modules: ModuleDef[] = [
             { title: 'Adherencia al Tiempo', slug: 'indicadores-tiempo', icon: Clock },
             { title: 'Entrega en Rango Ind.', slug: 'indicadores-entrega-rango', icon: Activity },
             { title: 'Resumen Ejecutivo', slug: 'indicadores-resumen', icon: BarChart3 },
-            { title: 'Compensación Variable', slug: 'compensacion-variable', icon: DollarSign },
+            { title: 'Compensación Variable', slug: 'compensacion-variable', icon: DollarSign, allowedRoles: ['Administrador', 'Colaborador'] },
             { title: 'Compensación Variable Diaria', slug: 'compensacion-variable-diaria', icon: CalendarDays },
         ],
     },

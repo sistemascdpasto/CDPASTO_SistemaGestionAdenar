@@ -24,14 +24,22 @@ class PlanPremiacionController extends Controller
         $search = $request->string('search')->trim()->toString();
         $filtroCargo = $request->string('cargo')->trim()->toString();
         $cargosSeleccionados = array_values(array_filter(array_map('trim', explode(',', $filtroCargo)), fn ($c) => $c !== '' && $c !== 'todos'));
-        $filtroEstado = $request->string('estado')->trim()->toString(); // 'todos', 'meta_alcanzada', 'en_progreso', 'sin_participacion'
+        $filtroEstado = $request->string('estado')->trim()->toString();
 
-        // Meses independientes para el checklist (vacío = todos los meses del año)
+        // Meses seleccionados en el dropdown multi-mes (vacío = mes actual)
         $mesesChecklistStr = $request->string('meses_checklist')->trim()->toString();
-        $mesesChecklist = array_values(array_filter(
+        $mesesSeleccionados = array_values(array_filter(
             array_map('intval', explode(',', $mesesChecklistStr)),
             fn ($m) => $m >= 1 && $m <= 12
         ));
+
+        // Si no hay meses seleccionados, usar el mes actual como defecto
+        if (empty($mesesSeleccionados)) {
+            $mesesSeleccionados = [$mes];
+        }
+
+        // Meses para el checklist (puede ser distinto — usa los mismos por defecto)
+        $mesesChecklist = $mesesSeleccionados;
 
         $cargosDisponibles = Colaborador::where('is_active', true)
             ->whereNotNull('cargo')
@@ -65,8 +73,8 @@ class PlanPremiacionController extends Controller
 
         $colaboradores = $queryColaboradores->get();
 
-        // 2. Conteo de ACI por colaborador en el mes y año seleccionados
-        $conteosPorColaborador = Aci::whereMonth('fecha_incidente', $mes)
+        // 2. Conteo de ACI por colaborador en los meses seleccionados
+        $conteosPorColaborador = Aci::whereIn(DB::raw('MONTH(fecha_incidente)'), $mesesSeleccionados)
             ->whereYear('fecha_incidente', $anio)
             ->whereNotNull('colaborador_id')
             ->select('colaborador_id', DB::raw('count(*) as total'))
@@ -74,11 +82,9 @@ class PlanPremiacionController extends Controller
             ->pluck('total', 'colaborador_id');
 
         // 3. Evaluaciones OWD - Preguntas con actividad exactamente "Ruta"
-        // El campo actividad se almacena como JSON string: ["Ruta"], "Ruta" o Ruta.
-        // Se tolera con o sin corchetes/comillas pero nunca "Pre Ruta" ni "Post Ruta".
         $preguntasRutaRaw = DB::table('evaluacion_owd_preguntas')
             ->join('evaluaciones_owd', 'evaluacion_owd_preguntas.evaluacion_owd_id', '=', 'evaluaciones_owd.id')
-            ->whereMonth('evaluaciones_owd.fecha_evaluacion', $mes)
+            ->whereIn(DB::raw('MONTH(evaluaciones_owd.fecha_evaluacion)'), $mesesSeleccionados)
             ->whereYear('evaluaciones_owd.fecha_evaluacion', $anio)
             ->where(function ($q) {
                 // Coincide con: Ruta / "Ruta" / ["Ruta"] — nunca Pre Ruta ni Post Ruta
@@ -135,9 +141,9 @@ class PlanPremiacionController extends Controller
             }
         }
 
-        // 6. Registros Ausentismo del mes y año seleccionados
+        // 6. Registros Ausentismo de los meses seleccionados
         $ausentismosRaw = DB::table('ausentismos')
-            ->whereMonth('fecha', $mes)
+            ->whereIn(DB::raw('MONTH(fecha)'), $mesesSeleccionados)
             ->whereYear('fecha', $anio)
             ->get();
 
@@ -209,7 +215,7 @@ class PlanPremiacionController extends Controller
 
         // 7. Registros Malas Marcaciones (Correcciones Marcaciones)
         $correccionesQuery = DB::table('correcciones_marcaciones')
-            ->whereMonth('fecha', $mes)
+            ->whereIn(DB::raw('MONTH(fecha)'), $mesesSeleccionados)
             ->whereYear('fecha', $anio)
             ->get(['identificacion', 'nombre_completo']);
 
@@ -308,7 +314,7 @@ class PlanPremiacionController extends Controller
 
         // 9. Registros SAC (Servicio al Cliente)
         $sacRaw = DB::table('sac')
-            ->whereMonth('fecha', $mes)
+            ->whereIn(DB::raw('MONTH(fecha)'), $mesesSeleccionados)
             ->whereYear('fecha', $anio)
             ->get(['colaborador_id', 'responsable', 'cumplimiento_cierre', 'aplica']);
 

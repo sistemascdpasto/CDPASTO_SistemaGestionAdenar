@@ -16,7 +16,7 @@ import { ImportarColaboradoresDialog } from '@/pages/gente/colaboradores/importa
 import { type WizardCatalogos } from '@/pages/gente/colaboradores/wizard/catalogos';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { ArrowRight, ClipboardCheck, Eye, Pencil, Plus, Search, Trash2, Upload } from 'lucide-react';
+import { ArrowRight, AlertTriangle, Briefcase, ClipboardCheck, Eye, FileWarning, Pencil, Plus, Search, Trash2, Upload, Users, UserCheck, UserX } from 'lucide-react';
 import { FormEventHandler, useEffect, useRef, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -66,6 +66,17 @@ interface ColaboradoresPaginator {
 
 type ViewMode = 'lista' | 'fotografias';
 
+interface Resumen {
+    total: number;
+    activos: number;
+    inactivos: number;
+    borradores: number;
+    area_operativa: number;
+    area_administrativa: number;
+    contratos_proximos: number;
+    contratos_vencidos: number;
+}
+
 type Filters = {
     search: string;
     registro: string;
@@ -90,11 +101,13 @@ function nombreArl(colaborador: ColaboradorRow): string {
 
 export default function ColaboradoresIndex({
     colaboradores,
+    resumen,
     filters,
     borradoresCount,
     catalogos,
 }: {
     colaboradores: ColaboradoresPaginator;
+    resumen: Resumen;
     filters: Filters;
     borradoresCount: number;
     catalogos: WizardCatalogos;
@@ -167,6 +180,161 @@ export default function ColaboradoresIndex({
                             </Button>
                         </div>
                     )}
+                </div>
+
+                {/* KPI Cards — estilo plan de premiación */}
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
+                    {/* Total */}
+                    <div className="col-span-2 sm:col-span-2 rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-4 shadow-sm dark:border-slate-800 dark:from-slate-900/60 dark:to-slate-900/30">
+                        <div className="flex items-center gap-2 mb-2">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800">
+                                <Users className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+                            </div>
+                            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Total colaboradores</span>
+                        </div>
+                        <p className="text-3xl font-black text-slate-900 dark:text-slate-100">{resumen.total}</p>
+                        <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">registros completos</p>
+                    </div>
+
+                    {/* Activos */}
+                    <div className="rounded-xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white p-4 shadow-sm dark:border-emerald-900/50 dark:from-emerald-950/20 dark:to-transparent">
+                        <div className="flex items-center gap-2 mb-2">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/40">
+                                <UserCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                            </div>
+                            <span className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">Activos</span>
+                        </div>
+                        <p className="text-3xl font-black text-emerald-700 dark:text-emerald-400">{resumen.activos}</p>
+                        <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-emerald-100 dark:bg-emerald-900/40">
+                            <div
+                                className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                                style={{ width: resumen.total > 0 ? `${(resumen.activos / resumen.total) * 100}%` : '0%' }}
+                            />
+                        </div>
+                        <p className="mt-1 text-[11px] text-emerald-600/70 dark:text-emerald-500">
+                            {resumen.total > 0 ? `${Math.round((resumen.activos / resumen.total) * 100)}%` : '—'} del total
+                        </p>
+                    </div>
+
+                    {/* Inactivos */}
+                    <div className="rounded-xl border border-rose-200 bg-gradient-to-br from-rose-50 to-white p-4 shadow-sm dark:border-rose-900/50 dark:from-rose-950/20 dark:to-transparent">
+                        <div className="flex items-center gap-2 mb-2">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-100 dark:bg-rose-900/40">
+                                <UserX className="h-4 w-4 text-rose-600 dark:text-rose-400" />
+                            </div>
+                            <span className="text-xs font-semibold uppercase tracking-wide text-rose-700 dark:text-rose-400">Inactivos</span>
+                        </div>
+                        <p className="text-3xl font-black text-rose-600 dark:text-rose-400">{resumen.inactivos}</p>
+                        <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-rose-100 dark:bg-rose-900/40">
+                            <div
+                                className="h-full rounded-full bg-rose-500 transition-all duration-500"
+                                style={{ width: resumen.total > 0 ? `${(resumen.inactivos / resumen.total) * 100}%` : '0%' }}
+                            />
+                        </div>
+                        <p className="mt-1 text-[11px] text-rose-600/70 dark:text-rose-500">
+                            {resumen.total > 0 ? `${Math.round((resumen.inactivos / resumen.total) * 100)}%` : '—'} del total
+                        </p>
+                    </div>
+
+                    {/* Área Operativa */}
+                    <div className="rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50 to-white p-4 shadow-sm dark:border-blue-900/50 dark:from-blue-950/20 dark:to-transparent">
+                        <div className="flex items-center gap-2 mb-2">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/40">
+                                <Briefcase className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                            </div>
+                            <span className="text-xs font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-400">Operativos</span>
+                        </div>
+                        <p className="text-3xl font-black text-blue-700 dark:text-blue-400">{resumen.area_operativa}</p>
+                        <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-blue-100 dark:bg-blue-900/40">
+                            <div
+                                className="h-full rounded-full bg-blue-500 transition-all duration-500"
+                                style={{ width: resumen.total > 0 ? `${(resumen.area_operativa / resumen.total) * 100}%` : '0%' }}
+                            />
+                        </div>
+                        <p className="mt-1 text-[11px] text-blue-600/70 dark:text-blue-500">área operativa</p>
+                    </div>
+
+                    {/* Área Administrativa */}
+                    <div className="rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-4 shadow-sm dark:border-amber-900/50 dark:from-amber-950/20 dark:to-transparent">
+                        <div className="flex items-center gap-2 mb-2">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/40">
+                                <Briefcase className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                            </div>
+                            <span className="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">Administrativos</span>
+                        </div>
+                        <p className="text-3xl font-black text-amber-700 dark:text-amber-400">{resumen.area_administrativa}</p>
+                        <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-amber-100 dark:bg-amber-900/40">
+                            <div
+                                className="h-full rounded-full bg-amber-500 transition-all duration-500"
+                                style={{ width: resumen.total > 0 ? `${(resumen.area_administrativa / resumen.total) * 100}%` : '0%' }}
+                            />
+                        </div>
+                        <p className="mt-1 text-[11px] text-amber-600/70 dark:text-amber-500">área administrativa</p>
+                    </div>
+
+                    {/* Contratos próximos a vencer */}
+                    <div className={`rounded-xl border p-4 shadow-sm bg-gradient-to-br to-white dark:to-transparent ${
+                        resumen.contratos_proximos > 0
+                            ? 'border-orange-200 from-orange-50 dark:border-orange-900/50 dark:from-orange-950/20'
+                            : 'border-slate-200 from-slate-50 dark:border-slate-800 dark:from-slate-900/30'
+                    }`}>
+                        <div className="flex items-center gap-2 mb-2">
+                            <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${
+                                resumen.contratos_proximos > 0
+                                    ? 'bg-orange-100 dark:bg-orange-900/40'
+                                    : 'bg-slate-100 dark:bg-slate-800'
+                            }`}>
+                                <AlertTriangle className={`h-4 w-4 ${
+                                    resumen.contratos_proximos > 0
+                                        ? 'text-orange-600 dark:text-orange-400'
+                                        : 'text-slate-400 dark:text-slate-500'
+                                }`} />
+                            </div>
+                            <span className={`text-xs font-semibold uppercase tracking-wide ${
+                                resumen.contratos_proximos > 0
+                                    ? 'text-orange-700 dark:text-orange-400'
+                                    : 'text-slate-500 dark:text-slate-400'
+                            }`}>Por vencer</span>
+                        </div>
+                        <p className={`text-3xl font-black ${
+                            resumen.contratos_proximos > 0
+                                ? 'text-orange-600 dark:text-orange-400'
+                                : 'text-slate-400 dark:text-slate-500'
+                        }`}>{resumen.contratos_proximos}</p>
+                        <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">contratos próximos</p>
+                    </div>
+
+                    {/* Contratos vencidos */}
+                    <div className={`rounded-xl border p-4 shadow-sm bg-gradient-to-br to-white dark:to-transparent ${
+                        resumen.contratos_vencidos > 0
+                            ? 'border-red-200 from-red-50 dark:border-red-900/50 dark:from-red-950/20'
+                            : 'border-slate-200 from-slate-50 dark:border-slate-800 dark:from-slate-900/30'
+                    }`}>
+                        <div className="flex items-center gap-2 mb-2">
+                            <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${
+                                resumen.contratos_vencidos > 0
+                                    ? 'bg-red-100 dark:bg-red-900/40'
+                                    : 'bg-slate-100 dark:bg-slate-800'
+                            }`}>
+                                <FileWarning className={`h-4 w-4 ${
+                                    resumen.contratos_vencidos > 0
+                                        ? 'text-red-600 dark:text-red-400'
+                                        : 'text-slate-400 dark:text-slate-500'
+                                }`} />
+                            </div>
+                            <span className={`text-xs font-semibold uppercase tracking-wide ${
+                                resumen.contratos_vencidos > 0
+                                    ? 'text-red-700 dark:text-red-400'
+                                    : 'text-slate-500 dark:text-slate-400'
+                            }`}>Vencidos</span>
+                        </div>
+                        <p className={`text-3xl font-black ${
+                            resumen.contratos_vencidos > 0
+                                ? 'text-red-600 dark:text-red-400'
+                                : 'text-slate-400 dark:text-slate-500'
+                        }`}>{resumen.contratos_vencidos}</p>
+                        <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">contratos vencidos</p>
+                    </div>
                 </div>
 
                 <div className="flex flex-wrap items-end gap-2">

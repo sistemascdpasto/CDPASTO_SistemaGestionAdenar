@@ -5,22 +5,24 @@ import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, Sid
 import { colaboradoresReadOnlySubmodule, geovictoriaAsistenciaReadOnlySubmodule, modules, type ModuleDef, type SubModuleDef } from '@/data/modules';
 import { type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { BellRing, Calendar, GraduationCap, HeartPulse, LayoutGrid, Route, Star, Stethoscope, TestTube, Trophy, Truck, User, UserCog } from 'lucide-react';
+import { BellRing, Calendar, DollarSign, GraduationCap, HeartPulse, LayoutGrid, Route, Star, Stethoscope, TestTube, Trophy, Truck, User, UserCog } from 'lucide-react';
 import AppLogo from './app-logo';
 
 const footerNavItems: NavItem[] = [
 
 ];
 
-function buildSubNavItems(submodules: SubModuleDef[], moduleSlug: string, color: string): NavItem[] {
-    return submodules.map((sub) =>
+function buildSubNavItems(submodules: SubModuleDef[], moduleSlug: string, color: string, userRoles: string[]): NavItem[] {
+    return submodules
+        .filter((sub) => !sub.allowedRoles || sub.allowedRoles.some((r) => userRoles.includes(r)))
+        .map((sub) =>
         sub.submodules
             ? {
                   title: sub.title,
                   url: '#',
                   icon: sub.icon,
                   color,
-                  items: buildSubNavItems(sub.submodules, moduleSlug, color),
+                  items: buildSubNavItems(sub.submodules, moduleSlug, color, userRoles),
               }
             : {
                   title: sub.title,
@@ -75,7 +77,7 @@ export function AppSidebar() {
             url: `/modules/${mod.slug}`,
             icon: mod.icon,
             color: mod.accent,
-            items: buildSubNavItems(mod.submodules, mod.slug, mod.accent),
+            items: buildSubNavItems(mod.submodules, mod.slug, mod.accent, auth.isAdmin ? ['Administrador'] : auth.roles),
         })),
         ...(auth.isColaborador
             ? [
@@ -86,6 +88,7 @@ export function AppSidebar() {
                   { title: 'Mis Estrellas del Camión', url: '/portal/mis-indicadores-reparto', icon: Star, color: '#D4102A' },
                   { title: 'Mi Plan Premiación', url: '/portal/mi-plan-premiacion', icon: Trophy, color: '#D97706' },
                   { title: 'Mi Compensación Diaria', url: '/portal/mi-compensacion', icon: Calendar, color: '#0891B2' },
+                  { title: 'Mi Compensación Variable', url: '/portal/mi-compensacion-variable', icon: DollarSign, color: '#15803d' },
                   { title: 'Condición de Salud', url: '/portal/condicion-salud', icon: HeartPulse, color: '#3F7A22' },
                   { title: 'Encuesta de Morbilidad', url: '/portal/encuesta-morbilidad', icon: Stethoscope, color: '#3F7A22' },
                   { title: 'Mis Capacitaciones', url: '/portal/capacitaciones', icon: GraduationCap, color: '#0D9488' },

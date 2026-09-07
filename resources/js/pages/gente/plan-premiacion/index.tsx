@@ -132,13 +132,17 @@ const parseMesesChecklistFilter = (filterStr?: string): number[] => {
 };
 
 export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peores2 = [], cargos = [], filters, puede_editar = false }: Props) {
-    const [mes, setMes] = useState<number>(filters.mes);
-    const [anio, setAnio] = useState<number>(filters.anio);
+    const [mes, setMes] = useState<number>(filters.mes || new Date().getMonth() + 1);
+    const [anio, setAnio] = useState<number>(filters.anio || new Date().getFullYear());
     const [search, setSearch] = useState<string>(filters.search || '');
     const [formulasAbiertas, setFormulasAbiertas] = useState<boolean>(false);
     const [estado, setEstado] = useState<string>(filters.estado || 'todos');
     const [selectedCargos, setSelectedCargos] = useState<string[]>(parseCargosFilter(filters.cargo));
-    const [selectedMesesChecklist, setSelectedMesesChecklist] = useState<number[]>(parseMesesChecklistFilter(filters.meses_checklist));
+    const [selectedMesesChecklist, setSelectedMesesChecklist] = useState<number[]>(
+        parseMesesChecklistFilter(filters.meses_checklist).length > 0
+            ? parseMesesChecklistFilter(filters.meses_checklist)
+            : [new Date().getMonth() + 1]
+    );
 
     // Paginación
     const [currentPage, setCurrentPage] = useState<number>(1);
@@ -392,23 +396,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                         <CardTitle className="text-base font-semibold">Filtros y Búsqueda</CardTitle>
                     </CardHeader>
                     <CardContent>
-                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6 w-full">
-                                <div>
-                                    <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Mes</label>
-                                    <Select value={String(mes)} onValueChange={handleMesChange}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Seleccionar Mes" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {MESES.map((m) => (
-                                                <SelectItem key={m.value} value={String(m.value)}>
-                                                    {m.label}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5 w-full">
                                 <div>
                                     <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Año</label>
                                     <Select value={String(anio)} onValueChange={handleAnioChange}>
@@ -464,9 +452,9 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
 
                                 <div>
                                     <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                                        Checklist
+                                        Mes
                                         {selectedMesesChecklist.length > 0 && (
-                                            <span className="rounded bg-blue-100 px-1 py-0.5 text-[9px] font-bold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                                            <span className="rounded bg-amber-100 px-1 py-0.5 text-[9px] font-bold text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
                                                 {selectedMesesChecklist.length} mes{selectedMesesChecklist.length !== 1 ? 'es' : ''}
                                             </span>
                                         )}
@@ -479,7 +467,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="start" className="w-48 max-h-64 overflow-y-auto">
-                                            <DropdownMenuLabel className="text-xs">Meses del Checklist</DropdownMenuLabel>
+                                            <DropdownMenuLabel className="text-xs">Filtrar por Mes</DropdownMenuLabel>
                                             <DropdownMenuSeparator />
                                             <DropdownMenuCheckboxItem
                                                 checked={selectedMesesChecklist.length === 0}

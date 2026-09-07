@@ -88,8 +88,29 @@ class ColaboradorController extends Controller
             ->paginate(15)
             ->withQueryString();
 
+        // Resumen global (siempre sobre todos los registros, sin filtros activos)
+        $limiteProximoVencerResumen = now()->addDays((int) config('seguridad.dias_alerta_vencimiento_contrato'));
+        $totalCompletos  = Colaborador::completos()->count();
+        $resumen = [
+            'total'              => $totalCompletos,
+            'activos'            => Colaborador::completos()->where('is_active', true)->count(),
+            'inactivos'          => Colaborador::completos()->where('is_active', false)->count(),
+            'borradores'         => Colaborador::where('estado_registro', 'borrador')->count(),
+            'area_operativa'     => Colaborador::completos()->where('area', 'Operativa')->count(),
+            'area_administrativa'=> Colaborador::completos()->where('area', 'Administrativa')->count(),
+            'contratos_proximos' => Colaborador::completos()
+                ->whereNotNull('contrato_fecha_hasta')
+                ->whereBetween('contrato_fecha_hasta', [now(), $limiteProximoVencerResumen])
+                ->count(),
+            'contratos_vencidos' => Colaborador::completos()
+                ->whereNotNull('contrato_fecha_hasta')
+                ->where('contrato_fecha_hasta', '<', now())
+                ->count(),
+        ];
+
         return Inertia::render('gente/colaboradores/index', [
             'colaboradores' => $colaboradores,
+            'resumen'        => $resumen,
             'filters' => [
                 'search' => $search,
                 'registro' => $registro,
@@ -104,7 +125,7 @@ class ColaboradorController extends Controller
                 'fecha_ingreso_hasta' => $fechaIngresoHasta,
                 'vencimiento_contrato' => $vencimientoContrato,
             ],
-            'borradoresCount' => Colaborador::where('estado_registro', 'borrador')->count(),
+            'borradoresCount' => $resumen['borradores'],
             'catalogos' => $this->catalogos(),
         ]);
     }

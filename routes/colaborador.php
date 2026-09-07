@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Colaborador\CompensacionColaboradorController;
+use App\Http\Controllers\Colaborador\CompensacionVariableColaboradorController;
 use App\Http\Controllers\Colaborador\CondicionSaludController;
 use App\Http\Controllers\Colaborador\EncuestaMorbilidadController;
 use App\Http\Controllers\Colaborador\PortalController;
@@ -41,4 +42,7 @@ Route::middleware(['auth', 'active', 'role:Colaborador|Administrador|Seguridad']
         
         Route::get('mi-compensacion', [CompensacionColaboradorController::class, 'index'])
             ->name('mi-compensacion.index');
+
+        Route::get('mi-compensacion-variable', [CompensacionVariableColaboradorController::class, 'index'])
+            ->name('mi-compensacion-variable.index');
     });
