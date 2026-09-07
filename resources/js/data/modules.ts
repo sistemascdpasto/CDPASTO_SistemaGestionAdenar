@@ -14,9 +14,6 @@ import {
     DollarSign,
     FileSpreadsheet,
     FileStack,
-    Folder,
-    Fuel,
-    Gauge,
     Gavel,
     GraduationCap,
     Grid3x3,
@@ -183,20 +180,10 @@ export const modules: ModuleDef[] = [
         accent: '#2B6CB0',
         submodules: [
             { title: 'Documentación', slug: 'vehiculos', icon: Truck },
-            { title: 'Checklist', slug: 'checklist', icon: ClipboardCheck },
-            { title: 'Combustible', slug: 'combustible', icon: Fuel },
-            { title: 'Calibración de Llantas', slug: 'calibracion-llantas', icon: Gauge },
             { title: 'Consultas SIMIT', slug: 'simit-consultas', icon: Gavel },
             { title: 'Control de Varadas', slug: 'varadas', icon: Wrench },
             { title: 'Actas de Taller', slug: 'actas-taller', icon: ClipboardList },
         ],
-    },
-    {
-        title: 'Capacitaciones',
-        slug: 'capacitaciones',
-        icon: GraduationCap,
-        accent: '#0D9488',
-        submodules: [{ title: 'Materiales y Carpetas', slug: '', icon: Folder }],
     },
 ];
 
@@ -212,6 +199,19 @@ export const colaboradoresReadOnlySubmodule: SubModuleDef = {
     slug: 'colaboradores',
     icon: UserCheck,
     moduleSlugOverride: 'gente',
+};
+
+/**
+ * Capacitaciones es un recurso transversal (mismos materiales para todos los
+ * pilares), así que en vez de ser un módulo suelto en el sidebar se inyecta
+ * como submódulo dentro de la sección de cada pilar al que el usuario tiene
+ * acceso (ver app-sidebar.tsx). Su ruta real vive en routes/capacitaciones.php.
+ */
+export const capacitacionesSubmodule: SubModuleDef = {
+    title: 'Capacitaciones',
+    slug: 'capacitaciones',
+    href: '/modules/capacitaciones',
+    icon: GraduationCap,
 };
 
 /**
