@@ -580,6 +580,8 @@ class EventosTripulacionController
             $cedulasNoEncontradasSet    = [];   // para evitar duplicados en la lista
             $batch                      = [];
             $now                        = now()->toDateTimeString();
+            $insertadosPorCedula        = [];   // cedula → count de nuevos
+            $actualizadosPorCedula      = [];   // cedula → count de actualizados
 
             for ($rowNum = 2; $rowNum <= $highestRow; $rowNum++) {
                 $rowValues = [];
@@ -670,6 +672,7 @@ class EventosTripulacionController
                 if (isset($existentes[$key])) {
                     // Actualizar registro existente en vez de duplicar
                     $actualizados++;
+                    $actualizadosPorCedula[$docLimpio] = ($actualizadosPorCedula[$docLimpio] ?? 0) + 1;
                     EventosTripulacion::where('fecha', $diaKey)
                         ->where('placa', $placaKey)
                         ->where(function ($q) use ($data) {
@@ -692,6 +695,7 @@ class EventosTripulacionController
                 }
                 $batch[]            = $data;
                 $insertados++;
+                $insertadosPorCedula[$docLimpio] = ($insertadosPorCedula[$docLimpio] ?? 0) + 1;
 
                 if (count($batch) >= 200) {
                     EventosTripulacion::insert($batch);
@@ -720,10 +724,28 @@ class EventosTripulacionController
             $msg .= "• Nuevos registros: {$insertados}\n";
             if ($actualizados > 0) $msg .= "• Actualizados: {$actualizados}\n";
             if ($omitidos > 0)     $msg .= "• Filas sin fecha: {$omitidos}\n";
+
+            // Detalle por cédula — guardados
+            $todosGuardados = [];
+            foreach ($insertadosPorCedula as $ced => $cnt) {
+                $todosGuardados[$ced] = ($todosGuardados[$ced] ?? 0) + $cnt;
+            }
+            foreach ($actualizadosPorCedula as $ced => $cnt) {
+                $todosGuardados[$ced] = ($todosGuardados[$ced] ?? 0) + $cnt;
+            }
+            if (!empty($todosGuardados)) {
+                $msg .= "\n📋 Registros guardados por cédula:\n";
+                foreach ($todosGuardados as $ced => $cnt) {
+                    $msg .= "  • {$ced}: {$cnt} registro" . ($cnt > 1 ? 's' : '') . "\n";
+                }
+            }
+
             if ($omitidosSinColaborador > 0) {
-                $msg .= "• ⚠ Filas omitidas (cédula NO está en tabla colaboradores): {$omitidosSinColaborador}\n";
+                $msg .= "\n⚠ Cédulas NO guardadas ({$omitidosSinColaborador} filas omitidas — no están en tabla colaboradores):\n";
                 if (!empty($cedulasNoEncontradas)) {
-                    $msg .= "  Cédulas no encontradas: " . implode(', ', $cedulasNoEncontradas) . "\n";
+                    foreach ($cedulasNoEncontradas as $ced) {
+                        $msg .= "  • {$ced}\n";
+                    }
                 }
                 $msg .= "  Primero debes cargar el colaborador en el módulo de Gente/Colaboradores.";
             }
