@@ -4,6 +4,7 @@ namespace Tests\Feature\Dashboard;
 
 use App\Models\Flota\Varada;
 use App\Models\Flota\Vehiculo;
+use App\Models\Reparto\EventosTripulacion;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
@@ -65,6 +66,28 @@ class DashboardResumenTest extends TestCase
                 ->has('resumen.pilares.gente')
                 ->has('resumen.pilares.flota')
             );
+    }
+
+    public function test_el_resumen_de_reparto_no_falla_con_excesos_tiempo_ruta_como_texto(): void
+    {
+        // La columna excesos_tiempo_ruta pasó a guardar la hora del día como
+        // texto (ej. "07:47:00 a. m."); no se puede sumar como número.
+        EventosTripulacion::create([
+            'fecha' => now()->toDateString(),
+            'documento' => '900900900',
+            'total_eventos' => 3,
+            'excesos_tiempo_ruta' => '07:47:00 a. m.',
+            'alertas_velocidad_curvas' => 2,
+            'adherencia_tiempo' => 91.5,
+        ]);
+
+        $this->actingAs($this->usuario('Reparto'))
+            ->get('/dashboard')
+            ->assertOk()
+            ->assertInertia(function ($page) {
+                $kpis = collect($page->toArray()['props']['resumen']['pilares']['reparto']['kpis']);
+                $this->assertSame(1, $kpis->firstWhere('label', 'Registros con exceso de tiempo')['value']);
+            });
     }
 
     public function test_los_kpis_de_flota_reflejan_vehiculos_y_varadas(): void

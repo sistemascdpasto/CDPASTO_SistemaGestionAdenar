@@ -118,12 +118,20 @@ class DashboardResumenService
             ->where(fn ($q) => $q->whereNull('plan_accion')->orWhere('plan_accion', ''))
             ->count();
 
+        // excesos_tiempo_ruta dejó de ser un conteo: ahora guarda la hora del
+        // día tal cual viene del Excel (ej. "07:47:00 a. m."). Un registro
+        // "tiene exceso" si el campo trae algo distinto de vacío/cero.
+        $tieneExceso = static fn ($valor): bool => filled($valor)
+            && ! in_array(trim((string) $valor), ['0', '00:00', '0:00', '00:00:00', '0:00:00'], true);
+
         $eventosConExceso = EventosTripulacion::query()
             ->whereNotNull('fecha')
             ->whereBetween('fecha', [$desde->toDateString(), $hasta->toDateString()])
-            ->where('excesos_tiempo_ruta', '>', 0)
+            ->whereNotNull('excesos_tiempo_ruta')
+            ->whereNotIn('excesos_tiempo_ruta', ['', '0', '00:00', '00:00:00', '0:00:00'])
             ->count();
 
+        $excesosRuta = $eventos->filter(fn ($e) => $tieneExceso($e->excesos_tiempo_ruta))->count();
         $adherenciaProm = $eventos->whereNotNull('adherencia_tiempo')->avg('adherencia_tiempo');
 
         return [
@@ -133,7 +141,7 @@ class DashboardResumenService
                 ['label' => 'Planeaciones de ruta', 'value' => $modulaciones->count(), 'hint' => 'en el rango'],
                 ['label' => '5 Por Qué registrados', 'value' => $porques->count(), 'hint' => 'en el rango'],
                 ['label' => 'Eventos de tripulación', 'value' => (int) $eventos->sum('total_eventos'), 'hint' => 'total acumulado'],
-                ['label' => 'Excesos de tiempo en ruta', 'value' => (int) $eventos->sum('excesos_tiempo_ruta'), 'tone' => $eventos->sum('excesos_tiempo_ruta') > 0 ? 'warn' : 'good'],
+                ['label' => 'Registros con exceso de tiempo', 'value' => $excesosRuta, 'tone' => $excesosRuta > 0 ? 'warn' : 'good'],
                 ['label' => 'Alertas de velocidad en curva', 'value' => (int) $eventos->sum('alertas_velocidad_curvas'), 'tone' => $eventos->sum('alertas_velocidad_curvas') > 0 ? 'warn' : 'good'],
                 ['label' => 'Adherencia al tiempo prom.', 'value' => $adherenciaProm !== null ? round((float) $adherenciaProm, 1) : 0, 'suffix' => '%', 'decimals' => 1],
             ],
