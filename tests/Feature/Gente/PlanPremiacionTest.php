@@ -34,7 +34,7 @@ class PlanPremiacionTest extends TestCase
             'nombres' => 'Juan',
             'apellidos' => 'Perez',
             'cargo' => 'Conductor',
-            'area' => 'Operaciones',
+            'area' => 'Operativa',
             'is_active' => true,
         ]);
 
@@ -43,7 +43,7 @@ class PlanPremiacionTest extends TestCase
             'nombres' => 'Maria',
             'apellidos' => 'Gomez',
             'cargo' => 'Auxiliar',
-            'area' => 'Logistica',
+            'area' => 'Operativa',
             'is_active' => true,
         ]);
 
@@ -52,7 +52,7 @@ class PlanPremiacionTest extends TestCase
             'nombres' => 'Carlos',
             'apellidos' => 'Lopez',
             'cargo' => 'Mecanico',
-            'area' => 'Mantenimiento',
+            'area' => 'Operativa',
             'is_active' => true,
         ]);
 
@@ -116,6 +116,7 @@ class PlanPremiacionTest extends TestCase
             'nombres' => 'Pedro',
             'apellidos' => 'Ramirez',
             'cargo' => 'Conductor',
+            'area' => 'Operativa',
             'is_active' => true,
         ]);
 
@@ -170,6 +171,7 @@ class PlanPremiacionTest extends TestCase
             'nombres' => 'Juan',
             'apellidos' => 'Perez',
             'cargo' => 'Conductor',
+            'area' => 'Operativa',
             'is_active' => true,
         ]);
 
@@ -208,6 +210,7 @@ class PlanPremiacionTest extends TestCase
             'nombres' => 'Sponge',
             'apellidos' => 'Bob',
             'cargo' => 'Cocinero',
+            'area' => 'Operativa',
             'codigo_qr_skap' => 'S0KGTNLE',
             'is_active' => true,
         ]);
@@ -217,6 +220,7 @@ class PlanPremiacionTest extends TestCase
             'nombres' => 'Patrick',
             'apellidos' => 'Star',
             'cargo' => 'Auxiliar',
+            'area' => 'Operativa',
             'codigo_qr_skap' => 'PATRICK123',
             'is_active' => true,
         ]);
@@ -255,6 +259,7 @@ class PlanPremiacionTest extends TestCase
             'nombres' => 'Sandy',
             'apellidos' => 'Cheeks',
             'cargo' => 'Ingeniera',
+            'area' => 'Operativa',
             'is_active' => true,
         ]);
 
@@ -329,6 +334,7 @@ class PlanPremiacionTest extends TestCase
             'cedula' => '99887766',
             'nombres' => 'Juan',
             'apellidos' => 'Valdez',
+            'area' => 'Operativa',
             'is_active' => true,
         ]);
 
@@ -336,6 +342,7 @@ class PlanPremiacionTest extends TestCase
             'cedula' => '11223344',
             'nombres' => 'Luisa',
             'apellidos' => 'Lane',
+            'area' => 'Operativa',
             'is_active' => true,
         ]);
 
@@ -372,6 +379,7 @@ class PlanPremiacionTest extends TestCase
             'cedula' => '55443322',
             'nombres' => 'Mario',
             'apellidos' => 'Bros',
+            'area' => 'Operativa',
             'is_active' => true,
         ]);
 
@@ -379,6 +387,7 @@ class PlanPremiacionTest extends TestCase
             'cedula' => '99001122',
             'nombres' => 'Luigi',
             'apellidos' => 'Bros',
+            'area' => 'Operativa',
             'is_active' => true,
         ]);
 
@@ -425,6 +434,7 @@ class PlanPremiacionTest extends TestCase
             'cedula' => '66778899',
             'nombres' => 'Yoshi',
             'apellidos' => 'Dino',
+            'area' => 'Operativa',
             'is_active' => true,
         ]);
 
@@ -469,6 +479,7 @@ class PlanPremiacionTest extends TestCase
             'cedula' => '99887766',
             'nombres' => 'Mario',
             'apellidos' => 'Bros',
+            'area' => 'Operativa',
             'is_active' => true,
         ]);
 
@@ -545,6 +556,7 @@ class PlanPremiacionTest extends TestCase
             'cedula' => '11111111',
             'nombres' => 'Juan',
             'apellidos' => 'Perez',
+            'area' => 'Operativa',
             'is_active' => true,
         ]);
 
@@ -567,6 +579,7 @@ class PlanPremiacionTest extends TestCase
             'nombres' => 'Carlos',
             'apellidos' => 'Chofer',
             'cargo' => 'Conductor',
+            'area' => 'Operativa',
             'is_active' => true,
         ]);
 

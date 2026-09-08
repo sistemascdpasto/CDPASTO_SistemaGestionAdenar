@@ -44,19 +44,22 @@ class PlanPremiacionController extends Controller
         // Meses para el checklist (puede ser distinto — usa los mismos por defecto)
         $mesesChecklist = $mesesSeleccionados;
 
-        $cargosDisponibles = [
-            'Auxiliar de Reparto',
-            'Conductor de Reparto',
-            'Responsable de Reparto',
-        ];
+        $cargosDisponibles = Colaborador::query()
+            ->where('is_active', true)
+            ->whereRaw("LOWER(TRIM(area)) = 'operativa'")
+            ->whereNotNull('cargo')
+            ->where('cargo', '!=', '')
+            ->distinct()
+            ->pluck('cargo')
+            ->sort()
+            ->values()
+            ->toArray();
 
-        // 1. Obtener colaboradores activos
+        // 1. Obtener colaboradores activos del área Operativa
         $queryColaboradores = Colaborador::query()
             ->where('is_active', true)
+            ->whereRaw("LOWER(TRIM(area)) = 'operativa'")
             ->select(['id', 'cedula', 'nombres', 'apellidos', 'cargo', 'area', 'codigo_qr_skap']);
-
-        // Siempre filtrar solo por los tres cargos de reparto
-        $queryColaboradores->whereIn('cargo', $cargosDisponibles);
 
         // Filtro adicional por cargo seleccionado
         if (!empty($cargosSeleccionados)) {
@@ -720,10 +723,12 @@ class PlanPremiacionController extends Controller
         // ── Colaboradores ────────────────────────────────────────────────────
         $queryCol = Colaborador::query()
             ->where('is_active', true)
+            ->whereRaw("LOWER(TRIM(area)) = 'operativa'")
             ->select(['id', 'cedula', 'nombres', 'apellidos', 'cargo', 'area', 'codigo_qr_skap']);
 
-        // Siempre filtrar solo por los tres cargos de reparto
-        $queryCol->whereIn('cargo', ['Auxiliar de Reparto', 'Conductor de Reparto', 'Responsable de Reparto']);
+        if (!empty($cargosSeleccionados)) {
+            $queryCol->whereIn('cargo', $cargosSeleccionados);
+        }
 
         $colaboradores = $queryCol->get();
 

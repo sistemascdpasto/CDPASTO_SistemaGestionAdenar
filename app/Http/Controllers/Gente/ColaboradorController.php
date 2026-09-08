@@ -90,14 +90,14 @@ class ColaboradorController extends Controller
 
         // Resumen global (siempre sobre todos los registros, sin filtros activos)
         $limiteProximoVencerResumen = now()->addDays((int) config('seguridad.dias_alerta_vencimiento_contrato'));
-        $totalCompletos = Colaborador::completos()->count();
+        $totalCompletos  = Colaborador::completos()->count();
         $resumen = [
-            'total' => $totalCompletos,
-            'activos' => Colaborador::completos()->where('is_active', true)->count(),
-            'inactivos' => Colaborador::completos()->where('is_active', false)->count(),
-            'borradores' => Colaborador::where('estado_registro', 'borrador')->count(),
-            'area_operativa' => Colaborador::completos()->where('area', 'Operativa')->count(),
-            'area_administrativa' => Colaborador::completos()->where('area', 'Administrativa')->count(),
+            'total'              => $totalCompletos,
+            'activos'            => Colaborador::completos()->where('is_active', true)->count(),
+            'inactivos'          => Colaborador::completos()->where('is_active', false)->count(),
+            'borradores'         => Colaborador::where('estado_registro', 'borrador')->count(),
+            'area_operativa'     => Colaborador::completos()->where('area', 'Operativa')->count(),
+            'area_administrativa'=> Colaborador::completos()->where('area', 'Administrativa')->count(),
             'contratos_proximos' => Colaborador::completos()
                 ->whereNotNull('contrato_fecha_hasta')
                 ->whereBetween('contrato_fecha_hasta', [now(), $limiteProximoVencerResumen])
@@ -110,7 +110,7 @@ class ColaboradorController extends Controller
 
         return Inertia::render('gente/colaboradores/index', [
             'colaboradores' => $colaboradores,
-            'resumen' => $resumen,
+            'resumen'        => $resumen,
             'filters' => [
                 'search' => $search,
                 'registro' => $registro,
@@ -414,6 +414,19 @@ class ColaboradorController extends Controller
         $this->storeDocuments($request, $colaborador, ColaboradorDocumentoCampos::todas());
 
         return to_route('gente.colaboradores.index')->with('status', 'Colaborador actualizado correctamente.');
+    }
+
+    public function destroy(Colaborador $colaborador): RedirectResponse
+    {
+        foreach ($this->documentPaths($colaborador) as $paths) {
+            foreach ($paths as $path) {
+                Storage::disk('public')->delete($path['path']);
+            }
+        }
+
+        $colaborador->delete();
+
+        return to_route('gente.colaboradores.index')->with('status', 'Colaborador eliminado correctamente.');
     }
 
     /**

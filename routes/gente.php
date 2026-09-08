@@ -42,11 +42,9 @@ Route::middleware(['auth', 'active', 'role:Administrador|Gente'])
 
         // El pluralizador en inglés de Laravel no singulariza bien "colaboradores"
         // (produce "colaboradore"), así que se fuerza el nombre del parámetro.
-        // Sin 'destroy': los colaboradores no se eliminan (se conserva el
-        // historial); solo se crean/editan.
         Route::resource('colaboradores', ColaboradorController::class)
             ->parameters(['colaboradores' => 'colaborador'])
-            ->only(['create', 'store', 'edit', 'update']);
+            ->only(['create', 'store', 'edit', 'update', 'destroy']);
 
         // Wizard multipaso de colaboradores (HU01/HU02): cada paso persiste su
         // porción de datos por separado; el paso 4 marca el registro completo.
@@ -180,10 +178,10 @@ Route::middleware(['auth', 'active', 'role:Administrador|Gente|Seguridad'])
     ->prefix('modules/gente')
     ->name('gente.')
     ->group(function () {
-        Route::post('correccion-marcaciones/preview', [CorreccionMarcacionController::class, 'preview'])->name('correccion-marcaciones.preview');
-        Route::post('correccion-marcaciones/importar', [CorreccionMarcacionController::class, 'importar'])->name('correccion-marcaciones.importar');
-        Route::post('correccion-marcaciones/limpiar', [CorreccionMarcacionController::class, 'limpiar'])->name('correccion-marcaciones.limpiar');
-        Route::delete('correccion-marcaciones/{id}', [CorreccionMarcacionController::class, 'destroy'])->name('correccion-marcaciones.destroy');
+        Route::post('correccion-marcaciones/preview',   [CorreccionMarcacionController::class, 'preview'])   ->name('correccion-marcaciones.preview');
+        Route::post('correccion-marcaciones/importar',  [CorreccionMarcacionController::class, 'importar'])  ->name('correccion-marcaciones.importar');
+        Route::post('correccion-marcaciones/limpiar',   [CorreccionMarcacionController::class, 'limpiar'])   ->name('correccion-marcaciones.limpiar');
+        Route::delete('correccion-marcaciones/{id}',    [CorreccionMarcacionController::class, 'destroy'])   ->name('correccion-marcaciones.destroy');
     });
 
 // Lectura + plantilla + exportación: visible para Gente, Reparto (ya que
@@ -192,7 +190,7 @@ Route::middleware(['auth', 'active', 'role:Administrador|Seguridad|Reparto|Gente
     ->prefix('modules/gente')
     ->name('gente.')
     ->group(function () {
-        Route::get('correccion-marcaciones', [CorreccionMarcacionController::class, 'index'])->name('correccion-marcaciones.index');
-        Route::get('correccion-marcaciones/exportar.csv', [CorreccionMarcacionController::class, 'exportar'])->name('correccion-marcaciones.exportar');
-        Route::get('correccion-marcaciones/plantilla.csv', [CorreccionMarcacionController::class, 'plantilla'])->name('correccion-marcaciones.plantilla');
+        Route::get('correccion-marcaciones',                    [CorreccionMarcacionController::class, 'index'])      ->name('correccion-marcaciones.index');
+        Route::get('correccion-marcaciones/exportar.csv',       [CorreccionMarcacionController::class, 'exportar'])   ->name('correccion-marcaciones.exportar');
+        Route::get('correccion-marcaciones/plantilla.csv',      [CorreccionMarcacionController::class, 'plantilla'])  ->name('correccion-marcaciones.plantilla');
     });
