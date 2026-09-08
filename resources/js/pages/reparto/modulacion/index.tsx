@@ -12,6 +12,7 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
 import {
+    ArrowLeft,
     Calendar,
     CheckSquare,
     Eye,
@@ -194,9 +195,8 @@ const NARINO_MUNICIPIOS_FALLBACK = [
     'Yacuanquer',
 ];
 
-// Paleta de acento del módulo Reparto
+// Acento del módulo Reparto (usado con moderación, igual que en Seguridad)
 const ACCENT = '#D4102A';
-const SUCCESS = '#0ca30c';
 const CLIENTE_CLEAR = '__clear__';
 
 // Generador de IDs con respaldo
@@ -271,7 +271,7 @@ function NarinoMunicipioInput({
     return (
         <div className="grid grid-cols-2 gap-2">
             <div>
-                <Label className="text-[10px] text-muted-foreground uppercase font-semibold">Departamento</Label>
+                <Label className="text-xs text-muted-foreground">Departamento</Label>
                 <Input
                     type="text"
                     value="Nariño"
@@ -280,7 +280,7 @@ function NarinoMunicipioInput({
                 />
             </div>
             <div>
-                <Label className="text-[10px] text-muted-foreground uppercase font-semibold">Municipio / Destino</Label>
+                <Label className="text-xs text-muted-foreground">Municipio / Destino</Label>
                 <Input
                     id={`${baseId}-municipio`}
                     list={`${baseId}-municipios-list`}
@@ -359,7 +359,7 @@ export default function ModulacionIndex({
             // Notificar ALERTA SOLO cuando el usuario estaba creando o cambiando de fecha explícitamente
             if (modulacion.fecha && userInitiatedDateChange.current) {
                 userInitiatedDateChange.current = false;
-                alert(`ℹ️ La fecha ${modulacion.fecha} ya tiene una planeación registrada. Se han precargado los datos.`);
+                alert(`La fecha ${modulacion.fecha} ya tiene una planeación registrada. Se han precargado los datos.`);
             }
         }
     }, [modulacion]);
@@ -407,7 +407,7 @@ export default function ModulacionIndex({
 
                 if (!readOnly) setIsEditing(true);
 
-                alert(`ℹ️ La fecha ${newFecha} ya tiene una planeación registrada. Se han precargado los datos.`);
+                alert(`La fecha ${newFecha} ya tiene una planeación registrada. Se han precargado los datos.`);
             } else {
                 setRutas([]);
                 if (Array.isArray(data.fijosIniciales) && data.fijosIniciales.length > 0) {
@@ -670,7 +670,7 @@ export default function ModulacionIndex({
         if (field === 'peso' && value !== '') {
             const parsed = parseFloat(value);
             if (!isNaN(parsed) && parsed > 10) {
-                alert('⚠️ El peso máximo permitido por viaje es de 10 toneladas.');
+                alert('El peso máximo permitido por viaje es de 10 toneladas.');
                 finalVal = '10';
             }
         }
@@ -750,7 +750,7 @@ export default function ModulacionIndex({
                     setNovedadesLocal([]);
                     setCurrentRoute(createEmptyRoute());
                     setEditingIndex(null);
-                    alert('✅ Planeación de ruta guardada correctamente.');
+                    alert('Planeación de ruta guardada correctamente.');
                 },
                 onError: (errs) => {
                     setIsSubmitting(false);
@@ -1082,11 +1082,12 @@ export default function ModulacionIndex({
                     <HeadingSmall title="Planeación de ruta" />
                     <div className="flex items-center gap-2">
                         {readOnly && (
-                            <Link href={route('reparto.modulacion.historial')}>
-                                <Button variant="outline" className="text-sm">
-                                    ← Volver al historial
-                                </Button>
-                            </Link>
+                            <Button variant="outline" asChild>
+                                <Link href={route('reparto.modulacion.historial')}>
+                                    <ArrowLeft className="size-4" />
+                                    Volver al historial
+                                </Link>
+                            </Button>
                         )}
                     </div>
                 </div>
@@ -1094,12 +1095,12 @@ export default function ModulacionIndex({
                 {/* CARD DE FILTROS */}
                 {/* Creando: sin filtros. Editando con planeación existente: solo filtro por placa */}
                 {isEditing && modulacion?.id && (
-                <Card className="shadow-sm border bg-white dark:bg-gray-900">
+                <Card className="border-sidebar-border/70 dark:border-sidebar-border">
                     <CardHeader className="pb-2 border-b">
                         <CardTitle className="text-sm font-semibold flex items-center justify-between">
-                            <span className="flex items-center gap-2 uppercase tracking-wider text-xs font-bold text-muted-foreground">
-                                <Filter className="h-4 w-4 text-muted-foreground" />
-                                {'Filtros'}
+                            <span className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+                                <Filter className="size-4" />
+                                Filtros
                             </span>
                             <Button
                                 type="button"
@@ -1115,7 +1116,7 @@ export default function ModulacionIndex({
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             {/* Selector de Fecha con Calendario */}
                             <div>
-                                <Label htmlFor="filtro-fecha" className="text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5">
+                                <Label htmlFor="filtro-fecha" className="flex items-center gap-1.5 text-xs font-semibold">
                                     <Calendar className="h-3.5 w-3.5" style={{ color: ACCENT }} />
                                     {'Fecha de la Planeación (Calendario)'}
                                 </Label>
@@ -1130,9 +1131,9 @@ export default function ModulacionIndex({
 
                             {/* Filtro por Placa */}
                             <div>
-                                <Label className="text-xs font-semibold uppercase flex items-center gap-1">
-                                    <Filter className="h-3.5 w-3.5 text-muted-foreground" />
-                                    {'Filtro por Placa'}
+                                <Label className="flex items-center gap-1 text-xs font-medium">
+                                    <Filter className="size-3.5 text-muted-foreground" />
+                                    Filtro por placa
                                 </Label>
                                 <Select value={filterTablePlaca} onValueChange={setFilterTablePlaca}>
                                     <SelectTrigger className="h-10 text-xs mt-1 w-full">
@@ -1157,12 +1158,10 @@ export default function ModulacionIndex({
                 {/* FORMULARIO NUEVA SALIDA — visible en creación o edición */}
                 <form onSubmit={handleGuardarRutaLocal} className="space-y-6" style={{ display: (!readOnly || isEditing) ? 'block' : 'none' }}>
                     {/* FORMULARIO DE RUTA UNIFICADO (CARD NUEVA SALIDA) */}
-                    <Card className="border-sidebar-border/70 dark:border-sidebar-border border-t-4 relative" style={{ borderTopColor: ACCENT }}>
+                    <Card className="relative border-sidebar-border/70 dark:border-sidebar-border">
                         <CardHeader className="pb-3 border-b">
                             <CardTitle className="text-base font-semibold flex items-center gap-2">
-                                <Badge style={{ backgroundColor: ACCENT, color: '#fff' }}>
-                                    {editingIndex !== null ? `Editando Ruta #${editingIndex + 1}` : 'Nueva Salida'}
-                                </Badge>
+                                <Badge>{editingIndex !== null ? `Editando ruta #${editingIndex + 1}` : 'Nueva salida'}</Badge>
                                 {currentRoute.placa ? <span>{`Placa: ${currentRoute.placa}`}</span> : null}
                             </CardTitle>
                         </CardHeader>
@@ -1170,15 +1169,15 @@ export default function ModulacionIndex({
                         <CardContent className="space-y-6 pt-4">
                             {/* DATOS GENERALES DE LA SALIDA */}
                             <div className="p-4 rounded-lg border border-sidebar-border/70 dark:border-sidebar-border space-y-4">
-                                <Label className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5" style={{ color: ACCENT }}>
-                                    <FileText className="h-4 w-4" style={{ color: ACCENT }} />
-                                    Datos Generales de la Salida
-                                </Label>
+                                <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                                    <FileText className="size-4" style={{ color: ACCENT }} />
+                                    Datos generales de la salida
+                                </div>
 
                                 {/* Fila 1: Programado Por, Despachado Por */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <Label htmlFor="ud_programado_por" className="text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300">
+                                        <Label htmlFor="ud_programado_por" className="text-xs font-medium text-foreground">
                                             UD Programado Por
                                         </Label>
                                         <Input
@@ -1192,7 +1191,7 @@ export default function ModulacionIndex({
                                     </div>
 
                                     <div>
-                                        <Label htmlFor="despachado_por" className="text-xs font-semibold uppercase tracking-wider">
+                                        <Label htmlFor="despachado_por" className="text-xs font-medium">
                                             Despachado Por (Colaborador)
                                         </Label>
                                         <div className="relative mt-1">
@@ -1214,12 +1213,12 @@ export default function ModulacionIndex({
                                                 onFocus={() => setShowDespachadorDropdown(true)}
                                                 onBlur={() => setTimeout(() => setShowDespachadorDropdown(false), 150)}
                                                 placeholder="Busque o escriba el nombre..."
-                                                className="mt-1 bg-white dark:bg-gray-800 font-medium"
+                                                className="mt-1 bg-background font-medium"
                                                 autoComplete="off"
                                             />
                                             {/* Dropdown de colaboradores */}
                                             {showDespachadorDropdown && (
-                                                <div className="absolute top-full left-0 right-0 mt-0.5 bg-white dark:bg-gray-800 border border-input rounded-md shadow-lg max-h-48 overflow-y-auto z-10">
+                                                <div className="absolute left-0 right-0 top-full z-10 mt-0.5 max-h-48 overflow-y-auto rounded-md border border-input bg-popover shadow-md">
                                                     {colaboradores
                                                         .filter((c) => {
                                                             const q = despachadoPorNombre.toLowerCase().trim();
@@ -1235,10 +1234,10 @@ export default function ModulacionIndex({
                                                                     setDespachadoPorId(String(c.id));
                                                                     setShowDespachadorDropdown(false);
                                                                 }}
-                                                                className="px-3 py-2 text-sm text-gray-900 dark:text-gray-100 hover:bg-red-50 dark:hover:bg-red-950/30 cursor-pointer border-b border-gray-100 dark:border-gray-700 last:border-b-0"
+                                                                className="cursor-pointer border-b border-border px-3 py-2 text-sm text-foreground last:border-b-0 hover:bg-muted"
                                                             >
                                                                 <div className="font-medium">{c.nombre_completo}</div>
-                                                                <div className="text-xs text-gray-500 dark:text-gray-400">{c.cedula} • {c.cargo}</div>
+                                                                <div className="text-xs text-muted-foreground">{c.cedula} • {c.cargo}</div>
                                                             </div>
                                                         ))}
                                                     {colaboradores.filter((c) => {
@@ -1247,7 +1246,7 @@ export default function ModulacionIndex({
                                                             c.nombre_completo.toLowerCase().includes(q) || 
                                                             (c.cedula && c.cedula.includes(q));
                                                     }).length === 0 && (
-                                                        <div className="px-3 py-4 text-center text-sm text-gray-400">
+                                                        <div className="px-3 py-4 text-center text-sm text-muted-foreground">
                                                             No se encontraron colaboradores
                                                         </div>
                                                     )}
@@ -1269,7 +1268,7 @@ export default function ModulacionIndex({
                                 <div className="pt-2 border-t border-red-100 dark:border-red-900/30">
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                         <div>
-                                            <Label className="text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300">
+                                            <Label className="text-xs font-medium text-foreground">
                                                 Placa <span className="text-red-500">*</span>
                                             </Label>
                                             {vehiculos.length > 0 && (
@@ -1280,7 +1279,7 @@ export default function ModulacionIndex({
                                                             handleCurrentRouteFieldChange('placa', e.target.value);
                                                         }
                                                     }}
-                                                    className="h-10 mt-1 w-full rounded-md border border-input bg-white dark:bg-gray-800 px-3 py-2 text-xs text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-red-500 font-mono uppercase"
+                                                    className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs uppercase text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                                                 >
                                                     <option value="">-- Seleccionar Placa --</option>
                                                     {vehiculos
@@ -1303,7 +1302,7 @@ export default function ModulacionIndex({
                                             )}
                                         </div>
                                         <div>
-                                            <Label className="text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300">
+                                            <Label className="text-xs font-medium text-foreground">
                                                 Documento Transporte
                                             </Label>
                                             <Input
@@ -1322,7 +1321,7 @@ export default function ModulacionIndex({
                             {/* SECCIÓN TRIPULACIÓN: CHECKLIST CON FILTRO */}
                             <div className="border border-sidebar-border/70 dark:border-sidebar-border rounded-lg p-4 space-y-4">
                                 <div className="border-b pb-2">
-                                    <h3 className="text-sm font-semibold uppercase tracking-wider flex items-center gap-1.5">
+                                    <h3 className="flex items-center gap-1.5 text-sm font-semibold">
                                         <Users className="h-4 w-4 text-muted-foreground" />
                                         Tripulación de la Ruta (Solo colaboradores libres para la fecha)
                                     </h3>
@@ -1331,7 +1330,7 @@ export default function ModulacionIndex({
                                 {/* BARRA DE FILTROS Y BUSCADOR */}
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-md border">
                                     <div>
-                                        <Label className="text-[11px] font-semibold text-muted-foreground uppercase flex items-center gap-1">
+                                        <Label className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground">
                                             <Search className="h-3 w-3 text-muted-foreground" />
                                             Buscar por Nombre o Cédula
                                         </Label>
@@ -1345,7 +1344,7 @@ export default function ModulacionIndex({
                                     </div>
 
                                     <div>
-                                        <Label className="text-[11px] font-semibold text-muted-foreground uppercase flex items-center gap-1">
+                                        <Label className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground">
                                             <Filter className="h-3 w-3 text-muted-foreground" />
                                             Filtrar por Cargo
                                         </Label>
@@ -1367,7 +1366,7 @@ export default function ModulacionIndex({
 
                                 {/* CHECKLIST DE COLABORADORES DISPONIBLES */}
                                 <div className="rounded-md border p-3 space-y-2 max-h-48 overflow-y-auto">
-                                    <Label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1 border-b pb-1">
+                                    <Label className="flex items-center gap-1 border-b pb-1 text-[11px] font-semibold text-muted-foreground">
                                         <CheckSquare className="h-3.5 w-3.5 text-muted-foreground" />
                                         Marcar colaboradores libres al día para la Tripulación ({allChecklistColaboradores.length} disponibles)
                                     </Label>
@@ -1425,9 +1424,7 @@ export default function ModulacionIndex({
                                                             ) : null}
                                                         </label>
                                                         {isFijo && isChecked ? (
-                                                            <Badge className="text-[9px] px-1.5 py-0" style={{ backgroundColor: SUCCESS, color: '#fff' }}>
-                                                                {'FIJO'}
-                                                            </Badge>
+                                                            <Badge className="border-transparent bg-[#15803d] px-1.5 py-0 text-[9px] text-white">FIJO</Badge>
                                                         ) : isChecked ? (
                                                             <Badge variant="secondary" className="text-[9px] px-1.5 py-0">
                                                                 {'Seleccionado'}
@@ -1442,10 +1439,10 @@ export default function ModulacionIndex({
                             </div>
 
                             {/* SECCIÓN VIAJES DINÁMICOS CON LUGARES DE NARIÑO Y API */}
-                            <div className="border rounded-lg p-4 bg-gray-50/70 dark:bg-gray-900/40 space-y-3">
+                            <div className="space-y-3 rounded-lg border border-sidebar-border/70 bg-muted/40 p-4 dark:border-sidebar-border">
                                 <div className="flex items-center justify-between border-b pb-2 flex-wrap gap-2">
                                     <div className="flex items-center gap-2">
-                                        <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wider flex items-center gap-1.5">
+                                        <h3 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
                                             <MapPin className="h-4 w-4 text-red-500" />
                                             Viajes de la Ruta (Destinos Nariño, Cliente y Peso por Fila)
                                         </h3>
@@ -1497,7 +1494,7 @@ export default function ModulacionIndex({
 
                                             {/* Barrio */}
                                             <div>
-                                                <Label className="text-[10px] text-gray-500 uppercase font-semibold">
+                                                <Label className="text-xs text-muted-foreground">
                                                     Barrio
                                                 </Label>
                                                 <Input
@@ -1505,13 +1502,13 @@ export default function ModulacionIndex({
                                                     placeholder="Ej: Centro, El Tejar..."
                                                     value={String(viaje.barrio ?? '')}
                                                     onChange={(e) => handleViajeChange(vIdx, 'barrio', e.target.value)}
-                                                    className="h-8 text-xs mt-0.5 bg-white"
+                                                    className="mt-0.5 h-8 text-xs"
                                                 />
                                             </div>
 
                                             {/* Barrio */}
                                             <div>
-                                                <Label className="text-[10px] text-gray-500 uppercase font-semibold">
+                                                <Label className="text-xs text-muted-foreground">
                                                     Cliente (0 - 60)
                                                 </Label>
                                                 <Select
@@ -1536,7 +1533,7 @@ export default function ModulacionIndex({
 
                                             <div>
                                                 <div className="flex items-center justify-between">
-                                                    <Label className="text-[10px] text-muted-foreground uppercase font-semibold">
+                                                    <Label className="text-xs text-muted-foreground">
                                                         Peso (Toneladas)
                                                     </Label>
                                                     <span className="text-[10px] text-red-600 font-bold">Máx 10 Ton</span>
@@ -1584,7 +1581,7 @@ export default function ModulacionIndex({
                 {/* fin formulario */}
 
                 {/* 3. TABLA 1: PLANEACIÓN DE RUTA */}
-                <Card className="border-sidebar-border/70 dark:border-sidebar-border border-t-4" style={{ borderTopColor: ACCENT }}>
+                <Card className="border-sidebar-border/70 dark:border-sidebar-border">
                     <CardHeader className="pb-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3 border-b">
                         <div className="flex items-center gap-2">
                             <CardTitle className="text-lg font-semibold flex items-center gap-2">
@@ -1602,15 +1599,15 @@ export default function ModulacionIndex({
                         <div className="flex flex-wrap items-center gap-3">
                             <div className="flex items-center gap-3 text-xs bg-muted px-3 py-1.5 rounded-md border">
                                 <div>
-                                    <span className="font-semibold text-muted-foreground uppercase">Fecha:</span>{' '}
+                                    <span className="font-semibold text-muted-foreground">Fecha:</span>{' '}
                                     <span className="font-bold text-foreground">{fechaTexto}</span>
                                 </div>
                                 <div>
-                                    <span className="font-semibold text-muted-foreground uppercase">Programado Por:</span>{' '}
+                                    <span className="font-semibold text-muted-foreground">Programado Por:</span>{' '}
                                     <span className="font-bold text-foreground">{udProgramadoPor || '-'}</span>
                                 </div>
                                 <div>
-                                    <span className="font-semibold text-muted-foreground uppercase">Despachado Por:</span>{' '}
+                                    <span className="font-semibold text-muted-foreground">Despachado Por:</span>{' '}
                                     <span className="font-bold text-foreground">{despachadoPorNombre || '-'}</span>
                                 </div>
                             </div>
@@ -1635,7 +1632,7 @@ export default function ModulacionIndex({
                                 <TableBody>
                                     {filteredRutasTable.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                                            <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                                                 {rutas.length === 0
                                                     ? 'No hay rutas registradas para esta fecha. Complete los campos arriba y presione Guardar Ruta.'
                                                     : 'No hay rutas que coincidan con los filtros aplicados.'}
@@ -1656,13 +1653,13 @@ export default function ModulacionIndex({
                                                     </TableCell>
 
                                                     {/* DOC. TRANSPORTE */}
-                                                    <TableCell className="font-mono text-xs text-gray-700 dark:text-gray-300">
+                                                    <TableCell className="font-mono text-xs text-foreground">
                                                         {item.doc_tras ? (
                                                             <Badge variant="outline" className="font-mono text-xs">
                                                                 {String(item.doc_tras)}
                                                             </Badge>
                                                         ) : (
-                                                            <span className="text-gray-400 italic text-xs">—</span>
+                                                            <span className="text-muted-foreground italic text-xs">—</span>
                                                         )}
                                                     </TableCell>
 
@@ -1671,12 +1668,12 @@ export default function ModulacionIndex({
                                                         {tripMembers.length > 0 ? (
                                                             <div className="space-y-1.5">
                                                                 {tripMembers.map((m, mIdx) => (
-                                                                    <div key={`trip-${m.colaborador_id ?? m.cedula}-${mIdx}`} className="p-1.5 rounded border flex items-center justify-between gap-2 bg-gray-50 dark:bg-gray-800">
+                                                                    <div key={`trip-${m.colaborador_id ?? m.cedula}-${mIdx}`} className="p-1.5 rounded border flex items-center justify-between gap-2 bg-muted">
                                                                         <div className="flex items-center gap-1.5 truncate">
                                                                             <Badge variant="outline" className="font-mono text-[10px] shrink-0">
                                                                                 {String(m.cedula ?? 'S/I')}
                                                                             </Badge>
-                                                                            <span className="font-semibold text-gray-900 dark:text-gray-100 truncate">
+                                                                            <span className="font-semibold text-foreground truncate">
                                                                                 {String(m.nombres ?? 'Sin nombre')}
                                                                             </span>
                                                                         </div>
@@ -1689,7 +1686,7 @@ export default function ModulacionIndex({
                                                                 ))}
                                                             </div>
                                                         ) : (
-                                                            <span className="text-gray-400">{'-'}</span>
+                                                            <span className="text-muted-foreground">{'-'}</span>
                                                         )}
                                                     </TableCell>
 
@@ -1714,7 +1711,7 @@ export default function ModulacionIndex({
                                                                                         {String(nov.cedula)}
                                                                                     </Badge>
                                                                                 )}
-                                                                                <span className="font-semibold text-gray-900 dark:text-gray-100 truncate">
+                                                                                <span className="font-semibold text-foreground truncate">
                                                                                     {String(nov.nombres ?? 'Sin nombre')}
                                                                                 </span>
                                                                             </div>
@@ -1814,13 +1811,13 @@ export default function ModulacionIndex({
                     <CardContent className="space-y-4">
                         {/* FORMULARIO SUPERIOR MANUAL */}
                         <div className="p-3 rounded-lg border border-sidebar-border/70 dark:border-sidebar-border space-y-3">
-                            <Label className="text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5">
+                            <Label className="flex items-center gap-1.5 text-xs font-semibold">
                                 <UserPlus className="h-4 w-4 text-muted-foreground" />
                                 {'Ingresar Colaborador a Novedades'}
                             </Label>
                             <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
                                 <div>
-                                    <Label className="text-[11px] text-muted-foreground uppercase font-semibold">
+                                    <Label className="text-xs text-muted-foreground">
                                         {'Seleccionar Colaborador'}
                                     </Label>
                                     <Select
@@ -1845,7 +1842,7 @@ export default function ModulacionIndex({
 
                                 <div className="grid grid-cols-2 gap-2">
                                     <div>
-                                        <Label className="text-[11px] text-muted-foreground uppercase font-semibold">
+                                        <Label className="text-xs text-muted-foreground">
                                             {'Cédula'}
                                         </Label>
                                         <Input
@@ -1857,7 +1854,7 @@ export default function ModulacionIndex({
                                         />
                                     </div>
                                     <div>
-                                        <Label className="text-[11px] text-muted-foreground uppercase font-semibold">
+                                        <Label className="text-xs text-muted-foreground">
                                             {'Cargo'}
                                         </Label>
                                         <Input
@@ -1930,16 +1927,16 @@ export default function ModulacionIndex({
                                 <TableBody>
                                     {novedadesLocal.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={9} className="text-center py-8 text-gray-500">
+                                            <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                                                 {'No hay colaboradores agregados en novedades para esta fecha. Utilice el formulario arriba para agregar uno.'}
                                             </TableCell>
                                         </TableRow>
                                     ) : (
                                         novedadesLocal.map((nov) => (
-                                            <TableRow key={nov.id} className={`hover:bg-gray-50/80 dark:hover:bg-gray-800/40 ${(nov.fijo || nov.fijo_rescate || nov.fijo_taller) ? 'bg-green-50/50 dark:bg-green-950/20' : ''}`}>
+                                            <TableRow key={nov.id} className={(nov.fijo || nov.fijo_rescate || nov.fijo_taller) ? 'bg-green-50/50 dark:bg-green-950/20' : ''}>
                                                 <TableCell className="font-mono text-sm">{String(nov.cedula ?? '-')}</TableCell>
                                                 <TableCell className="font-medium text-sm">{String(nov.nombres ?? '-')}</TableCell>
-                                                <TableCell className="text-sm text-gray-600 dark:text-gray-400">
+                                                <TableCell className="text-sm text-muted-foreground">
                                                     {String(nov.cargo ?? '-')}
                                                 </TableCell>
 
@@ -2017,16 +2014,10 @@ export default function ModulacionIndex({
 
                 {/* BOTÓN GENERAL PARA GUARDAR LA PLANEACIÓN DE RUTA COMPLETA (TODAS LAS RUTAS Y NOVEDADES) — solo en modo edición */}
                 {isEditing && (
-                <div className="flex items-center justify-end pt-4 border-t">
-                    <Button
-                        type="button"
-                        disabled={isSubmitting}
-                        onClick={handleGuardarTodo}
-                        className="text-base px-8 py-3 font-semibold"
-                        style={{ backgroundColor: ACCENT, color: '#fff' }}
-                    >
-                        <Save className="h-5 w-5 mr-2" />
-                        Guardar Planeación de Ruta
+                <div className="flex items-center justify-end border-t border-sidebar-border/70 pt-4 dark:border-sidebar-border">
+                    <Button type="button" size="lg" disabled={isSubmitting} onClick={handleGuardarTodo}>
+                        <Save className="size-4" />
+                        Guardar planeación de ruta
                     </Button>
                 </div>
                 )}
