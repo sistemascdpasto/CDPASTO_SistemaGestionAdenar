@@ -26,6 +26,11 @@ export interface NavItem {
     items?: NavItem[];
     /** Optional brand accent color for this nav entry (used for subtle active-state tinting). */
     color?: string;
+    /**
+     * Submódulo transversal presente en varias secciones a la vez. No cuenta
+     * para decidir si un grupo colapsable arranca abierto (ver nav-main.tsx).
+     */
+    shared?: boolean;
 }
 
 export type FlashStatus = string | { message: string; type?: 'success' | 'warning' | 'error' } | null;

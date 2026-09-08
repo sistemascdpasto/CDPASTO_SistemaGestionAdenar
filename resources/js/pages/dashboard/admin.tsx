@@ -56,9 +56,7 @@ export default function AdminDashboard({ stats, resumen }: AdminDashboardProps) 
                     <h1 className="text-2xl font-semibold tracking-tight">
                         Bienvenido, <ShinyText color="#3F7A22">{auth.user.name}</ShinyText>
                     </h1>
-                    <p className="text-muted-foreground">
-                        Vista global del sistema · resumen de los últimos 6 meses ({resumen.rango.desde} — {resumen.rango.hasta}).
-                    </p>
+                    <p className="text-muted-foreground">Nos alegra verte de nuevo.</p>
                 </Reveal>
 
                 <KpiCardGrid className="grid-cols-1 sm:grid-cols-3">

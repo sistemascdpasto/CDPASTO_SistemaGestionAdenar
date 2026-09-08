@@ -39,7 +39,7 @@ class CincoPorqueTest extends TestCase
         return array_merge([
             'fecha' => now()->toDateString(),
             'vehiculo_id' => null,
-            'rutina' => 'Semanal de reparto',
+            'rutina' => 'Matutina de distribución',
             'indicador' => 'Devolución',
             'problema' => 'Aumento de devoluciones en la ruta norte.',
             'porque_1' => 'No se validó el pedido al cargar.',
@@ -54,7 +54,10 @@ class CincoPorqueTest extends TestCase
 
     public function test_colaborador_y_reparto_pueden_abrir_el_formulario(): void
     {
-        $this->actingAs($this->usuario('Colaborador'))->get(route('cinco-porques.create'))->assertOk();
+        $this->actingAs($this->usuario('Colaborador'))
+            ->get(route('cinco-porques.create'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->where('rutinaFija', 'Matutina de distribución'));
         $this->actingAs($this->usuario('Reparto'))->get(route('cinco-porques.create'))->assertOk();
     }
 
@@ -133,7 +136,7 @@ class CincoPorqueTest extends TestCase
         $this->actingAs($this->usuario('Reparto'))
             ->postJson(route('cinco-porques.ia.analizar'), [
                 'problema' => 'Devoluciones altas',
-                'rutina' => 'OWD',
+                'rutina' => 'Matutina de distribución',
                 'indicador' => 'Devolución',
                 'seleccionados' => [],
             ])
@@ -158,7 +161,7 @@ class CincoPorqueTest extends TestCase
         $this->actingAs($this->usuario('Colaborador'))
             ->postJson(route('cinco-porques.ia.analizar'), [
                 'problema' => 'Devoluciones altas',
-                'rutina' => 'OWD',
+                'rutina' => 'Matutina de distribución',
                 'indicador' => 'Devolución',
                 'seleccionados' => ['p1', 'p2', 'p3', 'p4', 'p5'],
             ])
@@ -176,7 +179,7 @@ class CincoPorqueTest extends TestCase
         $this->actingAs($this->usuario('Reparto'))
             ->postJson(route('cinco-porques.ia.analizar'), [
                 'problema' => 'x',
-                'rutina' => 'OWD',
+                'rutina' => 'Matutina de distribución',
                 'indicador' => 'Devolución',
                 'seleccionados' => [],
             ])

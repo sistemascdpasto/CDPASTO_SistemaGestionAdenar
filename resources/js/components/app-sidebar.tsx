@@ -49,6 +49,7 @@ function buildSubNavItems(submodules: SubModuleDef[], moduleSlug: string, color:
                       url: sub.href ?? (sub.slug ? `/modules/${sub.moduleSlugOverride ?? moduleSlug}/${sub.slug}` : `/modules/${moduleSlug}`),
                       icon: sub.icon,
                       color,
+                      shared: sub.shared,
                   },
         );
 }

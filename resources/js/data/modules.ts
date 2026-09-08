@@ -57,6 +57,14 @@ export interface SubModuleDef {
      */
     href?: string;
     /**
+     * Submódulo transversal inyectado en la sección de varios pilares a la vez
+     * (Capacitaciones, Colaboradores de solo lectura, Asistencia GeoVictoria).
+     * El sidebar lo muestra y lo resalta al navegarlo, pero NO lo usa para
+     * decidir si un grupo colapsable arranca abierto — si no, al abrir uno de
+     * estos se desplegarían todos los pilares que lo contienen.
+     */
+    shared?: boolean;
+    /**
      * Lista de roles que pueden ver este submódulo en el sidebar.
      * Si se omite, el ítem es visible para todos los usuarios con acceso
      * al módulo padre. 'Administrador' siempre tiene acceso independientemente
@@ -199,6 +207,7 @@ export const colaboradoresReadOnlySubmodule: SubModuleDef = {
     slug: 'colaboradores',
     icon: UserCheck,
     moduleSlugOverride: 'gente',
+    shared: true,
 };
 
 /**
@@ -212,6 +221,7 @@ export const capacitacionesSubmodule: SubModuleDef = {
     slug: 'capacitaciones',
     href: '/modules/capacitaciones',
     icon: GraduationCap,
+    shared: true,
 };
 
 /**
@@ -224,6 +234,7 @@ export const geovictoriaAsistenciaReadOnlySubmodule: SubModuleDef = {
     slug: 'asistencia-geovictoria',
     icon: Clock,
     moduleSlugOverride: 'gente',
+    shared: true,
 };
 
 export function findModule(moduleSlug: string): ModuleDef | undefined {
