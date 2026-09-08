@@ -275,8 +275,9 @@ export default function CapacitacionCarpetaShow({
                 {subcarpetas.length > 0 && (
                     <div className="space-y-3">
                         <div className="flex items-center justify-between">
-                            <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                                📂 Subcarpetas ({subcarpetas.length})
+                            <h2 className="flex items-center gap-2 text-sm font-bold text-muted-foreground">
+                                <Folder className="size-4" />
+                                Subcarpetas ({subcarpetas.length})
                             </h2>
                         </div>
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -285,7 +286,7 @@ export default function CapacitacionCarpetaShow({
                                 return (
                                     <Card
                                         key={sub.id}
-                                        className="group relative flex flex-col justify-between overflow-hidden transition-all duration-200 hover:-translate-y-1 hover:shadow-lg border-sidebar-border/70 dark:border-sidebar-border bg-card"
+                                        className="group relative flex flex-col justify-between overflow-hidden transition-all duration-200 hover:-translate-y-1 hover:shadow-md border-sidebar-border/70 dark:border-sidebar-border bg-card"
                                     >
                                         {sub.portada_url ? (
                                             <div className="relative h-36 w-full overflow-hidden bg-muted">
@@ -407,8 +408,9 @@ export default function CapacitacionCarpetaShow({
                 {/* Listado de Materiales */}
                 <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                        <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                            📄 Materiales ({materiales.length})
+                        <h2 className="flex items-center gap-2 text-sm font-bold text-muted-foreground">
+                            <FileText className="size-4" />
+                            Materiales ({materiales.length})
                         </h2>
                     </div>
 
@@ -653,7 +655,7 @@ export default function CapacitacionCarpetaShow({
                                     /* 5. Otros documentos usando ViewerJS */
                                     officeViewerFailed ? (
                                         <div className="flex flex-col items-center justify-center p-8 text-center space-y-4 max-w-md mx-auto">
-                                            <div className="size-20 rounded-2xl bg-teal-500/10 text-teal-600 flex items-center justify-center">
+                                            <div className="size-20 rounded-xl bg-teal-500/10 text-teal-600 flex items-center justify-center">
                                                 <FileText className="size-10" />
                                             </div>
                                             <div>
@@ -678,7 +680,7 @@ export default function CapacitacionCarpetaShow({
                                 ) : materialVistaPrevia.enlace_externo ? (
                                     /* 6. Enlace Externo */
                                     <div className="flex flex-col items-center justify-center p-8 text-center space-y-4 max-w-md mx-auto">
-                                        <div className="size-16 rounded-2xl bg-teal-500/10 text-teal-600 flex items-center justify-center">
+                                        <div className="size-16 rounded-xl bg-teal-500/10 text-teal-600 flex items-center justify-center">
                                             <FileIcon tipo={materialVistaPrevia.tipo} mime={materialVistaPrevia.mime_type} className="size-8" />
                                         </div>
                                         <div>

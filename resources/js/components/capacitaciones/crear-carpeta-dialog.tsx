@@ -263,11 +263,17 @@ export function CrearCarpetaDialog({
                                     onCheckedChange={(checked) => setData('visible_colaborador', checked === true)}
                                 />
                             </div>
-                            <p className="text-[11px] text-muted-foreground">
+                            <p className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
                                 {data.visible_colaborador ? (
-                                    <span>🟢 Esta carpeta estará visible para el personal en su portal de capacitaciones.</span>
+                                    <>
+                                        <Eye className="mt-0.5 size-3 shrink-0 text-[#15803d]" />
+                                        <span>Esta carpeta estará visible para el personal en su portal de capacitaciones.</span>
+                                    </>
                                 ) : (
-                                    <span>🔴 Esta carpeta estará oculta para los colaboradores (solo visible para administradores).</span>
+                                    <>
+                                        <EyeOff className="mt-0.5 size-3 shrink-0 text-muted-foreground" />
+                                        <span>Esta carpeta estará oculta para los colaboradores (solo visible para administradores).</span>
+                                    </>
                                 )}
                             </p>
                         </div>

@@ -52,6 +52,7 @@ import {
     AlertTriangle,
     ArrowDownUp,
     ArrowRight,
+    BookOpen,
     Calendar,
     CheckCircle2,
     ChevronDown,
@@ -377,7 +378,7 @@ export default function CapacitacionesAdminIndex({
                                         <SelectItem value="todas">Todas las categorías</SelectItem>
                                         {(carpetas || []).map((c) => (
                                             <SelectItem key={c.id} value={String(c.id)}>
-                                                📁 {c.nombre}
+                                                <span className="flex items-center gap-1.5"><Folder className="size-3.5" /> {c.nombre}</span>
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
@@ -476,7 +477,7 @@ export default function CapacitacionesAdminIndex({
                                     )}
                                         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                                             <span className="text-xl font-extrabold text-foreground">{promedioAvanceGlobal}%</span>
-                                            <span className="text-[9px] text-muted-foreground uppercase font-bold">Promedio</span>
+                                            <span className="text-[9px] text-muted-foreground font-bold">Promedio</span>
                                         </div>
                                     </div>
 
@@ -624,7 +625,7 @@ export default function CapacitacionesAdminIndex({
                                                             {item.titulo}
                                                         </h4>
                                                         <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
-                                                            <span>📁 {item.carpeta?.nombre || 'General'}</span>
+                                                            <span className="flex items-center gap-1"><Folder className="size-3" /> {item.carpeta?.nombre || "General"}</span>
                                                             <span>•</span>
                                                             <span className="capitalize">{item.tipo}</span>
                                                         </p>
@@ -681,7 +682,7 @@ export default function CapacitacionesAdminIndex({
                                                     </span>
                                                 </div>
                                                 <p className="text-muted-foreground truncate">
-                                                    📖 {item.capacitacion_titulo}
+                                                    <BookOpen className="mr-1 inline size-3 align-middle" />{item.capacitacion_titulo}
                                                 </p>
                                             </div>
                                         ))}
@@ -726,9 +727,9 @@ export default function CapacitacionesAdminIndex({
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="critico_a_completo">🔴 De Crítico a Completo</SelectItem>
-                                        <SelectItem value="completo_a_critico">🟢 De Completo a Crítico</SelectItem>
-                                        <SelectItem value="nombre">🔤 Por Nombre Trabajador</SelectItem>
+                                        <SelectItem value="critico_a_completo">De Crítico a Completo</SelectItem>
+                                        <SelectItem value="completo_a_critico">De Completo a Crítico</SelectItem>
+                                        <SelectItem value="nombre">Por Nombre Trabajador</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -879,13 +880,13 @@ export default function CapacitacionesAdminIndex({
                 {/* 6. GESTIÓN DE CARPETAS */}
                 <div className="space-y-4 pt-4 border-t">
                     <div className="flex items-center justify-between">
-                        <h2 className="text-base font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
+                        <h2 className="text-base font-bold text-foreground flex items-center gap-2">
                             Carpetas Creadas ({carpetasFiltradas.length})
                         </h2>
                     </div>
 
                     {carpetasFiltradas.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-sidebar-border/80 p-12 text-center">
+                        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-sidebar-border/80 p-12 text-center">
                             <div className="flex size-14 items-center justify-center rounded-full bg-teal-500/10 text-teal-600 dark:bg-teal-500/20 dark:text-teal-400">
                                 <Folder className="size-7" />
                             </div>
@@ -903,7 +904,7 @@ export default function CapacitacionesAdminIndex({
                                 return (
                                     <Card
                                         key={carpeta.id}
-                                        className="group relative flex flex-col justify-between overflow-hidden transition-all duration-200 hover:-translate-y-1 hover:shadow-lg border-sidebar-border/70 dark:border-sidebar-border bg-card"
+                                        className="group relative flex flex-col justify-between overflow-hidden transition-all duration-200 hover:-translate-y-1 hover:shadow-md border-sidebar-border/70 dark:border-sidebar-border bg-card"
                                     >
                                         {carpeta.portada_url ? (
                                             <div className="relative h-64 w-full overflow-hidden bg-muted">

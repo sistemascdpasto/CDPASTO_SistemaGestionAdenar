@@ -21,13 +21,19 @@ import { Textarea } from '@/components/ui/textarea';
 import { useForm } from '@inertiajs/react';
 import {
     Calendar,
+    FileSpreadsheet,
+    FileText,
+    FileType,
     FileUp,
     Globe,
     HardDriveUpload,
+    Link2,
     LoaderCircle,
     Mail,
+    Presentation,
     Star,
     UploadCloud,
+    Video,
 } from 'lucide-react';
 import { FormEventHandler, useEffect, useState } from 'react';
 
@@ -241,12 +247,24 @@ export function SubirMaterialDialog({
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="auto">Automático (Detectar)</SelectItem>
-                                        <SelectItem value="video">🎬 Video</SelectItem>
-                                        <SelectItem value="presentacion">📽️ Presentación (PowerPoint)</SelectItem>
-                                        <SelectItem value="hoja_calculo">📊 Hoja de cálculo (Excel)</SelectItem>
-                                        <SelectItem value="pdf">📄 Documento PDF</SelectItem>
-                                        <SelectItem value="documento">📝 Documento de texto</SelectItem>
-                                        <SelectItem value="enlace">🔗 Enlace externo</SelectItem>
+                                        <SelectItem value="video">
+                                            <span className="flex items-center gap-2"><Video className="size-3.5" /> Video</span>
+                                        </SelectItem>
+                                        <SelectItem value="presentacion">
+                                            <span className="flex items-center gap-2"><Presentation className="size-3.5" /> Presentación (PowerPoint)</span>
+                                        </SelectItem>
+                                        <SelectItem value="hoja_calculo">
+                                            <span className="flex items-center gap-2"><FileSpreadsheet className="size-3.5" /> Hoja de cálculo (Excel)</span>
+                                        </SelectItem>
+                                        <SelectItem value="pdf">
+                                            <span className="flex items-center gap-2"><FileText className="size-3.5" /> Documento PDF</span>
+                                        </SelectItem>
+                                        <SelectItem value="documento">
+                                            <span className="flex items-center gap-2"><FileType className="size-3.5" /> Documento de texto</span>
+                                        </SelectItem>
+                                        <SelectItem value="enlace">
+                                            <span className="flex items-center gap-2"><Link2 className="size-3.5" /> Enlace externo</span>
+                                        </SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
