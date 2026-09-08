@@ -953,15 +953,15 @@ class EventosTripulacionController
                 $cleaned = trim(str_replace(['%', ' '], '', $raw));
                 if (is_numeric($cleaned)) {
                     $val = (float) $cleaned;
-                    // Si ya viene como porcentaje legible (ej: 85.80), usar directo
-                    // Si viene como decimal (ej: 0.858), escalar ×100
-                    return $val <= 1.0 ? round($val * 100, 4) : round($val, 4);
+                    // Si ya viene como porcentaje legible (ej: 85.80), usar directo sin modificar
+                    // Si viene como decimal Excel (ej: 0.858), escalar ×100
+                    return $val <= 1.0 ? (float)($val * 100) : (float)$val;
                 }
                 return null; // "SIN CALIFICACION" u otro texto → null
             }
             if (!is_numeric($raw)) return null;
             $val = (float) $raw;
-            return $val <= 1.0 ? round($val * 100, 4) : round($val, 4);
+            return $val <= 1.0 ? (float)($val * 100) : (float)$val;
         }
 
         // Mes: número o nombre
@@ -982,11 +982,11 @@ class EventosTripulacionController
         if (in_array($field, self::DECIMAL_FIELDS, true)) {
             if (is_string($raw)) {
                 $cleaned = trim(str_replace(['%', ' '], '', $raw));
-                if (is_numeric($cleaned)) return round((float) $cleaned, 4);
+                if (is_numeric($cleaned)) return (float) $cleaned;
                 return null;
             }
-            if (!is_numeric($raw)) return null;  // "SIN CALIFICACION" u otro texto → null
-            return round((float) $raw, 4);
+            if (!is_numeric($raw)) return null;
+            return (float) $raw;
         }
 
         // Texto: limpiar NBSP y espacios de Excel
