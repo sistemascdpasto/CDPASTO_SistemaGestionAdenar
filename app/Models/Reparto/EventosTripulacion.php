@@ -56,6 +56,7 @@ class EventosTripulacion extends Model
             'adherencia_checklist_pre' => 'float',
             'adherencia_checklist_post'=> 'float',
             'rendimiento_combustible'  => 'float',
+            'modulacion'               => 'float',
             'adherencia_tiempo'        => 'float',
             'entrega_en_rango'         => 'float',
         ];

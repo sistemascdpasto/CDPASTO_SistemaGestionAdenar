@@ -176,6 +176,7 @@ class EventosTripulacionController
     private const PCT_FIELDS = [
         'adherencia_checklist_pre',
         'adherencia_checklist_post',
+        'modulacion',           // viene como "100.00%" o 1.0 (serial Excel)
         'adherencia_tiempo',
         'entrega_en_rango',
         'rechazos',         // viene como 0.035 → 3.50% o como 3.5 → 3.50%
