@@ -491,7 +491,7 @@ class PlanPremiacionController extends Controller
 
             $valsChecklistPre = $esConductor ? $getMetricVals($checklistPrePorDocumento, $checklistPrePorNombre) : [];
             if (!empty($valsChecklistPre)) {
-                $porcentajeChecklistPre = round(array_sum($valsChecklistPre) / count($valsChecklistPre), 1);
+                $porcentajeChecklistPre = array_sum($valsChecklistPre) / count($valsChecklistPre);
                 $porcentajeChecklistPreLabel = "{$porcentajeChecklistPre}%";
             } else {
                 $porcentajeChecklistPre = null;
@@ -501,7 +501,7 @@ class PlanPremiacionController extends Controller
             // % Adherencia CL Post Op — solo aplica para cargo Conductor de Reparto
             $valsChecklistPost = $esConductor ? $getMetricVals($checklistPostPorDocumento, $checklistPostPorNombre) : [];
             if (!empty($valsChecklistPost)) {
-                $porcentajeChecklistPost = round(array_sum($valsChecklistPost) / count($valsChecklistPost), 1);
+                $porcentajeChecklistPost = array_sum($valsChecklistPost) / count($valsChecklistPost);
                 $porcentajeChecklistPostLabel = "{$porcentajeChecklistPost}%";
             } else {
                 $porcentajeChecklistPost = null;
