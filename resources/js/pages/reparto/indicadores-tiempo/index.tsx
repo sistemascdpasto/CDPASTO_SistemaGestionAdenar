@@ -149,13 +149,13 @@ function Spark({ data, color = '#22c55e', h = 32, w = 100 }: { data: number[]; c
 function KpiCard({ label, value, sub, icon: Icon, color, spark, sparkColor }:
     { label: string; value: string; sub?: string; icon: any; color: string; spark?: number[]; sparkColor?: string }) {
     return (
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4 flex flex-col justify-between gap-2">
+        <div className="bg-card rounded-xl border border-sidebar-border/70 dark:border-sidebar-border shadow-sm p-4 flex flex-col justify-between gap-2">
             <div className="flex items-start justify-between">
-                <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide leading-tight">{label}</p>
+                <p className="text-[11px] font-semibold text-muted-foreground leading-tight">{label}</p>
                 <Icon className="h-4 w-4 shrink-0" style={{ color }} />
             </div>
             <p className="text-2xl font-extrabold" style={{ color }}>{value}</p>
-            {sub && <p className="text-[10px] text-gray-400">{sub}</p>}
+            {sub && <p className="text-[10px] text-muted-foreground">{sub}</p>}
             {spark && spark.length > 1 && (
                 <div className="mt-1">
                     <Spark data={spark} color={sparkColor ?? color} h={28} w={90} />
@@ -174,7 +174,7 @@ function PersonBar({ persona, meta }: { persona: Persona; meta: number }) {
             <div className="min-w-0 flex-1">
                 <div className="flex items-baseline justify-between gap-1 mb-0.5">
                     <div className="min-w-0 flex-1">
-                        <span className="text-[11px] font-semibold text-gray-700 dark:text-gray-200 truncate block">
+                        <span className="text-[11px] font-semibold text-foreground truncate block">
                             {persona.nombre || persona.documento}
                         </span>
                         <div className="flex items-center gap-1.5 mt-0.5">
@@ -184,18 +184,18 @@ function PersonBar({ persona, meta }: { persona: Persona; meta: number }) {
                                 </span>
                             )}
                             {persona.cargo && (
-                                <span className="text-[9px] text-gray-400 truncate">{persona.cargo}</span>
+                                <span className="text-[9px] text-muted-foreground truncate">{persona.cargo}</span>
                             )}
                         </div>
                     </div>
                     <span className="text-[11px] font-bold shrink-0" style={{ color }}>{pct}%</span>
                 </div>
-                <div className="h-1.5 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden relative">
+                <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden relative">
                     <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(pct, 100)}%`, background: color }} />
                     <div className="absolute top-0 bottom-0 w-px bg-blue-400 opacity-60"
                         style={{ left: `${meta}%` }} />
                 </div>
-                <p className="text-[9px] text-gray-400 mt-0.5">
+                <p className="text-[9px] text-muted-foreground mt-0.5">
                     {persona.dias} jornadas · {persona.bajo_critico} bajo 80%
                     {persona.ceros > 0 && ` · ${persona.ceros} en 0%`}
                 </p>
@@ -220,7 +220,7 @@ function CargoDetalle({ datos, meta }: { datos: CargoPt[]; meta: number }) {
     const [abierto, setAbierto] = useState<string | null>(null);
 
     return (
-        <div className="divide-y divide-gray-50 dark:divide-gray-800">
+        <div className="divide-y divide-border">
             {datos.map((c) => {
                 const isOpen = abierto === c.cargo;
                 return (
@@ -229,41 +229,41 @@ function CargoDetalle({ datos, meta }: { datos: CargoPt[]; meta: number }) {
                         <button
                             type="button"
                             onClick={() => setAbierto(isOpen ? null : c.cargo)}
-                            className="w-full flex items-center gap-3 px-5 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors text-left"
+                            className="w-full flex items-center gap-3 px-5 py-3 hover:bg-muted/60 transition-colors text-left"
                         >
                             {/* Barra de progreso */}
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between mb-1">
-                                    <span className="text-xs font-semibold text-gray-700 dark:text-gray-200 truncate">{c.cargo}</span>
+                                    <span className="text-xs font-semibold text-foreground truncate">{c.cargo}</span>
                                     <div className="flex items-center gap-2 shrink-0 ml-2">
-                                        <span className="text-[10px] text-gray-400">{c.fecha_min} – {c.fecha_max}</span>
+                                        <span className="text-[10px] text-muted-foreground">{c.fecha_min} – {c.fecha_max}</span>
                                         <span className="text-[10px] font-bold" style={{ color: colorBanda(c.promedio) }}>{c.promedio}%</span>
                                         <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold ${bgBanda(c.promedio)}`}>
                                             {labelBanda(c.promedio)}
                                         </span>
                                     </div>
                                 </div>
-                                <div className="h-1.5 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden relative">
+                                <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden relative">
                                     <div className="h-full rounded-full" style={{ width: `${Math.min(c.promedio, 100)}%`, background: colorBanda(c.promedio) }} />
                                     <div className="absolute top-0 bottom-0 w-px bg-blue-400 opacity-50" style={{ left: `${meta}%` }} />
                                 </div>
-                                <div className="flex gap-3 mt-1 text-[9px] text-gray-400">
+                                <div className="flex gap-3 mt-1 text-[9px] text-muted-foreground">
                                     <span>{c.total} jornadas</span>
                                     <span className="text-red-400">{c.bajo_critico} bajo 80% ({c.pct_bajo}%)</span>
                                     <span>{c.personas.length} personas</span>
                                     <span className="font-mono">{c.placas.slice(0, 4).join(' · ')}{c.placas.length > 4 ? ` +${c.placas.length - 4}` : ''}</span>
                                 </div>
                             </div>
-                            <span className="text-gray-400 text-[10px] shrink-0">{isOpen ? '▲' : '▼'}</span>
+                            <span className="text-muted-foreground text-[10px] shrink-0">{isOpen ? '▲' : '▼'}</span>
                         </button>
 
                         {/* Tabla expandida de personas */}
                         {isOpen && (
-                            <div className="px-5 pb-4 bg-gray-50 dark:bg-gray-800/30">
+                            <div className="px-5 pb-4 bg-muted/40">
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-[10px] mt-2">
                                         <thead>
-                                            <tr className="text-gray-400 border-b border-gray-200 dark:border-gray-700">
+                                            <tr className="text-muted-foreground border-b border-sidebar-border/70 dark:border-sidebar-border">
                                                 <th className="text-left font-semibold py-1.5 pr-3">Persona</th>
                                                 <th className="text-left font-semibold py-1.5 pr-3">Placa</th>
                                                 <th className="text-center font-semibold py-1.5 pr-3">Promedio</th>
@@ -274,8 +274,8 @@ function CargoDetalle({ datos, meta }: { datos: CargoPt[]; meta: number }) {
                                         </thead>
                                         <tbody>
                                             {c.personas.map((p, i) => (
-                                                <tr key={p.nombre ? `${p.nombre}-${p.placa}-${i}` : i} className={`border-b border-gray-100 dark:border-gray-700/50 ${i % 2 === 0 ? '' : 'bg-white dark:bg-gray-900/30'}`}>
-                                                    <td className="py-1.5 pr-3 font-semibold text-gray-700 dark:text-gray-200 truncate max-w-[180px]">
+                                                <tr key={p.nombre ? `${p.nombre}-${p.placa}-${i}` : i} className={`border-b border-sidebar-border/70 dark:border-sidebar-border/50 ${i % 2 === 0 ? '' : 'bg-card/30'}`}>
+                                                    <td className="py-1.5 pr-3 font-semibold text-foreground truncate max-w-[180px]">
                                                         {p.nombre}
                                                     </td>
                                                     <td className="py-1.5 pr-3">
@@ -288,14 +288,14 @@ function CargoDetalle({ datos, meta }: { datos: CargoPt[]; meta: number }) {
                                                             {p.promedio}%
                                                         </span>
                                                     </td>
-                                                    <td className="py-1.5 pr-3 text-center text-gray-600">{p.dias}</td>
+                                                    <td className="py-1.5 pr-3 text-center text-muted-foreground">{p.dias}</td>
                                                     <td className="py-1.5 pr-3 text-center">
                                                         {p.bajo_critico > 0
                                                             ? <span className="text-red-500 font-semibold">{p.bajo_critico}</span>
-                                                            : <span className="text-gray-300">0</span>
+                                                            : <span className="text-muted-foreground">0</span>
                                                         }
                                                     </td>
-                                                    <td className="py-1.5 text-gray-400 font-mono">
+                                                    <td className="py-1.5 text-muted-foreground font-mono">
                                                         {p.fecha_min} – {p.fecha_max}
                                                     </td>
                                                 </tr>
@@ -306,9 +306,9 @@ function CargoDetalle({ datos, meta }: { datos: CargoPt[]; meta: number }) {
                                 {/* Placas del cargo */}
                                 {c.placas.length > 0 && (
                                     <div className="flex flex-wrap gap-1 mt-3">
-                                        <span className="text-[9px] text-gray-400 font-semibold mr-1">Placas:</span>
+                                        <span className="text-[9px] text-muted-foreground font-semibold mr-1">Placas:</span>
                                         {c.placas.map(p => (
-                                            <span key={p} className="text-[9px] font-mono font-bold bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-1.5 py-0.5 rounded border border-gray-200 dark:border-gray-700">
+                                            <span key={p} className="text-[9px] font-mono font-bold bg-muted text-muted-foreground px-1.5 py-0.5 rounded border border-sidebar-border/70 dark:border-sidebar-border">
                                                 {p}
                                             </span>
                                         ))}
@@ -352,16 +352,16 @@ function PlacaMultiSelect({
             <button
                 type="button"
                 onClick={() => setOpen(v => !v)}
-                className="w-full h-8 px-2 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-left flex items-center justify-between gap-1 hover:border-gray-400 focus:ring-1 focus:ring-blue-400 focus:outline-none transition-colors"
+                className="w-full h-8 px-2 text-xs rounded-lg border border-sidebar-border/70 dark:border-sidebar-border bg-card text-left flex items-center justify-between gap-1 hover:border-border focus:ring-1 focus:ring-ring focus:outline-none transition-colors"
             >
-                <span className="truncate text-gray-600 dark:text-gray-300">
+                <span className="truncate text-muted-foreground">
                     {seleccionadas.length === 0
                         ? 'Todas las placas'
                         : seleccionadas.length === 1
                             ? seleccionadas[0]
                             : `${seleccionadas.length} placas seleccionadas`}
                 </span>
-                <span className="text-gray-400 shrink-0">{open ? '▲' : '▼'}</span>
+                <span className="text-muted-foreground shrink-0">{open ? '▲' : '▼'}</span>
             </button>
 
             {/* Chips de selección */}
@@ -369,14 +369,14 @@ function PlacaMultiSelect({
                 <div className="flex flex-wrap gap-1 mt-1">
                     {seleccionadas.map(p => (
                         <span key={p}
-                            className="inline-flex items-center gap-0.5 text-[9px] font-mono font-bold bg-blue-100 text-blue-700 border border-blue-200 px-1.5 py-0.5 rounded-full">
+                            className="inline-flex items-center gap-0.5 text-[9px] font-mono font-bold bg-muted text-foreground border border-sidebar-border/70 px-1.5 py-0.5 rounded-full">
                             {p}
                             <button type="button" onClick={() => toggle(p)}
                                 className="ml-0.5 text-blue-400 hover:text-blue-700">×</button>
                         </span>
                     ))}
                     <button type="button" onClick={() => onChange([])}
-                        className="text-[9px] text-gray-400 hover:text-red-500 underline ml-1">
+                        className="text-[9px] text-muted-foreground hover:text-red-500 underline ml-1">
                         Limpiar
                     </button>
                 </div>
@@ -386,20 +386,20 @@ function PlacaMultiSelect({
             {open && (
                 <>
                     <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-                    <div className="absolute left-0 top-full mt-1 z-50 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl w-64 max-h-72 flex flex-col">
+                    <div className="absolute left-0 top-full mt-1 z-50 bg-card border border-sidebar-border/70 dark:border-sidebar-border rounded-xl shadow-md w-64 max-h-72 flex flex-col">
                         {/* Búsqueda */}
-                        <div className="p-2 border-b border-gray-100 dark:border-gray-800">
+                        <div className="p-2 border-b border-sidebar-border/70 dark:border-sidebar-border">
                             <input
                                 autoFocus
                                 type="text"
                                 placeholder="Buscar placa..."
                                 value={buscar}
                                 onChange={e => setBuscar(e.target.value.toUpperCase())}
-                                className="w-full h-7 px-2 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 font-mono uppercase focus:outline-none focus:ring-1 focus:ring-blue-400"
+                                className="w-full h-7 px-2 text-xs rounded-lg border border-sidebar-border/70 dark:border-sidebar-border bg-muted font-mono uppercase focus:outline-none focus:ring-1 focus:ring-ring"
                             />
                         </div>
                         {/* Seleccionar todas */}
-                        <label className="flex items-center gap-2 px-3 py-1.5 text-[10px] font-semibold text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer border-b border-gray-100 dark:border-gray-800">
+                        <label className="flex items-center gap-2 px-3 py-1.5 text-[10px] font-semibold text-muted-foreground hover:bg-muted/60 cursor-pointer border-b border-sidebar-border/70 dark:border-sidebar-border">
                             <input type="checkbox"
                                 checked={seleccionadas.length === todas.length && todas.length > 0}
                                 onChange={toggleAll}
@@ -409,7 +409,7 @@ function PlacaMultiSelect({
                         {/* Lista */}
                         <div className="overflow-y-auto flex-1">
                             {filtradas.length === 0
-                                ? <p className="text-[10px] text-gray-400 text-center py-4">Sin resultados</p>
+                                ? <p className="text-[10px] text-muted-foreground text-center py-4">Sin resultados</p>
                                 : filtradas.map(p => (
                                     <label key={p}
                                         className="flex items-center gap-2 px-3 py-1.5 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
@@ -417,7 +417,7 @@ function PlacaMultiSelect({
                                             checked={seleccionadas.includes(p)}
                                             onChange={() => toggle(p)}
                                             className="accent-blue-600 w-3 h-3 shrink-0" />
-                                        <span className="text-[11px] font-mono font-semibold text-gray-700 dark:text-gray-200">
+                                        <span className="text-[11px] font-mono font-semibold text-foreground">
                                             {p}
                                         </span>
                                         {seleccionadas.includes(p) && (
@@ -687,27 +687,27 @@ export default function IndicadoresTiempoIndex({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Adherencia al Tiempo — Reparto" />
 
-            <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+            <div className="min-h-screen bg-muted/40">
 
                 {/* ── TABS ─────────────────────────────────────────────────── */}
-                <div className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 px-4 md:px-6 py-2 flex items-center gap-1 flex-wrap">
+                <div className="bg-card border-b border-sidebar-border/70 dark:border-sidebar-border px-4 md:px-6 py-2 flex items-center gap-1 flex-wrap">
                     <Link href={route('reparto.indicadores-resumen.index')}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all">
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all">
                         <BarChart3 className="h-3.5 w-3.5" />Resumen Ejecutivo
                     </Link>
                     <Link href={route('reparto.indicadores.index')}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium text-gray-500 hover:text-red-600 hover:bg-red-50 transition-all">
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all">
                         <Map className="h-3.5 w-3.5" />Indicadores de Velocidad
                     </Link>
                     <Link href={route('reparto.indicadores-adherencia.index')}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium text-gray-500 hover:text-yellow-600 hover:bg-yellow-50 transition-all">
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all">
                         <ClipboardCheck className="h-3.5 w-3.5" />Adherencia Checklist
                     </Link>
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold text-blue-700 bg-blue-50 border border-blue-200">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold border border-transparent bg-foreground text-background">
                         <Clock className="h-3.5 w-3.5" />Adherencia al Tiempo
                     </span>
                     <Link href={route('reparto.indicadores-entrega-rango.index')}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium text-gray-500 hover:text-green-600 hover:bg-green-50 transition-all">
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all">
                         <Activity className="h-3.5 w-3.5" />Entrega en Rango
                     </Link>
                 </div>
@@ -715,16 +715,16 @@ export default function IndicadoresTiempoIndex({
                 <div className="space-y-6 p-4 md:p-6 max-w-[1400px] mx-auto">
 
                     {/* ── HERO / ENCABEZADO ─────────────────────────────────── */}
-                    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm px-6 py-5">
+                    <div className="bg-card rounded-xl border border-sidebar-border/70 dark:border-sidebar-border shadow-sm px-6 py-5">
                         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
 
                             {/* Izquierda: pregunta + KPI grande */}
                             <div className="flex-1">
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-blue-500 mb-1">La pregunta</p>
-                                <h1 className="text-xl font-bold text-gray-800 dark:text-gray-100 leading-snug mb-1">
+                                <p className="text-[10px] font-bold text-blue-500 mb-1">La pregunta</p>
+                                <h1 className="text-xl font-bold text-foreground leading-snug mb-1">
                                     ¿Qué tan lejos está el reparto de <em className="not-italic text-blue-600">cumplir su tiempo</em>?
                                 </h1>
-                                <p className="text-xs text-gray-400 mb-4">
+                                <p className="text-xs text-muted-foreground mb-4">
                                     Cada registro es una jornada de una persona en un vehículo, medida como
                                     % de adherencia al tiempo planificado. La meta interna es {kpis.meta}%.
                                 </p>
@@ -734,10 +734,10 @@ export default function IndicadoresTiempoIndex({
                                             <span className="text-5xl font-extrabold" style={{ color: colorBanda(kpis.promedio) }}>
                                                 {kpis.promedio}
                                             </span>
-                                            <span className="text-2xl font-bold text-gray-500">%</span>
+                                            <span className="text-2xl font-bold text-muted-foreground">%</span>
                                         </div>
                                         <div className="mb-1">
-                                            <p className="text-xs font-semibold text-gray-600">Adherencia promedio</p>
+                                            <p className="text-xs font-semibold text-muted-foreground">Adherencia promedio</p>
                                             {kpis.gap !== null && kpis.gap > 0 && (
                                                 <div className="flex items-center gap-1 text-xs text-red-500 font-semibold mt-0.5">
                                                     <TrendingDown className="h-3.5 w-3.5" />
@@ -753,11 +753,11 @@ export default function IndicadoresTiempoIndex({
                                         </div>
                                     </div>
                                 ) : (
-                                    <p className="text-sm text-gray-400">Sin datos para el período seleccionado.</p>
+                                    <p className="text-sm text-muted-foreground">Sin datos para el período seleccionado.</p>
                                 )}
                                 <div className="mt-3">
                                     <Spark data={sparkline} color={kpis.promedio !== null ? colorBanda(kpis.promedio) : '#9ca3af'} h={36} w={180} />
-                                    <p className="text-[9px] text-gray-300 mt-0.5">Promedio día a día del período</p>
+                                    <p className="text-[9px] text-muted-foreground mt-0.5">Promedio día a día del período</p>
                                 </div>
                             </div>
 
@@ -767,7 +767,7 @@ export default function IndicadoresTiempoIndex({
                                     <AlertTriangle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
                                     <div>
                                         <p className="text-xl font-extrabold text-red-600">{kpis.pct_bajo_critico}%</p>
-                                        <p className="text-[10px] text-gray-500">de las jornadas terminó bajo 80%
+                                        <p className="text-[10px] text-muted-foreground">de las jornadas terminó bajo 80%
                                             <span className="font-semibold"> ({kpis.bajo_critico} de {kpis.total})</span>
                                         </p>
                                     </div>
@@ -776,14 +776,14 @@ export default function IndicadoresTiempoIndex({
                                     <XCircle className="h-5 w-5 text-orange-500 shrink-0 mt-0.5" />
                                     <div>
                                         <p className="text-xl font-extrabold text-orange-600">{kpis.ceros}</p>
-                                        <p className="text-[10px] text-gray-500">jornadas registradas en 0% de adherencia</p>
+                                        <p className="text-[10px] text-muted-foreground">jornadas registradas en 0% de adherencia</p>
                                     </div>
                                 </div>
                                 <div className="flex items-start gap-3 bg-green-50 dark:bg-green-900/10 rounded-xl p-3 border border-green-100">
                                     <Target className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
                                     <div>
                                         <p className="text-xl font-extrabold text-green-600">{kpis.pct_en_meta}%</p>
-                                        <p className="text-[10px] text-gray-500">de las jornadas alcanzó la meta de {kpis.meta}% o más</p>
+                                        <p className="text-[10px] text-muted-foreground">de las jornadas alcanzó la meta de {kpis.meta}% o más</p>
                                     </div>
                                 </div>
                             </div>
@@ -791,33 +791,33 @@ export default function IndicadoresTiempoIndex({
                     </div>
 
                     {/* ── FILTROS ────────────────────────────────────────────── */}
-                    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm px-5 py-4">
+                    <div className="bg-card rounded-xl border border-sidebar-border/70 dark:border-sidebar-border shadow-sm px-5 py-4">
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 items-end">
                             <div className="grid gap-1">
-                                <Label className="text-[10px] font-bold uppercase text-gray-400">
+                                <Label className="text-[10px] font-bold text-muted-foreground">
                                     <Calendar className="h-3 w-3 inline mr-1" />Fecha desde
                                 </Label>
                                 <Input type="date" value={fechaDesde} className="h-8 text-xs rounded-lg"
                                     onChange={e => { setFechaDesde(e.target.value); apply({ fecha_desde: e.target.value }); }} />
                             </div>
                             <div className="grid gap-1">
-                                <Label className="text-[10px] font-bold uppercase text-gray-400">
+                                <Label className="text-[10px] font-bold text-muted-foreground">
                                     <Calendar className="h-3 w-3 inline mr-1" />Fecha hasta
                                 </Label>
                                 <Input type="date" value={fechaHasta} className="h-8 text-xs rounded-lg"
                                     onChange={e => { setFechaHasta(e.target.value); apply({ fecha_hasta: e.target.value }); }} />
                             </div>
                             <div className="grid gap-1">
-                                <Label className="text-[10px] font-bold uppercase text-gray-400">Cargo</Label>
+                                <Label className="text-[10px] font-bold text-muted-foreground">Cargo</Label>
                                 <select value={cargo}
-                                    className="h-8 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 text-gray-700 dark:text-gray-200 focus:ring-1 focus:ring-blue-400 focus:outline-none"
+                                    className="h-8 text-xs rounded-lg border border-sidebar-border/70 dark:border-sidebar-border bg-card px-2 text-foreground focus:ring-1 focus:ring-ring focus:outline-none"
                                     onChange={e => { setCargo(e.target.value); apply({ cargo: e.target.value }); }}>
                                     <option value="">Todos los cargos</option>
                                     {cargos.map(c => <option key={c} value={c}>{c}</option>)}
                                 </select>
                             </div>
                             <div className="grid gap-1">
-                                <Label className="text-[10px] font-bold uppercase text-gray-400">Placa(s)</Label>
+                                <Label className="text-[10px] font-bold text-muted-foreground">Placa(s)</Label>
                                 <PlacaMultiSelect
                                     todas={todasPlacas}
                                     seleccionadas={placasSel}
@@ -827,13 +827,13 @@ export default function IndicadoresTiempoIndex({
                         </div>
                         {hasFilters && (
                             <div className="mt-2 flex justify-between items-center">
-                                <p className="text-[10px] text-gray-400">
+                                <p className="text-[10px] text-muted-foreground">
                                     Viendo <b>{kpis.total.toLocaleString()} registros</b>
                                     {cargo && <> · cargo: <b>{cargo}</b></>}
                                     {placasSel.length > 0 && <> · <b>{placasSel.length} placa{placasSel.length > 1 ? 's' : ''}</b></>}
                                     · <b>{kpis.personas} personas</b>
                                 </p>
-                                <Button variant="ghost" size="sm" onClick={clearFilters} className="h-7 text-xs text-gray-400">
+                                <Button variant="ghost" size="sm" onClick={clearFilters} className="h-7 text-xs text-muted-foreground">
                                     <X className="h-3 w-3 mr-1" />Limpiar
                                 </Button>
                             </div>
@@ -868,18 +868,18 @@ export default function IndicadoresTiempoIndex({
                             {/* S01 — Distribución (Donut) */}
                             <section>
                                 <div className="flex items-center gap-2 mb-3">
-                                    <span className="text-[10px] font-bold bg-gray-800 text-white px-2 py-0.5 rounded-full">01</span>
-                                    <h2 className="text-sm font-bold text-gray-700 dark:text-gray-200">El promedio esconde dos mundos</h2>
+                                    <span className="text-[10px] font-bold bg-foreground text-background px-2 py-0.5 rounded-full">01</span>
+                                    <h2 className="text-sm font-bold text-foreground">El promedio esconde dos mundos</h2>
                                 </div>
-                                <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
-                                    <h3 className="text-xs font-bold text-gray-600 mb-1 flex items-center gap-1.5">
+                                <div className="bg-card rounded-xl border border-sidebar-border/70 dark:border-sidebar-border shadow-sm p-5">
+                                    <h3 className="text-xs font-bold text-muted-foreground mb-1 flex items-center gap-1.5">
                                         <Target className="h-4 w-4 text-purple-500" />
                                         ¿Cuánto pesa cada nivel?
                                     </h3>
-                                    <p className="text-[10px] text-gray-400 mb-3">Participación de cada banda sobre el total</p>
+                                    <p className="text-[10px] text-muted-foreground mb-3">Participación de cada banda sobre el total</p>
                                     {bandasValues.some(v => v > 0)
                                         ? <div style={{ height: 180 }}><Doughnut data={donutData} options={donutOpts} /></div>
-                                        : <div className="h-32 flex items-center justify-center text-gray-300 text-sm">Sin datos</div>
+                                        : <div className="h-32 flex items-center justify-center text-muted-foreground text-sm">Sin datos</div>
                                     }
                                     <div className="mt-3 space-y-1">
                                         {bandasLabels.map((l, i) => {
@@ -887,10 +887,10 @@ export default function IndicadoresTiempoIndex({
                                             const t = bandasValues.reduce((a, b) => a + b, 0);
                                             return (
                                                 <div key={l} className="flex items-center justify-between text-[10px]">
-                                                    <span className="flex items-center gap-1 text-gray-500">
+                                                    <span className="flex items-center gap-1 text-muted-foreground">
                                                         <span className="w-2 h-2 rounded-full" style={{ background: bandasColors[i] }} />{l}
                                                     </span>
-                                                    <span className="font-semibold text-gray-700">
+                                                    <span className="font-semibold text-foreground">
                                                         {t > 0 ? ((v / t) * 100).toFixed(1) : 0}% ({v})
                                                     </span>
                                                 </div>
@@ -903,43 +903,43 @@ export default function IndicadoresTiempoIndex({
                             {/* S02 — Cuándo: Diario arriba, DOW abajo */}
                             <section>
                                 <div className="flex items-center gap-2 mb-3">
-                                    <span className="text-[10px] font-bold bg-gray-800 text-white px-2 py-0.5 rounded-full">02</span>
-                                    <h2 className="text-sm font-bold text-gray-700 dark:text-gray-200">¿Cuándo se cae el cumplimiento?</h2>
+                                    <span className="text-[10px] font-bold bg-foreground text-background px-2 py-0.5 rounded-full">02</span>
+                                    <h2 className="text-sm font-bold text-foreground">¿Cuándo se cae el cumplimiento?</h2>
                                 </div>
                                 <div className="space-y-4">
                                     {/* Diario — ancho completo */}
-                                    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
+                                    <div className="bg-card rounded-xl border border-sidebar-border/70 dark:border-sidebar-border shadow-sm p-5">
                                         <div className="flex items-center justify-between mb-1">
-                                            <h3 className="text-xs font-bold text-gray-600 flex items-center gap-1.5">
+                                            <h3 className="text-xs font-bold text-muted-foreground flex items-center gap-1.5">
                                                 <Calendar className="h-4 w-4 text-green-500" />
                                                 Promedio diario y jornadas incumplidas
                                             </h3>
                                             <div className="flex gap-1">
                                                 {(['bajo', 'ceros'] as const).map(v => (
                                                     <button key={v} onClick={() => setDiaMetric(v)}
-                                                        className={`text-[9px] px-2 py-0.5 rounded-full border font-semibold transition-colors ${diaMetric === v ? 'bg-gray-800 text-white border-gray-800' : 'text-gray-500 border-gray-200 hover:border-gray-400'}`}>
+                                                        className={`text-[9px] px-2 py-0.5 rounded-full border font-semibold transition-colors ${diaMetric === v ? 'bg-foreground text-background border-sidebar-border' : 'text-muted-foreground border-sidebar-border/70 hover:border-border'}`}>
                                                         {v === 'bajo' ? 'Bajo 80%' : 'En 0%'}
                                                     </button>
                                                 ))}
                                             </div>
                                         </div>
-                                        <p className="text-[10px] text-gray-400 mb-3">Línea: promedio del día · Columnas: jornadas problemáticas · Pasa el cursor para ver placas y personas</p>
+                                        <p className="text-[10px] text-muted-foreground mb-3">Línea: promedio del día · Columnas: jornadas problemáticas · Pasa el cursor para ver placas y personas</p>
                                         {por_dia.length > 0
                                             ? <div style={{ height: 260 }}><Bar data={diarioData} options={diarioOpts} /></div>
-                                            : <div className="h-40 flex items-center justify-center text-gray-300 text-sm">Sin datos</div>
+                                            : <div className="h-40 flex items-center justify-center text-muted-foreground text-sm">Sin datos</div>
                                         }
                                     </div>
 
                                     {/* DOW — ancho completo debajo */}
-                                    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
-                                        <h3 className="text-xs font-bold text-gray-600 mb-1 flex items-center gap-1.5">
+                                    <div className="bg-card rounded-xl border border-sidebar-border/70 dark:border-sidebar-border shadow-sm p-5">
+                                        <h3 className="text-xs font-bold text-muted-foreground mb-1 flex items-center gap-1.5">
                                             <Clock className="h-4 w-4 text-blue-500" />
                                             Patrón por día de la semana
                                         </h3>
-                                        <p className="text-[10px] text-gray-400 mb-3">Promedio de adherencia por día · Pasa el cursor para ver placas y personas</p>
+                                        <p className="text-[10px] text-muted-foreground mb-3">Promedio de adherencia por día · Pasa el cursor para ver placas y personas</p>
                                         {patron_dow.length > 0
                                             ? <div style={{ height: 220 }}><Bar data={dowData} options={dowOpts} /></div>
-                                            : <div className="h-40 flex items-center justify-center text-gray-300 text-sm">Sin datos</div>
+                                            : <div className="h-40 flex items-center justify-center text-muted-foreground text-sm">Sin datos</div>
                                         }
                                     </div>
                                 </div>
@@ -950,32 +950,32 @@ export default function IndicadoresTiempoIndex({
                         <div className="xl:col-span-1 space-y-3">
 
                             {/* S03 — Nombres concretos (acordeón) */}
-                            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+                            <div className="bg-card rounded-xl border border-sidebar-border/70 dark:border-sidebar-border shadow-sm overflow-hidden">
                                 <button
                                     onClick={() => setShowRanking(v => !v)}
-                                    className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors"
+                                    className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/60 transition-colors"
                                 >
                                     <div className="flex items-center gap-2 text-left">
                                         <span className="text-[10px] font-bold bg-orange-500 text-white px-1.5 py-0.5 rounded-full">03</span>
-                                        <span className="text-xs font-bold text-gray-700 dark:text-gray-200">Incumplimiento — nombres concretos</span>
+                                        <span className="text-xs font-bold text-foreground">Incumplimiento — nombres concretos</span>
                                     </div>
-                                    <span className="text-[10px] text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full shrink-0 ml-2">
+                                    <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full shrink-0 ml-2">
                                         {showRanking ? '▲' : '▼'}
                                     </span>
                                 </button>
                                 {showRanking && (
-                                    <div className="border-t border-gray-50 dark:border-gray-800 px-4 pb-4">
-                                        <p className="text-[10px] text-gray-400 mt-3 mb-1">Solo personas con 10+ jornadas</p>
+                                    <div className="border-t border-sidebar-border/70 dark:border-sidebar-border px-4 pb-4">
+                                        <p className="text-[10px] text-muted-foreground mt-3 mb-1">Solo personas con 10+ jornadas</p>
                                         <div className="flex gap-1 mb-3">
                                             {(['bottom', 'top'] as const).map(v => (
                                                 <button key={v} onClick={() => setRankMode(v)}
-                                                    className={`text-[9px] px-2 py-0.5 rounded-full border font-semibold transition-colors ${rankMode === v ? 'bg-gray-800 text-white border-gray-800' : 'text-gray-500 border-gray-200 hover:border-gray-400'}`}>
+                                                    className={`text-[9px] px-2 py-0.5 rounded-full border font-semibold transition-colors ${rankMode === v ? 'bg-foreground text-background border-sidebar-border' : 'text-muted-foreground border-sidebar-border/70 hover:border-border'}`}>
                                                     {v === 'bottom' ? 'Más bajos' : 'Más altos'}
                                                 </button>
                                             ))}
                                         </div>
                                         {rankData.length === 0
-                                            ? <p className="text-xs text-gray-300 text-center py-4">Sin datos suficientes</p>
+                                            ? <p className="text-xs text-muted-foreground text-center py-4">Sin datos suficientes</p>
                                             : <ul className="space-y-0.5 max-h-80 overflow-y-auto pr-1">
                                                 {rankData.map(p => <PersonBar key={p.documento} persona={p} meta={kpis.meta} />)}
                                               </ul>
@@ -985,23 +985,23 @@ export default function IndicadoresTiempoIndex({
                             </div>
 
                             {/* Comparación entre cargos (siempre visible, colapsable) */}
-                            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+                            <div className="bg-card rounded-xl border border-sidebar-border/70 dark:border-sidebar-border shadow-sm overflow-hidden">
                                 <button
                                     onClick={() => setShowCargos(v => !v)}
-                                    className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors"
+                                    className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/60 transition-colors"
                                 >
                                     <div className="flex items-center gap-2 text-left">
                                         <Users className="h-4 w-4 text-purple-500 shrink-0" />
-                                        <span className="text-xs font-bold text-gray-700 dark:text-gray-200">Comparación entre cargos</span>
+                                        <span className="text-xs font-bold text-foreground">Comparación entre cargos</span>
                                     </div>
-                                    <span className="text-[10px] text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full shrink-0 ml-2">
+                                    <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full shrink-0 ml-2">
                                         {showCargos ? '▲' : '▼'}
                                     </span>
                                 </button>
                                 {showCargos && (
-                                    <div className="border-t border-gray-50 dark:border-gray-800">
+                                    <div className="border-t border-sidebar-border/70 dark:border-sidebar-border">
                                         {por_cargo.length === 0
-                                            ? <div className="h-16 flex items-center justify-center text-gray-300 text-sm">Sin datos</div>
+                                            ? <div className="h-16 flex items-center justify-center text-muted-foreground text-sm">Sin datos</div>
                                             : <CargoDetalle datos={por_cargo} meta={kpis.meta} />
                                         }
                                     </div>
@@ -1009,26 +1009,26 @@ export default function IndicadoresTiempoIndex({
                             </div>
 
                             {/* S04 — El detalle: heatmap */}
-                            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+                            <div className="bg-card rounded-xl border border-sidebar-border/70 dark:border-sidebar-border shadow-sm overflow-hidden">
                                 <button
                                     onClick={() => setShowHeatmap(v => !v)}
-                                    className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors"
+                                    className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/60 transition-colors"
                                 >
                                     <div className="flex items-center gap-2 text-left">
                                         <span className="text-[10px] font-bold bg-blue-500 text-white px-1.5 py-0.5 rounded-full">04</span>
-                                        <span className="text-xs font-bold text-gray-700 dark:text-gray-200">Mapa de calor: persona por día</span>
+                                        <span className="text-xs font-bold text-foreground">Mapa de calor: persona por día</span>
                                     </div>
-                                    <span className="text-[10px] text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full shrink-0 ml-2">
+                                    <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full shrink-0 ml-2">
                                         {showHeatmap ? '▲' : '▼'}
                                     </span>
                                 </button>
                                 {showHeatmap && (
-                                    <div className="px-4 pb-4 border-t border-gray-50 dark:border-gray-800">
-                                        <p className="text-[10px] text-gray-400 mt-3 mb-2">
+                                    <div className="px-4 pb-4 border-t border-sidebar-border/70 dark:border-sidebar-border">
+                                        <p className="text-[10px] text-muted-foreground mt-3 mb-2">
                                             Solo personas con 15+ días. Vacío = sin registro.
                                         </p>
                                         {heatmap.personas.length === 0
-                                            ? <p className="text-xs text-gray-300 text-center py-4">Sin personas con 15+ días</p>
+                                            ? <p className="text-xs text-muted-foreground text-center py-4">Sin personas con 15+ días</p>
                                             : (
                                                 <div className="overflow-x-auto">
                                                     <div style={{
@@ -1037,23 +1037,23 @@ export default function IndicadoresTiempoIndex({
                                                         minWidth: 110 + heatmap.dias.length * 12,
                                                         gap: 1,
                                                     }}>
-                                                        <div className="sticky left-0 bg-white dark:bg-gray-900 z-10" />
+                                                        <div className="sticky left-0 bg-card z-10" />
                                                         {heatmap.dias.map(d => (
-                                                            <div key={d} className="text-[7px] text-center text-gray-400 font-mono pb-0.5">
+                                                            <div key={d} className="text-[7px] text-center text-muted-foreground font-mono pb-0.5">
                                                                 {d.slice(8)}
                                                             </div>
                                                         ))}
                                                         {heatmap.personas.map(p => (
                                                             <Fragment key={p.documento || p.nombre}>
                                                                 <div key={`n-${p.documento || p.nombre}`}
-                                                                    className="sticky left-0 bg-white dark:bg-gray-900 z-10 text-[9px] font-semibold text-gray-600 truncate pr-1 flex items-center">
+                                                                    className="sticky left-0 bg-card z-10 text-[9px] font-semibold text-muted-foreground truncate pr-1 flex items-center">
                                                                     {p.nombre}
                                                                 </div>
                                                                 {heatmap.dias.map(d => {
                                                                     const v = heatmap.celdas[p.documento + '|' + d];
                                                                     return (
                                                                         <div key={`${p.documento || p.nombre}-${d}`}
-                                                                            className="rounded-sm cursor-default hover:ring-1 hover:ring-gray-400"
+                                                                            className="rounded-sm cursor-default hover:ring-1 hover:ring-border"
                                                                             style={{ height: 13, background: hmColor(v) }}
                                                                             title={v !== undefined ? `${p.nombre} · ${d}: ${v}%` : `${p.nombre} · ${d}: sin registro`}
                                                                         />
@@ -1062,12 +1062,12 @@ export default function IndicadoresTiempoIndex({
                                                             </Fragment>
                                                         ))}
                                                     </div>
-                                                    <div className="flex flex-wrap gap-2 mt-2 text-[8px] text-gray-400">
+                                                    <div className="flex flex-wrap gap-2 mt-2 text-[8px] text-muted-foreground">
                                                         {[['#fca5a5','0%'],['#fed7aa','1–49%'],['#fef08a','50–79%'],
                                                           ['#bbf7d0','80–89%'],['#86efac','90–94%'],['#4ade80','≥95%'],
                                                           ['#f3f4f6','Sin reg.']].map(([c, l]) => (
                                                             <span key={l} className="flex items-center gap-0.5">
-                                                                <span className="w-2 h-2 rounded-sm inline-block border border-gray-200" style={{ background: c }} />{l}
+                                                                <span className="w-2 h-2 rounded-sm inline-block border border-sidebar-border/70" style={{ background: c }} />{l}
                                                             </span>
                                                         ))}
                                                     </div>
@@ -1079,29 +1079,29 @@ export default function IndicadoresTiempoIndex({
                             </div>
 
                             {/* S04 — Adherencia por vehículo */}
-                            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+                            <div className="bg-card rounded-xl border border-sidebar-border/70 dark:border-sidebar-border shadow-sm overflow-hidden">
                                 <button
                                     onClick={() => setShowPlacas(v => !v)}
-                                    className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors"
+                                    className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/60 transition-colors"
                                 >
-                                    <span className="flex items-center gap-2 text-xs font-bold text-gray-600">
+                                    <span className="flex items-center gap-2 text-xs font-bold text-muted-foreground">
                                         <Truck className="h-4 w-4 text-purple-500 shrink-0" />
                                         Adherencia por vehículo
                                     </span>
-                                    <span className="text-[10px] text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full shrink-0 ml-2">
+                                    <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full shrink-0 ml-2">
                                         {showPlacas ? '▲' : '▼'}
                                     </span>
                                 </button>
                                 {showPlacas && (
-                                    <div className="px-4 pb-4 border-t border-gray-50 dark:border-gray-800">
+                                    <div className="px-4 pb-4 border-t border-sidebar-border/70 dark:border-sidebar-border">
                                         {por_placa.length === 0
-                                            ? <p className="text-xs text-gray-300 text-center py-4">Sin vehículos con 10+ jornadas</p>
+                                            ? <p className="text-xs text-muted-foreground text-center py-4">Sin vehículos con 10+ jornadas</p>
                                             : (
                                                 <div className="mt-3 space-y-1.5 max-h-80 overflow-y-auto pr-1">
                                                     {por_placa.map(p => (
                                                         <div key={p.placa} className="flex items-center gap-2">
-                                                            <span className="text-[10px] font-mono font-bold text-gray-600 w-20 shrink-0">{p.placa}</span>
-                                                            <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden relative">
+                                                            <span className="text-[10px] font-mono font-bold text-muted-foreground w-20 shrink-0">{p.placa}</span>
+                                                            <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden relative">
                                                                 <div className="h-full rounded-full"
                                                                     style={{ width: `${Math.min(p.promedio, 100)}%`, background: colorBanda(p.promedio) }} />
                                                                 <div className="absolute top-0 bottom-0 w-px bg-blue-400 opacity-50"
@@ -1123,10 +1123,10 @@ export default function IndicadoresTiempoIndex({
                     </div>
 
                     {/* ── FOOTER ────────────────────────────────────────────── */}
-                    <footer className="text-[10px] text-gray-300 space-y-1 pt-2 border-t border-gray-100 dark:border-gray-800">
-                        <div><b className="text-gray-400">Fuente</b> · Tabla eventos_tripulacion — campo % Adherencia al Tiempo</div>
-                        <div><b className="text-gray-400">Cálculo</b> · Incumplida = menor a 80%. Promedios simples (cada jornada pesa igual).</div>
-                        <div><b className="text-gray-400">Alcance</b> · {kpis.total.toLocaleString()} registros · {kpis.personas} personas · {kpis.placas} vehículos · {kpis.dias_con_datos} días con datos</div>
+                    <footer className="text-[10px] text-muted-foreground space-y-1 pt-2 border-t border-sidebar-border/70 dark:border-sidebar-border">
+                        <div><b className="text-muted-foreground">Fuente</b> · Tabla eventos_tripulacion — campo % Adherencia al Tiempo</div>
+                        <div><b className="text-muted-foreground">Cálculo</b> · Incumplida = menor a 80%. Promedios simples (cada jornada pesa igual).</div>
+                        <div><b className="text-muted-foreground">Alcance</b> · {kpis.total.toLocaleString()} registros · {kpis.personas} personas · {kpis.placas} vehículos · {kpis.dias_con_datos} días con datos</div>
                         <div className="flex items-center gap-1">
                             <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block animate-pulse" />
                             Actualización automática con cada importación de Excel
