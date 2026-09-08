@@ -352,7 +352,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                     <div className="col-span-2 mt-2 mb-0.5 text-[10px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-400 flex items-center gap-1">
                                         <Medal className="h-3 w-3" /> Reparto 35%
                                     </div>
-                                    <div><span className="font-bold text-rose-700 dark:text-rose-400">Rechazos</span> <span className="text-slate-500">(11%)</span> — ≤ 2.3% rechazos = 100% | &gt; 2.3% = 0%</div>
+                                    <div><span className="font-bold text-rose-700 dark:text-rose-400">Rechazos</span> <span className="text-slate-500">(11%)</span> — &lt; 2.4% rechazos = 100% | ≥ 2.4% = 0%</div>
                                     <div><span className="font-bold text-rose-700 dark:text-rose-400">SAC</span> <span className="text-slate-500">(8%)</span> — Sin casos = 100% | Con casos = 0%</div>
                                     <div><span className="font-bold text-rose-700 dark:text-rose-400">Adherencia Tiempo</span> <span className="text-slate-500">(8%)</span> — ≥ 83% adherencia = 100% | &lt; 83% = 0%</div>
                                     <div><span className="font-bold text-rose-700 dark:text-rose-400">RMD</span> <span className="text-slate-500">(8%)</span> — Promedio ≥ 4 = 100% | &lt; 4 = 0%</div>
