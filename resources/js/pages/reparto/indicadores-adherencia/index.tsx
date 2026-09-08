@@ -109,12 +109,12 @@ function barColor(v: number): string {
 function HeatTooltip({ celda, dia, placa, x, y }: { celda: Celda; dia: number; placa: string; x: number; y: number }) {
     return (
         <div
-            className="fixed z-[999] pointer-events-none bg-white rounded-xl shadow-2xl border border-gray-100 p-3 w-60"
+            className="fixed z-[999] pointer-events-none bg-popover rounded-xl shadow-md border border-sidebar-border/70 p-3 w-60"
             style={{ left: x + 14, top: y + 14 }}
         >
-            <div className="flex items-center justify-between mb-1.5 border-b border-gray-100 pb-1.5">
+            <div className="flex items-center justify-between mb-1.5 border-b border-sidebar-border/70 pb-1.5">
                 <span className="font-bold text-xs font-mono text-blue-600">{placa}</span>
-                <span className="text-[10px] text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded-full">Día {dia}</span>
+                <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">Día {dia}</span>
             </div>
             <div className="flex gap-1.5 mb-1.5">
                 {celda.promPre !== null && (
@@ -130,8 +130,8 @@ function HeatTooltip({ celda, dia, placa, x, y }: { celda: Celda; dia: number; p
             </div>
             <div className="space-y-1 max-h-40 overflow-y-auto">
                 {celda.tripulantes.map((t, i) => (
-                    <div key={i} className="flex items-center justify-between gap-1 bg-gray-50 rounded px-1.5 py-0.5">
-                        <span className="text-[9px] text-gray-600 truncate flex-1">{t.nombre}</span>
+                    <div key={i} className="flex items-center justify-between gap-1 bg-muted rounded px-1.5 py-0.5">
+                        <span className="text-[9px] text-muted-foreground truncate flex-1">{t.nombre}</span>
                         <div className="flex gap-0.5 shrink-0">
                             {t.pre  !== null && <span className={`text-[8px] font-bold px-1 py-0.5 rounded ${chipColor(t.pre)}`}>{t.pre}%</span>}
                             {t.post !== null && <span className={`text-[8px] font-bold px-1 py-0.5 rounded ${chipColor(t.post)}`}>{t.post}%</span>}
@@ -150,9 +150,9 @@ function HeatmapGrid({ heatmap }: { heatmap: Heatmap }) {
 
     if (placas.length === 0 || dias.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center py-10 text-gray-300 gap-2">
+            <div className="flex flex-col items-center justify-center py-10 text-muted-foreground gap-2">
                 <ClipboardCheck className="h-10 w-10" />
-                <p className="text-sm text-gray-400">Sin datos para el período seleccionado.</p>
+                <p className="text-sm text-muted-foreground">Sin datos para el período seleccionado.</p>
             </div>
         );
     }
@@ -171,12 +171,12 @@ function HeatmapGrid({ heatmap }: { heatmap: Heatmap }) {
                 }}
             >
                 {/* esquina */}
-                <div className="sticky top-0 left-0 z-20 bg-white border-b border-r border-gray-100" style={{ height: TOP_H }} />
+                <div className="sticky top-0 left-0 z-20 bg-card border-b border-r border-sidebar-border/70" style={{ height: TOP_H }} />
 
                 {/* cabecera placas */}
                 {placas.map((p) => (
-                    <div key={p} className="sticky top-0 z-10 flex items-end justify-center bg-white border-b border-r border-gray-100 pb-1" style={{ height: TOP_H }}>
-                        <span className="text-[8px] font-mono text-gray-400 leading-none" style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
+                    <div key={p} className="sticky top-0 z-10 flex items-end justify-center bg-card border-b border-r border-sidebar-border/70 pb-1" style={{ height: TOP_H }}>
+                        <span className="text-[8px] font-mono text-muted-foreground leading-none" style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
                             {p}
                         </span>
                     </div>
@@ -186,19 +186,19 @@ function HeatmapGrid({ heatmap }: { heatmap: Heatmap }) {
                 {dias.map((dia) => (
                     <div key={dia} style={{ display: 'contents' }}>
                         <div
-                            className="sticky left-0 z-10 flex items-center justify-center bg-white border-b border-r border-gray-100 text-[8px] font-semibold text-gray-300 select-none"
+                            className="sticky left-0 z-10 flex items-center justify-center bg-card border-b border-r border-sidebar-border/70 text-[8px] font-semibold text-muted-foreground select-none"
                             style={{ height: CELL_H }}
                         >{dia}</div>
                         {placas.map((placa) => {
                             const key   = `${dia}|${placa}`;
                             const celda = celdas[key] ?? null;
-                            let bg = 'bg-gray-50';
+                            let bg = 'bg-muted';
                             if (celda?.estado === 'ok')      bg = 'bg-emerald-200';
                             if (celda?.estado === 'critico') bg = 'bg-rose-200';
                             return (
                                 <div
                                     key={key}
-                                    className={`${bg} border-b border-r border-white cursor-default transition-all duration-75 hover:brightness-90 hover:ring-1 hover:ring-gray-300`}
+                                    className={`${bg} border-b border-r border-background cursor-default transition-all duration-75 hover:brightness-90 hover:ring-1 hover:ring-border`}
                                     style={{ height: CELL_H }}
                                     onMouseEnter={(e) => celda && setTooltip({ celda, dia, placa, x: e.clientX, y: e.clientY })}
                                     onMouseMove={(e)  => celda && setTooltip((p) => p ? { ...p, x: e.clientX, y: e.clientY } : null)}
@@ -254,10 +254,10 @@ function DonutKpi({ pct, label, color, size = 100 }: { pct: number | null; label
         <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
             <Doughnut data={data} options={opts} width={size} height={size} />
             <div className="absolute flex flex-col items-center leading-tight">
-                <span className="text-lg font-extrabold text-gray-800" style={{ color }}>
+                <span className="text-lg font-extrabold text-foreground" style={{ color }}>
                     {pct !== null ? `${pct}%` : '—'}
                 </span>
-                <span className="text-[10px] font-semibold text-gray-400">{label}</span>
+                <span className="text-[10px] font-semibold text-muted-foreground">{label}</span>
             </div>
         </div>
     );
@@ -378,38 +378,38 @@ export default function IndicadoresAdherenciaIndex({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Indicadores de Adherencia — ADENAR S.A.S." />
 
-            <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+            <div className="min-h-screen bg-muted/40">
 
                 {/* ══ BARRA DE NAVEGACIÓN / TABS ════════════════════════════ */}
-                <div className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 px-4 md:px-6 py-2 flex items-center gap-1">
+                <div className="bg-card border-b border-sidebar-border/70 dark:border-sidebar-border px-4 md:px-6 py-2 flex items-center gap-1">
                     <Link
                         href={route('reparto.indicadores-resumen.index')}
-                        className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all"
+                        className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all"
                     >
                         <BarChart3 className="h-3.5 w-3.5" />
                         Resumen Ejecutivo
                     </Link>
                     <Link
                         href={route('reparto.indicadores.index')}
-                        className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium text-gray-500 hover:text-red-600 hover:bg-red-50 transition-all"
+                        className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all"
                     >
                         <Map className="h-3.5 w-3.5" />
                         Indicadores de Velocidad
                     </Link>
-                    <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200">
+                    <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-semibold border border-transparent bg-foreground text-background">
                         <ClipboardCheck className="h-3.5 w-3.5" />
                         Indicadores de Adherencia
                     </span>
                     <Link
                         href={route('reparto.indicadores-tiempo.index')}
-                        className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-all"
+                        className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all"
                     >
                         <Clock className="h-3.5 w-3.5" />
                         Adherencia al Tiempo
                     </Link>
                     <Link
                         href={route('reparto.indicadores-entrega-rango.index')}
-                        className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium text-gray-500 hover:text-green-600 hover:bg-green-50 transition-all"
+                        className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all"
                     >
                         <Activity className="h-3.5 w-3.5" />
                         Entrega en Rango
@@ -419,17 +419,17 @@ export default function IndicadoresAdherenciaIndex({
                 <div className="space-y-5 p-4 md:p-6 max-w-[1600px] mx-auto">
 
                     {/* ══ ENCABEZADO ════════════════════════════════════════ */}
-                    <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 px-6 py-4">
+                    <div className="bg-card rounded-xl shadow-sm border border-sidebar-border/70 dark:border-sidebar-border px-6 py-4">
                         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                             {/* Título */}
                             <div>
                                 <div className="flex items-center gap-2 mb-0.5">
                                     <ClipboardCheck className="h-6 w-6 text-emerald-500" />
-                                    <h1 className="text-xl font-bold text-gray-800 dark:text-gray-100">
+                                    <h1 className="text-xl font-bold text-foreground">
                                         Lista de verificación de Indicadores de Adherencia
                                     </h1>
                                 </div>
-                                <p className="text-xs text-gray-400 ml-8">Pre y Post Operacional · por fecha, placa y tripulante</p>
+                                <p className="text-xs text-muted-foreground ml-8">Pre y Post Operacional · por fecha, placa y tripulante</p>
                             </div>
                             {/* Badges de estado */}
                             <div className="flex items-center gap-2 flex-wrap shrink-0">
@@ -441,7 +441,7 @@ export default function IndicadoresAdherenciaIndex({
                                     <CheckCircle2 className="h-3 w-3" />
                                     Post: {promPost !== null ? `${promPost}%` : '—'}
                                 </span>
-                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 border border-gray-200">
+                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-muted text-muted-foreground border border-sidebar-border/70">
                                     {total.toLocaleString()} registros
                                 </span>
                             </div>
@@ -450,7 +450,7 @@ export default function IndicadoresAdherenciaIndex({
                         {/* Filtros */}
                         <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                             <div>
-                                <Label className="text-[10px] font-semibold uppercase text-gray-400 mb-1 block">
+                                <Label className="text-[10px] font-semibold text-muted-foreground mb-1 block">
                                     <Calendar className="h-3 w-3 inline mr-1" />FECHA DESDE
                                 </Label>
                                 <Input type="date" value={fechaDesde} placeholder="dd/mm/aaaa"
@@ -458,7 +458,7 @@ export default function IndicadoresAdherenciaIndex({
                                     onChange={(e) => { setFechaDesde(e.target.value); applyFilters({ fecha_desde: e.target.value }); }} />
                             </div>
                             <div>
-                                <Label className="text-[10px] font-semibold uppercase text-gray-400 mb-1 block">
+                                <Label className="text-[10px] font-semibold text-muted-foreground mb-1 block">
                                     <Calendar className="h-3 w-3 inline mr-1" />FECHA HASTA
                                 </Label>
                                 <Input type="date" value={fechaHasta} placeholder="dd/mm/aaaa"
@@ -466,7 +466,7 @@ export default function IndicadoresAdherenciaIndex({
                                     onChange={(e) => { setFechaHasta(e.target.value); applyFilters({ fecha_hasta: e.target.value }); }} />
                             </div>
                             <div>
-                                <Label className="text-[10px] font-semibold uppercase text-gray-400 mb-1 block">PLACA</Label>
+                                <Label className="text-[10px] font-semibold text-muted-foreground mb-1 block">PLACA</Label>
                                 <Input placeholder="Ej: COLJV386" value={placa}
                                     className="h-8 text-xs rounded-lg uppercase font-mono"
                                     onChange={(e) => setPlaca(e.target.value.toUpperCase())}
@@ -474,20 +474,20 @@ export default function IndicadoresAdherenciaIndex({
                                     onKeyDown={(e) => e.key === 'Enter' && applyFilters()} />
                             </div>
                             <div>
-                                <Label className="text-[10px] font-semibold uppercase text-gray-400 mb-1 block">CÉDULA</Label>
+                                <Label className="text-[10px] font-semibold text-muted-foreground mb-1 block">CÉDULA</Label>
                                 <div className="relative">
                                     <Input placeholder="Documento..." value={documento}
                                         className="h-8 text-xs rounded-lg pr-8 font-mono"
                                         onChange={(e) => setDocumento(e.target.value)}
                                         onBlur={() => applyFilters()}
                                         onKeyDown={(e) => e.key === 'Enter' && applyFilters()} />
-                                    <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                                    <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                                 </div>
                             </div>
                         </div>
                         {hasFilters && (
                             <div className="mt-2 flex justify-end">
-                                <Button variant="ghost" size="sm" onClick={handleClear} className="h-7 text-xs text-gray-400 hover:text-gray-700">
+                                <Button variant="ghost" size="sm" onClick={handleClear} className="h-7 text-xs text-muted-foreground hover:text-foreground">
                                     <X className="h-3 w-3 mr-1" />Limpiar filtros
                                 </Button>
                             </div>
@@ -497,8 +497,8 @@ export default function IndicadoresAdherenciaIndex({
                     {/* ══ KPI CARDS ══════════════════════════════════════════ */}
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                         {/* Cumplimiento Global — donut */}
-                        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-4 col-span-2 md:col-span-1 flex flex-col items-center justify-center gap-2">
-                            <p className="text-[11px] font-semibold text-gray-500 text-center">Cumplimiento Global</p>
+                        <div className="bg-card rounded-xl shadow-sm border border-sidebar-border/70 dark:border-sidebar-border p-4 col-span-2 md:col-span-1 flex flex-col items-center justify-center gap-2">
+                            <p className="text-[11px] font-semibold text-muted-foreground text-center">Cumplimiento Global</p>
                             <DonutKpi pct={promPre} label={pctLabel(promPre)} color={pctRing(promPre)} size={90} />
                             <div className="flex items-center gap-1 text-[10px] text-green-600 font-semibold">
                                 <TrendingUp className="h-3 w-3" />
@@ -507,52 +507,52 @@ export default function IndicadoresAdherenciaIndex({
                         </div>
 
                         {/* Registros Totales */}
-                        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-4 flex flex-col justify-between">
+                        <div className="bg-card rounded-xl shadow-sm border border-sidebar-border/70 dark:border-sidebar-border p-4 flex flex-col justify-between">
                             <div className="flex items-start justify-between">
-                                <p className="text-[11px] font-semibold text-gray-500">Registros Totales</p>
+                                <p className="text-[11px] font-semibold text-muted-foreground">Registros Totales</p>
                                 <ClipboardCheck className="h-4 w-4 text-blue-400" />
                             </div>
-                            <p className="text-3xl font-extrabold text-gray-800 dark:text-gray-100 mt-1">{total.toLocaleString()}</p>
-                            <p className="text-[10px] text-gray-400">Este período</p>
+                            <p className="text-3xl font-extrabold text-foreground mt-1">{total.toLocaleString()}</p>
+                            <p className="text-[10px] text-muted-foreground">Este período</p>
                             <div className="mt-2">
                                 <Spark data={sparkPre.slice(-10)} color="#3b82f6" />
                             </div>
                         </div>
 
                         {/* Críticos */}
-                        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-4 flex flex-col justify-between">
+                        <div className="bg-card rounded-xl shadow-sm border border-sidebar-border/70 dark:border-sidebar-border p-4 flex flex-col justify-between">
                             <div className="flex items-start justify-between">
-                                <p className="text-[11px] font-semibold text-gray-500">Críticos</p>
+                                <p className="text-[11px] font-semibold text-muted-foreground">Críticos</p>
                                 <AlertTriangle className="h-4 w-4 text-red-400" />
                             </div>
                             <p className="text-3xl font-extrabold text-red-500 mt-1">{kpis.celdasCritico}</p>
-                            <p className="text-[10px] text-gray-400">{pctCriticos}% del total</p>
+                            <p className="text-[10px] text-muted-foreground">{pctCriticos}% del total</p>
                             <div className="mt-2">
                                 <Spark data={Array(10).fill(pctCriticos)} color="#ef4444" />
                             </div>
                         </div>
 
                         {/* Sin Registro */}
-                        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-4 flex flex-col justify-between">
+                        <div className="bg-card rounded-xl shadow-sm border border-sidebar-border/70 dark:border-sidebar-border p-4 flex flex-col justify-between">
                             <div className="flex items-start justify-between">
-                                <p className="text-[11px] font-semibold text-gray-500">Sin Registro</p>
-                                <XCircle className="h-4 w-4 text-gray-400" />
+                                <p className="text-[11px] font-semibold text-muted-foreground">Sin Registro</p>
+                                <XCircle className="h-4 w-4 text-muted-foreground" />
                             </div>
-                            <p className="text-3xl font-extrabold text-gray-500 mt-1">{heatmap.celdasVacio}</p>
-                            <p className="text-[10px] text-gray-400">{pctSinReg}% del total</p>
+                            <p className="text-3xl font-extrabold text-muted-foreground mt-1">{heatmap.celdasVacio}</p>
+                            <p className="text-[10px] text-muted-foreground">{pctSinReg}% del total</p>
                             <div className="mt-2">
                                 <Spark data={Array(10).fill(pctSinReg)} color="#9ca3af" />
                             </div>
                         </div>
 
                         {/* Tripulantes */}
-                        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-4 flex flex-col justify-between">
+                        <div className="bg-card rounded-xl shadow-sm border border-sidebar-border/70 dark:border-sidebar-border p-4 flex flex-col justify-between">
                             <div className="flex items-start justify-between">
-                                <p className="text-[11px] font-semibold text-gray-500">Tripulantes</p>
+                                <p className="text-[11px] font-semibold text-muted-foreground">Tripulantes</p>
                                 <Users className="h-4 w-4 text-purple-400" />
                             </div>
                             <p className="text-3xl font-extrabold text-purple-500 mt-1">{kpis.totalTripulantes}</p>
-                            <p className="text-[10px] text-gray-400">Activos en período</p>
+                            <p className="text-[10px] text-muted-foreground">Activos en período</p>
                             <div className="mt-2">
                                 <Spark data={sparkPost.slice(-10)} color="#a855f7" />
                             </div>
@@ -560,10 +560,10 @@ export default function IndicadoresAdherenciaIndex({
                     </div>
 
                     {/* ══ HEATMAP ════════════════════════════════════════════ */}
-                    <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-4">
+                    <div className="bg-card rounded-xl shadow-sm border border-sidebar-border/70 dark:border-sidebar-border p-4">
                         {/* cabecera heatmap */}
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
-                            <h2 className="text-sm font-bold text-gray-700 dark:text-gray-200">
+                            <h2 className="text-sm font-bold text-foreground">
                                 Matriz de Cumplimiento — Checklist Pre/Post Operacional
                             </h2>
                             <div className="flex gap-1.5 flex-wrap text-[10px]">
@@ -573,7 +573,7 @@ export default function IndicadoresAdherenciaIndex({
                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-50 text-red-600 font-semibold border border-red-100">
                                     <XCircle className="h-2.5 w-2.5" />{heatmap.celdasCritico} críticos
                                 </span>
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-50 text-gray-500 font-semibold border border-gray-100">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-semibold border border-sidebar-border/70">
                                     {heatmap.celdasVacio} sin registro
                                 </span>
                                 <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-bold border ${
@@ -587,7 +587,7 @@ export default function IndicadoresAdherenciaIndex({
                         </div>
 
                         {/* leyenda */}
-                        <div className="flex flex-wrap gap-4 mb-3 text-[10px] text-gray-400">
+                        <div className="flex flex-wrap gap-4 mb-3 text-[10px] text-muted-foreground">
                             <span className="flex items-center gap-1">
                                 <span className="w-3 h-3 rounded-sm bg-emerald-200 border border-emerald-300 inline-block" />
                                 100% Pre y Post (todos los tripulantes)
@@ -597,14 +597,14 @@ export default function IndicadoresAdherenciaIndex({
                                 Al menos un tripulante bajo 100%
                             </span>
                             <span className="flex items-center gap-1">
-                                <span className="w-3 h-3 rounded-sm bg-gray-100 border border-gray-200 inline-block" />
+                                <span className="w-3 h-3 rounded-sm bg-muted border border-sidebar-border/70 inline-block" />
                                 Sin registro
                             </span>
                         </div>
 
                         <HeatmapGrid heatmap={heatmap} />
 
-                        <p className="text-[10px] text-gray-300 mt-2 text-center">
+                        <p className="text-[10px] text-muted-foreground mt-2 text-center">
                             Pasa el cursor sobre una celda para ver detalles
                         </p>
                     </div>
@@ -613,8 +613,8 @@ export default function IndicadoresAdherenciaIndex({
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
                         {/* Donut Pre */}
-                        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-5">
-                            <h3 className="text-xs font-bold text-gray-600 mb-3">Cumplimiento Pre Operacional</h3>
+                        <div className="bg-card rounded-xl shadow-sm border border-sidebar-border/70 dark:border-sidebar-border p-5">
+                            <h3 className="text-xs font-bold text-muted-foreground mb-3">Cumplimiento Pre Operacional</h3>
                             <div className="flex items-center gap-4">
                                 <div style={{ height: 130, width: 130, flexShrink: 0 }}>
                                     <Doughnut data={mkDonutData(distPre)} options={donutOpts('Pre')} />
@@ -625,11 +625,11 @@ export default function IndicadoresAdherenciaIndex({
                                         const t = Object.values(distPre).reduce((a, b) => a + b, 0);
                                         return (
                                             <div key={l} className="flex items-center justify-between text-[10px]">
-                                                <span className="flex items-center gap-1 text-gray-500">
+                                                <span className="flex items-center gap-1 text-muted-foreground">
                                                     <span className="w-2 h-2 rounded-full inline-block" style={{ background: COLORS[i] }} />
                                                     {l.split(' ')[0]}
                                                 </span>
-                                                <span className="font-semibold text-gray-700">
+                                                <span className="font-semibold text-foreground">
                                                     {t > 0 ? ((v / t) * 100).toFixed(0) : 0}%
                                                 </span>
                                             </div>
@@ -637,14 +637,14 @@ export default function IndicadoresAdherenciaIndex({
                                     })}
                                 </div>
                             </div>
-                            <div className="mt-3 text-center text-[11px] text-gray-400 font-mono">
+                            <div className="mt-3 text-center text-[11px] text-muted-foreground font-mono">
                                 {total.toLocaleString()} / {promPre !== null ? `${promPre}%` : '—'}
                             </div>
                         </div>
 
                         {/* Donut Post */}
-                        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-5">
-                            <h3 className="text-xs font-bold text-gray-600 mb-3">Cumplimiento Post Operacional</h3>
+                        <div className="bg-card rounded-xl shadow-sm border border-sidebar-border/70 dark:border-sidebar-border p-5">
+                            <h3 className="text-xs font-bold text-muted-foreground mb-3">Cumplimiento Post Operacional</h3>
                             <div className="flex items-center gap-4">
                                 <div style={{ height: 130, width: 130, flexShrink: 0 }}>
                                     <Doughnut data={mkDonutData(distPost)} options={donutOpts('Post')} />
@@ -655,11 +655,11 @@ export default function IndicadoresAdherenciaIndex({
                                         const t = Object.values(distPost).reduce((a, b) => a + b, 0);
                                         return (
                                             <div key={l} className="flex items-center justify-between text-[10px]">
-                                                <span className="flex items-center gap-1 text-gray-500">
+                                                <span className="flex items-center gap-1 text-muted-foreground">
                                                     <span className="w-2 h-2 rounded-full inline-block" style={{ background: COLORS[i] }} />
                                                     {l.split(' ')[0]}
                                                 </span>
-                                                <span className="font-semibold text-gray-700">
+                                                <span className="font-semibold text-foreground">
                                                     {t > 0 ? ((v / t) * 100).toFixed(0) : 0}%
                                                 </span>
                                             </div>
@@ -667,21 +667,21 @@ export default function IndicadoresAdherenciaIndex({
                                     })}
                                 </div>
                             </div>
-                            <div className="mt-3 text-center text-[11px] text-gray-400 font-mono">
+                            <div className="mt-3 text-center text-[11px] text-muted-foreground font-mono">
                                 {Object.values(distPost).reduce((a, b) => a + b, 0).toLocaleString()} / {promPost !== null ? `${promPost}%` : '—'}
                             </div>
                         </div>
 
                         {/* Tendencia */}
-                        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-5">
+                        <div className="bg-card rounded-xl shadow-sm border border-sidebar-border/70 dark:border-sidebar-border p-5">
                             <div className="flex items-center justify-between mb-3">
-                                <h3 className="text-xs font-bold text-gray-600">Tendencia de Cumplimiento</h3>
-                                <span className="text-[10px] text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full border border-gray-100">
+                                <h3 className="text-xs font-bold text-muted-foreground">Tendencia de Cumplimiento</h3>
+                                <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full border border-sidebar-border/70">
                                     Últimos {porFecha.length} días
                                 </span>
                             </div>
                             {porFecha.length === 0 ? (
-                                <div className="h-32 flex items-center justify-center text-gray-300">
+                                <div className="h-32 flex items-center justify-center text-muted-foreground">
                                     <TrendingUp className="h-8 w-8" />
                                 </div>
                             ) : (
@@ -696,26 +696,26 @@ export default function IndicadoresAdherenciaIndex({
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
                         {/* Top vehículos mejor cumplimiento */}
-                        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-5">
-                            <h3 className="text-xs font-bold text-gray-600 flex items-center gap-1.5 mb-3">
+                        <div className="bg-card rounded-xl shadow-sm border border-sidebar-border/70 dark:border-sidebar-border p-5">
+                            <h3 className="text-xs font-bold text-muted-foreground flex items-center gap-1.5 mb-3">
                                 <Trophy className="h-4 w-4 text-yellow-500" />
                                 Top Vehículos con Mejor Cumplimiento
                             </h3>
                             {topMejor.length === 0 ? (
-                                <p className="text-xs text-gray-300 text-center py-6">Sin datos</p>
+                                <p className="text-xs text-muted-foreground text-center py-6">Sin datos</p>
                             ) : (
                                 <div className="space-y-2">
                                     {topMejor.map((row, i) => (
                                         <div key={row.placa} className="flex items-center gap-2">
-                                            <span className="text-[10px] font-bold text-gray-400 w-4 shrink-0">{i + 1}</span>
-                                            <span className="text-xs font-mono font-semibold text-gray-700 w-20 shrink-0">{row.placa}</span>
-                                            <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                            <span className="text-[10px] font-bold text-muted-foreground w-4 shrink-0">{i + 1}</span>
+                                            <span className="text-xs font-mono font-semibold text-foreground w-20 shrink-0">{row.placa}</span>
+                                            <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
                                                 <div
                                                     className={`h-full rounded-full ${barColor(row.prom)}`}
                                                     style={{ width: `${Math.min(row.prom, 100)}%` }}
                                                 />
                                             </div>
-                                            <span className="text-[10px] font-bold text-gray-600 w-10 text-right shrink-0">{row.prom}%</span>
+                                            <span className="text-[10px] font-bold text-muted-foreground w-10 text-right shrink-0">{row.prom}%</span>
                                         </div>
                                     ))}
                                 </div>
@@ -726,19 +726,19 @@ export default function IndicadoresAdherenciaIndex({
                         </div>
 
                         {/* Atención requerida */}
-                        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-5">
-                            <h3 className="text-xs font-bold text-gray-600 flex items-center gap-1.5 mb-3">
+                        <div className="bg-card rounded-xl shadow-sm border border-sidebar-border/70 dark:border-sidebar-border p-5">
+                            <h3 className="text-xs font-bold text-muted-foreground flex items-center gap-1.5 mb-3">
                                 <AlertTriangle className="h-4 w-4 text-orange-500" />
                                 Atención Requerida
                             </h3>
                             {topCriticos.length === 0 ? (
-                                <p className="text-xs text-gray-300 text-center py-6">Sin críticos</p>
+                                <p className="text-xs text-muted-foreground text-center py-6">Sin críticos</p>
                             ) : (
                                 <div className="space-y-2">
                                     {topCriticos.map((row) => (
                                         <div key={row.placa} className="flex items-center gap-2">
-                                            <span className="text-xs font-mono font-semibold text-gray-700 w-20 shrink-0">{row.placa}</span>
-                                            <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                            <span className="text-xs font-mono font-semibold text-foreground w-20 shrink-0">{row.placa}</span>
+                                            <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
                                                 <div
                                                     className="h-full rounded-full bg-red-400"
                                                     style={{ width: `${Math.min(row.prom, 100)}%` }}
@@ -760,8 +760,8 @@ export default function IndicadoresAdherenciaIndex({
                         </div>
 
                         {/* Insights */}
-                        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-5">
-                            <h3 className="text-xs font-bold text-gray-600 flex items-center gap-1.5 mb-3">
+                        <div className="bg-card rounded-xl shadow-sm border border-sidebar-border/70 dark:border-sidebar-border p-5">
+                            <h3 className="text-xs font-bold text-muted-foreground flex items-center gap-1.5 mb-3">
                                 <Zap className="h-4 w-4 text-blue-500" />
                                 Insights Inteligentes
                             </h3>
@@ -816,7 +816,7 @@ export default function IndicadoresAdherenciaIndex({
                     </div>
 
                     {/* ── Pie de página ─────────────────────────────────────── */}
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-[10px] text-gray-300 px-1">
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-[10px] text-muted-foreground px-1">
                         <span className="flex items-center gap-1">
                             <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block animate-pulse" />
                             Actualización automática con cada importación de Excel

@@ -25,7 +25,22 @@ import {
     type ChartOptions,
     type TooltipItem,
 } from 'chart.js';
-import { AlertTriangle, Calendar, Check, ChevronDown, ClipboardCheck, Clock, Activity, BarChart3, Map, Truck, User, X, Zap } from 'lucide-react';
+import {
+    Activity,
+    AlertTriangle,
+    BarChart3,
+    Calendar,
+    Check,
+    ChevronDown,
+    ClipboardCheck,
+    Clock,
+    Map,
+    MapPin,
+    Truck,
+    User,
+    X,
+    Zap,
+} from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Bar, Line, Pie, PolarArea } from 'react-chartjs-2';
@@ -120,8 +135,8 @@ function MapaVelocidad({ puntos, centro }: { puntos: Punto[]; centro: { lat: num
 
     if (!MC) {
         return (
-            <div className="w-full h-[420px] rounded-xl bg-gray-100 flex items-center justify-center">
-                <div className="text-gray-500 flex items-center gap-2 text-sm">
+            <div className="w-full h-[420px] rounded-xl bg-muted flex items-center justify-center">
+                <div className="text-muted-foreground flex items-center gap-2 text-sm">
                     <Map className="h-5 w-5 animate-pulse text-red-500" />
                     Cargando mapa...
                 </div>
@@ -144,12 +159,28 @@ function MapaVelocidad({ puntos, centro }: { puntos: Punto[]; centro: { lat: num
                         fillOpacity: 0.85, weight: 1.5,
                     }}>
                     <Tooltip>
-                        <div className="text-xs space-y-0.5 min-w-[160px]">
-                            <div className="font-bold text-sm border-b pb-1 mb-1">{p.placa}</div>
-                            <div>🗓 {p.fecha} &nbsp;⏰ {p.hora}</div>
-                            <div>🚨 {p.alerta}</div>
-                            <div className="font-semibold">⚡ {p.velocidad} km/h</div>
-                            {p.regional !== '—' && <div>📌 {p.regional} — {p.cd}</div>}
+                        <div className="min-w-[160px] space-y-1 text-xs">
+                            <div className="mb-1 border-b pb-1 text-sm font-bold">{p.placa}</div>
+                            <div className="flex items-center gap-1.5">
+                                <Calendar className="size-3 shrink-0 text-muted-foreground" />
+                                {p.fecha}
+                                <Clock className="ml-1 size-3 shrink-0 text-muted-foreground" />
+                                {p.hora}
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <AlertTriangle className="size-3 shrink-0 text-muted-foreground" />
+                                {p.alerta}
+                            </div>
+                            <div className="flex items-center gap-1.5 font-semibold">
+                                <Zap className="size-3 shrink-0 text-muted-foreground" />
+                                {p.velocidad} km/h
+                            </div>
+                            {p.regional !== '—' && (
+                                <div className="flex items-center gap-1.5">
+                                    <MapPin className="size-3 shrink-0 text-muted-foreground" />
+                                    {p.regional} — {p.cd}
+                                </div>
+                            )}
                         </div>
                     </Tooltip>
                 </CircleMarker>
@@ -242,7 +273,7 @@ function PlacasMultiselect({
                 minWidth: 240,
                 zIndex: 99999,
             }}
-            className="rounded-md border bg-white dark:bg-gray-900 shadow-2xl"
+            className="rounded-md border bg-card shadow-md"
         >
             <div className="p-2 border-b">
                 <input
@@ -255,7 +286,7 @@ function PlacasMultiselect({
             </div>
             <ul className="max-h-60 overflow-y-auto py-1">
                 {filtradas.length === 0 && (
-                    <li className="px-3 py-2 text-sm text-gray-400">Sin resultados</li>
+                    <li className="px-3 py-2 text-sm text-muted-foreground">Sin resultados</li>
                 )}
                 {filtradas.map((p) => {
                     const marcada = seleccionadas.includes(p);
@@ -277,7 +308,7 @@ function PlacasMultiselect({
                 })}
             </ul>
             <div className="border-t p-2 flex justify-between items-center">
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-muted-foreground">
                     {seleccionadas.length > 0 ? `${seleccionadas.length} seleccionada(s)` : 'Ninguna'}
                 </span>
                 {seleccionadas.length > 0 && (
@@ -382,7 +413,7 @@ function ColaboradorMultiselect({
                 minWidth: 300,
                 zIndex:   99999,
             }}
-            className="rounded-md border bg-white dark:bg-gray-900 shadow-2xl"
+            className="rounded-md border bg-card shadow-md"
         >
             <div className="p-2 border-b">
                 <input
@@ -395,7 +426,7 @@ function ColaboradorMultiselect({
             </div>
             <ul className="max-h-64 overflow-y-auto py-1">
                 {filtrados.length === 0 && (
-                    <li className="px-3 py-2 text-sm text-gray-400">Sin resultados</li>
+                    <li className="px-3 py-2 text-sm text-muted-foreground">Sin resultados</li>
                 )}
                 {filtrados.map((c) => {
                     const marcado = cedulas.includes(c.cedula);
@@ -412,7 +443,7 @@ function ColaboradorMultiselect({
                                 </span>
                                 <span className="flex flex-col text-left">
                                     <span>{c.nombre}</span>
-                                    <span className="text-xs text-gray-400 font-mono">{c.cedula}</span>
+                                    <span className="text-xs text-muted-foreground font-mono">{c.cedula}</span>
                                 </span>
                             </button>
                         </li>
@@ -420,7 +451,7 @@ function ColaboradorMultiselect({
                 })}
             </ul>
             <div className="border-t p-2 flex justify-between items-center">
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-muted-foreground">
                     {cedulas.length > 0 ? `${cedulas.length} seleccionado(s)` : 'Ninguno'}
                 </span>
                 {cedulas.length > 0 && (
@@ -628,8 +659,8 @@ export default function IndicadoresIndex({
                 callbacks: {
                     label: (ctx: TooltipItem<'line'>) => {
                         const ds = ctx.dataset as any;
-                        const lineas: string[] = [` 🚗 ${ds.label}: ${ctx.parsed.y} eventos`];
-                        if (ds.conductor) lineas.push(` 👤 ${ds.conductor}`);
+                        const lineas: string[] = [`${ds.label}: ${ctx.parsed.y} eventos`];
+                        if (ds.conductor) lineas.push(`Conductor: ${ds.conductor}`);
                         return lineas;
                     },
                 },
@@ -654,13 +685,13 @@ export default function IndicadoresIndex({
                         const ds = ctx.dataset as any;
                         const total = ctx.parsed.r;
                         const placas: string[] = ds.placasPorMes?.[ctx.dataIndex] ?? [];
-                        const lineas: string[] = [` 📊 ${total} eventos`];
+                        const lineas: string[] = [`${total} eventos`];
                         if (placas.length > 0) {
                             // Mostrar hasta 8 placas, el resto como "+N más"
                             const visibles = placas.slice(0, 8);
                             const resto    = placas.length - visibles.length;
-                            visibles.forEach((p) => lineas.push(` 🚗 ${p}`));
-                            if (resto > 0) lineas.push(` + ${resto} más`);
+                            visibles.forEach((p) => lineas.push(`${p}`));
+                            if (resto > 0) lineas.push(`+ ${resto} más`);
                         }
                         return lineas;
                     },
@@ -701,35 +732,35 @@ export default function IndicadoresIndex({
             <div className="space-y-6 p-4 md:p-6 max-w-7xl mx-auto">
 
                 {/* ── Selector de indicador ───────────────────────────────── */}
-                <div className="flex gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl w-fit">
+                <div className="flex gap-1 p-1 bg-muted rounded-xl w-fit">
                     <Link
                         href={route('reparto.indicadores-resumen.index')}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-900 hover:text-indigo-600 hover:shadow-sm transition-all"
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-card hover:text-foreground hover:shadow-sm transition-all"
                     >
                         <BarChart3 className="h-4 w-4" />
                         Resumen Ejecutivo
                     </Link>
-                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white dark:bg-gray-900 text-sm font-semibold text-red-600 shadow-sm border border-gray-200 dark:border-gray-700 cursor-default">
+                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-card text-sm font-semibold text-red-600 shadow-sm border border-sidebar-border/70 dark:border-sidebar-border cursor-default">
                         <Map className="h-4 w-4" />
                         Indicadores de Velocidad
                     </span>
                     <Link
                         href={route('reparto.indicadores-adherencia.index')}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-900 hover:text-yellow-600 hover:shadow-sm transition-all"
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-card hover:text-foreground hover:shadow-sm transition-all"
                     >
                         <ClipboardCheck className="h-4 w-4" />
                         Indicadores de Adherencia
                     </Link>
                     <Link
                         href={route('reparto.indicadores-tiempo.index')}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-900 hover:text-blue-600 hover:shadow-sm transition-all"
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-card hover:text-foreground hover:shadow-sm transition-all"
                     >
                         <Clock className="h-4 w-4" />
                         Adherencia al Tiempo
                     </Link>
                     <Link
                         href={route('reparto.indicadores-entrega-rango.index')}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-900 hover:text-green-600 hover:shadow-sm transition-all"
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-card hover:text-foreground hover:shadow-sm transition-all"
                     >
                         <Activity className="h-4 w-4" />
                         Entrega en Rango
@@ -739,24 +770,24 @@ export default function IndicadoresIndex({
                 {/* ── Encabezado ─────────────────────────────────────────── */}
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b pb-4">
                     <div>
-                        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2 text-gray-900 dark:text-gray-100">
+                        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2 text-foreground">
                             <Map className="h-7 w-7 text-red-600" />
                             Indicadores de Velocidad
                         </h1>
-                        <p className="text-sm text-gray-500 mt-1">Alertas de velocidad crítica en ruta</p>
+                        <p className="text-sm text-muted-foreground mt-1">Alertas de velocidad crítica en ruta</p>
                     </div>
                     <div className="flex gap-3 flex-wrap">
                         <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-2 shadow-sm">
                             <AlertTriangle className="h-5 w-5 text-red-600" />
                             <div>
-                                <p className="text-[11px] text-red-500 font-semibold uppercase tracking-wide">Alertas</p>
+                                <p className="text-[11px] text-red-500 font-semibold">Alertas</p>
                                 <p className="text-xl font-bold text-red-700">{totales.puntos.toLocaleString()}</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 rounded-xl px-4 py-2 shadow-sm">
                             <Zap className="h-5 w-5 text-orange-500" />
                             <div>
-                                <p className="text-[11px] text-orange-500 font-semibold uppercase tracking-wide">Eventos</p>
+                                <p className="text-[11px] text-orange-500 font-semibold">Eventos</p>
                                 <p className="text-xl font-bold text-orange-700">{totales.eventos.toLocaleString()}</p>
                             </div>
                         </div>
@@ -764,18 +795,18 @@ export default function IndicadoresIndex({
                 </div>
 
                 {/* ── Filtros ────────────────────────────────────────────── */}
-                <Card className="shadow-sm border bg-white dark:bg-gray-900 relative z-50">
+                <Card className="shadow-sm border bg-card relative z-50">
                     <CardContent className="pt-4 space-y-3">
                         {/* Fila 1: fechas */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div className="grid gap-1">
-                                <Label className="text-xs font-semibold uppercase text-gray-600">
+                                <Label className="text-xs font-semibold text-muted-foreground">
                                     <Calendar className="h-3 w-3 inline mr-1" />Fecha desde
                                 </Label>
                                 <Input type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} />
                             </div>
                             <div className="grid gap-1">
-                                <Label className="text-xs font-semibold uppercase text-gray-600">
+                                <Label className="text-xs font-semibold text-muted-foreground">
                                     <Calendar className="h-3 w-3 inline mr-1" />Fecha hasta
                                 </Label>
                                 <Input type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} />
@@ -785,7 +816,7 @@ export default function IndicadoresIndex({
                         {/* Fila 2: placas + colaborador + limpiar */}
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
                             <div className="grid gap-1">
-                                <Label className="text-xs font-semibold uppercase text-gray-600">
+                                <Label className="text-xs font-semibold text-muted-foreground">
                                     <Truck className="h-3 w-3 inline mr-1" />Placa(s)
                                 </Label>
                                 <PlacasMultiselect
@@ -796,7 +827,7 @@ export default function IndicadoresIndex({
                                 />
                             </div>
                             <div className="grid gap-1">
-                                <Label className="text-xs font-semibold uppercase text-gray-600">
+                                <Label className="text-xs font-semibold text-muted-foreground">
                                     <User className="h-3 w-3 inline mr-1" />Colaborador(es)
                                 </Label>
                                 <ColaboradorMultiselect
@@ -860,11 +891,11 @@ export default function IndicadoresIndex({
                 </Card>
 
                 {/* ── Leyenda y Mapa Desplegable ──────────────────────────── */}
-                <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-md overflow-hidden transition-all">
+                <div className="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-card shadow-md overflow-hidden transition-all">
                     <button
                         type="button"
                         onClick={() => setMapaOpen((prev) => !prev)}
-                        className="w-full flex flex-wrap items-center justify-between gap-4 p-4 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors text-left focus:outline-none cursor-pointer"
+                        className="w-full flex flex-wrap items-center justify-between gap-4 p-4 text-xs text-foreground hover:bg-muted/60/50 transition-colors text-left focus:outline-none cursor-pointer"
                     >
                         <div className="flex flex-wrap items-center gap-4">
                             <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded-full bg-blue-500" />Hasta 30 km/h</span>
@@ -873,12 +904,12 @@ export default function IndicadoresIndex({
                         </div>
                         <div className="flex items-center gap-3 ml-auto">
                             <Badge variant="secondary">{puntos.length} puntos en mapa</Badge>
-                            <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${mapaOpen ? 'rotate-180' : ''}`} />
+                            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${mapaOpen ? 'rotate-180' : ''}`} />
                         </div>
                     </button>
 
                     {mapaOpen && (
-                        <div className="border-t border-gray-200 dark:border-gray-800">
+                        <div className="border-t border-sidebar-border/70 dark:border-sidebar-border">
                             <MapaVelocidad puntos={puntos} centro={centro} />
                         </div>
                     )}
@@ -886,10 +917,10 @@ export default function IndicadoresIndex({
 
                 {/* ── Gráficas fila 1: por día + por mes ─────────────────── */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div className="bg-white dark:bg-gray-900 p-6 rounded-xl shadow-lg border border-gray-100 dark:border-gray-800">
-                        <p className="text-xs text-gray-400 mb-4 truncate">{subtituloFecha}</p>
+                    <div className="bg-card p-6 rounded-xl shadow-md border border-sidebar-border/70 dark:border-sidebar-border">
+                        <p className="text-xs text-muted-foreground mb-4 truncate">{subtituloFecha}</p>
                         {porFecha.series.length === 0
-                            ? <div className="h-52 flex items-center justify-center text-gray-400 text-sm">Sin datos para el período seleccionado</div>
+                            ? <div className="h-52 flex items-center justify-center text-muted-foreground text-sm">Sin datos para el período seleccionado</div>
                             : (
                                 <div className="relative" style={{ height: porFecha.series.length > 1 ? '320px' : '208px' }}>
                                     <Line data={chartPorFecha} options={optionsPorFecha} />
@@ -897,26 +928,26 @@ export default function IndicadoresIndex({
                             )
                         }
                     </div>
-                    <div className="bg-white dark:bg-gray-900 p-6 rounded-xl shadow-lg border border-gray-100 dark:border-gray-800">
-                        <p className="text-xs text-gray-400 mb-4">{subtituloMes}</p>
+                    <div className="bg-card p-6 rounded-xl shadow-md border border-sidebar-border/70 dark:border-sidebar-border">
+                        <p className="text-xs text-muted-foreground mb-4">{subtituloMes}</p>
                         {porMes.every((e) => e.total === 0)
-                            ? <div className="h-72 flex items-center justify-center text-gray-400 text-sm">Sin datos del año actual</div>
+                            ? <div className="h-72 flex items-center justify-center text-muted-foreground text-sm">Sin datos del año actual</div>
                             : <div className="relative h-72"><PolarArea data={chartPorMes} options={optionsPorMes} /></div>
                         }
                     </div>
                 </div>
 
                 {/* ── Top 10 placas (mes actual) ─────────────────────────── */}
-                <div className="bg-white dark:bg-gray-900 p-6 rounded-xl shadow-lg border border-gray-100 dark:border-gray-800">
-                    <h2 className="text-lg font-bold mb-1 text-gray-700 dark:text-gray-200 flex items-center gap-2">
+                <div className="bg-card p-6 rounded-xl shadow-md border border-sidebar-border/70 dark:border-sidebar-border">
+                    <h2 className="text-lg font-bold mb-1 text-foreground flex items-center gap-2">
                         <Truck className="h-5 w-5 text-red-500" />
                         Top 10 Vehículos con Más Eventos
                     </h2>
-                    <p className="text-xs text-gray-400 mb-4">
+                    <p className="text-xs text-muted-foreground mb-4">
                         Mes completo · <span className="font-semibold capitalize">{mesLabel}</span>
                     </p>
                     {porPlaca.length === 0
-                        ? <div className="h-48 flex items-center justify-center text-gray-400 text-sm">Sin datos para el mes actual</div>
+                        ? <div className="h-48 flex items-center justify-center text-muted-foreground text-sm">Sin datos para el mes actual</div>
                         : <div className="h-64"><Bar data={chartPorPlaca} options={optionsPorPlaca} /></div>
                     }
                 </div>
