@@ -1008,7 +1008,7 @@ class PlanPremiacionController extends Controller
             $pSac  = !empty($vSac) ? round(array_sum($vSac)/count($vSac),1) : 100.0;
 
             $vAdt  = $getAdTiempo($colab);
-            $pAdtRaw = !empty($vAdt) ? round(array_sum($vAdt)/count($vAdt),1) : null;
+            $pAdtRaw = !empty($vAdt) ? array_sum($vAdt)/count($vAdt) : null;
             $pAdt  = $pAdtRaw !== null ? ($pAdtRaw >= 83 ? 100.0 : 0.0) : null;
 
             $vRmd  = $getRmd($colab);
