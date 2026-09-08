@@ -934,13 +934,15 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                                 {cv('adherencia_tiempo') && (
                                                 <TableCell className="text-right">
                                                     {colab.porcentaje_adherencia_tiempo !== null && colab.porcentaje_adherencia_tiempo !== undefined ? (
-                                                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-extrabold ${
-                                                            colab.porcentaje_adherencia_tiempo >= 100
-                                                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                                                                : 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'
-                                                        }`}>
-                                                            {colab.porcentaje_adherencia_tiempo_label}
-                                                        </span>
+                                                        <div className="flex items-center justify-end gap-2">
+                                                            <div className="w-16 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800 h-2">
+                                                                <div className={`h-full rounded-full transition-all duration-300 ${colab.porcentaje_adherencia_tiempo >= 100 ? 'bg-emerald-500' : 'bg-rose-500'}`}
+                                                                    style={{ width: `${Math.min(100, colab.porcentaje_adherencia_tiempo)}%` }} />
+                                                            </div>
+                                                            <span className={`font-bold min-w-[40px] ${colab.porcentaje_adherencia_tiempo >= 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                                                {colab.porcentaje_adherencia_tiempo_label}
+                                                            </span>
+                                                        </div>
                                                     ) : (
                                                         <Badge variant="outline" className="text-slate-400 border-slate-300">N/A</Badge>
                                                     )}
@@ -951,13 +953,15 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                                 {cv('rmd') && (
                                                 <TableCell className="text-right">
                                                     {colab.promedio_rmd !== null && colab.promedio_rmd !== undefined ? (
-                                                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-extrabold ${
-                                                            colab.promedio_rmd >= 100
-                                                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                                                                : 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'
-                                                        }`}>
-                                                            {colab.promedio_rmd_label}
-                                                        </span>
+                                                        <div className="flex items-center justify-end gap-2">
+                                                            <div className="w-16 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800 h-2">
+                                                                <div className={`h-full rounded-full transition-all duration-300 ${colab.promedio_rmd >= 100 ? 'bg-emerald-500' : 'bg-rose-500'}`}
+                                                                    style={{ width: `${Math.min(100, colab.promedio_rmd)}%` }} />
+                                                            </div>
+                                                            <span className={`font-bold min-w-[40px] ${colab.promedio_rmd >= 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                                                {colab.promedio_rmd_label}
+                                                            </span>
+                                                        </div>
                                                     ) : (
                                                         <Badge variant="outline" className="text-slate-400 border-slate-300">N/A</Badge>
                                                     )}
