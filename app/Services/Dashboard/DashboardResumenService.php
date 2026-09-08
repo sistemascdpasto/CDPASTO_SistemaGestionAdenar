@@ -121,10 +121,14 @@ class DashboardResumenService
         $eventosConExceso = EventosTripulacion::query()
             ->whereNotNull('fecha')
             ->whereBetween('fecha', [$desde->toDateString(), $hasta->toDateString()])
-            ->where('excesos_tiempo_ruta', '>', 0)
+            ->whereNotNull('excesos_tiempo_ruta')
+            ->where('excesos_tiempo_ruta', '!=', '')
+            ->where('excesos_tiempo_ruta', '!=', '0')
             ->count();
 
         $adherenciaProm = $eventos->whereNotNull('adherencia_tiempo')->avg('adherencia_tiempo');
+
+        $excesosCount = $eventos->filter(fn ($e) => !empty(trim((string) ($e->excesos_tiempo_ruta ?? ''))) && trim((string) $e->excesos_tiempo_ruta) !== '0')->count();
 
         return [
             'titulo' => 'Reparto',
@@ -133,7 +137,7 @@ class DashboardResumenService
                 ['label' => 'Planeaciones de ruta', 'value' => $modulaciones->count(), 'hint' => 'en el rango'],
                 ['label' => '5 Por Qué registrados', 'value' => $porques->count(), 'hint' => 'en el rango'],
                 ['label' => 'Eventos de tripulación', 'value' => (int) $eventos->sum('total_eventos'), 'hint' => 'total acumulado'],
-                ['label' => 'Excesos de tiempo en ruta', 'value' => (int) $eventos->sum('excesos_tiempo_ruta'), 'tone' => $eventos->sum('excesos_tiempo_ruta') > 0 ? 'warn' : 'good'],
+                ['label' => 'Registros con exceso de tiempo', 'value' => $excesosCount, 'tone' => $excesosCount > 0 ? 'warn' : 'good'],
                 ['label' => 'Alertas de velocidad en curva', 'value' => (int) $eventos->sum('alertas_velocidad_curvas'), 'tone' => $eventos->sum('alertas_velocidad_curvas') > 0 ? 'warn' : 'good'],
                 ['label' => 'Adherencia al tiempo prom.', 'value' => $adherenciaProm !== null ? round((float) $adherenciaProm, 1) : 0, 'suffix' => '%', 'decimals' => 1],
             ],
