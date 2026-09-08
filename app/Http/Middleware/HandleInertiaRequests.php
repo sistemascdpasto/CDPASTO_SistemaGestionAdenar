@@ -59,6 +59,12 @@ class HandleInertiaRequests extends Middleware
             // ['message' => ..., 'type' => 'success'|'warning'|'error']) —
             // se comparte tal cual y el toast del frontend soporta ambas formas.
             'status' => fn () => $request->session()->get('status'),
+            // Flash global: cualquier controlador puede usar ->with('flash_success'/'flash_error')
+            // y llegará al frontend aunque la página no pase 'flash' explícitamente.
+            'flash' => fn () => [
+                'success' => $request->session()->get('success'),
+                'error'   => $request->session()->get('error'),
+            ],
             'auth' => [
                 'user' => $user,
                 'roles' => $user?->getRoleNames()->all() ?? [],

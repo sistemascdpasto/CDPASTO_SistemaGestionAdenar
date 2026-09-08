@@ -472,6 +472,20 @@ class EventosTripulacionController
         set_time_limit(300);
         ini_set('memory_limit', '512M');
 
+        // Detectar si PHP rechazó el archivo por límite de tamaño antes de llegar al controller
+        // En ese caso el archivo llega como UPLOAD_ERR_INI_SIZE o UPLOAD_ERR_FORM_SIZE
+        if ($request->hasFile('archivo')) {
+            $uploadError = $request->file('archivo')->getError();
+            if ($uploadError === UPLOAD_ERR_INI_SIZE || $uploadError === UPLOAD_ERR_FORM_SIZE) {
+                return back()->with('error', '❌ El archivo supera el límite de tamaño permitido por el servidor. Intenta dividirlo en partes más pequeñas o contacta al administrador para aumentar el límite.');
+            }
+        }
+
+        // Si no llegó ningún archivo (request vacío por límite PHP post_max_size)
+        if (!$request->hasFile('archivo') && empty($_FILES)) {
+            return back()->with('error', '❌ El archivo no pudo ser recibido. Es posible que supere el límite del servidor (post_max_size). Intenta con un archivo más pequeño.');
+        }
+
         $request->validate([
             'archivo' => 'required|file|mimes:xlsx,xls,csv|max:20480',
         ], [
@@ -717,9 +731,7 @@ class EventosTripulacionController
 
         } catch (\Throwable $e) {
             Log::error('[EventosTripulacion] Error importando: ' . $e->getMessage());
-            return back()->withErrors([
-                'archivo' => 'Error al procesar el archivo: ' . $e->getMessage(),
-            ]);
+            return back()->with('error', '❌ Error al procesar el archivo: ' . $e->getMessage());
         }
     }
 

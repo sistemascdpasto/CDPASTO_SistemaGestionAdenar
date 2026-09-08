@@ -86,6 +86,7 @@ interface Props {
         fecha_hasta: string;
     };
     flash?: { success?: string; error?: string };
+    errors?: { archivo?: string; [key: string]: string | undefined };
 }
 
 // ─── Definición de columnas ───────────────────────────────────────────────────
@@ -327,7 +328,7 @@ function ImportModal({
 }
 
 // ─── Componente principal ─────────────────────────────────────────────────────
-export default function EventosTripulacionIndex({ eventos, filters, flash }: Props) {
+export default function EventosTripulacionIndex({ eventos, filters, flash, errors }: Props) {
     const [placa,         setPlaca]         = useState(filters.placa ?? '');
     const [cedula,        setCedula]        = useState(filters.cedula ?? '');
     const [nombre,        setNombre]        = useState(filters.nombre ?? '');
@@ -461,7 +462,7 @@ export default function EventosTripulacionIndex({ eventos, filters, flash }: Pro
 
             <div className="space-y-3 sm:space-y-4 p-3 sm:p-4 md:p-6 max-w-full mx-auto">
 
-                {/* Flash */}
+                {/* Flash success */}
                 {flash?.success && (
                     <div className="flex items-start gap-2 sm:gap-3 rounded-lg border border-green-200 bg-green-50 p-2 sm:p-3 text-green-800">
                         <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 shrink-0 mt-0.5 text-green-600" />
@@ -472,6 +473,12 @@ export default function EventosTripulacionIndex({ eventos, filters, flash }: Pro
                     <div className="flex items-start gap-2 sm:gap-3 rounded-lg border border-red-200 bg-red-50 p-2 sm:p-3 text-red-800">
                         <XCircle className="h-4 w-4 sm:h-5 sm:w-5 shrink-0 mt-0.5 text-red-500" />
                         <p className="text-xs sm:text-sm font-medium break-words">{flash.error}</p>
+                    </div>
+                )}
+                {errors?.archivo && (
+                    <div className="flex items-start gap-2 sm:gap-3 rounded-lg border border-red-200 bg-red-50 p-2 sm:p-3 text-red-800">
+                        <XCircle className="h-4 w-4 sm:h-5 sm:w-5 shrink-0 mt-0.5 text-red-500" />
+                        <p className="text-xs sm:text-sm font-medium break-words">❌ {errors.archivo}</p>
                     </div>
                 )}
 
