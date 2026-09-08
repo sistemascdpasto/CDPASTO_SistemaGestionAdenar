@@ -1,3 +1,4 @@
+import { PilarResumen, type PilarResumenData } from '@/components/dashboard/pilar-resumen';
 import { KpiCard, KpiCardGrid } from '@/components/kpi-card';
 import { ModuleCard } from '@/components/module-card';
 import { Reveal } from '@/components/reveal';
@@ -21,6 +22,11 @@ interface RoleStat {
     count: number;
 }
 
+interface Resumen {
+    rango: { desde: string; hasta: string };
+    pilares: Record<string, PilarResumenData>;
+}
+
 interface AdminDashboardProps {
     stats: {
         totalUsers: number;
@@ -28,9 +34,10 @@ interface AdminDashboardProps {
         inactiveUsers: number;
         byRole: RoleStat[];
     };
+    resumen: Resumen;
 }
 
-export default function AdminDashboard({ stats }: AdminDashboardProps) {
+export default function AdminDashboard({ stats, resumen }: AdminDashboardProps) {
     const { auth } = usePage<SharedData>().props;
 
     const totalesSecondaryText = stats.byRole.length > 0 ? stats.byRole.map((r) => `${r.role}: ${r.count}`).join(' · ') : undefined;
@@ -44,12 +51,14 @@ export default function AdminDashboard({ stats }: AdminDashboardProps) {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Dashboard" />
-            <div className="flex h-full flex-1 flex-col gap-6 rounded-xl p-4">
+            <div className="flex h-full flex-1 flex-col gap-8 rounded-xl p-4">
                 <Reveal>
                     <h1 className="text-2xl font-semibold tracking-tight">
                         Bienvenido, <ShinyText color="#3F7A22">{auth.user.name}</ShinyText>
                     </h1>
-                    <p className="text-muted-foreground">Vista global del sistema — accede a cualquier módulo o gestiona los usuarios.</p>
+                    <p className="text-muted-foreground">
+                        Vista global del sistema · resumen de los últimos 6 meses ({resumen.rango.desde} — {resumen.rango.hasta}).
+                    </p>
                 </Reveal>
 
                 <KpiCardGrid className="grid-cols-1 sm:grid-cols-3">
@@ -78,6 +87,12 @@ export default function AdminDashboard({ stats }: AdminDashboardProps) {
                         </Reveal>
                     </div>
                 </div>
+
+                {modules
+                    .filter((mod) => resumen.pilares[mod.slug])
+                    .map((mod) => (
+                        <PilarResumen key={mod.slug} slug={mod.slug} data={resumen.pilares[mod.slug]} />
+                    ))}
             </div>
         </AppLayout>
     );

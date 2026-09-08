@@ -230,6 +230,49 @@ export function findModule(moduleSlug: string): ModuleDef | undefined {
     return modules.find((mod) => mod.slug === moduleSlug);
 }
 
+/**
+ * URL a la que navega un submódulo "hoja" desde la vista del módulo o el
+ * sidebar: respeta `href` (ruta propia fuera del prefijo del módulo) y
+ * `moduleSlugOverride` (submódulo inyectado que vive bajo otro pilar).
+ */
+export function submoduleHref(mod: ModuleDef, sub: SubModuleDef): string {
+    return sub.href ?? (sub.slug ? `/modules/${sub.moduleSlugOverride ?? mod.slug}/${sub.slug}` : `/modules/${mod.slug}`);
+}
+
+/** Sección de la vista de un módulo: un grupo de submódulos afines con su encabezado. */
+export interface ModuleSection {
+    /** `null` para los submódulos sueltos (sin grupo): se muestran primero y sin encabezado. */
+    title: string | null;
+    icon: LucideIcon | null;
+    items: SubModuleDef[];
+}
+
+/**
+ * Reorganiza los submódulos de un pilar en secciones para la vista del módulo:
+ * primero los submódulos sueltos y luego cada grupo afín (ACIS, OWD, Exámenes
+ * Médicos, ...) con su propio encabezado, en vez de una única grilla plana.
+ * Respeta `allowedRoles` de cada submódulo (Administrador siempre puede ver).
+ */
+export function buildModuleSections(mod: ModuleDef, userRoles: string[], isAdmin: boolean): ModuleSection[] {
+    const puedeVer = (sub: SubModuleDef) => isAdmin || !sub.allowedRoles || sub.allowedRoles.some((r) => userRoles.includes(r));
+
+    const sueltos: SubModuleDef[] = [];
+    const grupos: ModuleSection[] = [];
+
+    for (const sub of mod.submodules) {
+        if (sub.submodules) {
+            const items = sub.submodules.filter(puedeVer);
+            if (items.length > 0) {
+                grupos.push({ title: sub.title, icon: sub.icon, items });
+            }
+        } else if (puedeVer(sub)) {
+            sueltos.push(sub);
+        }
+    }
+
+    return [...(sueltos.length > 0 ? [{ title: null, icon: null, items: sueltos } satisfies ModuleSection] : []), ...grupos];
+}
+
 /** Convierte el árbol de submódulos en una lista plana de solo los ítems "hoja" (los que tienen página propia). */
 export function flattenSubmodules(submodules: SubModuleDef[]): SubModuleDef[] {
     return submodules.flatMap((sub) => (sub.submodules ? flattenSubmodules(sub.submodules) : [sub]));

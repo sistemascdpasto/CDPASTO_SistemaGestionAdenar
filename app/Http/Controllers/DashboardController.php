@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\Role;
 use App\Http\Controllers\Colaborador\PortalController;
 use App\Models\User;
+use App\Services\Dashboard\DashboardResumenService;
 use App\Services\Seguridad\EvaluacionCalculator;
 use App\Services\Seguridad\IndiceRiesgoCalculator;
 use Illuminate\Http\Request;
@@ -13,7 +14,7 @@ use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request, DashboardResumenService $resumen): Response
     {
         $user = $request->user();
 
@@ -31,6 +32,7 @@ class DashboardController extends Controller
                         ])
                         ->values(),
                 ],
+                'resumen' => $resumen->paraPilares(array_keys(Role::moduleRoles())),
             ]);
         }
 
@@ -49,6 +51,7 @@ class DashboardController extends Controller
 
         return Inertia::render('dashboard/role', [
             'modules' => $modules,
+            'resumen' => $resumen->paraPilares($modules->all()),
         ]);
     }
 }
