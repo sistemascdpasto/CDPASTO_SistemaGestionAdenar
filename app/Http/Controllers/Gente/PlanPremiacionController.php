@@ -17,6 +17,9 @@ class PlanPremiacionController extends Controller
 {
     public const META_BASE = 32;
 
+    /** Umbral de adherencia (%) para aprobar cada checklist (Pre y Post). */
+    public const UMBRAL_CHECKLIST = 90;
+
     public function index(Request $request): Response
     {
         $mes = $request->integer('mes') ?: (int) now()->month;
@@ -486,24 +489,28 @@ class PlanPremiacionController extends Controller
                 $promedioRmdLabel = 'N/A';
             }
 
-            // % Adherencia CL Pre Op — solo aplica para cargo Conductor de Reparto
+            // % Adherencia CL Pre/Post — solo aplica para cargo Conductor de Reparto
+            // Lógica binaria: promedio >= UMBRAL_CHECKLIST → Aprobado (100%), < umbral → No Aprobado (0%)
             $esConductor = str_contains(strtoupper((string) ($colaborador->cargo ?? '')), 'CONDUCTOR');
 
             $valsChecklistPre = $esConductor ? $getMetricVals($checklistPrePorDocumento, $checklistPrePorNombre) : [];
             if (!empty($valsChecklistPre)) {
-                $porcentajeChecklistPre = array_sum($valsChecklistPre) / count($valsChecklistPre);
-                $porcentajeChecklistPreLabel = "{$porcentajeChecklistPre}%";
+                $promedioClPre = round(array_sum($valsChecklistPre) / count($valsChecklistPre), 2);
+                $porcentajeChecklistPre = $promedioClPre >= self::UMBRAL_CHECKLIST ? 100.0 : 0.0;
+                $porcentajeChecklistPreLabel = $porcentajeChecklistPre >= 100 ? 'Aprobado' : 'No Aprobado';
             } else {
+                $promedioClPre = null;
                 $porcentajeChecklistPre = null;
                 $porcentajeChecklistPreLabel = 'N/A';
             }
 
-            // % Adherencia CL Post Op — solo aplica para cargo Conductor de Reparto
             $valsChecklistPost = $esConductor ? $getMetricVals($checklistPostPorDocumento, $checklistPostPorNombre) : [];
             if (!empty($valsChecklistPost)) {
-                $porcentajeChecklistPost = array_sum($valsChecklistPost) / count($valsChecklistPost);
-                $porcentajeChecklistPostLabel = "{$porcentajeChecklistPost}%";
+                $promedioClPost = round(array_sum($valsChecklistPost) / count($valsChecklistPost), 2);
+                $porcentajeChecklistPost = $promedioClPost >= self::UMBRAL_CHECKLIST ? 100.0 : 0.0;
+                $porcentajeChecklistPostLabel = $porcentajeChecklistPost >= 100 ? 'Aprobado' : 'No Aprobado';
             } else {
+                $promedioClPost = null;
                 $porcentajeChecklistPost = null;
                 $porcentajeChecklistPostLabel = 'N/A';
             }
@@ -566,10 +573,10 @@ class PlanPremiacionController extends Controller
             $resultadoRepartoLabel = "{$resultadoRepartoVal}%";
 
             // Cálculo Resultado Ponderado FLOTA (CL Pre=7.5%, CL Post=7.5% = 15%)
-            // Solo aplica para Conductores de Reparto
+            // Solo aplica para Conductores de Reparto. Cada checklist es binario: Aprobado=1, No Aprobado=0.
             if ($esConductor) {
-                $calCheckPre = $porcentajeChecklistPre !== null ? min((float)$porcentajeChecklistPre, 100) / 100 : 0;
-                $calCheckPost = $porcentajeChecklistPost !== null ? min((float)$porcentajeChecklistPost, 100) / 100 : 0;
+                $calCheckPre  = $porcentajeChecklistPre  !== null ? ($porcentajeChecklistPre  >= 100 ? 1.0 : 0.0) : 0.0;
+                $calCheckPost = $porcentajeChecklistPost !== null ? ($porcentajeChecklistPost >= 100 ? 1.0 : 0.0) : 0.0;
                 $resultadoFlotaVal = round(($calCheckPre * 7.5) + ($calCheckPost * 7.5), 1);
                 $resultadoFlotaLabel = "{$resultadoFlotaVal}%";
             } else {
@@ -623,8 +630,10 @@ class PlanPremiacionController extends Controller
                 'promedio_rmd_label' => $promedioRmdLabel,
                 'porcentaje_checklist_pre' => $porcentajeChecklistPre,
                 'porcentaje_checklist_pre_label' => $porcentajeChecklistPreLabel,
+                'promedio_checklist_pre' => $promedioClPre,
                 'porcentaje_checklist_post' => $porcentajeChecklistPost,
                 'porcentaje_checklist_post_label' => $porcentajeChecklistPostLabel,
+                'promedio_checklist_post' => $promedioClPost,
                 'resultado_reparto' => $resultadoRepartoVal,
                 'resultado_reparto_label' => $resultadoRepartoLabel,
                 'resultado_flota' => $resultadoFlotaVal,
@@ -683,6 +692,7 @@ class PlanPremiacionController extends Controller
             'top3' => $top3,
             'peores2' => $peores2,
             'cargos' => $cargosDisponibles,
+            'umbral_checklist' => self::UMBRAL_CHECKLIST,
             'puede_editar' => $request->user()?->hasAnyRole(['Administrador', 'Gente']) ?? false,
             'filters' => [
                 'mes' => $mes,
@@ -1182,7 +1192,8 @@ class PlanPremiacionController extends Controller
             ->exists();
 
         // ── Eventos Tripulación ───────────────────────────────────────────
-        $evento = DB::table('eventos_tripulacion')
+        // Se traen TODOS los registros del mes para poder calcular el promedio
+        $eventosColaborador = DB::table('eventos_tripulacion')
             ->whereMonth('fecha', $mes)
             ->whereYear('fecha', $anio)
             ->where(function ($q) use ($colaborador, $normStr) {
@@ -1190,7 +1201,20 @@ class PlanPremiacionController extends Controller
                   ->orWhereRaw('UPPER(REGEXP_REPLACE(nombre,"[^A-Z0-9]","")) = ?', [$normStr($colaborador->nombre_completo ?? '')]);
             })
             ->select(['rechazos','adherencia_tiempo','rmd','adherencia_checklist_pre','adherencia_checklist_post'])
-            ->first();
+            ->get();
+
+        // Primer registro para métricas de fila única (rechazos, adherencia, rmd)
+        $evento = $eventosColaborador->first();
+
+        // Promedio de checklist (puede haber múltiples registros por mes)
+        $valsClPre  = $eventosColaborador->whereNotNull('adherencia_checklist_pre')->pluck('adherencia_checklist_pre')->map(fn($v) => (float)$v);
+        $valsClPost = $eventosColaborador->whereNotNull('adherencia_checklist_post')->pluck('adherencia_checklist_post')->map(fn($v) => (float)$v);
+
+        $promedioClPre  = $valsClPre->isNotEmpty()  ? round($valsClPre->avg(), 2)  : null;
+        $promedioClPost = $valsClPost->isNotEmpty() ? round($valsClPost->avg(), 2) : null;
+
+        // Solo aplica para conductores
+        $esConductor = str_contains(strtoupper((string)($colaborador->cargo ?? '')), 'CONDUCTOR');
 
         // ── Ausentismo ────────────────────────────────────────────────────
         $ausentismo = DB::table('ausentismos')
@@ -1239,9 +1263,21 @@ class PlanPremiacionController extends Controller
             'sac'            => ['valor' => $casosSac === 0 ? 100.0 : 0.0, 'label' => $casosSac === 0 ? '100%' : '0%', 'pilar' => 'Reparto', 'peso' => 8, 'emoji' => '🎧', 'titulo' => 'SAC', 'meta_desc' => 'Sin casos = 100%'],
             'adherencia'     => ['valor' => $evento?->adherencia_tiempo !== null ? ((float)$evento->adherencia_tiempo >= 83 ? 100.0 : 0.0) : null, 'label' => $evento?->adherencia_tiempo !== null ? ((float)$evento->adherencia_tiempo >= 83 ? '100%' : '0%') : 'N/A', 'pilar' => 'Reparto', 'peso' => 8, 'emoji' => '⏰', 'titulo' => 'Adherencia Tiempo', 'meta_desc' => '≥ 83% = 100%'],
             'rmd'            => ['valor' => $evento?->rmd !== null ? ((float)$evento->rmd >= 4 ? 100.0 : 0.0) : null, 'label' => $evento?->rmd !== null ? ((float)$evento->rmd >= 4 ? '100%' : '0%') : 'N/A', 'pilar' => 'Reparto', 'peso' => 8, 'emoji' => '🏆', 'titulo' => 'RMD', 'meta_desc' => 'Promedio ≥ 4 = 100%'],
-            // FLOTA
-            'cl_pre'         => ['valor' => $evento?->adherencia_checklist_pre !== null ? round((float)$evento->adherencia_checklist_pre, 1) : null, 'label' => $evento?->adherencia_checklist_pre !== null ? round((float)$evento->adherencia_checklist_pre, 1).'%' : 'N/A', 'pilar' => 'Flota', 'peso' => 7.5, 'emoji' => '🔍', 'titulo' => 'Checklist Pre', 'meta_desc' => 'Promedio adherencia CL pre operacional'],
-            'cl_post'        => ['valor' => $evento?->adherencia_checklist_post !== null ? round((float)$evento->adherencia_checklist_post, 1) : null, 'label' => $evento?->adherencia_checklist_post !== null ? round((float)$evento->adherencia_checklist_post, 1).'%' : 'N/A', 'pilar' => 'Flota', 'peso' => 7.5, 'emoji' => '🏁', 'titulo' => 'Checklist Post', 'meta_desc' => 'Promedio adherencia CL post operacional'],
+            // FLOTA — solo aplica para Conductores de Reparto
+            'cl_pre'         => [
+                'valor'    => $esConductor && $promedioClPre !== null  ? ($promedioClPre  >= self::UMBRAL_CHECKLIST ? 100.0 : 0.0) : null,
+                'label'    => $esConductor && $promedioClPre !== null  ? ($promedioClPre  >= self::UMBRAL_CHECKLIST ? 'Aprobado' : 'No Aprobado') : 'N/A',
+                'promedio' => $esConductor ? $promedioClPre  : null,
+                'pilar'    => 'Flota', 'peso' => 7.5, 'emoji' => '🔍', 'titulo' => 'Checklist Pre',
+                'meta_desc' => 'Solo conductores · Promedio ≥ '.self::UMBRAL_CHECKLIST.'% = Aprobado',
+            ],
+            'cl_post'        => [
+                'valor'    => $esConductor && $promedioClPost !== null ? ($promedioClPost >= self::UMBRAL_CHECKLIST ? 100.0 : 0.0) : null,
+                'label'    => $esConductor && $promedioClPost !== null ? ($promedioClPost >= self::UMBRAL_CHECKLIST ? 'Aprobado' : 'No Aprobado') : 'N/A',
+                'promedio' => $esConductor ? $promedioClPost : null,
+                'pilar'    => 'Flota', 'peso' => 7.5, 'emoji' => '🏁', 'titulo' => 'Checklist Post',
+                'meta_desc' => 'Solo conductores · Promedio ≥ '.self::UMBRAL_CHECKLIST.'% = Aprobado',
+            ],
         ];
 
         // Meses disponibles para el selector
@@ -1269,6 +1305,7 @@ class PlanPremiacionController extends Controller
             'mes'                => $mes,
             'anio'               => $anio,
             'meses_disponibles'  => $mesesDisponibles,
+            'umbral_checklist'   => self::UMBRAL_CHECKLIST,
         ]);
     }
 }

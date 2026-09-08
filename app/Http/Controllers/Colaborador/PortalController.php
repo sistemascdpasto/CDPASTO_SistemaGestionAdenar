@@ -3,8 +3,6 @@
 namespace App\Http\Controllers\Colaborador;
 
 use App\Http\Controllers\Controller;
-use App\Models\Capacitaciones\CapacitacionMaterial;
-use App\Models\Capacitaciones\CapacitacionRevision;
 use App\Models\Reparto\EventosTripulacion;
 use App\Models\Reparto\ModulacionItem;
 use App\Models\Seguridad\Aci;
@@ -27,8 +25,6 @@ class PortalController extends Controller
             return Inertia::render('colaborador/sin-vincular');
         }
 
-        $inicioMes = now()->startOfMonth();
-
         return Inertia::render('dashboard/colaborador', [
             'colaborador' => [
                 'id' => $colaborador->id,
@@ -49,50 +45,9 @@ class PortalController extends Controller
             'ultimasCondiciones' => $colaborador->condicionesSalud()
                 ->latest('fecha_hora')
                 ->limit(5)
-                ->get(['id', 'momento', 'estado', 'observacion', 'fecha_hora']),
+                ->get(),
             'alertasPendientes' => $colaborador->alertas()->where('atendida', false)->count(),
-            'pruebasMes' => $colaborador->pruebasAlcoholemia()
-                ->where('estado', 'realizada')
-                ->where('fecha_hora', '>=', $inicioMes)
-                ->count(),
-            'aci' => [
-                'realizadas' => Aci::query()
-                    ->where('colaborador_id', $colaborador->id)
-                    ->whereMonth('fecha_incidente', now()->month)
-                    ->whereYear('fecha_incidente', now()->year)
-                    ->count(),
-                'meta' => 32,
-            ],
-            'capacitaciones' => $this->resumenCapacitaciones($request->user()->id),
         ]);
-    }
-
-    /**
-     * Materiales de capacitación publicados y visibles para colaboradores, y
-     * cuántos ha revisado el usuario. Alimenta la tarjeta del portal.
-     *
-     * @return array{total: int, revisadas: int, pendientes: int, progreso: int}
-     */
-    private function resumenCapacitaciones(int $userId): array
-    {
-        $visibles = function ($q) {
-            return $q->where('estado', 'publicado')
-                ->whereHas('carpeta', fn ($c) => $c->where('visible_colaborador', true));
-        };
-
-        $publicados = $visibles(CapacitacionMaterial::query())->count();
-
-        $revisadas = min($publicados, CapacitacionRevision::query()
-            ->where('user_id', $userId)
-            ->whereHas('material', $visibles)
-            ->count());
-
-        return [
-            'total' => $publicados,
-            'revisadas' => $revisadas,
-            'pendientes' => max(0, $publicados - $revisadas),
-            'progreso' => $publicados > 0 ? (int) round(($revisadas / $publicados) * 100) : 0,
-        ];
     }
 
     public function perfil(Request $request): Response
@@ -483,14 +438,29 @@ class PortalController extends Controller
             })->exists();
 
         // ── Eventos Tripulación ───────────────────────────────────────────
-        $evento = DB::table('eventos_tripulacion')
+        // Se traen TODOS los registros del mes para calcular el promedio correctamente
+        $eventosColaborador = DB::table('eventos_tripulacion')
             ->whereMonth('fecha', $mes)->whereYear('fecha', $anio)
             ->where(function ($q) use ($colaborador, $normStr) {
                 $q->whereRaw('UPPER(REGEXP_REPLACE(documento,"[^A-Z0-9]","")) = ?', [$normStr($colaborador->cedula)])
                     ->orWhereRaw('UPPER(REGEXP_REPLACE(nombre,"[^A-Z0-9]","")) = ?', [$normStr($colaborador->nombre_completo ?? '')]);
             })
             ->select(['rechazos', 'adherencia_tiempo', 'rmd', 'adherencia_checklist_pre', 'adherencia_checklist_post'])
-            ->first();
+            ->get();
+
+        $evento = $eventosColaborador->first();
+
+        // Promedios de checklist (puede haber múltiples registros por mes)
+        $valsClPre  = $eventosColaborador->whereNotNull('adherencia_checklist_pre')->pluck('adherencia_checklist_pre')->map(fn($v) => (float)$v);
+        $valsClPost = $eventosColaborador->whereNotNull('adherencia_checklist_post')->pluck('adherencia_checklist_post')->map(fn($v) => (float)$v);
+
+        $promedioClPre  = $valsClPre->isNotEmpty()  ? round($valsClPre->avg(), 2)  : null;
+        $promedioClPost = $valsClPost->isNotEmpty() ? round($valsClPost->avg(), 2) : null;
+
+        // Solo aplica checklist para conductores
+        $esConductorPortal = str_contains(strtoupper((string)($colaborador->cargo ?? '')), 'CONDUCTOR');
+
+        $umbralCl = \App\Http\Controllers\Gente\PlanPremiacionController::UMBRAL_CHECKLIST;
 
         // ── SAC ───────────────────────────────────────────────────────────
         $casosSac = DB::table('sac')
@@ -506,12 +476,25 @@ class PortalController extends Controller
             'dpo' => ['valor' => $estaEnDpo ? 0.0 : 100.0, 'label' => $estaEnDpo ? '0%' : '100%',                        'pilar' => 'Gente',     'peso' => 5,   'emoji' => '📚', 'titulo' => 'DPO Academy',        'meta_desc' => 'Sin registro = 100% | En listado = 0%'],
             'ausentismo' => ['valor' => $porcentajeAusentismo, 'label' => $porcentajeAusentismo !== null ? "{$porcentajeAusentismo}%" : 'N/A', 'pilar' => 'Gente', 'peso' => 5, 'emoji' => '📅', 'titulo' => 'Ausentismo', 'meta_desc' => 'Sin incapacidad = 100%'],
             'marcaciones' => ['valor' => $tieneMalasMarcaciones ? 0.0 : 100.0, 'label' => $tieneMalasMarcaciones ? '0%' : '100%', 'pilar' => 'Gente', 'peso' => 5, 'emoji' => '🕐', 'titulo' => 'Malas Marcaciones', 'meta_desc' => 'Sin corrección = 100%'],
-            'rechazos' => ['valor' => $evento?->rechazos !== null ? ((float) $evento->rechazos >= 2.3 ? 100.0 : 0.0) : null, 'label' => $evento?->rechazos !== null ? ((float) $evento->rechazos >= 2.3 ? '100%' : '0%') : 'N/A', 'pilar' => 'Reparto', 'peso' => 11, 'emoji' => '🔄', 'titulo' => 'Rechazos', 'meta_desc' => '≥ 2.3% rechazos = 100%'],
+            'rechazos' => ['valor' => $evento?->rechazos !== null ? ((float) $evento->rechazos >= 2.4 ? 0.0 : 100.0) : null, 'label' => $evento?->rechazos !== null ? ((float) $evento->rechazos >= 2.4 ? '0%' : '100%') : 'N/A', 'pilar' => 'Reparto', 'peso' => 11, 'emoji' => '🔄', 'titulo' => 'Rechazos', 'meta_desc' => '< 2.4% rechazos = 100%'],
             'sac' => ['valor' => $casosSac === 0 ? 100.0 : 0.0, 'label' => $casosSac === 0 ? '100%' : '0%', 'pilar' => 'Reparto', 'peso' => 8, 'emoji' => '🎧', 'titulo' => 'SAC', 'meta_desc' => 'Sin casos = 100%'],
             'adherencia' => ['valor' => $evento?->adherencia_tiempo !== null ? ((float) $evento->adherencia_tiempo >= 83 ? 100.0 : 0.0) : null, 'label' => $evento?->adherencia_tiempo !== null ? ((float) $evento->adherencia_tiempo >= 83 ? '100%' : '0%') : 'N/A', 'pilar' => 'Reparto', 'peso' => 8, 'emoji' => '⏰', 'titulo' => 'Adherencia Tiempo', 'meta_desc' => '≥ 83% = 100%'],
             'rmd' => ['valor' => $evento?->rmd !== null ? ((float) $evento->rmd >= 4 ? 100.0 : 0.0) : null, 'label' => $evento?->rmd !== null ? ((float) $evento->rmd >= 4 ? '100%' : '0%') : 'N/A', 'pilar' => 'Reparto', 'peso' => 8, 'emoji' => '🏆', 'titulo' => 'RMD', 'meta_desc' => 'Promedio ≥ 4 = 100%'],
-            'cl_pre' => ['valor' => $evento?->adherencia_checklist_pre !== null ? round((float) $evento->adherencia_checklist_pre, 1) : null, 'label' => $evento?->adherencia_checklist_pre !== null ? round((float) $evento->adherencia_checklist_pre, 1).'%' : 'N/A', 'pilar' => 'Flota', 'peso' => 7.5, 'emoji' => '🔍', 'titulo' => 'Checklist Pre', 'meta_desc' => 'Promedio adherencia CL pre operacional'],
-            'cl_post' => ['valor' => $evento?->adherencia_checklist_post !== null ? round((float) $evento->adherencia_checklist_post, 1) : null, 'label' => $evento?->adherencia_checklist_post !== null ? round((float) $evento->adherencia_checklist_post, 1).'%' : 'N/A', 'pilar' => 'Flota', 'peso' => 7.5, 'emoji' => '🏁', 'titulo' => 'Checklist Post', 'meta_desc' => 'Promedio adherencia CL post operacional'],
+            // FLOTA — solo conductores, binario Aprobado/No Aprobado
+            'cl_pre' => [
+                'valor'    => $esConductorPortal && $promedioClPre !== null  ? ($promedioClPre  >= $umbralCl ? 100.0 : 0.0) : null,
+                'label'    => $esConductorPortal && $promedioClPre !== null  ? ($promedioClPre  >= $umbralCl ? 'Aprobado' : 'No Aprobado') : 'N/A',
+                'promedio' => $esConductorPortal ? $promedioClPre  : null,
+                'pilar' => 'Flota', 'peso' => 7.5, 'emoji' => '🔍', 'titulo' => 'Checklist Pre',
+                'meta_desc' => 'Solo conductores · Promedio ≥ '.$umbralCl.'% = Aprobado',
+            ],
+            'cl_post' => [
+                'valor'    => $esConductorPortal && $promedioClPost !== null ? ($promedioClPost >= $umbralCl ? 100.0 : 0.0) : null,
+                'label'    => $esConductorPortal && $promedioClPost !== null ? ($promedioClPost >= $umbralCl ? 'Aprobado' : 'No Aprobado') : 'N/A',
+                'promedio' => $esConductorPortal ? $promedioClPost : null,
+                'pilar' => 'Flota', 'peso' => 7.5, 'emoji' => '🏁', 'titulo' => 'Checklist Post',
+                'meta_desc' => 'Solo conductores · Promedio ≥ '.$umbralCl.'% = Aprobado',
+            ],
         ];
 
         return Inertia::render('colaborador/mi-plan-premiacion/index', [
@@ -528,6 +511,7 @@ class PortalController extends Controller
             'historial_aci' => $historialAci,
             'mes' => $mes,
             'anio' => $anio,
+            'umbral_checklist' => $umbralCl,
         ]);
     }
 

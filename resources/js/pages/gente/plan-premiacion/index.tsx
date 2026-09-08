@@ -79,8 +79,10 @@ interface ColaboradorItem {
     promedio_rmd_label: string;
     porcentaje_checklist_pre: number | null;
     porcentaje_checklist_pre_label: string;
+    promedio_checklist_pre: number | null;
     porcentaje_checklist_post: number | null;
     porcentaje_checklist_post_label: string;
+    promedio_checklist_post: number | null;
     resultado_reparto: number;
     resultado_reparto_label: string;
     resultado_flota: number;
@@ -118,6 +120,7 @@ interface Props {
     cargos?: string[];
     filters: Filters;
     puede_editar?: boolean;
+    umbral_checklist?: number;
 }
 
 const parseCargosFilter = (filterStr?: string): string[] => {
@@ -130,7 +133,7 @@ const parseMesesChecklistFilter = (filterStr?: string): number[] => {
     return filterStr.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => n >= 1 && n <= 12);
 };
 
-export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peores2 = [], cargos = [], filters, puede_editar = false }: Props) {
+export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peores2 = [], cargos = [], filters, puede_editar = false, umbral_checklist = 90 }: Props) {
     const [mes, setMes] = useState<number>(filters.mes || new Date().getMonth() + 1);
     const [anio, setAnio] = useState<number>(filters.anio || new Date().getFullYear());
     const [search, setSearch] = useState<string>(filters.search || '');
@@ -164,8 +167,8 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
         { key: 'adherencia_tiempo', label: '% Adherencia Tiempo (8%)',   pilar: 'REPARTO' },
         { key: 'rmd',               label: 'RMD (8%)',                   pilar: 'REPARTO' },
         { key: 'res_reparto',       label: 'Resultado Reparto',          pilar: 'REPARTO' },
-        { key: 'cl_pre',            label: '% CL Pre (7.5%)',            pilar: 'FLOTA' },
-        { key: 'cl_post',           label: '% CL Post (7.5%)',           pilar: 'FLOTA' },
+        { key: 'cl_pre',            label: 'CL Pre (7.5%)',              pilar: 'FLOTA' },
+        { key: 'cl_post',           label: 'CL Post (7.5%)',             pilar: 'FLOTA' },
         { key: 'res_flota',         label: 'Resultado Flota',            pilar: 'FLOTA' },
         { key: 'total',             label: 'TOTAL 100%',                 pilar: 'TOTAL' },
     ];
@@ -361,8 +364,8 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                     <div className="col-span-2 mt-2 mb-0.5 text-[10px] font-bold text-blue-700 dark:text-blue-400 flex items-center gap-1">
                                         <CheckCircle2 className="h-3 w-3" /> Flota 15%
                                     </div>
-                                    <div><span className="font-bold text-blue-700 dark:text-blue-400">Checklist Pre</span> <span className="text-muted-foreground">(7.5%)</span> — Promedio % adherencia CL pre operacional</div>
-                                    <div><span className="font-bold text-blue-700 dark:text-blue-400">Checklist Post</span> <span className="text-muted-foreground">(7.5%)</span> — Promedio % adherencia CL post operacional</div>
+                                    <div><span className="font-bold text-blue-700 dark:text-blue-400">Checklist Pre</span> <span className="text-muted-foreground">(7.5%)</span> — Solo conductores · Promedio ≥ {umbral_checklist}% = Aprobado</div>
+                                    <div><span className="font-bold text-blue-700 dark:text-blue-400">Checklist Post</span> <span className="text-muted-foreground">(7.5%)</span> — Solo conductores · Promedio ≥ {umbral_checklist}% = Aprobado</div>
                                 </div>
                             )}
                         </div>
@@ -684,8 +687,8 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                         {cv('rmd')                && <TableHead className="w-24 text-right bg-rose-50/40 dark:bg-rose-950/20">RMD <span className="text-rose-600 font-bold">(8%)</span></TableHead>}
                                         {cv('res_reparto')        && <TableHead className="w-32 text-right font-bold text-rose-700 dark:text-rose-400 bg-rose-100/50 dark:bg-rose-900/30">Resultado</TableHead>}
 
-                                        {cv('cl_pre')    && <TableHead className="w-36 text-right bg-blue-50/40 dark:bg-blue-950/20">% Adherencia CL Pre <span className="text-blue-600 font-bold">(7.5%)</span></TableHead>}
-                                        {cv('cl_post')   && <TableHead className="w-36 text-right bg-blue-50/40 dark:bg-blue-950/20">% Adherencia CL Post <span className="text-blue-600 font-bold">(7.5%)</span></TableHead>}
+                                        {cv('cl_pre')    && <TableHead className="w-36 text-right bg-blue-50/40 dark:bg-blue-950/20">CL Pre <span className="text-blue-600 font-bold">(7.5%)</span></TableHead>}
+                                        {cv('cl_post')   && <TableHead className="w-36 text-right bg-blue-50/40 dark:bg-blue-950/20">CL Post <span className="text-blue-600 font-bold">(7.5%)</span></TableHead>}
                                         {cv('res_flota') && <TableHead className="w-32 text-right font-bold text-blue-700 dark:text-blue-400 bg-blue-100/50 dark:bg-blue-900/30">Resultado</TableHead>}
                                     </TableRow>
                                 </TableHeader>
@@ -989,18 +992,17 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                                 </TableCell>
                                                 )}
 
-                                                {/* % Adherencia CL Pre Op */}
+                                                {/* Checklist Pre — solo conductores, binario Aprobado/No Aprobado */}
                                                 {cv('cl_pre') && (
                                                 <TableCell className="text-right">
                                                     {colab.porcentaje_checklist_pre !== null && colab.porcentaje_checklist_pre !== undefined ? (
-                                                        <div className="flex items-center justify-end gap-2">
-                                                            <div className="w-16 overflow-hidden rounded-full bg-muted h-2">
-                                                                <div className={`h-full rounded-full transition-all duration-300 ${colab.porcentaje_checklist_pre >= 90 ? 'bg-emerald-500' : colab.porcentaje_checklist_pre >= 75 ? 'bg-amber-500' : 'bg-rose-500'}`}
-                                                                    style={{ width: `${Math.min(100, colab.porcentaje_checklist_pre)}%` }} />
-                                                            </div>
-                                                            <span className={`font-bold min-w-[40px] ${colab.porcentaje_checklist_pre >= 90 ? 'text-emerald-600 dark:text-emerald-400' : colab.porcentaje_checklist_pre >= 75 ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                                        <div className="flex flex-col items-end gap-0.5">
+                                                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold ${colab.porcentaje_checklist_pre >= 100 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'}`}>
                                                                 {colab.porcentaje_checklist_pre_label}
                                                             </span>
+                                                            {colab.promedio_checklist_pre !== null && colab.promedio_checklist_pre !== undefined && (
+                                                                <span className="text-[10px] text-muted-foreground">{colab.promedio_checklist_pre.toFixed(1)}%</span>
+                                                            )}
                                                         </div>
                                                     ) : (
                                                         <Badge variant="outline" className="text-muted-foreground border-input">N/A</Badge>
@@ -1008,18 +1010,17 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                                 </TableCell>
                                                 )}
 
-                                                {/* % Adherencia CL Post Op */}
+                                                {/* Checklist Post — solo conductores, binario Aprobado/No Aprobado */}
                                                 {cv('cl_post') && (
                                                 <TableCell className="text-right">
                                                     {colab.porcentaje_checklist_post !== null && colab.porcentaje_checklist_post !== undefined ? (
-                                                        <div className="flex items-center justify-end gap-2">
-                                                            <div className="w-16 overflow-hidden rounded-full bg-muted h-2">
-                                                                <div className={`h-full rounded-full transition-all duration-300 ${colab.porcentaje_checklist_post >= 90 ? 'bg-emerald-500' : colab.porcentaje_checklist_post >= 75 ? 'bg-amber-500' : 'bg-rose-500'}`}
-                                                                    style={{ width: `${Math.min(100, colab.porcentaje_checklist_post)}%` }} />
-                                                            </div>
-                                                            <span className={`font-bold min-w-[40px] ${colab.porcentaje_checklist_post >= 90 ? 'text-emerald-600 dark:text-emerald-400' : colab.porcentaje_checklist_post >= 75 ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                                        <div className="flex flex-col items-end gap-0.5">
+                                                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold ${colab.porcentaje_checklist_post >= 100 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'}`}>
                                                                 {colab.porcentaje_checklist_post_label}
                                                             </span>
+                                                            {colab.promedio_checklist_post !== null && colab.promedio_checklist_post !== undefined && (
+                                                                <span className="text-[10px] text-muted-foreground">{colab.promedio_checklist_post.toFixed(1)}%</span>
+                                                            )}
                                                         </div>
                                                     ) : (
                                                         <Badge variant="outline" className="text-muted-foreground border-input">N/A</Badge>

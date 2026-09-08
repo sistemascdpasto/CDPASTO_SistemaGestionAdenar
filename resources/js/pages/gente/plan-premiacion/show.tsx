@@ -44,7 +44,7 @@ interface Metrica {
     label: string;
     pilar: 'Seguridad' | 'Gente' | 'Reparto' | 'Flota';
     peso: number;
-
+    promedio?: number | null;
     titulo: string;
     meta_desc: string;
 }
@@ -68,6 +68,7 @@ interface Props {
     mes: number;
     anio: number;
     meses_disponibles: MesDisponible[];
+    umbral_checklist?: number;
 }
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
@@ -133,8 +134,10 @@ function Barra({ pct, color }: { pct: number; color: string }) {
 }
 
 function FilaMetrica({ metrica }: { metrica: Metrica }) {
-    const cumple = metrica.valor !== null && metrica.valor >= 95;
-    const PilarIcon = PILAR_CONFIG[metrica.pilar].icon;
+    const esChecklist = metrica.titulo === 'Checklist Pre' || metrica.titulo === 'Checklist Post';
+    const aprobado    = metrica.valor !== null && metrica.valor >= 100;
+    const cumple      = esChecklist ? aprobado : (metrica.valor !== null && metrica.valor >= 95);
+    const PilarIcon   = PILAR_CONFIG[metrica.pilar].icon;
     return (
         <div className="flex items-start gap-3 py-3 border-b border-sidebar-border/70 last:border-0 dark:border-sidebar-border">
             <div className={`flex size-8 shrink-0 items-center justify-center rounded-full ${cumple ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-muted text-muted-foreground'}`}>
@@ -149,16 +152,31 @@ function FilaMetrica({ metrica }: { metrica: Metrica }) {
                         </p>
                         <p className="text-[10px] text-muted-foreground">{metrica.meta_desc}</p>
                     </div>
-                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${chipCls(metrica.valor)}`}>
-                        {estadoLabel(metrica.valor)}
-                    </span>
+                    {esChecklist ? (
+                        /* Checklist: badge Aprobado / No Aprobado */
+                        metrica.valor !== null ? (
+                            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${aprobado ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
+                                {aprobado ? 'Aprobado' : 'No Aprobado'}
+                            </span>
+                        ) : (
+                            <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold bg-muted text-muted-foreground">Sin dato</span>
+                        )
+                    ) : (
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${chipCls(metrica.valor)}`}>
+                            {estadoLabel(metrica.valor)}
+                        </span>
+                    )}
                 </div>
                 <div className="mt-1.5">
                     <Barra pct={metrica.valor ?? 0} color={barColor(metrica.valor)} />
                 </div>
                 <div className="mt-1 flex items-center justify-between gap-2">
                     <p className="text-[10px] text-muted-foreground">
-                        Resultado: <strong className="text-muted-foreground">{metrica.label}</strong>
+                        {esChecklist && metrica.promedio !== null && metrica.promedio !== undefined ? (
+                            <>Promedio real: <strong className="text-foreground">{metrica.promedio.toFixed(1)}%</strong></>
+                        ) : (
+                            <>Resultado: <strong className="text-muted-foreground">{metrica.label}</strong></>
+                        )}
                     </p>
                 </div>
             </div>
@@ -169,7 +187,7 @@ function FilaMetrica({ metrica }: { metrica: Metrica }) {
 
 // ─── Página ───────────────────────────────────────────────────────────────────
 
-export default function PlanPremiacionShow({ colaborador, metricas, historial_aci, mes, anio }: Props) {
+export default function PlanPremiacionShow({ colaborador, metricas, historial_aci, mes, anio, umbral_checklist = 90 }: Props) {
 
     const metricasList = Object.values(metricas);
     const cumplidas    = metricasList.filter(m => m.valor !== null && m.valor >= 95);
