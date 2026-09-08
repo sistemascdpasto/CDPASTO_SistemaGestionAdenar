@@ -176,11 +176,11 @@ export default function AlertasVelocidadCurvaIndex({ alertas, placas, filters }:
                 {/* Encabezado */}
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b pb-4">
                     <div>
-                        <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                        <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
                             <AlertTriangle className="h-7 w-7 text-orange-600" />
                             Alertas de Velocidad en Curva
                         </h1>
-                        <p className="text-sm text-gray-500 mt-1">
+                        <p className="text-sm text-muted-foreground mt-1">
                             {alertas.total} alerta{alertas.total !== 1 ? 's' : ''} registrada{alertas.total !== 1 ? 's' : ''}
                         </p>
                     </div>
@@ -199,7 +199,7 @@ export default function AlertasVelocidadCurvaIndex({ alertas, placas, filters }:
                             <Upload className="h-4 w-4 mr-2" />
                             {isUploading ? 'Cargando...' : 'Subir Excel'}
                         </Button>
-                        <Button onClick={openNewModal} className="bg-blue-600 hover:bg-blue-700 text-white font-semibold">
+                        <Button onClick={openNewModal} className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold">
                             <Plus className="h-4 w-4 mr-2" />
                             Agregar Manual
                         </Button>
@@ -208,13 +208,13 @@ export default function AlertasVelocidadCurvaIndex({ alertas, placas, filters }:
                 </div>
 
                 {/* Filtros */}
-                <Card className="shadow-sm border bg-white dark:bg-gray-900">
+                <Card className="shadow-sm border bg-card">
                     <CardContent className="pt-4">
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 items-end">
 
                                 {/* Placa — combobox con búsqueda inmediata */}
                                 <div className="relative">
-                                    <Label className="text-xs font-semibold uppercase text-gray-600">Placa</Label>
+                                    <Label className="text-xs font-semibold text-muted-foreground">Placa</Label>
                                     <div className="relative mt-1">
                                         <Input
                                             type="text"
@@ -233,20 +233,20 @@ export default function AlertasVelocidadCurvaIndex({ alertas, placas, filters }:
                                             <button
                                                 type="button"
                                                 onClick={clearPlaca}
-                                                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-muted-foreground"
                                             >
                                                 <X className="h-3.5 w-3.5" />
                                             </button>
                                         )}
                                     </div>
                                     {showPlacaList && placasFiltradas.length > 0 && (
-                                        <div className="absolute z-50 mt-1 w-full bg-white dark:bg-gray-800 border rounded-md shadow-lg max-h-48 overflow-y-auto">
+                                        <div className="absolute z-50 mt-1 w-full bg-popover border rounded-md shadow-md max-h-48 overflow-y-auto">
                                             {placasFiltradas.map((p) => (
                                                 <button
                                                     key={p}
                                                     type="button"
                                                     onMouseDown={() => selectPlaca(p)}
-                                                    className="w-full text-left px-3 py-2 text-sm font-mono hover:bg-orange-50 dark:hover:bg-gray-700"
+                                                    className="w-full text-left px-3 py-2 text-sm font-mono hover:bg-orange-50 dark:hover:bg-muted"
                                                 >
                                                     {p}
                                                 </button>
@@ -260,7 +260,7 @@ export default function AlertasVelocidadCurvaIndex({ alertas, placas, filters }:
 
                                 {/* Fecha desde */}
                                 <div>
-                                    <Label className="text-xs font-semibold uppercase text-gray-600">
+                                    <Label className="text-xs font-semibold text-muted-foreground">
                                         <Calendar className="h-3 w-3 inline mr-1" />
                                         Desde
                                     </Label>
@@ -277,7 +277,7 @@ export default function AlertasVelocidadCurvaIndex({ alertas, placas, filters }:
 
                                 {/* Fecha hasta */}
                                 <div>
-                                    <Label className="text-xs font-semibold uppercase text-gray-600">
+                                    <Label className="text-xs font-semibold text-muted-foreground">
                                         <Calendar className="h-3 w-3 inline mr-1" />
                                         Hasta
                                     </Label>
@@ -296,7 +296,7 @@ export default function AlertasVelocidadCurvaIndex({ alertas, placas, filters }:
                 </Card>
 
                 {/* Tabla */}
-                <Card className="shadow-sm border-t-4 border-t-orange-600">
+                <Card className="border-sidebar-border/70 dark:border-sidebar-border">
                     <CardHeader className="pb-3 border-b">
                         <CardTitle className="text-base font-semibold flex items-center gap-2">
                             <AlertCircle className="h-5 w-5 text-orange-600" />
@@ -311,7 +311,7 @@ export default function AlertasVelocidadCurvaIndex({ alertas, placas, filters }:
                     <CardContent className="pt-0">
                         <div className="rounded-md border overflow-x-auto">
                             <Table>
-                                <TableHeader className="bg-gray-50 dark:bg-gray-800/50">
+                                <TableHeader className="bg-muted/50">
                                     <TableRow>
                                         <TableHead className="font-semibold">Fecha</TableHead>
                                         <TableHead className="font-semibold">Hora</TableHead>
@@ -328,9 +328,9 @@ export default function AlertasVelocidadCurvaIndex({ alertas, placas, filters }:
                                 <TableBody>
                                     {alertas.data.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={10} className="text-center py-12 text-gray-500">
+                                            <TableCell colSpan={10} className="text-center py-12 text-muted-foreground">
                                                 <div className="flex flex-col items-center gap-2">
-                                                    <FileSpreadsheet className="h-10 w-10 text-gray-300" />
+                                                    <FileSpreadsheet className="h-10 w-10 text-muted-foreground" />
                                                     <span>
                                                         {hayFiltros
                                                             ? 'No se encontraron alertas con ese criterio.'
@@ -341,28 +341,28 @@ export default function AlertasVelocidadCurvaIndex({ alertas, placas, filters }:
                                         </TableRow>
                                     ) : (
                                         alertas.data.map((alerta) => (
-                                            <TableRow key={alerta.id} className="hover:bg-gray-50/80 dark:hover:bg-gray-800/40">
-                                                <TableCell className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                            <TableRow key={alerta.id} className="hover:bg-muted/60/80 dark:hover:bg-muted/40">
+                                                <TableCell className="text-sm font-medium text-foreground">
                                                     {formatFecha(alerta.fecha)}
                                                 </TableCell>
-                                                <TableCell className="text-sm text-gray-700 dark:text-gray-300 font-mono">
+                                                <TableCell className="text-sm text-foreground font-mono">
                                                     {alerta.hora || '—'}
                                                 </TableCell>
-                                                <TableCell className="text-sm text-gray-700 dark:text-gray-300">
+                                                <TableCell className="text-sm text-foreground">
                                                     {alerta.regional || '—'}
                                                 </TableCell>
-                                                <TableCell className="text-sm text-gray-700 dark:text-gray-300">
+                                                <TableCell className="text-sm text-foreground">
                                                     {alerta.cd || '—'}
                                                 </TableCell>
-                                                <TableCell className="text-sm text-gray-700 dark:text-gray-300 font-mono font-semibold">
+                                                <TableCell className="text-sm text-foreground font-mono font-semibold">
                                                     {alerta.nombre || '—'}
                                                 </TableCell>
-                                                <TableCell className="text-sm text-gray-700 dark:text-gray-300">
+                                                <TableCell className="text-sm text-foreground">
                                                     <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
                                                         {alerta.alerta || '—'}
                                                     </Badge>
                                                 </TableCell>
-                                                <TableCell className="text-right text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                                <TableCell className="text-right text-sm font-semibold text-foreground">
                                                     {alerta.velocidad ? (
                                                         <div className="flex items-center justify-end gap-1">
                                                             <Gauge className="h-3.5 w-3.5 text-red-500" />
@@ -370,10 +370,10 @@ export default function AlertasVelocidadCurvaIndex({ alertas, placas, filters }:
                                                         </div>
                                                     ) : '—'}
                                                 </TableCell>
-                                                <TableCell className="text-sm text-gray-700 dark:text-gray-300">
+                                                <TableCell className="text-sm text-foreground">
                                                     {alerta.coordenada ? (
                                                         <div className="flex items-center gap-1">
-                                                            <MapPin className="h-3.5 w-3.5 text-blue-500" />
+                                                            <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
                                                             <span className="font-mono text-xs">{alerta.coordenada}</span>
                                                         </div>
                                                     ) : '—'}
@@ -389,7 +389,7 @@ export default function AlertasVelocidadCurvaIndex({ alertas, placas, filters }:
                                                     <Button
                                                         size="sm" variant="outline"
                                                         onClick={() => openEditModal(alerta)}
-                                                        className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700 border-blue-200 hover:bg-blue-50"
+                                                        className="h-7 px-2 text-xs text-muted-foreground hover:text-muted-foreground border-sidebar-border/70 hover:bg-muted/50"
                                                     >
                                                         <Edit2 className="h-3 w-3 mr-1" />Editar
                                                     </Button>
@@ -411,7 +411,7 @@ export default function AlertasVelocidadCurvaIndex({ alertas, placas, filters }:
                         {/* Paginación */}
                         {alertas.last_page > 1 && (
                             <div className="flex items-center justify-between pt-4 border-t mt-4">
-                                <p className="text-sm text-gray-500">
+                                <p className="text-sm text-muted-foreground">
                                     Página {alertas.current_page} de {alertas.last_page}
                                 </p>
                                 <div className="flex gap-1 flex-wrap">
@@ -439,7 +439,7 @@ export default function AlertasVelocidadCurvaIndex({ alertas, placas, filters }:
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             {isEditing
-                                ? <><Edit2 className="h-5 w-5 text-blue-600" />Editar Alerta</>
+                                ? <><Edit2 className="h-5 w-5 text-muted-foreground" />Editar Alerta</>
                                 : <><Plus className="h-5 w-5 text-green-600" />Crear Nueva Alerta</>}
                         </DialogTitle>
                     </DialogHeader>
@@ -487,7 +487,7 @@ export default function AlertasVelocidadCurvaIndex({ alertas, placas, filters }:
                     </div>
                     <DialogFooter>
                         <Button type="button" variant="outline" onClick={() => setShowModal(false)}>Cancelar</Button>
-                        <Button type="button" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={handleSaveAlerta}>
+                        <Button type="button" className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={handleSaveAlerta}>
                             {isEditing ? 'Actualizar' : 'Crear'}
                         </Button>
                     </DialogFooter>

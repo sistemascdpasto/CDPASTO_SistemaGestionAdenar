@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/react';
-import { Calendar, CheckCircle2, ClipboardCheck, FileSpreadsheet, Upload, X, XCircle } from 'lucide-react';
+import { Calendar, CheckCircle2, ChevronDown, ClipboardCheck, FileSpreadsheet, Upload, X, XCircle } from 'lucide-react';
 import React, { useRef, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -359,9 +359,9 @@ export default function ChecklistImport({ registros, placas, filters, flash, dup
     };
 
     const cumplColor = (v: number | null) => {
-        if (v === null) return 'text-gray-400';
+        if (v === null) return 'text-muted-foreground';
         if (v >= 90) return 'text-green-700 font-semibold';
-        if (v >= 70) return 'text-yellow-700 font-semibold';
+        if (v >= 70) return 'text-amber-700 font-semibold';
         return 'text-red-700 font-semibold';
     };
 
@@ -389,22 +389,25 @@ export default function ChecklistImport({ registros, placas, filters, flash, dup
 
                 {/* Tabla de duplicados omitidos */}
                 {duplicados.length > 0 && (
-                    <div className="rounded-lg border border-yellow-300 bg-yellow-50 overflow-hidden">
+                    <div className="overflow-hidden rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-500/30 dark:bg-amber-500/10">
                         <button
                             type="button"
                             onClick={() => setShowDuplicados((v) => !v)}
-                            className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-yellow-100 transition-colors"
+                            className="w-full flex items-center justify-between px-4 py-3 text-left transition-colors hover:bg-amber-100 dark:hover:bg-amber-500/15"
                         >
-                            <span className="flex items-center gap-2 text-sm font-semibold text-yellow-800">
-                                <XCircle className="h-4 w-4 text-yellow-600" />
+                            <span className="flex items-center gap-2 text-sm font-semibold text-amber-800">
+                                <XCircle className="h-4 w-4 text-amber-600" />
                                 {duplicados.length} registro{duplicados.length !== 1 ? 's' : ''} omitido{duplicados.length !== 1 ? 's' : ''} por duplicado — ya existían en la base de datos
                             </span>
-                            <span className="text-yellow-600 text-xs">{showDuplicados ? '▲ Ocultar' : '▼ Ver detalle'}</span>
+                            <span className="flex items-center gap-1 text-xs text-amber-600">
+                                {showDuplicados ? 'Ocultar' : 'Ver detalle'}
+                                <ChevronDown className={`size-3.5 transition-transform ${showDuplicados ? 'rotate-180' : ''}`} />
+                            </span>
                         </button>
                         {showDuplicados && (
-                            <div className="overflow-x-auto border-t border-yellow-200">
+                            <div className="overflow-x-auto border-t border-amber-200">
                                 <table className="w-full text-xs">
-                                    <thead className="bg-yellow-100 text-yellow-800">
+                                    <thead className="bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">
                                         <tr>
                                             <th className="px-3 py-2 text-left font-semibold">#</th>
                                             <th className="px-3 py-2 text-left font-semibold">ID Form (Excel)</th>
@@ -420,16 +423,16 @@ export default function ChecklistImport({ registros, placas, filters, flash, dup
                                     </thead>
                                     <tbody>
                                         {duplicados.map((d, i) => (
-                                            <tr key={`${d.id_form}-${i}`} className={i % 2 === 0 ? 'bg-white' : 'bg-yellow-50/50'}>
-                                                <td className="px-3 py-1.5 text-gray-400">{i + 1}</td>
-                                                <td className="px-3 py-1.5 font-mono font-semibold text-yellow-800">{d.id_form}</td>
-                                                <td className="px-3 py-1.5 text-gray-600 text-xs">{d.condicion}</td>
+                                            <tr key={`${d.id_form}-${i}`} className={i % 2 === 0 ? 'bg-card' : 'bg-muted/40'}>
+                                                <td className="px-3 py-1.5 text-muted-foreground">{i + 1}</td>
+                                                <td className="px-3 py-1.5 font-mono font-semibold text-amber-800">{d.id_form}</td>
+                                                <td className="px-3 py-1.5 text-muted-foreground text-xs">{d.condicion}</td>
                                                 <td className="px-3 py-1.5">
                                                     {d.operacion
-                                                        ? <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${d.operacion.toLowerCase().includes('retorno') ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>{d.operacion}</span>
+                                                        ? <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${d.operacion.toLowerCase().includes('retorno') ? 'bg-muted text-foreground' : 'bg-orange-100 text-orange-700'}`}>{d.operacion}</span>
                                                         : '—'}
                                                 </td>
-                                                <td className="px-3 py-1.5 text-gray-700">{d.firma_responsable || '—'}</td>
+                                                <td className="px-3 py-1.5 text-foreground">{d.firma_responsable || '—'}</td>
                                                 <td className="px-3 py-1.5 font-mono">{d.placa_vehiculo || '—'}</td>
                                                 <td className="px-3 py-1.5 font-mono">{d.cedula_conductor || '—'}</td>
                                                 <td className="px-3 py-1.5">{d.fecha ? d.fecha.split(' ')[0].split('-').reverse().join('/') : '—'}</td>
@@ -447,11 +450,11 @@ export default function ChecklistImport({ registros, placas, filters, flash, dup
                 {/* Encabezado */}
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 border-b pb-4">
                     <div>
-                        <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                            <ClipboardCheck className="h-7 w-7 text-blue-600" />
+                        <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
+                            <ClipboardCheck className="h-7 w-7 text-muted-foreground" />
                             Checklist de Vehículos
                         </h1>
-                        <p className="text-sm text-gray-500 mt-1">
+                        <p className="text-sm text-muted-foreground mt-1">
                             {registros.total} registro{registros.total !== 1 ? 's' : ''} importado{registros.total !== 1 ? 's' : ''}
                         </p>
                     </div>
@@ -461,27 +464,27 @@ export default function ChecklistImport({ registros, placas, filters, flash, dup
                             <Button
                                 variant="outline"
                                 onClick={() => setShowColPicker((v) => !v)}
-                                className="text-gray-600 border-gray-300"
+                                className="text-muted-foreground border-input"
                             >
                                 Columnas ({columnasMostradas.length}/{COLUMNAS.length})
                             </Button>
                             {showColPicker && (
                                 <>
                                     <div className="fixed inset-0 z-40" onClick={() => setShowColPicker(false)} />
-                                    <div className="absolute right-0 top-full mt-1 z-50 bg-white dark:bg-gray-900 border rounded-lg shadow-xl p-3 w-72 max-h-[70vh] overflow-y-auto">
-                                        <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Mostrar / ocultar columnas</p>
+                                    <div className="absolute right-0 top-full mt-1 z-50 bg-card border rounded-lg shadow-md p-3 w-72 max-h-[70vh] overflow-y-auto">
+                                        <p className="text-xs font-semibold text-muted-foreground mb-2">Mostrar / ocultar columnas</p>
                                         <div className="space-y-1">
                                             {COLUMNAS.map(([k, label]) => (
-                                                <label key={k} className={`flex items-center gap-2 text-sm cursor-pointer rounded px-1 py-0.5 hover:bg-gray-50 ${FIXED_COLS.has(k) ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                                <label key={k} className={`flex items-center gap-2 text-sm cursor-pointer rounded px-1 py-0.5 hover:bg-muted/60 ${FIXED_COLS.has(k) ? 'opacity-50 cursor-not-allowed' : ''}`}>
                                                     <input
                                                         type="checkbox"
                                                         checked={colsVisibles.has(k)}
                                                         onChange={() => toggleCol(k)}
                                                         disabled={FIXED_COLS.has(k)}
-                                                        className="accent-blue-600"
+                                                        className=""
                                                     />
                                                     {label}
-                                                    {FIXED_COLS.has(k) && <span className="text-xs text-gray-400 ml-auto">fija</span>}
+                                                    {FIXED_COLS.has(k) && <span className="text-xs text-muted-foreground ml-auto">fija</span>}
                                                 </label>
                                             ))}
                                         </div>
@@ -493,7 +496,7 @@ export default function ChecklistImport({ registros, placas, filters, flash, dup
                         <Button
                             onClick={() => fileInputRef.current?.click()}
                             disabled={isUploading}
-                            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+                            className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
                         >
                             <Upload className="h-4 w-4 mr-2" />
                             {isUploading ? 'Procesando...' : 'Subir Excel'}
@@ -503,12 +506,12 @@ export default function ChecklistImport({ registros, placas, filters, flash, dup
                 </div>
 
                 {/* Filtros */}
-                <Card className="shadow-sm border bg-white dark:bg-gray-900">
+                <Card className="shadow-sm border bg-card">
                     <CardContent className="pt-4">
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 items-end">
                             {/* Placa */}
                             <div className="relative">
-                                <Label className="text-xs font-semibold uppercase text-gray-600">Placa</Label>
+                                <Label className="text-xs font-semibold text-muted-foreground">Placa</Label>
                                 <div className="relative mt-1">
                                     <Input
                                         type="text" placeholder="Buscar placa..."
@@ -518,16 +521,16 @@ export default function ChecklistImport({ registros, placas, filters, flash, dup
                                         className="pr-7 font-mono uppercase" autoComplete="off"
                                     />
                                     {placaInput && (
-                                        <button type="button" onClick={clearPlaca} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                        <button type="button" onClick={clearPlaca} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-muted-foreground">
                                             <X className="h-3.5 w-3.5" />
                                         </button>
                                     )}
                                 </div>
                                 {showPlacaList && placasFiltradas.length > 0 && (
-                                    <div className="absolute z-50 mt-1 w-full bg-white dark:bg-gray-800 border rounded-md shadow-lg max-h-48 overflow-y-auto">
+                                    <div className="absolute z-50 mt-1 w-full bg-popover border rounded-md shadow-md max-h-48 overflow-y-auto">
                                         {placasFiltradas.map((p) => (
                                             <button key={p} type="button" onMouseDown={() => selectPlaca(p)}
-                                                className="w-full text-left px-3 py-2 text-sm font-mono hover:bg-blue-50 dark:hover:bg-gray-700">{p}</button>
+                                                className="w-full text-left px-3 py-2 text-sm font-mono hover:bg-muted/50 dark:hover:bg-muted">{p}</button>
                                         ))}
                                     </div>
                                 )}
@@ -536,7 +539,7 @@ export default function ChecklistImport({ registros, placas, filters, flash, dup
 
                             {/* Desde */}
                             <div>
-                                <Label className="text-xs font-semibold uppercase text-gray-600">
+                                <Label className="text-xs font-semibold text-muted-foreground">
                                     <Calendar className="h-3 w-3 inline mr-1" />Desde
                                 </Label>
                                 <Input type="date" value={fechaDesde} className="mt-1"
@@ -545,7 +548,7 @@ export default function ChecklistImport({ registros, placas, filters, flash, dup
 
                             {/* Hasta */}
                             <div>
-                                <Label className="text-xs font-semibold uppercase text-gray-600">
+                                <Label className="text-xs font-semibold text-muted-foreground">
                                     <Calendar className="h-3 w-3 inline mr-1" />Hasta
                                 </Label>
                                 <Input type="date" value={fechaHasta} className="mt-1"
@@ -556,10 +559,10 @@ export default function ChecklistImport({ registros, placas, filters, flash, dup
                 </Card>
 
                 {/* Tabla */}
-                <Card className="shadow-sm border-t-4 border-t-blue-600">
+                <Card className="border-sidebar-border/70 dark:border-sidebar-border">
                     <CardHeader className="pb-3 border-b">
                         <CardTitle className="text-base font-semibold flex items-center gap-2">
-                            <FileSpreadsheet className="h-5 w-5 text-blue-600" />
+                            <FileSpreadsheet className="h-5 w-5 text-muted-foreground" />
                             Registros
                             {registros.from !== null && (
                                 <Badge variant="secondary" className="ml-2">
@@ -572,7 +575,7 @@ export default function ChecklistImport({ registros, placas, filters, flash, dup
                         {/* Scroll horizontal completo */}
                         <div className="overflow-x-auto">
                             <Table className="text-xs whitespace-nowrap">
-                                <TableHeader className="bg-gray-50 dark:bg-gray-800/50 sticky top-0">
+                                <TableHeader className="bg-muted/50 sticky top-0">
                                     <TableRow>
                                         {columnasMostradas.map(([k, label]) => (
                                             <TableHead key={k} className="font-semibold px-3 py-2 text-xs border-r last:border-r-0">
@@ -584,9 +587,9 @@ export default function ChecklistImport({ registros, placas, filters, flash, dup
                                 <TableBody>
                                     {registros.data.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={columnasMostradas.length} className="text-center py-12 text-gray-500">
+                                            <TableCell colSpan={columnasMostradas.length} className="text-center py-12 text-muted-foreground">
                                                 <div className="flex flex-col items-center gap-2">
-                                                    <FileSpreadsheet className="h-10 w-10 text-gray-300" />
+                                                    <FileSpreadsheet className="h-10 w-10 text-muted-foreground" />
                                                     <span>
                                                         {hayFiltros
                                                             ? 'No se encontraron registros con ese criterio.'
@@ -597,14 +600,14 @@ export default function ChecklistImport({ registros, placas, filters, flash, dup
                                         </TableRow>
                                     ) : (
                                         registros.data.map((r) => (
-                                            <TableRow key={r.id} className="hover:bg-blue-50/40 dark:hover:bg-gray-800/40">
+                                            <TableRow key={r.id} className="hover:bg-muted/50/40 dark:hover:bg-muted/40">
                                                 {columnasMostradas.map(([k]) => {
                                                     const val = r[k];
                                                     const texto = fmt(k, val);
                                                     // Color especial para CUMPL
                                                     const esColor = k === 'cumpl' && val !== null;
                                                     return (
-                                                        <TableCell key={k} className={`px-3 py-1.5 border-r last:border-r-0 ${esColor ? cumplColor(val as number) : 'text-gray-700 dark:text-gray-300'}`}>
+                                                        <TableCell key={k} className={`px-3 py-1.5 border-r last:border-r-0 ${esColor ? cumplColor(val as number) : 'text-foreground'}`}>
                                                             {texto}
                                                         </TableCell>
                                                     );
@@ -619,7 +622,7 @@ export default function ChecklistImport({ registros, placas, filters, flash, dup
                         {/* Paginación */}
                         {registros.last_page > 1 && (
                             <div className="flex items-center justify-between px-4 py-3 border-t">
-                                <p className="text-sm text-gray-500">
+                                <p className="text-sm text-muted-foreground">
                                     Página {registros.current_page} de {registros.last_page}
                                 </p>
                                 <div className="flex gap-1 flex-wrap">
@@ -629,7 +632,7 @@ export default function ChecklistImport({ registros, placas, filters, flash, dup
                                             variant={link.active ? 'default' : 'outline'}
                                             disabled={!link.url}
                                             onClick={() => link.url && router.get(link.url, {}, { preserveScroll: true })}
-                                            className={`h-8 min-w-[2rem] px-2 text-xs ${link.active ? 'bg-blue-600 hover:bg-blue-700 text-white border-blue-600' : ''}`}
+                                            className={`h-8 min-w-[2rem] px-2 text-xs ${link.active ? 'bg-primary text-primary-foreground hover:bg-primary/90' : ''}`}
                                             dangerouslySetInnerHTML={{ __html: link.label }}
                                         />
                                     ))}
