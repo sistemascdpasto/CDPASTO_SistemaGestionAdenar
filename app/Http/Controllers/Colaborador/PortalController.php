@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Colaborador;
 
 use App\Http\Controllers\Controller;
+use App\Models\Gente\ChecklistPlanPremiacion;
 use App\Models\Reparto\EventosTripulacion;
 use App\Models\Reparto\ModulacionItem;
 use App\Models\Seguridad\Aci;
@@ -450,15 +451,16 @@ class PortalController extends Controller
 
         $evento = $eventosColaborador->first();
 
-        // Promedios de checklist (puede haber múltiples registros por mes)
-        $valsClPre  = $eventosColaborador->whereNotNull('adherencia_checklist_pre')->pluck('adherencia_checklist_pre')->map(fn($v) => (float)$v);
-        $valsClPost = $eventosColaborador->whereNotNull('adherencia_checklist_post')->pluck('adherencia_checklist_post')->map(fn($v) => (float)$v);
-
-        $promedioClPre  = $valsClPre->isNotEmpty()  ? round($valsClPre->avg(), 2)  : null;
-        $promedioClPost = $valsClPost->isNotEmpty() ? round($valsClPost->avg(), 2) : null;
-
-        // Solo aplica checklist para conductores
+        // Solo aplica checklist para conductores (Default 100% / Aprobado)
         $esConductorPortal = str_contains(strtoupper((string)($colaborador->cargo ?? '')), 'CONDUCTOR');
+
+        $manualCheck = ChecklistPlanPremiacion::where('colaborador_id', $colaborador->id)
+            ->where('mes', $mes)
+            ->where('anio', $anio)
+            ->first();
+
+        $clPreAprobado  = $manualCheck ? (bool)$manualCheck->cl_pre : true;
+        $clPostAprobado = $manualCheck ? (bool)$manualCheck->cl_post : true;
 
         $umbralCl = \App\Http\Controllers\Gente\PlanPremiacionController::UMBRAL_CHECKLIST;
 
@@ -480,20 +482,18 @@ class PortalController extends Controller
             'sac' => ['valor' => $casosSac === 0 ? 100.0 : 0.0, 'label' => $casosSac === 0 ? '100%' : '0%', 'pilar' => 'Reparto', 'peso' => 8, 'emoji' => '🎧', 'titulo' => 'SAC', 'meta_desc' => 'Sin casos = 100%'],
             'adherencia' => ['valor' => $evento?->adherencia_tiempo !== null ? ((float) $evento->adherencia_tiempo >= 83 ? 100.0 : 0.0) : null, 'label' => $evento?->adherencia_tiempo !== null ? ((float) $evento->adherencia_tiempo >= 83 ? '100%' : '0%') : 'N/A', 'pilar' => 'Reparto', 'peso' => 8, 'emoji' => '⏰', 'titulo' => 'Adherencia Tiempo', 'meta_desc' => '≥ 83% = 100%'],
             'rmd' => ['valor' => $evento?->rmd !== null ? ((float) $evento->rmd >= 4 ? 100.0 : 0.0) : null, 'label' => $evento?->rmd !== null ? ((float) $evento->rmd >= 4 ? '100%' : '0%') : 'N/A', 'pilar' => 'Reparto', 'peso' => 8, 'emoji' => '🏆', 'titulo' => 'RMD', 'meta_desc' => 'Promedio ≥ 4 = 100%'],
-            // FLOTA — solo conductores, binario Aprobado/No Aprobado
+            // FLOTA — solo conductores, binario Aprobado/No Aprobado (default Aprobado)
             'cl_pre' => [
-                'valor'    => $esConductorPortal && $promedioClPre !== null  ? ($promedioClPre  >= $umbralCl ? 100.0 : 0.0) : null,
-                'label'    => $esConductorPortal && $promedioClPre !== null  ? ($promedioClPre  >= $umbralCl ? 'Aprobado' : 'No Aprobado') : 'N/A',
-                'promedio' => $esConductorPortal ? $promedioClPre  : null,
+                'valor'    => $esConductorPortal ? ($clPreAprobado ? 100.0 : 0.0) : null,
+                'label'    => $esConductorPortal ? ($clPreAprobado ? 'Aprobado' : 'No Aprobado') : 'N/A',
                 'pilar' => 'Flota', 'peso' => 7.5, 'emoji' => '🔍', 'titulo' => 'Checklist Pre',
-                'meta_desc' => 'Solo conductores · Promedio ≥ '.$umbralCl.'% = Aprobado',
+                'meta_desc' => 'Solo conductores · Default Aprobado (100%)',
             ],
             'cl_post' => [
-                'valor'    => $esConductorPortal && $promedioClPost !== null ? ($promedioClPost >= $umbralCl ? 100.0 : 0.0) : null,
-                'label'    => $esConductorPortal && $promedioClPost !== null ? ($promedioClPost >= $umbralCl ? 'Aprobado' : 'No Aprobado') : 'N/A',
-                'promedio' => $esConductorPortal ? $promedioClPost : null,
+                'valor'    => $esConductorPortal ? ($clPostAprobado ? 100.0 : 0.0) : null,
+                'label'    => $esConductorPortal ? ($clPostAprobado ? 'Aprobado' : 'No Aprobado') : 'N/A',
                 'pilar' => 'Flota', 'peso' => 7.5, 'emoji' => '🏁', 'titulo' => 'Checklist Post',
-                'meta_desc' => 'Solo conductores · Promedio ≥ '.$umbralCl.'% = Aprobado',
+                'meta_desc' => 'Solo conductores · Default Aprobado (100%)',
             ],
         ];
 

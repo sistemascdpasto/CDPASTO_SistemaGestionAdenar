@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Gente;
 
 use App\Http\Controllers\Controller;
+use App\Models\Gente\ChecklistPlanPremiacion;
 use App\Models\Seguridad\Aci;
 use App\Models\Seguridad\Colaborador;
 use App\Services\FestivosColombiaService;
@@ -355,8 +356,15 @@ class PlanPremiacionController extends Controller
             ->whereYear('fecha_incidente', $anio)
             ->count();
 
-        // 10. Procesar datos por colaborador
-        $todosCalculados = $colaboradores->map(function ($colaborador) use ($conteosPorColaborador, $preguntasRutaPorColaborador, $promediosCalificaciones, $dpoColaboradorIds, $dpoQrSafetySet, $dpoNombresSet, $ausentismosPorColaboradorId, $ausentismosPorIdentificador, $malasMarcacionesIdentificacionesSet, $malasMarcacionesNombresSet, $rechazosPorDocumento, $rechazosPorNombre, $adherenciaTiempoPorDocumento, $adherenciaTiempoPorNombre, $rmdPorDocumento, $rmdPorNombre, $checklistPrePorDocumento, $checklistPrePorNombre, $checklistPostPorDocumento, $checklistPostPorNombre, $sacPorColaboradorId, $sacPorResponsable, $normStr) {
+        // 10. Registros Estado Manual Checklist (Pre y Post)
+        $checklistsManuales = ChecklistPlanPremiacion::whereIn('colaborador_id', $colaboradores->pluck('id'))
+            ->where('mes', $mes)
+            ->where('anio', $anio)
+            ->get()
+            ->keyBy('colaborador_id');
+
+        // 11. Procesar datos por colaborador
+        $todosCalculados = $colaboradores->map(function ($colaborador) use ($conteosPorColaborador, $preguntasRutaPorColaborador, $promediosCalificaciones, $dpoColaboradorIds, $dpoQrSafetySet, $dpoNombresSet, $ausentismosPorColaboradorId, $ausentismosPorIdentificador, $malasMarcacionesIdentificacionesSet, $malasMarcacionesNombresSet, $rechazosPorDocumento, $rechazosPorNombre, $adherenciaTiempoPorDocumento, $adherenciaTiempoPorNombre, $rmdPorDocumento, $rmdPorNombre, $checklistPrePorDocumento, $checklistPrePorNombre, $checklistPostPorDocumento, $checklistPostPorNombre, $sacPorColaboradorId, $sacPorResponsable, $checklistsManuales, $normStr) {
             $aciRealizadas = (int) ($conteosPorColaborador[$colaborador->id] ?? 0);
             $porcentaje = round(($aciRealizadas / self::META_BASE) * 100, 1);
             $faltantes = max(0, self::META_BASE - $aciRealizadas);
@@ -492,27 +500,25 @@ class PlanPremiacionController extends Controller
                 $promedioRmdLabel = 'N/A';
             }
 
-            // % Adherencia CL Pre/Post — solo aplica para cargo Conductor de Reparto
-            // Lógica binaria: promedio >= UMBRAL_CHECKLIST → Aprobado (100%), < umbral → No Aprobado (0%)
+            // % Adherencia CL Pre/Post — solo aplica para cargo Conductor (Default 100% / Aprobado, manual toggle)
             $esConductor = str_contains(strtoupper((string) ($colaborador->cargo ?? '')), 'CONDUCTOR');
 
-            $valsChecklistPre = $esConductor ? $getMetricVals($checklistPrePorDocumento, $checklistPrePorNombre) : [];
-            if (!empty($valsChecklistPre)) {
-                $promedioClPre = round(array_sum($valsChecklistPre) / count($valsChecklistPre), 2);
-                $porcentajeChecklistPre = $promedioClPre >= self::UMBRAL_CHECKLIST ? 100.0 : 0.0;
-                $porcentajeChecklistPreLabel = $porcentajeChecklistPre >= 100 ? 'Aprobado' : 'No Aprobado';
+            if ($esConductor) {
+                $manualCheck = $checklistsManuales->get($colaborador->id);
+                $clPreAprobado = $manualCheck ? (bool) $manualCheck->cl_pre : true;
+                $clPostAprobado = $manualCheck ? (bool) $manualCheck->cl_post : true;
+
+                $porcentajeChecklistPre = $clPreAprobado ? 100.0 : 0.0;
+                $porcentajeChecklistPreLabel = $clPreAprobado ? 'Aprobado' : 'No Aprobado';
+                $promedioClPre = null;
+
+                $porcentajeChecklistPost = $clPostAprobado ? 100.0 : 0.0;
+                $porcentajeChecklistPostLabel = $clPostAprobado ? 'Aprobado' : 'No Aprobado';
+                $promedioClPost = null;
             } else {
                 $promedioClPre = null;
                 $porcentajeChecklistPre = null;
                 $porcentajeChecklistPreLabel = 'N/A';
-            }
-
-            $valsChecklistPost = $esConductor ? $getMetricVals($checklistPostPorDocumento, $checklistPostPorNombre) : [];
-            if (!empty($valsChecklistPost)) {
-                $promedioClPost = round(array_sum($valsChecklistPost) / count($valsChecklistPost), 2);
-                $porcentajeChecklistPost = $promedioClPost >= self::UMBRAL_CHECKLIST ? 100.0 : 0.0;
-                $porcentajeChecklistPostLabel = $porcentajeChecklistPost >= 100 ? 'Aprobado' : 'No Aprobado';
-            } else {
                 $promedioClPost = null;
                 $porcentajeChecklistPost = null;
                 $porcentajeChecklistPostLabel = 'N/A';
@@ -843,6 +849,12 @@ class PlanPremiacionController extends Controller
             if ($row->adherencia_checklist_post !== null)              { $v=(float)$row->adherencia_checklist_post; if($dk) $clPostPorDoc[$dk][]=$v; if($nk) $clPostPorNom[$nk][]=$v; }
         }
 
+        $checklistsManuales = ChecklistPlanPremiacion::whereIn('colaborador_id', $colaboradores->pluck('id'))
+            ->where('mes', $mes)
+            ->where('anio', $anio)
+            ->get()
+            ->keyBy('colaborador_id');
+
         $sacRaw = DB::table('sac')->whereMonth('fecha',$mes)->whereYear('fecha',$anio)
             ->get(['colaborador_id','responsable','cumplimiento_cierre','aplica']);
         if ($sacRaw->isEmpty()) $sacRaw = DB::table('sac')->get(['colaborador_id','responsable','cumplimiento_cierre','aplica']);
@@ -1037,11 +1049,18 @@ class PlanPremiacionController extends Controller
             $rRep  = round($cRec*11 + $cSac*8 + $cAdt*8 + $cRmd*8, 1);
 
             // Flota
-            $vCpre  = $getClPre($colab);  $pCpre  = !empty($vCpre)  ? round(array_sum($vCpre)/count($vCpre),1)  : null;
-            $vCpost = $getClPost($colab); $pCpost = !empty($vCpost) ? round(array_sum($vCpost)/count($vCpost),1) : null;
-            $cCpre  = $pCpre  !== null ? min($pCpre,  100) / 100 : 0;
-            $cCpost = $pCpost !== null ? min($pCpost, 100) / 100 : 0;
-            $rFlota = round($cCpre*7.5 + $cCpost*7.5, 1);
+            $esConductorExp = str_contains(strtoupper((string)($colab->cargo ?? '')), 'CONDUCTOR');
+            if ($esConductorExp) {
+                $mcExp = $checklistsManuales->get($colab->id);
+                $pCpre = ($mcExp ? (bool)$mcExp->cl_pre : true) ? 100.0 : 0.0;
+                $pCpost = ($mcExp ? (bool)$mcExp->cl_post : true) ? 100.0 : 0.0;
+            } else {
+                $pCpre = null;
+                $pCpost = null;
+            }
+            $cCpre  = $pCpre !== null ? ($pCpre >= 100 ? 1.0 : 0.0) : 0;
+            $cCpost = $pCpost !== null ? ($pCpost >= 100 ? 1.0 : 0.0) : 0;
+            $rFlota = $esConductorExp ? round($cCpre*7.5 + $cCpost*7.5, 1) : 0.0;
 
             // Total
             $total = round($rSeg + $rGente + $rRep + $rFlota, 1);
@@ -1211,15 +1230,16 @@ class PlanPremiacionController extends Controller
         // Primer registro para métricas de fila única (rechazos, adherencia, rmd)
         $evento = $eventosColaborador->first();
 
-        // Promedio de checklist (puede haber múltiples registros por mes)
-        $valsClPre  = $eventosColaborador->whereNotNull('adherencia_checklist_pre')->pluck('adherencia_checklist_pre')->map(fn($v) => (float)$v);
-        $valsClPost = $eventosColaborador->whereNotNull('adherencia_checklist_post')->pluck('adherencia_checklist_post')->map(fn($v) => (float)$v);
-
-        $promedioClPre  = $valsClPre->isNotEmpty()  ? round($valsClPre->avg(), 2)  : null;
-        $promedioClPost = $valsClPost->isNotEmpty() ? round($valsClPost->avg(), 2) : null;
-
         // Solo aplica para conductores
         $esConductor = str_contains(strtoupper((string)($colaborador->cargo ?? '')), 'CONDUCTOR');
+
+        $manualCheck = ChecklistPlanPremiacion::where('colaborador_id', $colaborador->id)
+            ->where('mes', $mes)
+            ->where('anio', $anio)
+            ->first();
+
+        $clPreAprobado  = $manualCheck ? (bool)$manualCheck->cl_pre : true;
+        $clPostAprobado = $manualCheck ? (bool)$manualCheck->cl_post : true;
 
         // ── Ausentismo ────────────────────────────────────────────────────
         $ausentismo = DB::table('ausentismos')
@@ -1270,18 +1290,16 @@ class PlanPremiacionController extends Controller
             'rmd'            => ['valor' => $evento?->rmd !== null ? ((float)$evento->rmd >= 4 ? 100.0 : 0.0) : null, 'label' => $evento?->rmd !== null ? ((float)$evento->rmd >= 4 ? '100%' : '0%') : 'N/A', 'pilar' => 'Reparto', 'peso' => 8, 'emoji' => '🏆', 'titulo' => 'RMD', 'meta_desc' => 'Promedio ≥ 4 = 100%'],
             // FLOTA — solo aplica para Conductores de Reparto
             'cl_pre'         => [
-                'valor'    => $esConductor && $promedioClPre !== null  ? ($promedioClPre  >= self::UMBRAL_CHECKLIST ? 100.0 : 0.0) : null,
-                'label'    => $esConductor && $promedioClPre !== null  ? ($promedioClPre  >= self::UMBRAL_CHECKLIST ? 'Aprobado' : 'No Aprobado') : 'N/A',
-                'promedio' => $esConductor ? $promedioClPre  : null,
+                'valor'    => $esConductor ? ($clPreAprobado ? 100.0 : 0.0) : null,
+                'label'    => $esConductor ? ($clPreAprobado ? 'Aprobado' : 'No Aprobado') : 'N/A',
                 'pilar'    => 'Flota', 'peso' => 7.5, 'emoji' => '🔍', 'titulo' => 'Checklist Pre',
-                'meta_desc' => 'Solo conductores · Promedio ≥ '.self::UMBRAL_CHECKLIST.'% = Aprobado',
+                'meta_desc' => 'Solo conductores · Default Aprobado (100%)',
             ],
             'cl_post'        => [
-                'valor'    => $esConductor && $promedioClPost !== null ? ($promedioClPost >= self::UMBRAL_CHECKLIST ? 100.0 : 0.0) : null,
-                'label'    => $esConductor && $promedioClPost !== null ? ($promedioClPost >= self::UMBRAL_CHECKLIST ? 'Aprobado' : 'No Aprobado') : 'N/A',
-                'promedio' => $esConductor ? $promedioClPost : null,
+                'valor'    => $esConductor ? ($clPostAprobado ? 100.0 : 0.0) : null,
+                'label'    => $esConductor ? ($clPostAprobado ? 'Aprobado' : 'No Aprobado') : 'N/A',
                 'pilar'    => 'Flota', 'peso' => 7.5, 'emoji' => '🏁', 'titulo' => 'Checklist Post',
-                'meta_desc' => 'Solo conductores · Promedio ≥ '.self::UMBRAL_CHECKLIST.'% = Aprobado',
+                'meta_desc' => 'Solo conductores · Default Aprobado (100%)',
             ],
         ];
 
@@ -1312,5 +1330,43 @@ class PlanPremiacionController extends Controller
             'meses_disponibles'  => $mesesDisponibles,
             'umbral_checklist'   => self::UMBRAL_CHECKLIST,
         ]);
+    }
+
+    /**
+     * Alterna manualmente el estado del checklist (Pre o Post) para un conductor en un mes/año.
+     * POST /modules/gente/plan-premiacion/toggle-checklist
+     */
+    public function toggleChecklist(Request $request): \Illuminate\Http\RedirectResponse
+    {
+        $validated = $request->validate([
+            'colaborador_id' => ['required', 'integer', 'exists:colaboradores,id'],
+            'mes'            => ['required', 'integer', 'min:1', 'max:12'],
+            'anio'           => ['required', 'integer', 'min:2000', 'max:2100'],
+            'tipo'           => ['required', 'string', 'in:pre,post'],
+        ]);
+
+        $record = ChecklistPlanPremiacion::firstOrCreate(
+            [
+                'colaborador_id' => $validated['colaborador_id'],
+                'mes'            => $validated['mes'],
+                'anio'           => $validated['anio'],
+            ],
+            [
+                'cl_pre'         => true,
+                'cl_post'        => true,
+                'updated_by'     => $request->user()?->id,
+            ]
+        );
+
+        if ($validated['tipo'] === 'pre') {
+            $record->cl_pre = !$record->cl_pre;
+        } else {
+            $record->cl_post = !$record->cl_post;
+        }
+
+        $record->updated_by = $request->user()?->id;
+        $record->save();
+
+        return back();
     }
 }

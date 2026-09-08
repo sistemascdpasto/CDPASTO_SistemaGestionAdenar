@@ -289,6 +289,21 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
         handleFilter(mes, anio, search, estado, next);
     };
 
+    const handleToggleChecklist = (colaboradorId: number, tipo: 'pre' | 'post', e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!puede_editar) return;
+        router.post(
+            '/modules/gente/plan-premiacion/toggle-checklist',
+            {
+                colaborador_id: colaboradorId,
+                mes,
+                anio,
+                tipo,
+            },
+            { preserveScroll: true }
+        );
+    };
+
     const getCargoLabel = () => {
         if (selectedCargos.length === 0) return 'Todos los Cargos';
         if (selectedCargos.length === 1) return selectedCargos[0];
@@ -992,17 +1007,24 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                                 </TableCell>
                                                 )}
 
-                                                {/* Checklist Pre — solo conductores, binario Aprobado/No Aprobado */}
+                                                {/* Checklist Pre — solo conductores, binario Aprobado/No Aprobado (Default Aprobado) */}
                                                 {cv('cl_pre') && (
-                                                <TableCell className="text-right">
+                                                <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                                                     {colab.porcentaje_checklist_pre !== null && colab.porcentaje_checklist_pre !== undefined ? (
                                                         <div className="flex flex-col items-end gap-0.5">
-                                                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold ${colab.porcentaje_checklist_pre >= 100 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'}`}>
+                                                            <button
+                                                                type="button"
+                                                                disabled={!puede_editar}
+                                                                onClick={(e) => handleToggleChecklist(colab.id, 'pre', e)}
+                                                                title={puede_editar ? `Haz clic para cambiar a ${colab.porcentaje_checklist_pre >= 100 ? 'No Aprobado' : 'Aprobado'}` : undefined}
+                                                                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold transition-all ${
+                                                                    colab.porcentaje_checklist_pre >= 100
+                                                                        ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50'
+                                                                        : 'bg-rose-100 text-rose-700 hover:bg-rose-200 dark:bg-rose-900/30 dark:text-rose-400 dark:hover:bg-rose-900/50'
+                                                                } ${puede_editar ? 'cursor-pointer hover:scale-105 shadow-xs' : 'cursor-default'}`}
+                                                            >
                                                                 {colab.porcentaje_checklist_pre_label}
-                                                            </span>
-                                                            {colab.promedio_checklist_pre !== null && colab.promedio_checklist_pre !== undefined && (
-                                                                <span className="text-[10px] text-muted-foreground">{colab.promedio_checklist_pre.toFixed(1)}%</span>
-                                                            )}
+                                                            </button>
                                                         </div>
                                                     ) : (
                                                         <Badge variant="outline" className="text-muted-foreground border-input">N/A</Badge>
@@ -1010,17 +1032,24 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                                 </TableCell>
                                                 )}
 
-                                                {/* Checklist Post — solo conductores, binario Aprobado/No Aprobado */}
+                                                {/* Checklist Post — solo conductores, binario Aprobado/No Aprobado (Default Aprobado) */}
                                                 {cv('cl_post') && (
-                                                <TableCell className="text-right">
+                                                <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                                                     {colab.porcentaje_checklist_post !== null && colab.porcentaje_checklist_post !== undefined ? (
                                                         <div className="flex flex-col items-end gap-0.5">
-                                                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold ${colab.porcentaje_checklist_post >= 100 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'}`}>
+                                                            <button
+                                                                type="button"
+                                                                disabled={!puede_editar}
+                                                                onClick={(e) => handleToggleChecklist(colab.id, 'post', e)}
+                                                                title={puede_editar ? `Haz clic para cambiar a ${colab.porcentaje_checklist_post >= 100 ? 'No Aprobado' : 'Aprobado'}` : undefined}
+                                                                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold transition-all ${
+                                                                    colab.porcentaje_checklist_post >= 100
+                                                                        ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50'
+                                                                        : 'bg-rose-100 text-rose-700 hover:bg-rose-200 dark:bg-rose-900/30 dark:text-rose-400 dark:hover:bg-rose-900/50'
+                                                                } ${puede_editar ? 'cursor-pointer hover:scale-105 shadow-xs' : 'cursor-default'}`}
+                                                            >
                                                                 {colab.porcentaje_checklist_post_label}
-                                                            </span>
-                                                            {colab.promedio_checklist_post !== null && colab.promedio_checklist_post !== undefined && (
-                                                                <span className="text-[10px] text-muted-foreground">{colab.promedio_checklist_post.toFixed(1)}%</span>
-                                                            )}
+                                                            </button>
                                                         </div>
                                                     ) : (
                                                         <Badge variant="outline" className="text-muted-foreground border-input">N/A</Badge>

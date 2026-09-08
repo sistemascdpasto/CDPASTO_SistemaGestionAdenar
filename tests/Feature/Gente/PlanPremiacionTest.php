@@ -426,7 +426,7 @@ class PlanPremiacionTest extends TestCase
             }));
     }
 
-    public function test_plan_premiacion_calcula_metricas_eventos_tripulacion(): void
+    public function test_plan_premiacion_calcula_metricas_eventos_tripulacion_y_checklist_default_100(): void
     {
         $user = $this->genteUser();
 
@@ -434,6 +434,7 @@ class PlanPremiacionTest extends TestCase
             'cedula' => '66778899',
             'nombres' => 'Yoshi',
             'apellidos' => 'Dino',
+            'cargo' => 'Conductor de Reparto',
             'area' => 'Operativa',
             'is_active' => true,
         ]);
@@ -464,11 +465,41 @@ class PlanPremiacionTest extends TestCase
                     && $c[$colab->id]['porcentaje_adherencia_tiempo_label'] === '92.5%'
                     && (float) $c[$colab->id]['promedio_rmd'] === 4.2
                     && $c[$colab->id]['promedio_rmd_label'] === '4.2'
-                    && (float) $c[$colab->id]['porcentaje_checklist_pre'] === 88.0
-                    && $c[$colab->id]['porcentaje_checklist_pre_label'] === '88%'
-                    && (float) $c[$colab->id]['porcentaje_checklist_post'] === 96.0
-                    && $c[$colab->id]['porcentaje_checklist_post_label'] === '96%';
+                    && (float) $c[$colab->id]['porcentaje_checklist_pre'] === 100.0
+                    && $c[$colab->id]['porcentaje_checklist_pre_label'] === 'Aprobado'
+                    && (float) $c[$colab->id]['porcentaje_checklist_post'] === 100.0
+                    && $c[$colab->id]['porcentaje_checklist_post_label'] === 'Aprobado';
             }));
+    }
+
+    public function test_plan_premiacion_toggle_manual_checklist(): void
+    {
+        $user = $this->genteUser();
+
+        $colab = Colaborador::create([
+            'cedula' => '88888888',
+            'nombres' => 'Mario',
+            'apellidos' => 'Speedy',
+            'cargo' => 'Conductor',
+            'area' => 'Operativa',
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($user)->post(route('gente.plan-premiacion.toggle-checklist'), [
+            'colaborador_id' => $colab->id,
+            'mes' => 9,
+            'anio' => 2026,
+            'tipo' => 'pre',
+        ]);
+
+        $response->assertRedirect();
+        $this->assertDatabaseHas('checklist_plan_premiacion', [
+            'colaborador_id' => $colab->id,
+            'mes' => 9,
+            'anio' => 2026,
+            'cl_pre' => false,
+            'cl_post' => true,
+        ]);
     }
 
     public function test_plan_premiacion_calcula_resultado_promedio_aci_ows_calificaciones(): void
