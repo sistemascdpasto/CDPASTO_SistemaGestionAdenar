@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/react';
-import { Award, BookOpen, CheckCircle2, Download, Percent, Search, Trash2, Upload, Users } from 'lucide-react';
+import { Award, BookOpen, CheckCircle2, Crown, Download, Percent, Search, Trash2, Upload, Users } from 'lucide-react';
 import { useState } from 'react';
 import { ImportarDpoAcademyDialog } from './importar-dialog';
 
@@ -158,11 +158,11 @@ export default function DpoAcademyIndex({ registros, kpis, options, filters }: P
                         <div className="space-y-1">
                             <div className="flex items-center gap-2">
                                 <BookOpen className="h-6 w-6 text-amber-600 dark:text-amber-400" />
-                                <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+                                <h1 className="text-2xl font-bold tracking-tight text-foreground">
                                     DPO Academy
                                 </h1>
                             </div>
-                            <p className="text-sm text-slate-600 dark:text-slate-400">
+                            <p className="text-sm text-muted-foreground">
                                 Gestión, seguimiento e importación del reporte de avance de capacitaciones DPO Academy.
                             </p>
                         </div>
@@ -194,45 +194,45 @@ export default function DpoAcademyIndex({ registros, kpis, options, filters }: P
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-xs font-medium text-slate-500 dark:text-slate-400">Total Registros</CardTitle>
-                            <BookOpen className="h-4 w-4 text-slate-500" />
+                            <CardTitle className="text-xs font-medium text-muted-foreground">Total Registros</CardTitle>
+                            <BookOpen className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold">{safeKpis.total}</div>
-                            <p className="text-xs text-slate-500">Registros cargados</p>
+                            <p className="text-xs text-muted-foreground">Registros cargados</p>
                         </CardContent>
                     </Card>
 
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-xs font-medium text-slate-500 dark:text-slate-400">Promedio Calificación</CardTitle>
+                            <CardTitle className="text-xs font-medium text-muted-foreground">Promedio Calificación</CardTitle>
                             <Percent className="h-4 w-4 text-amber-500" />
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">{safeKpis.promedio_calificacion}%</div>
-                            <p className="text-xs text-slate-500">Promedio de puntuación</p>
+                            <p className="text-xs text-muted-foreground">Promedio de puntuación</p>
                         </CardContent>
                     </Card>
 
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-xs font-medium text-slate-500 dark:text-slate-400">Con Coronita</CardTitle>
+                            <CardTitle className="text-xs font-medium text-muted-foreground">Con Coronita</CardTitle>
                             <Award className="h-4 w-4 text-emerald-500" />
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{safeKpis.total_coronitas}</div>
-                            <p className="text-xs text-slate-500">Reconocimientos de excelencia</p>
+                            <p className="text-xs text-muted-foreground">Reconocimientos de excelencia</p>
                         </CardContent>
                     </Card>
 
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-xs font-medium text-slate-500 dark:text-slate-400">Completados / Aprobados</CardTitle>
+                            <CardTitle className="text-xs font-medium text-muted-foreground">Completados / Aprobados</CardTitle>
                             <CheckCircle2 className="h-4 w-4 text-blue-500" />
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{safeKpis.total_completados}</div>
-                            <p className="text-xs text-slate-500">Avance exitoso</p>
+                            <p className="text-xs text-muted-foreground">Avance exitoso</p>
                         </CardContent>
                     </Card>
                 </div>
@@ -245,9 +245,9 @@ export default function DpoAcademyIndex({ registros, kpis, options, filters }: P
                     <CardContent>
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
                             <div>
-                                <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Buscar</label>
+                                <label className="mb-1 block text-xs font-medium text-muted-foreground">Buscar</label>
                                 <div className="relative">
-                                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+                                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                                     <Input
                                         type="text"
                                         placeholder="Nombre, cargo, QR..."
@@ -259,7 +259,7 @@ export default function DpoAcademyIndex({ registros, kpis, options, filters }: P
                             </div>
 
                             <div>
-                                <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Región</label>
+                                <label className="mb-1 block text-xs font-medium text-muted-foreground">Región</label>
                                 <Select value={region} onValueChange={handleRegionChange}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Todas las Regiones" />
@@ -276,7 +276,7 @@ export default function DpoAcademyIndex({ registros, kpis, options, filters }: P
                             </div>
 
                             <div>
-                                <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Centro</label>
+                                <label className="mb-1 block text-xs font-medium text-muted-foreground">Centro</label>
                                 <Select value={centro} onValueChange={handleCentroChange}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Todos los Centros" />
@@ -293,7 +293,7 @@ export default function DpoAcademyIndex({ registros, kpis, options, filters }: P
                             </div>
 
                             <div>
-                                <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Negocio</label>
+                                <label className="mb-1 block text-xs font-medium text-muted-foreground">Negocio</label>
                                 <Select value={negocio} onValueChange={handleNegocioChange}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Todos los Negocios" />
@@ -310,7 +310,7 @@ export default function DpoAcademyIndex({ registros, kpis, options, filters }: P
                             </div>
 
                             <div>
-                                <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Status</label>
+                                <label className="mb-1 block text-xs font-medium text-muted-foreground">Status</label>
                                 <Select value={status} onValueChange={handleStatusChange}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Todos los Status" />
@@ -354,7 +354,7 @@ export default function DpoAcademyIndex({ registros, kpis, options, filters }: P
                                 <TableBody>
                                     {safeRegistros.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={8} className="py-8 text-center text-slate-500">
+                                            <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
                                                 No se encontraron registros de DPO Academy.
                                             </TableCell>
                                         </TableRow>
@@ -365,33 +365,32 @@ export default function DpoAcademyIndex({ registros, kpis, options, filters }: P
                                             return (
                                                 <TableRow key={row.id}>
                                                     <TableCell className="text-xs">
-                                                        <div className="font-medium text-slate-900 dark:text-slate-100">{row.region ?? '-'}</div>
-                                                        <div className="text-slate-500">{row.centro ?? '-'}</div>
+                                                        <div className="font-medium text-foreground">{row.region ?? '-'}</div>
+                                                        <div className="text-muted-foreground">{row.centro ?? '-'}</div>
                                                     </TableCell>
 
-                                                    <TableCell className="text-xs text-slate-600 dark:text-slate-400">
+                                                    <TableCell className="text-xs text-muted-foreground">
                                                         {row.negocio ?? '-'}
                                                     </TableCell>
 
-                                                    <TableCell className="font-mono text-xs text-slate-500">
+                                                    <TableCell className="font-mono text-xs text-muted-foreground">
                                                         {row.qr_safety ?? '-'}
                                                     </TableCell>
 
-                                                    <TableCell className="font-semibold text-slate-900 dark:text-slate-100 text-xs">
+                                                    <TableCell className="font-semibold text-foreground text-xs">
                                                         {nomClean}
                                                     </TableCell>
 
-                                                    <TableCell className="text-xs text-slate-700 dark:text-slate-300">
+                                                    <TableCell className="text-xs text-foreground">
                                                         {row.cargo ?? '-'}
                                                     </TableCell>
 
                                                     <TableCell className="text-center text-xs">
                                                         {row.coronita ? (
-                                                            <span className="inline-flex items-center gap-1 font-semibold text-amber-600 dark:text-amber-400">
-                                                                👑 {row.coronita}
+                                                            <span className="inline-flex items-center gap-1 font-semibold text-amber-600 dark:text-amber-400"><Crown className="size-3" /> {row.coronita}
                                                             </span>
                                                         ) : (
-                                                            <span className="text-slate-400">-</span>
+                                                            <span className="text-muted-foreground">-</span>
                                                         )}
                                                     </TableCell>
 
@@ -407,7 +406,7 @@ export default function DpoAcademyIndex({ registros, kpis, options, filters }: P
                                                                 {calif}%
                                                             </span>
                                                         ) : (
-                                                            <span className="text-slate-400 font-normal">S/N</span>
+                                                            <span className="text-muted-foreground font-normal">S/N</span>
                                                         )}
                                                     </TableCell>
 
@@ -417,7 +416,7 @@ export default function DpoAcademyIndex({ registros, kpis, options, filters }: P
                                                                 {row.status}
                                                             </Badge>
                                                         ) : (
-                                                            <span className="text-slate-400">-</span>
+                                                            <span className="text-muted-foreground">-</span>
                                                         )}
                                                     </TableCell>
                                                 </TableRow>
@@ -430,8 +429,8 @@ export default function DpoAcademyIndex({ registros, kpis, options, filters }: P
 
                         {/* Paginación */}
                         {(registros?.last_page ?? 1) > 1 && (
-                            <div className="flex items-center justify-between border-t border-slate-200/60 pt-4 mt-4 dark:border-slate-800">
-                                <span className="text-xs text-slate-500">
+                            <div className="flex items-center justify-between border-t border-sidebar-border/70/60 pt-4 mt-4 dark:border-sidebar-border">
+                                <span className="text-xs text-muted-foreground">
                                     Página {registros?.current_page ?? 1} de {registros?.last_page ?? 1}
                                 </span>
                                 <div className="flex items-center gap-2">

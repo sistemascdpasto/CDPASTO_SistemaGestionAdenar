@@ -109,7 +109,7 @@ export default function SeguimientoPruebasIndex({ colaboradores, metrics, filter
                     {/* Card 7 días */}
                     <Card className="border-l-4 border-l-amber-500 shadow-sm transition-all hover:shadow">
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+                            <CardTitle className="text-sm font-semibold text-amber-700 dark:text-amber-400">
                                 Prueba 7 Días
                             </CardTitle>
                             <Clock className="h-5 w-5 text-amber-500" />
@@ -125,7 +125,7 @@ export default function SeguimientoPruebasIndex({ colaboradores, metrics, filter
                     {/* Card 30 días */}
                     <Card className="border-l-4 border-l-blue-500 shadow-sm transition-all hover:shadow">
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-semibold uppercase tracking-wider text-blue-700 dark:text-blue-400">
+                            <CardTitle className="text-sm font-semibold text-blue-700 dark:text-blue-400">
                                 Prueba 30 Días
                             </CardTitle>
                             <Calendar className="h-5 w-5 text-blue-500" />
@@ -141,7 +141,7 @@ export default function SeguimientoPruebasIndex({ colaboradores, metrics, filter
                     {/* Card 90 días */}
                     <Card className="border-l-4 border-l-purple-500 shadow-sm transition-all hover:shadow">
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-semibold uppercase tracking-wider text-purple-700 dark:text-purple-400">
+                            <CardTitle className="text-sm font-semibold text-purple-700 dark:text-purple-400">
                                 Prueba 90 Días
                             </CardTitle>
                             <UserCheck className="h-5 w-5 text-purple-500" />
@@ -214,13 +214,13 @@ export default function SeguimientoPruebasIndex({ colaboradores, metrics, filter
                                 <TableRow>
                                     <TableHead className="w-[300px] font-bold text-foreground">COLABORADOR</TableHead>
                                     <TableHead className="w-[260px] text-center font-bold text-amber-700 dark:text-amber-400 bg-amber-500/5">
-                                        🟡 7 DÍAS
+                                        7 DÍAS
                                     </TableHead>
                                     <TableHead className="w-[260px] text-center font-bold text-blue-700 dark:text-blue-400 bg-blue-500/5">
-                                        🔵 30 DÍAS
+                                        30 DÍAS
                                     </TableHead>
                                     <TableHead className="w-[260px] text-center font-bold text-purple-700 dark:text-purple-400 bg-purple-500/5">
-                                        🟣 90 DÍAS
+                                        90 DÍAS
                                     </TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -280,9 +280,8 @@ export default function SeguimientoPruebasIndex({ colaboradores, metrics, filter
                                                                     <div className="flex items-center justify-between text-emerald-700 dark:text-emerald-300 font-bold">
                                                                         <span className="flex items-center gap-1">
                                                                             <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                                                                            🟢 Realizada
+                                                                            Realizada
                                                                         </span>
-                                                                        <span className="text-[10px] text-emerald-600 dark:text-emerald-400">✓</span>
                                                                     </div>
                                                                     <div className="text-[11px] text-muted-foreground mt-1">
                                                                         <div>Realizada: <strong>{etapa.fecha_realizacion}</strong></div>
@@ -305,7 +304,7 @@ export default function SeguimientoPruebasIndex({ colaboradores, metrics, filter
                                                                 <div className="flex flex-col gap-2 rounded bg-amber-500/10 border border-amber-500/30 p-2 text-xs">
                                                                     <div className="flex items-center gap-1 font-bold text-amber-700 dark:text-amber-300">
                                                                         <Clock className="h-4 w-4 text-amber-600" />
-                                                                        ⚪ Pendiente
+                                                                        Pendiente
                                                                     </div>
                                                                     <Button
                                                                         variant="default"
@@ -314,7 +313,7 @@ export default function SeguimientoPruebasIndex({ colaboradores, metrics, filter
                                                                         onClick={() => handleTogglePrueba(colaborador.id, etapaKey, false)}
                                                                         className="w-full h-8 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold"
                                                                     >
-                                                                        {isLoading ? 'Guardando...' : '☐ Marcar como realizada'}
+                                                                        {isLoading ? 'Guardando...' : 'Marcar como realizada'}
                                                                     </Button>
                                                                 </div>
                                                             )}
@@ -324,7 +323,7 @@ export default function SeguimientoPruebasIndex({ colaboradores, metrics, filter
                                                                 <div className="flex flex-col gap-2 rounded bg-red-500/10 border border-red-500/30 p-2 text-xs">
                                                                     <div className="flex items-center gap-1 font-bold text-red-700 dark:text-red-300">
                                                                         <ShieldAlert className="h-4 w-4 text-red-600" />
-                                                                        🔴 A destiempo
+                                                                        A destiempo
                                                                     </div>
                                                                     <p className="text-[11px] font-medium text-red-600/90 dark:text-red-400">
                                                                         Venció hace <strong>{etapa.dias_vencido} {etapa.dias_vencido === 1 ? 'día' : 'días'}</strong>.
@@ -336,7 +335,7 @@ export default function SeguimientoPruebasIndex({ colaboradores, metrics, filter
                                                                         onClick={() => handleTogglePrueba(colaborador.id, etapaKey, false)}
                                                                         className="w-full h-8 text-xs font-semibold"
                                                                     >
-                                                                        {isLoading ? 'Guardando...' : '☐ Registrar realizada'}
+                                                                        {isLoading ? 'Guardando...' : 'Registrar realizada'}
                                                                     </Button>
                                                                 </div>
                                                             )}

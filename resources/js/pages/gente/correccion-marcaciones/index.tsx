@@ -402,7 +402,7 @@ export default function CorreccionMarcacionesIndex() {
                         }`}
                     >
                         <span className="font-medium">{flashMsg.message}</span>
-                        <button className="ml-4 opacity-70 hover:opacity-100" onClick={() => setFlashMsg(undefined)}>✕</button>
+                        <button className="ml-4 opacity-70 hover:opacity-100" onClick={() => setFlashMsg(undefined)} aria-label="Cerrar"><XCircle className="size-4" /></button>
                     </div>
                 )}
 
@@ -579,9 +579,9 @@ export default function CorreccionMarcacionesIndex() {
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="todos">Todos (Estado)</SelectItem>
-                                        <SelectItem value="encontrado">🟢 Encontrado</SelectItem>
-                                        <SelectItem value="no_encontrado">🟠 No encontrado</SelectItem>
-                                        <SelectItem value="con_error">🔴 Con error</SelectItem>
+                                        <SelectItem value="encontrado"><span className="mr-1.5 inline-block size-2 rounded-full bg-green-500 align-middle" />Encontrado</SelectItem>
+                                        <SelectItem value="no_encontrado"><span className="mr-1.5 inline-block size-2 rounded-full bg-amber-500 align-middle" />No encontrado</SelectItem>
+                                        <SelectItem value="con_error"><span className="mr-1.5 inline-block size-2 rounded-full bg-red-500 align-middle" />Con error</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -729,38 +729,38 @@ export default function CorreccionMarcacionesIndex() {
 
                     {previewResumen?.ok === false && previewResumen.error && (
                         <div className="mb-2 rounded-xl border border-red-200 bg-red-50 dark:bg-red-950/30 dark:border-red-900/40 px-4 py-3 text-sm text-red-700 dark:text-red-200">
-                            <b>⚠️ {previewResumen.error}</b>
+                            <b>{previewResumen.error}</b>
                         </div>
                     )}
 
                     {previewResumen?.ok && (
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                             <div className="rounded-xl border p-3 bg-muted/20">
-                                <p className="text-[10px] uppercase font-bold text-muted-foreground">Filas subidas</p>
+                                <p className="text-[10px] font-bold text-muted-foreground">Filas subidas</p>
                                 <p className="text-xl font-extrabold">{safeFormatNumber(previewResumen.total_filas ?? 0)}</p>
                             </div>
                             <div className="rounded-xl border p-3 bg-muted/20">
-                                <p className="text-[10px] uppercase font-bold text-muted-foreground">Identificaciones únicas</p>
+                                <p className="text-[10px] font-bold text-muted-foreground">Identificaciones únicas</p>
                                 <p className="text-xl font-extrabold">{safeFormatNumber(previewResumen.identificaciones_unicas ?? 0)}</p>
                             </div>
                             <div className="rounded-xl border p-3 bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900/40">
-                                <p className="text-[10px] uppercase font-bold" style={{ color: COLOR_SUCCESS }}>Válidas (guardarán)</p>
+                                <p className="text-[10px] font-bold" style={{ color: COLOR_SUCCESS }}>Válidas (guardarán)</p>
                                 <p className="text-xl font-extrabold" style={{ color: COLOR_SUCCESS }}>
                                     {safeFormatNumber(previewResumen.validas ?? 0)}
                                 </p>
                             </div>
                             <div className="rounded-xl border p-3 bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/40">
-                                <p className="text-[10px] uppercase font-bold" style={{ color: COLOR_WARNING }}>No encontradas</p>
+                                <p className="text-[10px] font-bold" style={{ color: COLOR_WARNING }}>No encontradas</p>
                                 <p className="text-xl font-extrabold" style={{ color: COLOR_WARNING }}>{safeFormatNumber(previewResumen.no_encontrados ?? 0)}</p>
                             </div>
                             <div className="rounded-xl border p-3 bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/40">
-                                <p className="text-[10px] uppercase font-bold" style={{ color: COLOR_ERROR }}>Con errores</p>
+                                <p className="text-[10px] font-bold" style={{ color: COLOR_ERROR }}>Con errores</p>
                                 <p className="text-xl font-extrabold" style={{ color: COLOR_ERROR }}>{safeFormatNumber(previewResumen.errores ?? 0)}</p>
                             </div>
                             <div className="rounded-xl border p-3 bg-muted/10 flex flex-col justify-center">
-                                <p className="text-[10px] uppercase font-bold text-muted-foreground mb-1">Archivo</p>
+                                <p className="text-[10px] font-bold text-muted-foreground mb-1">Archivo</p>
                                 <p className="text-[11px] text-muted-foreground leading-tight">
-                                    ✔ Nombre + Cargo se completan automáticamente desde la tabla de colaboradores.
+                                    Nombre + Cargo se completan automáticamente desde la tabla de colaboradores.
                                 </p>
                             </div>
                         </div>
@@ -841,7 +841,7 @@ export default function CorreccionMarcacionesIndex() {
                 <form action={route('gente.correccion-marcaciones.limpiar')} method="POST">
                     <AlertDialogContent>
                         <AlertDialogHeader>
-                            <AlertDialogTitle>⚠️ ¿Limpiar TODOS los registros?</AlertDialogTitle>
+                            <AlertDialogTitle>¿Limpiar TODOS los registros?</AlertDialogTitle>
                             <AlertDialogDescription>
                                 Se borrarán todas las correcciones de marcaciones almacenadas. Esta acción no se puede deshacer.
                             </AlertDialogDescription>

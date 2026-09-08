@@ -313,11 +313,11 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                         <div className="space-y-1">
                             <div className="flex items-center gap-2">
                                 <Trophy className="h-6 w-6 text-amber-600 dark:text-amber-400" />
-                                <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+                                <h1 className="text-2xl font-bold tracking-tight text-foreground">
                                     Plan Premiación ACI, OWD & Calificaciones
                                 </h1>
                             </div>
-                            <p className="text-sm text-slate-600 dark:text-slate-400">
+                            <p className="text-sm text-muted-foreground">
                                 Evaluación mensual de participación ACI, porcentaje OWD Ruta y promedio de Calificaciones por módulo.
                             </p>
                         </div>
@@ -331,38 +331,38 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                 {formulasAbiertas ? 'Ocultar fórmulas' : 'Ver fórmulas de cálculo'}
                             </button>
                             {formulasAbiertas && (
-                                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] font-medium text-slate-700 dark:text-slate-300 rounded-lg border border-amber-200/60 bg-amber-500/10 dark:border-amber-900/40 dark:bg-amber-950/20 px-3 py-2">
+                                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] font-medium text-foreground rounded-lg border border-amber-200/60 bg-amber-500/10 dark:border-amber-900/40 dark:bg-amber-950/20 px-3 py-2">
                                     {/* SEGURIDAD 35% */}
-                                    <div className="col-span-2 mt-1 mb-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+                                    <div className="col-span-2 mt-1 mb-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
                                         <ShieldCheck className="h-3 w-3" /> Seguridad 35%
                                     </div>
-                                    <div><span className="font-bold text-emerald-700 dark:text-emerald-400">ACI</span> <span className="text-slate-500">(10%)</span> — Realizadas ÷ 32 × 100</div>
-                                    <div><span className="font-bold text-emerald-700 dark:text-emerald-400">OWD Ruta</span> <span className="text-slate-500">(15%)</span> — Sin NO OK = 100% | Con NO OK = 0%</div>
-                                    <div><span className="font-bold text-emerald-700 dark:text-emerald-400">Calificaciones</span> <span className="text-slate-500">(10%)</span> — Promedio de notas por módulo</div>
+                                    <div><span className="font-bold text-emerald-700 dark:text-emerald-400">ACI</span> <span className="text-muted-foreground">(10%)</span> — Realizadas ÷ 32 × 100</div>
+                                    <div><span className="font-bold text-emerald-700 dark:text-emerald-400">OWD Ruta</span> <span className="text-muted-foreground">(15%)</span> — Sin NO OK = 100% | Con NO OK = 0%</div>
+                                    <div><span className="font-bold text-emerald-700 dark:text-emerald-400">Calificaciones</span> <span className="text-muted-foreground">(10%)</span> — Promedio de notas por módulo</div>
 
                                     {/* GENTE 15% */}
-                                    <div className="col-span-2 mt-2 mb-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                                    <div className="col-span-2 mt-2 mb-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
                                         <Users className="h-3 w-3" /> Gente 15%
                                     </div>
-                                    <div><span className="font-bold text-amber-600 dark:text-amber-400">DPO Academy</span> <span className="text-slate-500">(5%)</span> — Sin registro = 100% | En listado = 0%</div>
-                                    <div><span className="font-bold text-amber-600 dark:text-amber-400">Ausentismo</span> <span className="text-slate-500">(5%)</span> — Sin incapacidad = 100% | Con incapacidad = 0%</div>
-                                    <div><span className="font-bold text-amber-600 dark:text-amber-400">Malas Marcaciones</span> <span className="text-slate-500">(5%)</span> — Sin corrección = 100% | Con corrección = 0%</div>
+                                    <div><span className="font-bold text-amber-600 dark:text-amber-400">DPO Academy</span> <span className="text-muted-foreground">(5%)</span> — Sin registro = 100% | En listado = 0%</div>
+                                    <div><span className="font-bold text-amber-600 dark:text-amber-400">Ausentismo</span> <span className="text-muted-foreground">(5%)</span> — Sin incapacidad = 100% | Con incapacidad = 0%</div>
+                                    <div><span className="font-bold text-amber-600 dark:text-amber-400">Malas Marcaciones</span> <span className="text-muted-foreground">(5%)</span> — Sin corrección = 100% | Con corrección = 0%</div>
 
                                     {/* REPARTO 35% */}
-                                    <div className="col-span-2 mt-2 mb-0.5 text-[10px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-400 flex items-center gap-1">
+                                    <div className="col-span-2 mt-2 mb-0.5 text-[10px] font-bold text-rose-700 dark:text-rose-400 flex items-center gap-1">
                                         <Medal className="h-3 w-3" /> Reparto 35%
                                     </div>
-                                    <div><span className="font-bold text-rose-700 dark:text-rose-400">Rechazos</span> <span className="text-slate-500">(11%)</span> — &lt; 2.4% rechazos = 100% | ≥ 2.4% = 0%</div>
-                                    <div><span className="font-bold text-rose-700 dark:text-rose-400">SAC</span> <span className="text-slate-500">(8%)</span> — Sin casos = 100% | Con casos = 0%</div>
-                                    <div><span className="font-bold text-rose-700 dark:text-rose-400">Adherencia Tiempo</span> <span className="text-slate-500">(8%)</span> — ≥ 83% adherencia = 100% | &lt; 83% = 0%</div>
-                                    <div><span className="font-bold text-rose-700 dark:text-rose-400">RMD</span> <span className="text-slate-500">(8%)</span> — Promedio ≥ 4 = 100% | &lt; 4 = 0%</div>
+                                    <div><span className="font-bold text-rose-700 dark:text-rose-400">Rechazos</span> <span className="text-muted-foreground">(11%)</span> — &lt; 2.4% rechazos = 100% | ≥ 2.4% = 0%</div>
+                                    <div><span className="font-bold text-rose-700 dark:text-rose-400">SAC</span> <span className="text-muted-foreground">(8%)</span> — Sin casos = 100% | Con casos = 0%</div>
+                                    <div><span className="font-bold text-rose-700 dark:text-rose-400">Adherencia Tiempo</span> <span className="text-muted-foreground">(8%)</span> — ≥ 83% adherencia = 100% | &lt; 83% = 0%</div>
+                                    <div><span className="font-bold text-rose-700 dark:text-rose-400">RMD</span> <span className="text-muted-foreground">(8%)</span> — Promedio ≥ 4 = 100% | &lt; 4 = 0%</div>
 
                                     {/* FLOTA 15% */}
-                                    <div className="col-span-2 mt-2 mb-0.5 text-[10px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400 flex items-center gap-1">
+                                    <div className="col-span-2 mt-2 mb-0.5 text-[10px] font-bold text-blue-700 dark:text-blue-400 flex items-center gap-1">
                                         <CheckCircle2 className="h-3 w-3" /> Flota 15%
                                     </div>
-                                    <div><span className="font-bold text-blue-700 dark:text-blue-400">Checklist Pre</span> <span className="text-slate-500">(7.5%)</span> — Promedio % adherencia CL pre operacional</div>
-                                    <div><span className="font-bold text-blue-700 dark:text-blue-400">Checklist Post</span> <span className="text-slate-500">(7.5%)</span> — Promedio % adherencia CL post operacional</div>
+                                    <div><span className="font-bold text-blue-700 dark:text-blue-400">Checklist Pre</span> <span className="text-muted-foreground">(7.5%)</span> — Promedio % adherencia CL pre operacional</div>
+                                    <div><span className="font-bold text-blue-700 dark:text-blue-400">Checklist Post</span> <span className="text-muted-foreground">(7.5%)</span> — Promedio % adherencia CL post operacional</div>
                                 </div>
                             )}
                         </div>
@@ -377,7 +377,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                     <CardContent>
                             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 w-full">
                                 <div>
-                                    <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Año</label>
+                                    <label className="mb-1 block text-xs font-medium text-muted-foreground">Año</label>
                                     <Select value={String(anio)} onValueChange={handleAnioChange}>
                                         <SelectTrigger>
                                             <SelectValue placeholder="Seleccionar Año" />
@@ -393,7 +393,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                 </div>
 
                                 <div>
-                                    <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Mes</label>
+                                    <label className="mb-1 block text-xs font-medium text-muted-foreground">Mes</label>
                                     <Select value={String(mes)} onValueChange={handleMesChange}>
                                         <SelectTrigger>
                                             <SelectValue placeholder="Seleccionar Mes" />
@@ -409,9 +409,9 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                 </div>
 
                                 <div>
-                                    <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Buscar Colaborador</label>
+                                    <label className="mb-1 block text-xs font-medium text-muted-foreground">Buscar Colaborador</label>
                                     <div className="relative">
-                                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+                                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                                         <Input
                                             type="text"
                                             placeholder="Nombre, apellido, cédula..."
@@ -425,7 +425,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                 {/* Filtro de Cargos */}
                                 {cargos.length > 0 && (
                                     <div>
-                                        <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Cargo</label>
+                                        <label className="mb-1 block text-xs font-medium text-muted-foreground">Cargo</label>
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
                                                 <Button variant="outline" className="w-full justify-between text-sm font-normal truncate">
@@ -478,7 +478,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                         <DropdownMenuSeparator />
                                         {['SEGURIDAD', 'GENTE', 'REPARTO', 'FLOTA', 'TOTAL'].map(pilar => (
                                             <div key={pilar}>
-                                                <DropdownMenuLabel className="text-[10px] font-bold uppercase text-slate-400 py-1">{pilar}</DropdownMenuLabel>
+                                                <DropdownMenuLabel className="text-[10px] font-bold text-muted-foreground py-1">{pilar}</DropdownMenuLabel>
                                                 {COLUMNAS_DEF.filter(c => c.pilar === pilar).map(col => (
                                                     <DropdownMenuCheckboxItem
                                                         key={col.key}
@@ -495,7 +495,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                         <div className="px-2 py-1">
                                             <button
                                                 onClick={() => setColsVisibles(new Set(allKeys))}
-                                                className="w-full rounded text-[11px] text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 underline text-center py-0.5 transition-colors"
+                                                className="w-full rounded text-[11px] text-muted-foreground hover:text-foreground dark:text-muted-foreground  underline text-center py-0.5 transition-colors"
                                             >
                                                 Mostrar todas
                                             </button>
@@ -516,7 +516,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
 
                 {/* Podio + Peores — todos en una sola fila */}
                 {(top3.length > 0 || peores2.length > 0) && (
-                    <Card className="border-slate-200 dark:border-slate-800">
+                    <Card className="border-sidebar-border/70 dark:border-sidebar-border">
                         <CardHeader className="pb-2">
                             <div className="flex items-center gap-2">
                                 <Award className="h-5 w-5 text-amber-500" />
@@ -528,28 +528,28 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                 {/* Top 3 */}
                                 {top3.map((item, idx) => {
                                     const badge =
-                                        idx === 0 ? { bg: 'bg-amber-500', label: '1° Lugar 🥇' }
-                                        : idx === 1 ? { bg: 'bg-slate-400', label: '2° Lugar 🥈' }
-                                        : { bg: 'bg-amber-700', label: '3° Lugar 🥉' };
+                                        idx === 0 ? { bg: 'bg-amber-500', label: '1° Lugar' }
+                                        : idx === 1 ? { bg: 'bg-slate-400', label: '2° Lugar' }
+                                        : { bg: 'bg-amber-700', label: '3° Lugar' };
                                     const cardBg =
                                         idx === 0 ? 'bg-amber-50 border-amber-300 dark:bg-amber-950/30 dark:border-amber-800'
-                                        : idx === 1 ? 'bg-slate-50 border-slate-300 dark:bg-slate-900/40 dark:border-slate-800'
+                                        : idx === 1 ? 'bg-muted/40 border-input dark:bg-muted/40 dark:border-sidebar-border'
                                         : 'bg-orange-50/50 border-orange-300 dark:bg-orange-950/20 dark:border-orange-900/40';
                                     return (
                                         <div key={item.id} className={`rounded-lg border p-3 shadow-sm flex flex-col gap-1 ${cardBg}`}>
                                             <span className={`self-start rounded-full px-2 py-0.5 text-[10px] font-bold text-white ${badge.bg}`}>
                                                 {badge.label}
                                             </span>
-                                            <p className="text-sm font-bold text-slate-900 dark:text-slate-100 leading-tight line-clamp-2">
+                                            <p className="text-sm font-bold text-foreground leading-tight line-clamp-2">
                                                 {item.nombre_completo}
                                             </p>
                                             <p className="text-base font-extrabold text-amber-600 dark:text-amber-400">
                                                 {item.calificacion_total_label}
                                             </p>
-                                            <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight line-clamp-1">
+                                            <p className="text-[11px] text-muted-foreground leading-tight line-clamp-1">
                                                 {item.cargo}
                                             </p>
-                                            <p className="text-[11px] text-slate-400 dark:text-slate-500 font-mono">
+                                            <p className="text-[11px] text-muted-foreground font-mono">
                                                 {item.cedula}
                                             </p>
                                         </div>
@@ -562,16 +562,16 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                         <span className="self-start rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-bold text-white">
                                             {idx === 0 ? 'Penúltimo' : 'Último'} lugar
                                         </span>
-                                        <p className="text-sm font-bold text-slate-900 dark:text-slate-100 leading-tight line-clamp-2">
+                                        <p className="text-sm font-bold text-foreground leading-tight line-clamp-2">
                                             {item.nombre_completo}
                                         </p>
                                         <p className="text-base font-extrabold text-red-600 dark:text-red-400">
                                             {item.calificacion_total_label}
                                         </p>
-                                        <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight line-clamp-1">
+                                        <p className="text-[11px] text-muted-foreground leading-tight line-clamp-1">
                                             {item.cargo}
                                         </p>
-                                        <p className="text-[11px] text-slate-400 dark:text-slate-500 font-mono">
+                                        <p className="text-[11px] text-muted-foreground font-mono">
                                             {item.cedula}
                                         </p>
                                     </div>
@@ -593,14 +593,14 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                             <CardTitle className="text-base font-semibold">
                                 Lista de Colaboradores ({colaboradores.length})
                                 {totalPages > 1 && (
-                                    <span className="ml-2 text-xs font-normal text-slate-500">
+                                    <span className="ml-2 text-xs font-normal text-muted-foreground">
                                         — mostrando {(safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, colaboradores.length)} de {colaboradores.length}
                                     </span>
                                 )}
                             </CardTitle>
 
                             {/* Control de registros por página */}
-                            <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                 <span className="text-xs whitespace-nowrap">Registros por página:</span>
                                 <Input
                                     type="number"
@@ -619,8 +619,8 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                             onClick={() => { setPageSize(n); setPageSizeInput(String(n)); setCurrentPage(1); }}
                                             className={`px-2 py-0.5 rounded text-xs border transition-colors ${
                                                 pageSize === n
-                                                    ? 'bg-slate-800 text-white border-slate-800 dark:bg-slate-200 dark:text-slate-900'
-                                                    : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-600 dark:hover:bg-slate-700'
+                                                    ? 'bg-foreground text-background border-transparent'
+                                                    : 'bg-card text-muted-foreground border-sidebar-border/70 hover:bg-muted/60 dark:border-sidebar-border dark:text-muted-foreground'
                                             }`}
                                         >
                                             {n}
@@ -635,39 +635,39 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                             <Table>
                                 <TableHeader>
                                     {/* Fila 1: Grupos de Pilares con Porcentajes */}
-                                    <TableRow className="border-b bg-slate-100/90 dark:bg-slate-800/90">
-                                        <TableHead rowSpan={2} className="align-middle font-bold text-slate-900 dark:text-slate-100">Nombre</TableHead>
-                                        <TableHead rowSpan={2} className="align-middle font-bold text-slate-900 dark:text-slate-100">Cargo</TableHead>
+                                    <TableRow className="border-b border-sidebar-border/70 bg-muted">
+                                        <TableHead rowSpan={2} className="align-middle font-bold text-foreground">Nombre</TableHead>
+                                        <TableHead rowSpan={2} className="align-middle font-bold text-foreground">Cargo</TableHead>
 
                                         {colSpanSeguridad > 0 && (
-                                            <TableHead colSpan={colSpanSeguridad} className="text-center font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-100/70 dark:bg-emerald-950/60 border-x border-emerald-200 dark:border-emerald-800/50 py-2 text-xs uppercase tracking-wider">
+                                            <TableHead colSpan={colSpanSeguridad} className="text-center font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-100/70 dark:bg-emerald-950/60 border-x border-emerald-200 dark:border-emerald-800/50 py-2 text-xs">
                                                 SEGURIDAD 35%
                                             </TableHead>
                                         )}
                                         {colSpanGente > 0 && (
-                                            <TableHead colSpan={colSpanGente} className="text-center font-bold text-amber-800 dark:text-amber-300 bg-amber-100/70 dark:bg-amber-950/60 border-x border-amber-200 dark:border-amber-800/50 py-2 text-xs uppercase tracking-wider">
+                                            <TableHead colSpan={colSpanGente} className="text-center font-bold text-amber-800 dark:text-amber-300 bg-amber-100/70 dark:bg-amber-950/60 border-x border-amber-200 dark:border-amber-800/50 py-2 text-xs">
                                                 GENTE 15%
                                             </TableHead>
                                         )}
                                         {colSpanReparto > 0 && (
-                                            <TableHead colSpan={colSpanReparto} className="text-center font-bold text-rose-800 dark:text-rose-300 bg-rose-100/70 dark:bg-rose-950/60 border-x border-rose-200 dark:border-rose-800/50 py-2 text-xs uppercase tracking-wider">
+                                            <TableHead colSpan={colSpanReparto} className="text-center font-bold text-rose-800 dark:text-rose-300 bg-rose-100/70 dark:bg-rose-950/60 border-x border-rose-200 dark:border-rose-800/50 py-2 text-xs">
                                                 REPARTO 35%
                                             </TableHead>
                                         )}
                                         {colSpanFlota > 0 && (
-                                            <TableHead colSpan={colSpanFlota} className="text-center font-bold text-blue-800 dark:text-blue-300 bg-blue-100/70 dark:bg-blue-950/60 border-x border-blue-200 dark:border-blue-800/50 py-2 text-xs uppercase tracking-wider">
+                                            <TableHead colSpan={colSpanFlota} className="text-center font-bold text-blue-800 dark:text-blue-300 bg-blue-100/70 dark:bg-blue-950/60 border-x border-blue-200 dark:border-blue-800/50 py-2 text-xs">
                                                 FLOTA 15%
                                             </TableHead>
                                         )}
                                         {cv('total') && (
-                                            <TableHead rowSpan={2} className="text-center font-bold text-purple-800 dark:text-purple-300 bg-purple-100/70 dark:bg-purple-950/60 border-x border-purple-200 dark:border-purple-800/50 py-2 text-xs uppercase tracking-wider align-middle">
+                                            <TableHead rowSpan={2} className="text-center font-bold text-purple-800 dark:text-purple-300 bg-purple-100/70 dark:bg-purple-950/60 border-x border-purple-200 dark:border-purple-800/50 py-2 text-xs align-middle">
                                                 TOTAL 100%
                                             </TableHead>
                                         )}
                                     </TableRow>
 
                                     {/* Fila 2: Subcolumnas de Métricas */}
-                                    <TableRow className="border-b bg-slate-50 dark:bg-slate-900/50 text-xs">
+                                    <TableRow className="border-b border-sidebar-border/70 bg-muted/40 text-xs">
                                         {cv('aci')            && <TableHead className="w-32 text-right bg-emerald-50/40 dark:bg-emerald-950/20">% ACI <span className="text-emerald-600 font-bold">(10%)</span></TableHead>}
                                         {cv('owd')            && <TableHead className="w-32 text-right bg-emerald-50/40 dark:bg-emerald-950/20">% OWD Ruta <span className="text-emerald-600 font-bold">(15%)</span></TableHead>}
                                         {cv('calificaciones') && <TableHead className="w-36 text-right bg-emerald-50/40 dark:bg-emerald-950/20">% Calificaciones <span className="text-emerald-600 font-bold">(10%)</span></TableHead>}
@@ -692,14 +692,14 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                 <TableBody>
                                     {colaboradores.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={19} className="py-8 text-center text-slate-500">
+                                            <TableCell colSpan={19} className="py-8 text-center text-muted-foreground">
                                                 No se encontraron colaboradores para el filtro seleccionado.
                                             </TableCell>
                                         </TableRow>
                                     ) : (
                                         paginatedColabs.map((colab) => (
                                             <TableRow key={colab.id} className="cursor-pointer hover:bg-amber-50/50 dark:hover:bg-amber-950/10 transition-colors">
-                                                <TableCell className="font-semibold text-slate-900 dark:text-slate-100">
+                                                <TableCell className="font-semibold text-foreground">
                                                     <a
                                                         href={`/modules/gente/plan-premiacion/${colab.id}?mes=${mes}&anio=${anio}`}
                                                         className="flex items-center gap-1 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
@@ -708,7 +708,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                                     </a>
                                                 </TableCell>
 
-                                                <TableCell className="text-slate-700 dark:text-slate-300">
+                                                <TableCell className="text-foreground">
                                                     {colab.cargo}
                                                 </TableCell>
 
@@ -716,7 +716,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                                 {cv('aci') && (
                                                 <TableCell className="text-right">
                                                     <div className="flex items-center justify-end gap-2">
-                                                        <div className="w-20 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800 h-2">
+                                                        <div className="w-20 overflow-hidden rounded-full bg-muted h-2">
                                                             <div
                                                                 className={`h-full rounded-full transition-all duration-300 ${
                                                                     colab.porcentaje >= 100
@@ -725,12 +725,12 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                                                           ? 'bg-amber-500'
                                                                           : colab.porcentaje > 0
                                                                             ? 'bg-blue-500'
-                                                                            : 'bg-slate-300 dark:bg-slate-700'
+                                                                            : 'bg-muted-foreground/30'
                                                                 }`}
                                                                 style={{ width: `${Math.min(100, colab.porcentaje)}%` }}
                                                             />
                                                         </div>
-                                                        <span className="font-bold text-slate-900 dark:text-slate-100 min-w-[40px]">
+                                                        <span className="font-bold text-foreground min-w-[40px]">
                                                             {colab.porcentaje}%
                                                         </span>
                                                     </div>
@@ -742,7 +742,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                                 <TableCell className="text-right">
                                                     {colab.porcentaje_owd_ruta !== null ? (
                                                         <div className="flex items-center justify-end gap-2">
-                                                            <div className="w-20 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800 h-2">
+                                                            <div className="w-20 overflow-hidden rounded-full bg-muted h-2">
                                                                 <div
                                                                     className={`h-full rounded-full transition-all duration-300 ${
                                                                         colab.porcentaje_owd_ruta >= 100
@@ -765,7 +765,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                                             </span>
                                                         </div>
                                                     ) : (
-                                                        <Badge variant="outline" className="text-slate-400 border-slate-300">N/A</Badge>
+                                                        <Badge variant="outline" className="text-muted-foreground border-input">N/A</Badge>
                                                     )}
                                                 </TableCell>
                                                 )}
@@ -775,7 +775,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                                 <TableCell className="text-right">
                                                     {colab.promedio_calificaciones !== null ? (
                                                         <div className="flex items-center justify-end gap-2">
-                                                            <div className="w-20 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800 h-2">
+                                                            <div className="w-20 overflow-hidden rounded-full bg-muted h-2">
                                                                 <div
                                                                     className={`h-full rounded-full transition-all duration-300 ${
                                                                         colab.promedio_calificaciones >= 80 || colab.promedio_calificaciones >= 8.0 || colab.promedio_calificaciones >= 4.0
@@ -787,12 +787,12 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                                                     style={{ width: `${Math.min(100, colab.promedio_calificaciones > 10 ? colab.promedio_calificaciones : colab.promedio_calificaciones * 20)}%` }}
                                                                 />
                                                             </div>
-                                                            <span className="font-bold text-slate-900 dark:text-slate-100 min-w-[45px]">
+                                                            <span className="font-bold text-foreground min-w-[45px]">
                                                                 {colab.promedio_calificaciones_label}
                                                             </span>
                                                         </div>
                                                     ) : (
-                                                        <Badge variant="outline" className="text-slate-400 border-slate-300">N/A</Badge>
+                                                        <Badge variant="outline" className="text-muted-foreground border-input">N/A</Badge>
                                                     )}
                                                 </TableCell>
                                                 )}
@@ -802,7 +802,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                                 <TableCell className="text-right bg-emerald-50/30 dark:bg-emerald-950/10">
                                                     {colab.resultado !== null ? (
                                                         <div className="flex items-center justify-end gap-2">
-                                                            <div className="w-20 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700 h-2.5">
+                                                            <div className="w-20 overflow-hidden rounded-full bg-muted h-2.5">
                                                                 <div
                                                                     className={`h-full rounded-full transition-all duration-300 ${
                                                                         colab.resultado >= 24.5 ? 'bg-emerald-500'
@@ -819,7 +819,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                                             }`}>{colab.resultado_label}</span>
                                                         </div>
                                                     ) : (
-                                                        <Badge variant="outline" className="text-slate-400 border-slate-300">N/A</Badge>
+                                                        <Badge variant="outline" className="text-muted-foreground border-input">N/A</Badge>
                                                     )}
                                                 </TableCell>
                                                 )}
@@ -828,7 +828,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                                 {cv('dpo') && (
                                                 <TableCell className="text-right">
                                                     <div className="flex items-center justify-end gap-2">
-                                                        <div className="w-16 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800 h-2">
+                                                        <div className="w-16 overflow-hidden rounded-full bg-muted h-2">
                                                             <div className={`h-full rounded-full transition-all duration-300 ${colab.porcentaje_dpo >= 100 ? 'bg-emerald-500' : 'bg-rose-500'}`}
                                                                 style={{ width: `${colab.porcentaje_dpo}%` }} />
                                                         </div>
@@ -844,7 +844,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                                 <TableCell className="text-right">
                                                     {colab.porcentaje_ausentismo !== null ? (
                                                         <div className="flex items-center justify-end gap-2">
-                                                            <div className="w-16 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800 h-2">
+                                                            <div className="w-16 overflow-hidden rounded-full bg-muted h-2">
                                                                 <div className={`h-full rounded-full transition-all duration-300 ${colab.porcentaje_ausentismo >= 100 ? 'bg-emerald-500' : colab.porcentaje_ausentismo >= 50 ? 'bg-amber-500' : 'bg-rose-500'}`}
                                                                     style={{ width: `${colab.porcentaje_ausentismo}%` }} />
                                                             </div>
@@ -853,7 +853,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                                             </span>
                                                         </div>
                                                     ) : (
-                                                        <Badge variant="outline" className="text-slate-400 border-slate-300">N/A</Badge>
+                                                        <Badge variant="outline" className="text-muted-foreground border-input">N/A</Badge>
                                                     )}
                                                 </TableCell>
                                                 )}
@@ -862,7 +862,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                                 {cv('marcaciones') && (
                                                 <TableCell className="text-right">
                                                     <div className="flex items-center justify-end gap-2">
-                                                        <div className="w-16 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800 h-2">
+                                                        <div className="w-16 overflow-hidden rounded-full bg-muted h-2">
                                                             <div className={`h-full rounded-full transition-all duration-300 ${colab.porcentaje_malas_marcaciones >= 100 ? 'bg-emerald-500' : 'bg-rose-500'}`}
                                                                 style={{ width: `${colab.porcentaje_malas_marcaciones}%` }} />
                                                         </div>
@@ -878,7 +878,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                                 <TableCell className="text-right bg-amber-50/30 dark:bg-amber-950/10">
                                                     {colab.resultado_asistencia !== null && colab.resultado_asistencia !== undefined ? (
                                                         <div className="flex items-center justify-end gap-2">
-                                                            <div className="w-20 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700 h-2.5">
+                                                            <div className="w-20 overflow-hidden rounded-full bg-muted h-2.5">
                                                                 <div className={`h-full rounded-full transition-all duration-300 ${
                                                                     colab.resultado_asistencia >= 10.5 ? 'bg-emerald-500'
                                                                     : colab.resultado_asistencia >= 6    ? 'bg-amber-500'
@@ -893,7 +893,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                                             }`}>{colab.resultado_asistencia_label}</span>
                                                         </div>
                                                     ) : (
-                                                        <Badge variant="outline" className="text-slate-400 border-slate-300">N/A</Badge>
+                                                        <Badge variant="outline" className="text-muted-foreground border-input">N/A</Badge>
                                                     )}
                                                 </TableCell>
                                                 )}
@@ -910,7 +910,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                                             {colab.porcentaje_rechazos_label}
                                                         </span>
                                                     ) : (
-                                                        <Badge variant="outline" className="text-slate-400 border-slate-300">N/A</Badge>
+                                                        <Badge variant="outline" className="text-muted-foreground border-input">N/A</Badge>
                                                     )}
                                                 </TableCell>
                                                 )}
@@ -919,7 +919,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                                 {cv('sac') && (
                                                 <TableCell className="text-right">
                                                     <div className="flex items-center justify-end gap-2">
-                                                        <div className="w-16 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800 h-2">
+                                                        <div className="w-16 overflow-hidden rounded-full bg-muted h-2">
                                                             <div className={`h-full rounded-full transition-all duration-300 ${colab.porcentaje_sac >= 90 ? 'bg-emerald-500' : colab.porcentaje_sac >= 70 ? 'bg-amber-500' : 'bg-rose-500'}`}
                                                                 style={{ width: `${Math.min(100, colab.porcentaje_sac)}%` }} />
                                                         </div>
@@ -935,7 +935,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                                 <TableCell className="text-right">
                                                     {colab.porcentaje_adherencia_tiempo !== null && colab.porcentaje_adherencia_tiempo !== undefined ? (
                                                         <div className="flex items-center justify-end gap-2">
-                                                            <div className="w-16 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800 h-2">
+                                                            <div className="w-16 overflow-hidden rounded-full bg-muted h-2">
                                                                 <div className={`h-full rounded-full transition-all duration-300 ${colab.porcentaje_adherencia_tiempo >= 100 ? 'bg-emerald-500' : 'bg-rose-500'}`}
                                                                     style={{ width: `${Math.min(100, colab.porcentaje_adherencia_tiempo)}%` }} />
                                                             </div>
@@ -944,7 +944,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                                             </span>
                                                         </div>
                                                     ) : (
-                                                        <Badge variant="outline" className="text-slate-400 border-slate-300">N/A</Badge>
+                                                        <Badge variant="outline" className="text-muted-foreground border-input">N/A</Badge>
                                                     )}
                                                 </TableCell>
                                                 )}
@@ -954,7 +954,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                                 <TableCell className="text-right">
                                                     {colab.promedio_rmd !== null && colab.promedio_rmd !== undefined ? (
                                                         <div className="flex items-center justify-end gap-2">
-                                                            <div className="w-16 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800 h-2">
+                                                            <div className="w-16 overflow-hidden rounded-full bg-muted h-2">
                                                                 <div className={`h-full rounded-full transition-all duration-300 ${colab.promedio_rmd >= 100 ? 'bg-emerald-500' : 'bg-rose-500'}`}
                                                                     style={{ width: `${Math.min(100, colab.promedio_rmd)}%` }} />
                                                             </div>
@@ -963,7 +963,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                                             </span>
                                                         </div>
                                                     ) : (
-                                                        <Badge variant="outline" className="text-slate-400 border-slate-300">N/A</Badge>
+                                                        <Badge variant="outline" className="text-muted-foreground border-input">N/A</Badge>
                                                     )}
                                                 </TableCell>
                                                 )}
@@ -972,7 +972,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                                 {cv('res_reparto') && (
                                                 <TableCell className="text-right bg-rose-50/30 dark:bg-rose-950/10">
                                                     <div className="flex items-center justify-end gap-2">
-                                                        <div className="w-20 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700 h-2.5">
+                                                        <div className="w-20 overflow-hidden rounded-full bg-muted h-2.5">
                                                             <div className={`h-full rounded-full transition-all duration-300 ${
                                                                 colab.resultado_reparto >= 24.5 ? 'bg-emerald-500'
                                                                 : colab.resultado_reparto >= 10  ? 'bg-amber-500'
@@ -994,7 +994,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                                 <TableCell className="text-right">
                                                     {colab.porcentaje_checklist_pre !== null && colab.porcentaje_checklist_pre !== undefined ? (
                                                         <div className="flex items-center justify-end gap-2">
-                                                            <div className="w-16 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800 h-2">
+                                                            <div className="w-16 overflow-hidden rounded-full bg-muted h-2">
                                                                 <div className={`h-full rounded-full transition-all duration-300 ${colab.porcentaje_checklist_pre >= 90 ? 'bg-emerald-500' : colab.porcentaje_checklist_pre >= 75 ? 'bg-amber-500' : 'bg-rose-500'}`}
                                                                     style={{ width: `${Math.min(100, colab.porcentaje_checklist_pre)}%` }} />
                                                             </div>
@@ -1003,7 +1003,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                                             </span>
                                                         </div>
                                                     ) : (
-                                                        <Badge variant="outline" className="text-slate-400 border-slate-300">N/A</Badge>
+                                                        <Badge variant="outline" className="text-muted-foreground border-input">N/A</Badge>
                                                     )}
                                                 </TableCell>
                                                 )}
@@ -1013,7 +1013,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                                 <TableCell className="text-right">
                                                     {colab.porcentaje_checklist_post !== null && colab.porcentaje_checklist_post !== undefined ? (
                                                         <div className="flex items-center justify-end gap-2">
-                                                            <div className="w-16 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800 h-2">
+                                                            <div className="w-16 overflow-hidden rounded-full bg-muted h-2">
                                                                 <div className={`h-full rounded-full transition-all duration-300 ${colab.porcentaje_checklist_post >= 90 ? 'bg-emerald-500' : colab.porcentaje_checklist_post >= 75 ? 'bg-amber-500' : 'bg-rose-500'}`}
                                                                     style={{ width: `${Math.min(100, colab.porcentaje_checklist_post)}%` }} />
                                                             </div>
@@ -1022,7 +1022,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                                             </span>
                                                         </div>
                                                     ) : (
-                                                        <Badge variant="outline" className="text-slate-400 border-slate-300">N/A</Badge>
+                                                        <Badge variant="outline" className="text-muted-foreground border-input">N/A</Badge>
                                                     )}
                                                 </TableCell>
                                                 )}
@@ -1031,7 +1031,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                                 {cv('res_flota') && (
                                                 <TableCell className="text-right bg-blue-50/30 dark:bg-blue-950/10">
                                                     <div className="flex items-center justify-end gap-2">
-                                                        <div className="w-20 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700 h-2.5">
+                                                        <div className="w-20 overflow-hidden rounded-full bg-muted h-2.5">
                                                             <div className={`h-full rounded-full transition-all duration-300 ${
                                                                 colab.resultado_flota >= 10.5 ? 'bg-emerald-500'
                                                                 : colab.resultado_flota >= 6   ? 'bg-amber-500'
@@ -1052,7 +1052,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                                 <TableCell className="text-right bg-purple-50/40 dark:bg-purple-950/20">
                                                     <div className="flex flex-col items-end gap-0.5">
                                                         <div className="flex items-center gap-2">
-                                                            <div className="w-24 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700 h-3">
+                                                            <div className="w-24 overflow-hidden rounded-full bg-muted h-3">
                                                                 <div
                                                                     className={`h-full rounded-full transition-all duration-300 ${
                                                                         colab.calificacion_total >= 90
@@ -1100,9 +1100,9 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                         {/* Paginación */}
                         {totalPages > 1 && (
                             <div className="mt-4 flex items-center justify-between border-t pt-4">
-                                <p className="text-sm text-slate-500 dark:text-slate-400">
-                                    Página <span className="font-semibold text-slate-700 dark:text-slate-200">{safePage}</span> de{' '}
-                                    <span className="font-semibold text-slate-700 dark:text-slate-200">{totalPages}</span>
+                                <p className="text-sm text-muted-foreground">
+                                    Página <span className="font-semibold text-foreground">{safePage}</span> de{' '}
+                                    <span className="font-semibold text-foreground">{totalPages}</span>
                                     {' '}· {colaboradores.length} registros totales
                                 </p>
                                 <div className="flex items-center gap-1">
@@ -1137,7 +1137,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                         }, [])
                                         .map((p, idx) =>
                                             p === '...' ? (
-                                                <span key={`ellipsis-${idx}`} className="px-1 text-slate-400 text-sm select-none">…</span>
+                                                <span key={`ellipsis-${idx}`} className="px-1 text-muted-foreground text-sm select-none">…</span>
                                             ) : (
                                                 <Button
                                                     key={p}
