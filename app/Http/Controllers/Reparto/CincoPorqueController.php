@@ -26,7 +26,7 @@ class CincoPorqueController extends Controller
                 ->orderBy('placa')
                 ->get(['id', 'placa'])
                 ->map(fn (Vehiculo $v) => ['id' => $v->id, 'placa' => $v->placa]),
-            'rutinas' => config('cinco_porques.rutinas'),
+            'rutinaFija' => config('cinco_porques.rutinas')[0],
             'indicadores' => config('cinco_porques.indicadores'),
         ]);
     }

@@ -33,10 +33,7 @@ export default function RoleDashboard({ modules: accessibleSlugs, resumen }: { m
                     <h1 className="text-2xl font-semibold tracking-tight">
                         Bienvenido, <ShinyText color={accessibleModules[0]?.accent ?? '#3F7A22'}>{auth.user.name}</ShinyText>
                     </h1>
-                    <p className="text-muted-foreground">
-                        Resumen de {conResumen.length === 1 ? 'tu pilar' : 'tus pilares'} de trabajo · últimos 6 meses ({resumen.rango.desde} —{' '}
-                        {resumen.rango.hasta}).
-                    </p>
+                    <p className="text-muted-foreground">Nos alegra verte de nuevo. Este es el resumen de tu trabajo.</p>
                 </Reveal>
 
                 {accessibleModules.length === 0 && (

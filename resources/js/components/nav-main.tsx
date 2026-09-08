@@ -27,10 +27,16 @@ function urlPertenece(itemUrl: string, url: string): boolean {
  * colapsable arranca abierto — clave porque el layout (y por tanto el
  * sidebar) se re-monta en cada navegación, así que `defaultOpen` se vuelve a
  * evaluar cada vez.
+ *
+ * Con `ignorarCompartidos` se descartan los submódulos transversales
+ * (`shared`) — inyectados en varias secciones a la vez (Capacitaciones,
+ * Colaboradores de solo lectura, Asistencia GeoVictoria) — para que abrir uno
+ * no despliegue todos los pilares que lo contienen.
  */
-function containsUrl(item: NavItem, url: string): boolean {
+function containsUrl(item: NavItem, url: string, ignorarCompartidos = false): boolean {
+    if (ignorarCompartidos && item.shared) return false;
     if (urlPertenece(item.url, url)) return true;
-    return item.items?.some((child) => containsUrl(child, url)) ?? false;
+    return item.items?.some((child) => containsUrl(child, url, ignorarCompartidos)) ?? false;
 }
 
 /** Nivel de submenú (dentro de un módulo ya desplegado). Soporta un nivel más de anidación. */
@@ -82,9 +88,12 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
             <SidebarMenu>
                 {items.map((item) => {
                     // Activo si la URL es del módulo o de cualquiera de sus
-                    // submódulos — incluidos los que viven en su propia ruta
-                    // fuera del prefijo del módulo (ej. "5 Por Qué" → /cinco-porques).
-                    const isGroupActive = containsUrl(item, page.url);
+                    // submódulos propios — incluidos los que viven en su propia
+                    // ruta fuera del prefijo del módulo (ej. "5 Por Qué" →
+                    // /cinco-porques). Los submódulos transversales (shared) no
+                    // cuentan: si no, abrir Capacitaciones desplegaría todos los
+                    // pilares.
+                    const isGroupActive = containsUrl(item, page.url, true);
 
                     // Con el sidebar retraído a solo íconos no hay espacio para desplegar
                     // los submódulos, así que el ícono navega directo a la vista general

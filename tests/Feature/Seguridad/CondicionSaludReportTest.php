@@ -85,4 +85,33 @@ class CondicionSaludReportTest extends TestCase
 
         $this->actingAs($user)->get(route('seguridad.condiciones-salud.index'))->assertForbidden();
     }
+
+    public function test_seguridad_puede_exportar_el_historial_a_pdf_y_excel(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole(Role::create(['name' => 'Seguridad', 'guard_name' => 'web']));
+
+        $colaborador = Colaborador::create([
+            'cedula' => '1002003004',
+            'nombres' => 'Laura',
+            'apellidos' => 'Portal',
+            'is_active' => true,
+        ]);
+        CondicionSalud::create([
+            'colaborador_id' => $colaborador->id,
+            'momento' => 'ingreso',
+            'estado' => 'Bueno',
+            'responsable_id' => $user->id,
+            'fecha_hora' => now()->setTime(7, 0),
+            'consentimiento_aceptado' => true,
+        ]);
+
+        $pdf = $this->actingAs($user)->get(route('seguridad.condiciones-salud.exportar-pdf'));
+        $pdf->assertOk();
+        $this->assertSame('application/pdf', $pdf->headers->get('content-type'));
+
+        $excel = $this->actingAs($user)->get(route('seguridad.condiciones-salud.exportar-excel'));
+        $excel->assertOk();
+        $this->assertStringContainsString('condiciones-salud-', $excel->headers->get('content-disposition'));
+    }
 }

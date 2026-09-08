@@ -9,7 +9,7 @@ import AppLayout from '@/layouts/app-layout';
 import { FirmaPad, type FirmaPadHandle } from '@/pages/seguridad/pruebas/firma-pad';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { LoaderCircle, PenLine, Search } from 'lucide-react';
+import { FileSpreadsheet, FileText, LoaderCircle, PenLine, Search } from 'lucide-react';
 import { FormEventHandler, useRef, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -133,6 +133,8 @@ export default function CondicionesSaludIndex({ registros, filters }: { registro
         router.get(route('seguridad.condiciones-salud.index'), form, { preserveState: true, replace: true });
     };
 
+    const exportUrl = (ruta: string) => route(ruta, { ...form });
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Condiciones de Salud" />
@@ -173,6 +175,21 @@ export default function CondicionesSaludIndex({ registros, filters }: { registro
                                 <Search className="size-4" />
                             </Button>
                         </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-end gap-2 sm:col-span-4">
+                        <Button type="button" variant="outline" asChild>
+                            <a href={exportUrl('seguridad.condiciones-salud.exportar-pdf')}>
+                                <FileText className="size-4" />
+                                Exportar PDF
+                            </a>
+                        </Button>
+                        <Button type="button" variant="outline" asChild>
+                            <a href={exportUrl('seguridad.condiciones-salud.exportar-excel')}>
+                                <FileSpreadsheet className="size-4" />
+                                Exportar Excel
+                            </a>
+                        </Button>
                     </div>
                 </form>
 

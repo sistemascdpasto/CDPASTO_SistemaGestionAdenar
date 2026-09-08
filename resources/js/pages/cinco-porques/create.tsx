@@ -43,17 +43,19 @@ function textoNivel(n: NivelEstado): string {
 export default function CincoPorquesCreate({
     ejecutor,
     vehiculos,
-    rutinas,
+    rutinaFija,
     indicadores,
 }: {
     ejecutor: string;
     vehiculos: { id: number; placa: string }[];
-    rutinas: string[];
+    rutinaFija: string;
     indicadores: string[];
 }) {
     const [fecha, setFecha] = useState('');
     const [vehiculo, setVehiculo] = useState('');
-    const [rutina, setRutina] = useState('');
+    // La rutina es fija ("Matutina de distribución"): se muestra como campo de
+    // solo lectura y se envía tal cual.
+    const [rutina] = useState(rutinaFija);
     const [indicador, setIndicador] = useState('');
     const [problema, setProblema] = useState('');
 
@@ -257,26 +259,9 @@ export default function CincoPorquesCreate({
                         <CardContent className="grid gap-4">
                             <div className="grid gap-2">
                                 <Label>Rutina a la que aplica</Label>
-                                <Select
-                                    value={rutina}
-                                    onValueChange={(v) => {
-                                        setRutina(v);
-                                        setNiveles(NIVELES.map(nivelVacio));
-                                        setCausaRaiz('');
-                                        setPlanAccion('');
-                                    }}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Seleccionar" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {rutinas.map((r) => (
-                                            <SelectItem key={r} value={r}>
-                                                {r}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <div className="border-input bg-muted text-muted-foreground flex h-10 items-center rounded-md border px-3 text-sm">
+                                    {rutina}
+                                </div>
                                 <InputError message={errores.rutina} />
                             </div>
                             <div className="grid gap-2">

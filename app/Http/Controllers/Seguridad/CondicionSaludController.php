@@ -2,15 +2,20 @@
 
 namespace App\Http\Controllers\Seguridad;
 
+use App\Exports\Seguridad\CondicionesSaludExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Seguridad\StoreCondicionSaludRequest;
 use App\Models\Seguridad\CondicionSalud;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class CondicionSaludController extends Controller
 {
@@ -21,11 +26,53 @@ class CondicionSaludController extends Controller
      */
     public function index(Request $request): Response
     {
+        [$filtros, $filas] = $this->filasFiltradas($request);
+        $page = (int) $request->input('page', 1);
+
+        $perPage = 15;
+        $paginado = new LengthAwarePaginator(
+            $filas->forPage($page, $perPage)->values(),
+            $filas->count(),
+            $perPage,
+            $page,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
+
+        return Inertia::render('seguridad/condiciones-salud/index', [
+            'registros' => $paginado,
+            'filters' => $filtros,
+        ]);
+    }
+
+    public function exportarPdf(Request $request): \Illuminate\Http\Response
+    {
+        [$filtros, $filas] = $this->filasFiltradas($request);
+
+        return Pdf::loadView('seguridad.condiciones-salud-pdf', ['filas' => $filas, 'filtros' => $filtros])
+            ->setPaper('a4', 'landscape')
+            ->download('condiciones-salud-'.now()->format('Y-m-d').'.pdf');
+    }
+
+    public function exportarExcel(Request $request): BinaryFileResponse
+    {
+        [, $filas] = $this->filasFiltradas($request);
+
+        return Excel::download(new CondicionesSaludExport($filas), 'condiciones-salud-'.now()->format('Y-m-d').'.xlsx');
+    }
+
+    /**
+     * Filtros compartidos por el listado y ambas exportaciones. Devuelve los
+     * filtros normalizados y las filas ya combinadas (ingreso + salida por
+     * colaborador y día), ordenadas de la más reciente a la más antigua.
+     *
+     * @return array{0: array<string, string>, 1: Collection<int, array<string, mixed>>}
+     */
+    private function filasFiltradas(Request $request): array
+    {
         $identificacion = $request->string('identificacion')->trim()->toString();
         $nombre = $request->string('nombre')->trim()->toString();
         $desde = $request->filled('desde') ? Carbon::parse($request->input('desde'))->startOfDay() : Carbon::now()->subDays(30)->startOfDay();
         $hasta = $request->filled('hasta') ? Carbon::parse($request->input('hasta'))->endOfDay() : Carbon::now()->endOfDay();
-        $page = (int) $request->input('page', 1);
 
         $registros = CondicionSalud::query()
             ->with(['colaborador:id,nombres,apellidos,cedula,cargo,area,turno', 'pruebaAlcoholemia:id,firma_path'])
@@ -76,24 +123,14 @@ class CondicionSaludController extends Controller
             ->sortByDesc('fecha')
             ->values();
 
-        $perPage = 15;
-        $paginado = new LengthAwarePaginator(
-            $filas->forPage($page, $perPage)->values(),
-            $filas->count(),
-            $perPage,
-            $page,
-            ['path' => $request->url(), 'query' => $request->query()]
-        );
+        $filtros = [
+            'identificacion' => $identificacion,
+            'nombre' => $nombre,
+            'desde' => $desde->toDateString(),
+            'hasta' => $hasta->toDateString(),
+        ];
 
-        return Inertia::render('seguridad/condiciones-salud/index', [
-            'registros' => $paginado,
-            'filters' => [
-                'identificacion' => $identificacion,
-                'nombre' => $nombre,
-                'desde' => $desde->toDateString(),
-                'hasta' => $hasta->toDateString(),
-            ],
-        ]);
+        return [$filtros, $filas];
     }
 
     public function store(StoreCondicionSaludRequest $request): RedirectResponse

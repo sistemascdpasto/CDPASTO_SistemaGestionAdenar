@@ -57,6 +57,8 @@ Route::middleware(['auth', 'active', 'role:Administrador|Seguridad'])
         Route::resource('pruebas', PruebaAlcoholemiaController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update']);
 
         Route::get('condiciones-salud', [CondicionSaludController::class, 'index'])->name('condiciones-salud.index');
+        Route::get('condiciones-salud/exportar/pdf', [CondicionSaludController::class, 'exportarPdf'])->name('condiciones-salud.exportar-pdf');
+        Route::get('condiciones-salud/exportar/excel', [CondicionSaludController::class, 'exportarExcel'])->name('condiciones-salud.exportar-excel');
         Route::post('condiciones-salud', [CondicionSaludController::class, 'store'])->name('condiciones-salud.store');
         Route::post('condiciones-salud/{condicion}/firmar', [CondicionSaludController::class, 'firmar'])->name('condiciones-salud.firmar');
 
