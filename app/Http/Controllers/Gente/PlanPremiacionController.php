@@ -566,20 +566,25 @@ class PlanPremiacionController extends Controller
             $resultadoRepartoLabel = "{$resultadoRepartoVal}%";
 
             // Cálculo Resultado Ponderado FLOTA (CL Pre=7.5%, CL Post=7.5% = 15%)
-            $calCheckPre = 0;
-            if ($porcentajeChecklistPre !== null) {
-                $calCheckPre = min((float)$porcentajeChecklistPre, 100) / 100;
+            // Solo aplica para Conductores de Reparto
+            if ($esConductor) {
+                $calCheckPre = $porcentajeChecklistPre !== null ? min((float)$porcentajeChecklistPre, 100) / 100 : 0;
+                $calCheckPost = $porcentajeChecklistPost !== null ? min((float)$porcentajeChecklistPost, 100) / 100 : 0;
+                $resultadoFlotaVal = round(($calCheckPre * 7.5) + ($calCheckPost * 7.5), 1);
+                $resultadoFlotaLabel = "{$resultadoFlotaVal}%";
+            } else {
+                $resultadoFlotaVal = null;
+                $resultadoFlotaLabel = 'N/A';
             }
-            $calCheckPost = 0;
-            if ($porcentajeChecklistPost !== null) {
-                $calCheckPost = min((float)$porcentajeChecklistPost, 100) / 100;
-            }
-
-            $resultadoFlotaVal = round(($calCheckPre * 7.5) + ($calCheckPost * 7.5), 1);
-            $resultadoFlotaLabel = "{$resultadoFlotaVal}%";
 
             // Calificación Total (suma de los 4 pilares = 100%)
-            $calificacionTotalVal = round($resultadoVal + $resultadoAsistenciaVal + $resultadoRepartoVal + $resultadoFlotaVal, 1);
+            // Para conductores: Seguridad(35%) + Gente(15%) + Reparto(35%) + Flota(15%) = 100%
+            // Para otros cargos: Seguridad(35%) + Gente(15%) + Reparto(35%) = 85% escalado a 100%
+            if ($esConductor) {
+                $calificacionTotalVal = round($resultadoVal + $resultadoAsistenciaVal + $resultadoRepartoVal + $resultadoFlotaVal, 1);
+            } else {
+                $calificacionTotalVal = round($resultadoVal + $resultadoAsistenciaVal + $resultadoRepartoVal, 1);
+            }
             $calificacionTotalLabel = "{$calificacionTotalVal}%";
 
             return [
