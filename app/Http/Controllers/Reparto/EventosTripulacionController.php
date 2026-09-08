@@ -932,9 +932,20 @@ class EventosTripulacionController
             return null;
         }
 
-        // Porcentajes: Excel guarda 85% como 0.85 → ×100
+        // Porcentajes: Excel guarda 85% como 0.85 → ×100; texto "85.80%" → limpiar y usar directo
         if (in_array($field, self::PCT_FIELDS, true)) {
-            if (!is_numeric($raw)) return null;  // "SIN CALIFICACION" → null
+            // Si viene como string con símbolo %, limpiar y usar el valor directo
+            if (is_string($raw)) {
+                $cleaned = trim(str_replace(['%', ' '], '', $raw));
+                if (is_numeric($cleaned)) {
+                    $val = (float) $cleaned;
+                    // Si ya viene como porcentaje legible (ej: 85.80), usar directo
+                    // Si viene como decimal (ej: 0.858), escalar ×100
+                    return $val <= 1.0 ? round($val * 100, 2) : round($val, 2);
+                }
+                return null; // "SIN CALIFICACION" u otro texto → null
+            }
+            if (!is_numeric($raw)) return null;
             $val = (float) $raw;
             return $val <= 1.0 ? round($val * 100, 2) : round($val, 2);
         }
@@ -953,10 +964,15 @@ class EventosTripulacionController
             return (int) $raw;
         }
 
-        // Decimales simples
+        // Decimales simples (pueden venir con % como texto, ej: "1249.88%")
         if (in_array($field, self::DECIMAL_FIELDS, true)) {
+            if (is_string($raw)) {
+                $cleaned = trim(str_replace(['%', ' '], '', $raw));
+                if (is_numeric($cleaned)) return round((float) $cleaned, 4);
+                return null;
+            }
             if (!is_numeric($raw)) return null;  // "SIN CALIFICACION" u otro texto → null
-            return is_numeric($raw) ? round((float) $raw, 4) : null;
+            return round((float) $raw, 4);
         }
 
         // Texto: limpiar NBSP y espacios de Excel
