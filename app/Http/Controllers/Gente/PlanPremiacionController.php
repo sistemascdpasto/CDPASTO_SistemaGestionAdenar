@@ -450,7 +450,7 @@ class PlanPremiacionController extends Controller
             // % Rechazos
             $valsRechazos = $getMetricVals($rechazosPorDocumento, $rechazosPorNombre);
             if (!empty($valsRechazos)) {
-                $promedioRechazosRaw = round(array_sum($valsRechazos) / count($valsRechazos), 1);
+                $promedioRechazosRaw = array_sum($valsRechazos) / count($valsRechazos);
                 // <= 2.3% → rechazos bajos → 100%, > 2.3% → 0%
                 $porcentajeRechazos = $promedioRechazosRaw > 2.3 ? 0.0 : 100.0;
                 $porcentajeRechazosLabel = "{$porcentajeRechazos}%";
@@ -463,7 +463,7 @@ class PlanPremiacionController extends Controller
             // % Adherencia Tiempo
             $valsAdherenciaTiempo = $getMetricVals($adherenciaTiempoPorDocumento, $adherenciaTiempoPorNombre);
             if (!empty($valsAdherenciaTiempo)) {
-                $promedioAdherenciaTiempoRaw = round(array_sum($valsAdherenciaTiempo) / count($valsAdherenciaTiempo), 1);
+                $promedioAdherenciaTiempoRaw = array_sum($valsAdherenciaTiempo) / count($valsAdherenciaTiempo);
                 // >= 83% → cumple → 100%, < 83% → 0%
                 $porcentajeAdherenciaTiempo = $promedioAdherenciaTiempoRaw >= 83 ? 100.0 : 0.0;
                 $porcentajeAdherenciaTiempoLabel = "{$porcentajeAdherenciaTiempo}%";
@@ -476,7 +476,7 @@ class PlanPremiacionController extends Controller
             // RMD
             $valsRmd = $getMetricVals($rmdPorDocumento, $rmdPorNombre);
             if (!empty($valsRmd)) {
-                $promedioRmdRaw = round(array_sum($valsRmd) / count($valsRmd), 2);
+                $promedioRmdRaw = array_sum($valsRmd) / count($valsRmd);
                 // >= 4 → cumple → 100%, < 4 → 0%
                 $promedioRmd = $promedioRmdRaw >= 4 ? 100.0 : 0.0;
                 $promedioRmdLabel = "{$promedioRmd}%";
@@ -993,7 +993,7 @@ class PlanPremiacionController extends Controller
 
             // Reparto
             $vRec  = $getRechazos($colab);
-            $pRecRaw = !empty($vRec) ? round(array_sum($vRec)/count($vRec),1) : null;
+            $pRecRaw = !empty($vRec) ? array_sum($vRec)/count($vRec) : null;
             $pRec  = $pRecRaw !== null ? ($pRecRaw > 2.3 ? 0.0 : 100.0) : null;
 
             $vSac  = $getVals($sacPorColId, $sacPorResp)($colab);
@@ -1004,7 +1004,7 @@ class PlanPremiacionController extends Controller
             $pAdt  = $pAdtRaw !== null ? ($pAdtRaw >= 83 ? 100.0 : 0.0) : null;
 
             $vRmd  = $getRmd($colab);
-            $pRmdRaw = !empty($vRmd) ? round(array_sum($vRmd)/count($vRmd),2) : null;
+            $pRmdRaw = !empty($vRmd) ? array_sum($vRmd)/count($vRmd) : null;
             $pRmd  = $pRmdRaw !== null ? ($pRmdRaw >= 4 ? 100.0 : 0.0) : null;
 
             $cRec  = $pRec  !== null ? (int)($pRec >= 100) : 0;
