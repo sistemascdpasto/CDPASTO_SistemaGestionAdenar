@@ -168,7 +168,10 @@ class IndicadoresResumenController extends Controller
                 'entrega_cero'  => $g->filter(fn ($r) => $r->entrega_en_rango !== null && (float)$r->entrega_en_rango == 0)->count(),
                 'entrega_bajo'  => $g->filter(fn ($r) => $r->entrega_en_rango !== null && (float)$r->entrega_en_rango < 80)->count(),
                 'alertas_sum'   => (int) $g->sum('alertas_velocidad_curvas'),
-                'excesos_sum'   => (int) $g->sum('excesos_tiempo_ruta'),
+                // excesos_tiempo_ruta ahora es texto (hora del día): se cuentan
+                // los registros con valor real en vez de sumarlo (rompía con
+                // "A non-numeric value encountered").
+                'excesos_sum'   => $g->filter(fn ($r) => !empty(trim((string) ($r->excesos_tiempo_ruta ?? ''))) && trim((string) $r->excesos_tiempo_ruta) !== '0')->count(),
                 'adh_bajo'      => $g->filter(fn ($r) => $r->adherencia_tiempo !== null && (float)$r->adherencia_tiempo < 80)->count(),
                 // Puntaje de incumplimiento (suma ponderada)
                 'score_incump'  => 0, // se calcula abajo
