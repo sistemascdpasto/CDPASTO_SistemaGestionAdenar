@@ -1,3 +1,4 @@
+import { CameraCaptureDialog } from '@/components/camera-capture-dialog';
 import HeadingSmall from '@/components/heading-small';
 import InputError from '@/components/input-error';
 import {
@@ -85,6 +86,7 @@ function EvidenciaUploader({
     inputId,
     inputRef,
     onAdd,
+    onCaptureFile,
     savedPaths,
     deletedIndices,
     canDeleteSaved,
@@ -98,6 +100,7 @@ function EvidenciaUploader({
     inputId: string;
     inputRef: React.RefObject<HTMLInputElement | null>;
     onAdd: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    onCaptureFile?: (file: File) => void;
     savedPaths: { path: string; index: number }[];
     deletedIndices: number[];
     canDeleteSaved: boolean;
@@ -107,6 +110,8 @@ function EvidenciaUploader({
     onPreview: (path: string) => void;
     error?: string;
 }) {
+    const [camaraAbierta, setCamaraAbierta] = useState(false);
+
     return (
         <div className="grid gap-2">
             <Label>{label}</Label>
@@ -166,9 +171,27 @@ function EvidenciaUploader({
                     className="border-border text-muted-foreground hover:border-primary hover:text-primary flex h-24 w-full flex-col items-center justify-center rounded-lg border-2 border-dashed transition-colors"
                 >
                     <span className="text-2xl leading-none font-light">+</span>
-                    <span className="mt-1 text-xs">Agregar</span>
+                    <span className="mt-1 text-xs">Subir archivo</span>
                 </button>
+                {onCaptureFile && (
+                    <button
+                        type="button"
+                        onClick={() => setCamaraAbierta(true)}
+                        className="border-border text-muted-foreground hover:border-primary hover:text-primary flex h-24 w-full flex-col items-center justify-center rounded-lg border-2 border-dashed transition-colors"
+                    >
+                        <Camera className="size-6" />
+                        <span className="mt-1 text-xs">Tomar foto</span>
+                    </button>
+                )}
             </div>
+            {onCaptureFile && (
+                <CameraCaptureDialog
+                    open={camaraAbierta}
+                    onOpenChange={setCamaraAbierta}
+                    onCapture={onCaptureFile}
+                    titulo="Evidencia fotográfica"
+                />
+            )}
         </div>
     );
 }
@@ -310,14 +333,18 @@ export default function CreatePrueba({
     const savedFotos = savedConIndice.filter(({ path }) => !/\.pdf$/i.test(path));
     const savedPdfs = savedConIndice.filter(({ path }) => /\.pdf$/i.test(path));
 
-    const addEvidencia = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const newFiles = Array.from(e.target.files ?? []).map((file) => ({ file, preview: URL.createObjectURL(file) }));
-        const updated = [...filesEvidencia, ...newFiles];
+    const agregarArchivosEvidencia = (archivos: File[]) => {
+        if (archivos.length === 0) return;
+        const updated = [...filesEvidencia, ...archivos.map((file) => ({ file, preview: URL.createObjectURL(file) }))];
         setFilesEvidencia(updated);
         setData(
             'evidencia',
             updated.map((f) => f.file),
         );
+    };
+
+    const addEvidencia = (e: React.ChangeEvent<HTMLInputElement>) => {
+        agregarArchivosEvidencia(Array.from(e.target.files ?? []));
         if (evidenciaInputRef.current) evidenciaInputRef.current.value = '';
     };
 
@@ -555,6 +582,7 @@ export default function CreatePrueba({
                                         inputId="evidencia"
                                         inputRef={evidenciaInputRef}
                                         onAdd={addEvidencia}
+                                        onCaptureFile={(file) => agregarArchivosEvidencia([file])}
                                         savedPaths={savedFotos}
                                         deletedIndices={deletedEvidenciasIndices}
                                         canDeleteSaved={Boolean(prueba)}
