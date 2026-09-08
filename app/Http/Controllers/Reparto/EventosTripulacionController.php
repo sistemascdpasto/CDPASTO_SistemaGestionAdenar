@@ -638,8 +638,8 @@ class EventosTripulacionController
                 if ($docLimpio === null || !array_key_exists($docLimpio, $colaboradoresMap)) {
                     $omitidosSinColaborador++;
 
-                    // Guardar hasta 10 ejemplos únicos de cédulas no encontradas para el reporte
-                    if ($docLimpio !== null && count($cedulasNoEncontradas) < 10 && !isset($cedulasNoEncontradasSet[$docLimpio])) {
+                    // Guardar todas las cédulas únicas no encontradas para el reporte completo
+                    if ($docLimpio !== null && !isset($cedulasNoEncontradasSet[$docLimpio])) {
                         $cedulasNoEncontradas[] = $docLimpio;
                         $cedulasNoEncontradasSet[$docLimpio] = true;
                     }
@@ -716,16 +716,13 @@ class EventosTripulacionController
             $msg = "✅ Importación completada.\n";
             $msg .= "• Nuevos registros: {$insertados}\n";
             if ($actualizados > 0) $msg .= "• Actualizados: {$actualizados}\n";
-            if ($omitidos > 0)     $msg .= "• Filas sin fecha/placa: {$omitidos}\n";
+            if ($omitidos > 0)     $msg .= "• Filas sin fecha: {$omitidos}\n";
             if ($omitidosSinColaborador > 0) {
-                $msg .= "• ⚠ Filas omitidas (cédula NO está en tabla colaboradores): {$omitidosSinColaborador}";
+                $msg .= "• ⚠ Filas omitidas (cédula NO está en tabla colaboradores): {$omitidosSinColaborador}\n";
                 if (!empty($cedulasNoEncontradas)) {
-                    $msg .= "\n  Ejemplos: " . implode(', ', $cedulasNoEncontradas);
-                    if ($omitidosSinColaborador > count($cedulasNoEncontradas)) {
-                        $msg .= " ...y " . ($omitidosSinColaborador - count($cedulasNoEncontradas)) . " más.";
-                    }
+                    $msg .= "  Cédulas no encontradas: " . implode(', ', $cedulasNoEncontradas) . "\n";
                 }
-                $msg .= "\n  Primero debes cargar el colaborador en el módulo de Gente/Colaboradores.";
+                $msg .= "  Primero debes cargar el colaborador en el módulo de Gente/Colaboradores.";
             }
             if (!empty($encabezadosNoMapeados)) {
                 $msg .= "\n• ⚠ Columnas no reconocidas: " . implode(', ', $encabezadosNoMapeados);
