@@ -627,14 +627,9 @@ class EventosTripulacionController
                     } catch (\Throwable) {}
                 }
 
-                // Omitir si no hay fecha ni placa (fila inútil), o si falta la placa (campo NOT NULL)
-                if (empty($data['fecha']) && empty($data['placa'])) {
+                // Omitir si no hay fecha (campo obligatorio)
+                if (empty($data['fecha'])) {
                     $omitidos++;
-                    continue;
-                }
-                if (empty($data['placa'])) {
-                    $omitidos++;
-                    Log::debug("[EventosTripulacion::store] Fila {$rowNum} omitida - placa vacía | fecha: " . ($data['fecha'] ?? '?') . " | doc: " . ($data['documento'] ?? '?'));
                     continue;
                 }
 
@@ -692,20 +687,13 @@ class EventosTripulacionController
                 $insertados++;
 
                 if (count($batch) >= 200) {
-                    // Filtrar por seguridad: descartar filas sin placa antes del insert bulk
-                    $batchValido = array_filter($batch, fn($r) => !empty($r['placa']));
-                    if (!empty($batchValido)) {
-                        EventosTripulacion::insert(array_values($batchValido));
-                    }
+                    EventosTripulacion::insert($batch);
                     $batch = [];
                 }
             }
 
             if (!empty($batch)) {
-                $batchValido = array_filter($batch, fn($r) => !empty($r['placa']));
-                if (!empty($batchValido)) {
-                    EventosTripulacion::insert(array_values($batchValido));
-                }
+                EventosTripulacion::insert($batch);
             }
 
             // Log resumen de la importación
