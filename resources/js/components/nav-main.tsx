@@ -13,6 +13,30 @@ import {
 import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import { ChevronRight } from 'lucide-react';
+import { useEffect } from 'react';
+
+/**
+ * Último grupo de módulo que estuvo activo. Cuando se navega a un submódulo
+ * transversal (Capacitaciones, etc.) ningún pilar coincide con la URL, así que
+ * se reabre este para que el sidebar no quede con todos los grupos colapsados.
+ */
+const ULTIMO_GRUPO_KEY = 'adenar:sidebar-ultimo-grupo';
+
+function leerUltimoGrupo(): string | null {
+    try {
+        return localStorage.getItem(ULTIMO_GRUPO_KEY);
+    } catch {
+        return null;
+    }
+}
+
+function guardarUltimoGrupo(titulo: string): void {
+    try {
+        localStorage.setItem(ULTIMO_GRUPO_KEY, titulo);
+    } catch {
+        /* almacenamiento no disponible */
+    }
+}
 
 /** Compara sin querystring y aceptando subrutas (`/x` cubre `/x/detalle`). */
 function urlPertenece(itemUrl: string, url: string): boolean {
@@ -82,6 +106,14 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
     const page = usePage();
     const { state } = useSidebar();
 
+    const grupoActivoTitulo = items.find((item) => item.items?.length && containsUrl(item, page.url, true))?.title;
+    const hayGrupoActivo = Boolean(grupoActivoTitulo);
+    const ultimoGrupo = leerUltimoGrupo();
+
+    useEffect(() => {
+        if (grupoActivoTitulo) guardarUltimoGrupo(grupoActivoTitulo);
+    }, [grupoActivoTitulo]);
+
     return (
         <SidebarGroup className="px-2 py-0">
             <SidebarGroupLabel>Platform</SidebarGroupLabel>
@@ -94,6 +126,11 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                     // cuentan: si no, abrir Capacitaciones desplegaría todos los
                     // pilares.
                     const isGroupActive = containsUrl(item, page.url, true);
+
+                    // Si estás en una ruta transversal (sin pilar activo), se
+                    // reabre el último pilar en el que estuviste para no dejar
+                    // el sidebar con todo colapsado.
+                    const grupoArrancaAbierto = isGroupActive || (!hayGrupoActivo && item.title === ultimoGrupo);
 
                     // Con el sidebar retraído a solo íconos no hay espacio para desplegar
                     // los submódulos, así que el ícono navega directo a la vista general
@@ -117,7 +154,7 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                     }
 
                     return item.items?.length ? (
-                        <Collapsible key={item.title} asChild defaultOpen={isGroupActive} className="group/collapsible">
+                        <Collapsible key={item.title} asChild defaultOpen={grupoArrancaAbierto} className="group/collapsible">
                             <SidebarMenuItem>
                                 {isGroupActive && item.color && (
                                     <span
