@@ -994,7 +994,7 @@ class PlanPremiacionController extends Controller
             // Reparto
             $vRec  = $getRechazos($colab);
             $pRecRaw = !empty($vRec) ? round(array_sum($vRec)/count($vRec),1) : null;
-            $pRec  = $pRecRaw !== null ? ($pRecRaw >= 2.3 ? 100.0 : 0.0) : null;
+            $pRec  = $pRecRaw !== null ? ($pRecRaw >= 2.3 ? 0.0 : 100.0) : null;
 
             $vSac  = $getVals($sacPorColId, $sacPorResp)($colab);
             $pSac  = !empty($vSac) ? round(array_sum($vSac)/count($vSac),1) : 100.0;
