@@ -1,19 +1,19 @@
 import HeadingSmall from '@/components/heading-small';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
-import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
-import { CalendarDays, Eye, FileText, Search, Trash2, Truck, Users, X } from 'lucide-react';
+import { Eye, FileText, Trash2, Truck, Users, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Reparto', href: '/modules/reparto/modulacion' },
+    { title: 'Dashboard', href: '/dashboard' },
+    { title: 'Reparto', href: '/modules/reparto' },
     { title: 'Historial de Planeaciones', href: '/modules/reparto/modulacion-historial' },
 ];
 
@@ -47,7 +47,7 @@ interface Paginator {
 
 interface Props {
     planeaciones: Paginator;
-    filters: { 
+    filters: {
         fecha_desde: string;
         fecha_hasta: string;
         placa: string;
@@ -60,8 +60,14 @@ type Filters = {
     placa: string;
 };
 
-// Paleta de acento del módulo Reparto
-const ACCENT = '#D4102A';
+function formatFecha(fecha: string) {
+    const [y, m, d] = fecha.split('-');
+    return `${d}/${m}/${y}`;
+}
+
+function getDiaSemana(fecha: string) {
+    return new Date(fecha + 'T12:00:00').toLocaleDateString('es-CO', { weekday: 'long' });
+}
 
 export default function HistorialModulacion({ planeaciones, filters }: Props) {
     const [fechaDesde, setFechaDesde] = useState(filters.fecha_desde ?? '');
@@ -82,7 +88,7 @@ export default function HistorialModulacion({ planeaciones, filters }: Props) {
                 fecha_hasta: overrides.fecha_hasta ?? debouncedFechaHasta,
                 placa: overrides.placa ?? debouncedPlaca,
             },
-            { preserveState: true, preserveScroll: true, replace: true }
+            { preserveState: true, preserveScroll: true, replace: true },
         );
     };
 
@@ -105,266 +111,179 @@ export default function HistorialModulacion({ planeaciones, filters }: Props) {
     const handleDeleteModulacion = (id: number, fecha: string) => {
         if (confirm(`¿Está seguro de eliminar la planeación del ${formatFecha(fecha)}? Esta acción no se puede deshacer.`)) {
             router.delete(route('reparto.modulacion.destroy', id), {
-                onSuccess: () => {
-                    router.get(route('reparto.modulacion.historial'), {}, { preserveState: false });
-                },
+                onSuccess: () => router.get(route('reparto.modulacion.historial'), {}, { preserveState: false }),
             });
         }
     };
 
-    // Formatea fecha YYYY-MM-DD → DD/MM/YYYY
-    const formatFecha = (fecha: string) => {
-        const [y, m, d] = fecha.split('-');
-        return `${d}/${m}/${y}`;
-    };
-
-    // Día de semana en español
-    const getDiaSemana = (fecha: string) => {
-        const date = new Date(fecha + 'T12:00:00');
-        return date.toLocaleDateString('es-CO', { weekday: 'long' });
-    };
-
-    const hasActiveFilters = fechaDesde || fechaHasta || placa;
+    const hasActiveFilters = Boolean(fechaDesde || fechaHasta || placa);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Historial de Planeaciones de Ruta" />
 
             <div className="flex h-full flex-1 flex-col gap-6 rounded-xl p-4">
-                {/* Encabezado */}
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b pb-4">
+                <div className="flex flex-wrap items-start justify-between gap-4">
                     <HeadingSmall
                         title="Historial de Planeaciones de Ruta"
-                        description={`${planeaciones.total} planeación${planeaciones.total !== 1 ? 'es' : ''} registrada${planeaciones.total !== 1 ? 's' : ''}`}
+                        description={`${planeaciones.total} planeación${planeaciones.total !== 1 ? 'es' : ''} registrada${planeaciones.total !== 1 ? 's' : ''}.`}
                     />
-                    <Link href={route('reparto.modulacion.index')}>
-                        <Button style={{ backgroundColor: ACCENT, color: '#fff' }} className="font-semibold">
-                            <Truck className="h-4 w-4 mr-2" />
-                            Nueva Planeación
-                        </Button>
-                    </Link>
+                    <Button asChild>
+                        <Link href={route('reparto.modulacion.index')}>
+                            <Truck className="size-4" />
+                            Nueva planeación
+                        </Link>
+                    </Button>
                 </div>
 
-                {/* Filtros */}
-                <Card className="shadow-sm border bg-white dark:bg-gray-900">
-                    <CardContent className="pt-4">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 items-end">
-                            <div className="grid gap-1">
-                                <Label className="text-xs font-semibold uppercase text-gray-600">
-                                    <CalendarDays className="h-3 w-3 inline mr-1" />
-                                    Fecha desde
-                                </Label>
-                                <Input
-                                    type="date"
-                                    value={fechaDesde}
-                                    onChange={(e) => setFechaDesde(e.target.value)}
-                                />
-                            </div>
-
-                            <div className="grid gap-1">
-                                <Label className="text-xs font-semibold uppercase text-gray-600">
-                                    <CalendarDays className="h-3 w-3 inline mr-1" />
-                                    Fecha hasta
-                                </Label>
-                                <Input
-                                    type="date"
-                                    value={fechaHasta}
-                                    onChange={(e) => setFechaHasta(e.target.value)}
-                                />
-                            </div>
-
-                            <div className="grid gap-1">
-                                <Label className="text-xs font-semibold uppercase text-gray-600">
-                                    <Truck className="h-3 w-3 inline mr-1" />
-                                    Placa
-                                </Label>
-                                <Input
-                                    type="text"
-                                    placeholder="Ej: COLJV386"
-                                    value={placa}
-                                    onChange={(e) => setPlaca(e.target.value.toUpperCase())}
-                                    className="uppercase font-mono"
-                                />
-                            </div>
-
-                            {hasActiveFilters && (
-                                <div className="flex items-end">
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={handleClear}
-                                        className="w-full"
-                                    >
-                                        <X className="h-4 w-4 mr-1" />
-                                        Limpiar
-                                    </Button>
-                                </div>
-                            )}
+                <form className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" onSubmit={(e) => e.preventDefault()}>
+                    <div className="grid gap-2">
+                        <Label htmlFor="fecha_desde">Fecha desde</Label>
+                        <Input id="fecha_desde" type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="fecha_hasta">Fecha hasta</Label>
+                        <Input id="fecha_hasta" type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="placa">Placa</Label>
+                        <Input
+                            id="placa"
+                            type="text"
+                            placeholder="Ej: COLJV386"
+                            value={placa}
+                            onChange={(e) => setPlaca(e.target.value.toUpperCase())}
+                            className="font-mono uppercase"
+                        />
+                    </div>
+                    {hasActiveFilters && (
+                        <div className="flex items-end">
+                            <Button type="button" variant="outline" onClick={handleClear} className="w-full">
+                                <X className="size-4" />
+                                Limpiar
+                            </Button>
                         </div>
-                    </CardContent>
-                </Card>
+                    )}
+                </form>
 
-                {/* Tabla */}
-                <Card className="border-sidebar-border/70 dark:border-sidebar-border border-t-4" style={{ borderTopColor: ACCENT }}>
-                    <CardHeader className="pb-3 border-b">
-                        <CardTitle className="text-base font-semibold flex items-center gap-2">
-                            <CalendarDays className="h-5 w-5" style={{ color: ACCENT }} />
-                            Planeaciones registradas
-                            {planeaciones.from !== null && (
-                                <Badge variant="secondary" className="ml-2">
-                                    {planeaciones.from}–{planeaciones.to} de {planeaciones.total}
-                                </Badge>
-                            )}
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-0">
-                        <div className="rounded-md border overflow-x-auto">
-                            <Table>
-                                <TableHeader className="bg-muted/50">
-                                    <TableRow>
-                                        <TableHead className="font-semibold w-36">Fecha</TableHead>
-                                        <TableHead className="font-semibold">Programado Por</TableHead>
-                                        <TableHead className="font-semibold">Despachado Por</TableHead>
-                                        <TableHead className="text-center font-semibold w-24">Rutas</TableHead>
-                                        <TableHead className="text-center font-semibold w-28">Tripulantes</TableHead>
-                                        <TableHead className="text-center font-semibold w-28">Novedades</TableHead>
-                                        <TableHead className="font-semibold min-w-[200px]">Vehículos</TableHead>
-                                        <TableHead className="text-right font-semibold w-24">Acción</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {planeaciones.data.length === 0 ? (
-                                        <TableRow>
-                                            <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
-                                                <div className="flex flex-col items-center gap-2">
-                                                    <FileText className="h-10 w-10 text-muted-foreground/50" />
-                                                    <span>
-                                                        {hasActiveFilters
-                                                            ? 'No se encontraron planeaciones con ese criterio de búsqueda.'
-                                                            : 'No hay planeaciones registradas aún.'}
-                                                    </span>
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    ) : (
-                                        planeaciones.data.map((plan) => (
-                                            <TableRow key={plan.id} className="hover:bg-muted/50">
-                                                {/* Fecha */}
-                                                <TableCell>
-                                                    <div className="font-semibold text-sm text-foreground">
-                                                        {formatFecha(plan.fecha)}
-                                                    </div>
-                                                    <div className="text-[11px] text-muted-foreground capitalize">
-                                                        {getDiaSemana(plan.fecha)}
-                                                    </div>
-                                                </TableCell>
-
-                                                {/* Programado Por */}
-                                                <TableCell className="text-sm text-foreground">
-                                                    {plan.ud_programado_por || <span className="text-muted-foreground italic">—</span>}
-                                                </TableCell>
-
-                                                {/* Despachado Por */}
-                                                <TableCell className="text-sm text-foreground">
-                                                    {plan.despachado_por_nombre || <span className="text-muted-foreground italic">—</span>}
-                                                </TableCell>
-
-                                                {/* Total rutas */}
-                                                <TableCell className="text-center">
-                                                    <Badge variant="secondary" className="font-semibold">
-                                                        <Truck className="h-3 w-3 mr-1" />
-                                                        {plan.total_rutas}
-                                                    </Badge>
-                                                </TableCell>
-
-                                                {/* Total tripulantes */}
-                                                <TableCell className="text-center">
-                                                    <Badge variant="secondary" className="font-semibold">
-                                                        <Users className="h-3 w-3 mr-1" />
-                                                        {plan.total_tripulantes}
-                                                    </Badge>
-                                                </TableCell>
-
-                                                {/* Novedades */}
-                                                <TableCell className="text-center">
-                                                    {plan.total_novedades > 0 ? (
-                                                        <Badge variant="secondary" className="font-semibold">
-                                                            {plan.total_novedades}
+                <div className="overflow-x-auto rounded-lg border border-sidebar-border/70 dark:border-sidebar-border">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="w-36">Fecha</TableHead>
+                                <TableHead>Programado por</TableHead>
+                                <TableHead>Despachado por</TableHead>
+                                <TableHead className="text-center">Rutas</TableHead>
+                                <TableHead className="text-center">Tripulantes</TableHead>
+                                <TableHead className="text-center">Novedades</TableHead>
+                                <TableHead className="min-w-[200px]">Vehículos</TableHead>
+                                <TableHead className="text-right">Acciones</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {planeaciones.data.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={8} className="py-12 text-center text-muted-foreground">
+                                        <div className="flex flex-col items-center gap-2">
+                                            <FileText className="size-9 text-muted-foreground/50" />
+                                            <span>
+                                                {hasActiveFilters
+                                                    ? 'No se encontraron planeaciones con ese criterio de búsqueda.'
+                                                    : 'No hay planeaciones registradas aún.'}
+                                            </span>
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            ) : (
+                                planeaciones.data.map((plan) => (
+                                    <TableRow key={plan.id}>
+                                        <TableCell>
+                                            <div className="text-sm font-medium text-foreground">{formatFecha(plan.fecha)}</div>
+                                            <div className="text-[11px] capitalize text-muted-foreground">{getDiaSemana(plan.fecha)}</div>
+                                        </TableCell>
+                                        <TableCell className="text-sm">
+                                            {plan.ud_programado_por || <span className="text-muted-foreground">—</span>}
+                                        </TableCell>
+                                        <TableCell className="text-sm">
+                                            {plan.despachado_por_nombre || <span className="text-muted-foreground">—</span>}
+                                        </TableCell>
+                                        <TableCell className="text-center">
+                                            <Badge variant="secondary">
+                                                <Truck className="size-3" />
+                                                {plan.total_rutas}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-center">
+                                            <Badge variant="secondary">
+                                                <Users className="size-3" />
+                                                {plan.total_tripulantes}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-center">
+                                            {plan.total_novedades > 0 ? (
+                                                <Badge variant="secondary">{plan.total_novedades}</Badge>
+                                            ) : (
+                                                <span className="text-xs text-muted-foreground">—</span>
+                                            )}
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex flex-wrap gap-1">
+                                                {plan.placas.length === 0 ? (
+                                                    <span className="text-xs text-muted-foreground">Sin vehículos</span>
+                                                ) : (
+                                                    plan.placas.map((p) => (
+                                                        <Badge key={p} variant="outline" className="px-1.5 py-0 font-mono text-[11px]">
+                                                            {p}
                                                         </Badge>
-                                                    ) : (
-                                                        <span className="text-muted-foreground text-xs">—</span>
-                                                    )}
-                                                </TableCell>
-
-                                                {/* Placas */}
-                                                <TableCell>
-                                                    <div className="flex flex-wrap gap-1">
-                                                        {plan.placas.length === 0 ? (
-                                                            <span className="text-muted-foreground text-xs italic">Sin vehículos</span>
-                                                        ) : (
-                                                            plan.placas.map((placa) => (
-                                                                <Badge
-                                                                    key={placa}
-                                                                    variant="outline"
-                                                                    className="font-mono text-[11px] px-1.5 py-0"
-                                                                >
-                                                                    {placa}
-                                                                </Badge>
-                                                            ))
-                                                        )}
-                                                    </div>
-                                                </TableCell>
-
-                                                {/* Acción */}
-                                                <TableCell className="text-right space-x-2 flex justify-end">
-                                                    <Link
-                                                        href={route('reparto.modulacion.index', { fecha: plan.fecha, readOnly: 'true' })}
-                                                    >
-                                                        <Button size="sm" variant="outline" className="h-8 px-2 text-xs">
-                                                            <Eye className="h-3.5 w-3.5 mr-1" />
-                                                            Ver
-                                                        </Button>
+                                                    ))
+                                                )}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex justify-end gap-2">
+                                                <Button size="sm" variant="outline" asChild>
+                                                    <Link href={route('reparto.modulacion.index', { fecha: plan.fecha, readOnly: 'true' })}>
+                                                        <Eye className="size-3.5" />
+                                                        Ver
                                                     </Link>
-                                                    <Button
-                                                        size="sm"
-                                                        variant="ghost"
-                                                        onClick={() => handleDeleteModulacion(plan.id, plan.fecha)}
-                                                        className="h-8 px-2 text-xs text-red-500 hover:text-red-700 hover:bg-red-50"
-                                                    >
-                                                        <Trash2 className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </div>
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    onClick={() => handleDeleteModulacion(plan.id, plan.fecha)}
+                                                    className="text-destructive hover:text-destructive"
+                                                    aria-label="Eliminar planeación"
+                                                >
+                                                    <Trash2 className="size-3.5" />
+                                                </Button>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
 
-                        {/* Paginación */}
-                        {planeaciones.last_page > 1 && (
-                            <div className="flex items-center justify-between pt-4 border-t mt-4">
-                                <p className="text-sm text-muted-foreground">
-                                    Página {planeaciones.current_page} de {planeaciones.last_page}
-                                </p>
-                                <div className="flex gap-1 flex-wrap">
-                                    {planeaciones.links.map((link, i) => (
-                                        <Button
-                                            key={i}
-                                            size="sm"
-                                            variant={link.active ? 'default' : 'outline'}
-                                            disabled={!link.url}
-                                            onClick={() => link.url && router.get(link.url, {}, { preserveScroll: true })}
-                                            className="h-8 min-w-[2rem] px-2 text-xs"
-                                            style={link.active ? { backgroundColor: ACCENT, color: '#fff', borderColor: ACCENT } : undefined}
-                                            dangerouslySetInnerHTML={{ __html: link.label }}
-                                        />
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
+                {planeaciones.last_page > 1 && (
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-sm text-muted-foreground">
+                            Página {planeaciones.current_page} de {planeaciones.last_page}
+                        </p>
+                        <div className="flex flex-wrap gap-1">
+                            {planeaciones.links.map((link, i) => (
+                                <Button
+                                    key={i}
+                                    size="sm"
+                                    variant={link.active ? 'default' : 'outline'}
+                                    disabled={!link.url}
+                                    onClick={() => link.url && router.get(link.url, {}, { preserveScroll: true })}
+                                    dangerouslySetInnerHTML={{ __html: link.label }}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
         </AppLayout>
     );
