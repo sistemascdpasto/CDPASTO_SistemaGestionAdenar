@@ -451,8 +451,8 @@ class PlanPremiacionController extends Controller
             $valsRechazos = $getMetricVals($rechazosPorDocumento, $rechazosPorNombre);
             if (!empty($valsRechazos)) {
                 $promedioRechazosRaw = round(array_sum($valsRechazos) / count($valsRechazos), 1);
-                // >= 2.3% → rechazos altos → 0%, < 2.3% → 100%
-                $porcentajeRechazos = $promedioRechazosRaw >= 2.3 ? 0.0 : 100.0;
+                // <= 2.3% → rechazos bajos → 100%, > 2.3% → 0%
+                $porcentajeRechazos = $promedioRechazosRaw > 2.3 ? 0.0 : 100.0;
                 $porcentajeRechazosLabel = "{$porcentajeRechazos}%";
             } else {
                 $promedioRechazosRaw = null;
@@ -994,7 +994,7 @@ class PlanPremiacionController extends Controller
             // Reparto
             $vRec  = $getRechazos($colab);
             $pRecRaw = !empty($vRec) ? round(array_sum($vRec)/count($vRec),1) : null;
-            $pRec  = $pRecRaw !== null ? ($pRecRaw >= 2.3 ? 0.0 : 100.0) : null;
+            $pRec  = $pRecRaw !== null ? ($pRecRaw > 2.3 ? 0.0 : 100.0) : null;
 
             $vSac  = $getVals($sacPorColId, $sacPorResp)($colab);
             $pSac  = !empty($vSac) ? round(array_sum($vSac)/count($vSac),1) : 100.0;
@@ -1227,7 +1227,7 @@ class PlanPremiacionController extends Controller
             'ausentismo'     => ['valor' => $porcentajeAusentismo, 'label' => $porcentajeAusentismo !== null ? "{$porcentajeAusentismo}%" : 'N/A', 'pilar' => 'Gente', 'peso' => 5, 'emoji' => '📅', 'titulo' => 'Ausentismo', 'meta_desc' => 'Sin incapacidad = 100%'],
             'marcaciones'    => ['valor' => $tieneMalasMarcaciones ? 0.0 : 100.0, 'label' => $tieneMalasMarcaciones ? '0%' : '100%', 'pilar' => 'Gente', 'peso' => 5, 'emoji' => '🕐', 'titulo' => 'Malas Marcaciones', 'meta_desc' => 'Sin corrección = 100%'],
             // REPARTO
-            'rechazos'       => ['valor' => $evento?->rechazos !== null ? (float)$evento->rechazos >= 2.3 ? 0.0 : 100.0 : null, 'label' => $evento?->rechazos !== null ? ((float)$evento->rechazos >= 2.3 ? '0%' : '100%') : 'N/A', 'pilar' => 'Reparto', 'peso' => 11, 'emoji' => '🔄', 'titulo' => 'Rechazos', 'meta_desc' => '< 2.3% rechazos = 100%'],
+            'rechazos'       => ['valor' => $evento?->rechazos !== null ? (float)$evento->rechazos > 2.3 ? 0.0 : 100.0 : null, 'label' => $evento?->rechazos !== null ? ((float)$evento->rechazos > 2.3 ? '0%' : '100%') : 'N/A', 'pilar' => 'Reparto', 'peso' => 11, 'emoji' => '🔄', 'titulo' => 'Rechazos', 'meta_desc' => '≤ 2.3% rechazos = 100%'],
             'sac'            => ['valor' => $casosSac === 0 ? 100.0 : 0.0, 'label' => $casosSac === 0 ? '100%' : '0%', 'pilar' => 'Reparto', 'peso' => 8, 'emoji' => '🎧', 'titulo' => 'SAC', 'meta_desc' => 'Sin casos = 100%'],
             'adherencia'     => ['valor' => $evento?->adherencia_tiempo !== null ? ((float)$evento->adherencia_tiempo >= 83 ? 100.0 : 0.0) : null, 'label' => $evento?->adherencia_tiempo !== null ? ((float)$evento->adherencia_tiempo >= 83 ? '100%' : '0%') : 'N/A', 'pilar' => 'Reparto', 'peso' => 8, 'emoji' => '⏰', 'titulo' => 'Adherencia Tiempo', 'meta_desc' => '≥ 83% = 100%'],
             'rmd'            => ['valor' => $evento?->rmd !== null ? ((float)$evento->rmd >= 4 ? 100.0 : 0.0) : null, 'label' => $evento?->rmd !== null ? ((float)$evento->rmd >= 4 ? '100%' : '0%') : 'N/A', 'pilar' => 'Reparto', 'peso' => 8, 'emoji' => '🏆', 'titulo' => 'RMD', 'meta_desc' => 'Promedio ≥ 4 = 100%'],
