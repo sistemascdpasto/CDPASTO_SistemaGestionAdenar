@@ -3,12 +3,10 @@ import { IconActionButton } from '@/components/icon-action-button';
 import { SafeImage } from '@/components/safe-image';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import AppLayout from '@/layouts/app-layout';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { calcularTiempoTrabajado } from '@/pages/seguridad/colaboradores/colaborador-form-fields';
@@ -16,7 +14,7 @@ import { ImportarColaboradoresDialog } from '@/pages/gente/colaboradores/importa
 import { type WizardCatalogos } from '@/pages/gente/colaboradores/wizard/catalogos';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { ArrowRight, AlertTriangle, Briefcase, Eye, FileWarning, Pencil, Plus, Search, Trash2, Upload, Users, UserCheck, UserX } from 'lucide-react';
+import { ArrowRight, AlertTriangle, Briefcase, Eye, FileWarning, Pencil, Plus, Search, Upload, Users, UserCheck, UserX } from 'lucide-react';
 import { FormEventHandler, useEffect, useRef, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -142,10 +140,6 @@ export default function ColaboradoresIndex({
 
     const toggleBorradores = () => {
         applyFilters({ registro: filters.registro === 'borrador' ? '' : 'borrador' });
-    };
-
-    const destroyColaborador = (colaborador: ColaboradorRow) => {
-        router.delete(route('gente.colaboradores.destroy', colaborador.id), { preserveScroll: true });
     };
 
     const getInitials = (colaborador: ColaboradorRow) => {
@@ -554,44 +548,6 @@ export default function ColaboradoresIndex({
                                                             label="Editar"
                                                             href={route('gente.colaboradores.edit', colaborador.id)}
                                                         />
-                                                    )}
-                                                    {canManageColaboradores && (
-                                                        <Dialog>
-                                                            <TooltipProvider delayDuration={200}>
-                                                                <Tooltip>
-                                                                    <TooltipTrigger asChild>
-                                                                        <DialogTrigger asChild>
-                                                                            <Button
-                                                                                variant="ghost"
-                                                                                size="icon"
-                                                                                className="text-destructive hover:text-destructive"
-                                                                                aria-label="Eliminar"
-                                                                            >
-                                                                                <Trash2 className="size-4" />
-                                                                            </Button>
-                                                                        </DialogTrigger>
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent>Eliminar</TooltipContent>
-                                                                </Tooltip>
-                                                            </TooltipProvider>
-                                                            <DialogContent>
-                                                                <DialogTitle>
-                                                                    ¿Eliminar a {colaborador.nombres} {colaborador.apellidos}?
-                                                                </DialogTitle>
-                                                                <DialogDescription>
-                                                                    Esta acción elimina al colaborador de forma lógica; su historial de pruebas
-                                                                    se conserva.
-                                                                </DialogDescription>
-                                                                <DialogFooter>
-                                                                    <DialogClose asChild>
-                                                                        <Button variant="secondary">Cancelar</Button>
-                                                                    </DialogClose>
-                                                                    <Button variant="destructive" onClick={() => destroyColaborador(colaborador)}>
-                                                                        Eliminar
-                                                                    </Button>
-                                                                </DialogFooter>
-                                                            </DialogContent>
-                                                        </Dialog>
                                                     )}
                                                 </div>
                                             )}

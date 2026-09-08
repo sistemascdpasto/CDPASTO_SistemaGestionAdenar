@@ -62,6 +62,10 @@ class PortalAccessTest extends TestCase
                 ->component('dashboard/colaborador')
                 ->has('colaborador')
                 ->has('indiceRiesgo')
+                ->has('ultimasCondiciones')
+                ->where('aci.meta', 32)
+                ->has('capacitaciones.pendientes')
+                ->has('pruebasMes')
             );
     }
 }

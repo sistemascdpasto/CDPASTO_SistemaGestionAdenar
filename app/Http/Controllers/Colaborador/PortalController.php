@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Colaborador;
 
 use App\Http\Controllers\Controller;
+use App\Models\Capacitaciones\CapacitacionMaterial;
+use App\Models\Capacitaciones\CapacitacionRevision;
 use App\Models\Reparto\EventosTripulacion;
 use App\Models\Reparto\ModulacionItem;
 use App\Models\Seguridad\Aci;
@@ -25,6 +27,8 @@ class PortalController extends Controller
             return Inertia::render('colaborador/sin-vincular');
         }
 
+        $inicioMes = now()->startOfMonth();
+
         return Inertia::render('dashboard/colaborador', [
             'colaborador' => [
                 'id' => $colaborador->id,
@@ -45,9 +49,50 @@ class PortalController extends Controller
             'ultimasCondiciones' => $colaborador->condicionesSalud()
                 ->latest('fecha_hora')
                 ->limit(5)
-                ->get(),
+                ->get(['id', 'momento', 'estado', 'observacion', 'fecha_hora']),
             'alertasPendientes' => $colaborador->alertas()->where('atendida', false)->count(),
+            'pruebasMes' => $colaborador->pruebasAlcoholemia()
+                ->where('estado', 'realizada')
+                ->where('fecha_hora', '>=', $inicioMes)
+                ->count(),
+            'aci' => [
+                'realizadas' => Aci::query()
+                    ->where('colaborador_id', $colaborador->id)
+                    ->whereMonth('fecha_incidente', now()->month)
+                    ->whereYear('fecha_incidente', now()->year)
+                    ->count(),
+                'meta' => 32,
+            ],
+            'capacitaciones' => $this->resumenCapacitaciones($request->user()->id),
         ]);
+    }
+
+    /**
+     * Materiales de capacitación publicados y visibles para colaboradores, y
+     * cuántos ha revisado el usuario. Alimenta la tarjeta del portal.
+     *
+     * @return array{total: int, revisadas: int, pendientes: int, progreso: int}
+     */
+    private function resumenCapacitaciones(int $userId): array
+    {
+        $visibles = function ($q) {
+            return $q->where('estado', 'publicado')
+                ->whereHas('carpeta', fn ($c) => $c->where('visible_colaborador', true));
+        };
+
+        $publicados = $visibles(CapacitacionMaterial::query())->count();
+
+        $revisadas = min($publicados, CapacitacionRevision::query()
+            ->where('user_id', $userId)
+            ->whereHas('material', $visibles)
+            ->count());
+
+        return [
+            'total' => $publicados,
+            'revisadas' => $revisadas,
+            'pendientes' => max(0, $publicados - $revisadas),
+            'progreso' => $publicados > 0 ? (int) round(($revisadas / $publicados) * 100) : 0,
+        ];
     }
 
     public function perfil(Request $request): Response
