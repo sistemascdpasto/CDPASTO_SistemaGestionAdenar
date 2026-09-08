@@ -173,45 +173,45 @@ function formatValor(campo: ColKey, val: unknown): string {
 }
 
 function pctColor(_val: number | null): string {
-    return 'text-gray-700 dark:text-gray-300';
+    return 'text-foreground';
 }
 
 /** Renderiza el contenido interior de una celda según el tipo de campo */
 function CeldaContenido({ campo, val }: { campo: ColKey; val: unknown }) {
     if (campo === 'placa') {
-        return <span className="font-mono font-bold text-blue-600">{val ? String(val) : '—'}</span>;
+        return <span className="font-mono font-bold text-foreground">{val ? String(val) : '—'}</span>;
     }
     if (campo === 'nombre') {
         return val
-            ? <span className="text-gray-700 dark:text-gray-300">{String(val)}</span>
-            : <span className="text-gray-400">—</span>;
+            ? <span className="text-foreground">{String(val)}</span>
+            : <span className="text-muted-foreground">—</span>;
     }
     if (campo === 'cargo') {
         return val
-            ? <span className="text-gray-700 dark:text-gray-300">{String(val)}</span>
-            : <span className="text-gray-400">—</span>;
+            ? <span className="text-foreground">{String(val)}</span>
+            : <span className="text-muted-foreground">—</span>;
     }
     if (campo === 'doc_transporte') {
         return val
-            ? <span className="font-mono text-gray-700 dark:text-gray-300">{String(val)}</span>
-            : <span className="text-gray-400 italic text-xs">—</span>;
+            ? <span className="font-mono text-foreground">{String(val)}</span>
+            : <span className="text-muted-foreground italic text-xs">—</span>;
     }
     if (campo === 'total_eventos') {
         return (val !== null && val !== undefined)
-            ? <span className="text-gray-700 dark:text-gray-300">{String(val)}</span>
-            : <span className="text-gray-300 text-xs">—</span>;
+            ? <span className="text-foreground">{String(val)}</span>
+            : <span className="text-muted-foreground text-xs">—</span>;
     }
     if (campo === 'excesos_tiempo_ruta') {
         return (val !== null && val !== undefined && val !== '')
-            ? <span className="font-mono text-gray-700 dark:text-gray-300">{formatMinutosAHora12(val)}</span>
-            : <span className="text-gray-300 text-xs">—</span>;
+            ? <span className="font-mono text-foreground">{formatMinutosAHora12(val)}</span>
+            : <span className="text-muted-foreground text-xs">—</span>;
     }
     if (PCT_FIELDS.has(campo)) {
         return (val !== null && val !== undefined)
-            ? <span className="text-gray-700 dark:text-gray-300">{formatValor(campo, val)}</span>
-            : <span className="text-gray-300 text-xs">—</span>;
+            ? <span className="text-foreground">{formatValor(campo, val)}</span>
+            : <span className="text-muted-foreground text-xs">—</span>;
     }
-    return <span className="text-gray-700 dark:text-gray-300">{formatValor(campo, val)}</span>;
+    return <span className="text-foreground">{formatValor(campo, val)}</span>;
 }
 
 type Filters = {
@@ -239,16 +239,16 @@ function ImportModal({
 
     return (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-2 sm:p-4">
-            <div className="bg-white dark:bg-gray-900 rounded-t-2xl sm:rounded-xl shadow-xl w-full max-w-lg max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
+            <div className="bg-card rounded-t-xl sm:rounded-xl shadow-md w-full max-w-lg max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
                 {/* Cabecera */}
-                <div className="flex items-center justify-between border-b px-4 sm:px-6 py-3 sm:py-4 sticky top-0 bg-white dark:bg-gray-900 z-10">
-                    <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2 text-gray-900 dark:text-gray-100">
-                        <FileSpreadsheet className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 shrink-0" />
+                <div className="flex items-center justify-between border-b px-4 sm:px-6 py-3 sm:py-4 sticky top-0 bg-card z-10">
+                    <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2 text-foreground">
+                        <FileSpreadsheet className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground shrink-0" />
                         <span className="truncate">Importar Eventos</span>
                     </h2>
                     <button
                         onClick={onClose}
-                        className="text-gray-400 hover:text-gray-600 transition-colors p-1 -mr-1 shrink-0"
+                        className="text-muted-foreground hover:text-muted-foreground transition-colors p-1 -mr-1 shrink-0"
                     >
                         <X className="h-5 w-5 sm:h-5 sm:w-5" />
                     </button>
@@ -256,9 +256,9 @@ function ImportModal({
 
                 {/* Cuerpo */}
                 <div className="px-4 sm:px-6 py-4 sm:py-5 space-y-4 sm:space-y-5">
-                    <div className="rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-3 sm:p-4 text-xs sm:text-sm text-blue-800 dark:text-blue-300 space-y-1 sm:space-y-1">
+                    <div className="rounded-lg border border-sidebar-border/70 bg-muted/50 p-3 sm:p-4 text-xs text-muted-foreground dark:border-sidebar-border space-y-1 sm:space-y-1">
                         <p className="font-semibold">Columnas esperadas:</p>
-                        <p className="text-[10px] sm:text-xs leading-relaxed text-blue-700 dark:text-blue-400 break-words">
+                        <p className="text-[10px] sm:text-xs leading-relaxed text-muted-foreground break-words">
                             AÑO · MES · FECHA · PLACA · TRANSPORTE · CEDULA · CARGO ·
                             # DE EXCESOS · # DE ALERTAS VELOCIDAD ·
                             ADHERENCIA CL PRE OP. · ADHERENCIA CL POST OP. ·
@@ -268,7 +268,7 @@ function ImportModal({
                         <button
                             type="button"
                             onClick={onDownloadTemplate}
-                            className="mt-1 inline-flex items-center gap-1 text-[11px] sm:text-xs font-semibold text-blue-700 dark:text-blue-400 underline underline-offset-2 hover:text-blue-900"
+                            className="mt-1 inline-flex items-center gap-1 text-[11px] sm:text-xs font-semibold text-muted-foreground underline underline-offset-2 hover:text-foreground"
                         >
                             <Download className="h-3 w-3" />
                             Descargar plantilla
@@ -276,23 +276,23 @@ function ImportModal({
                     </div>
 
                     <div className="space-y-2">
-                        <Label className="text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">
+                        <Label className="text-xs sm:text-sm font-semibold text-foreground">
                             Archivo Excel (.xlsx, .xls) o CSV
                         </Label>
                         <div
-                            className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 p-4 sm:p-8 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-colors"
+                            className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-input bg-muted p-4 sm:p-8 text-center cursor-pointer hover:border-foreground/30 hover:bg-muted transition-colors"
                             onClick={() => fileInputRef.current?.click()}
                         >
-                            <Upload className="h-7 w-7 sm:h-8 sm:w-8 text-gray-400 mb-1.5 sm:mb-2" />
+                            <Upload className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground mb-1.5 sm:mb-2" />
                             {selectedFile ? (
                                 <div className="space-y-0.5 sm:space-y-1 w-full min-w-0">
-                                    <p className="text-xs sm:text-sm font-semibold text-blue-700 dark:text-blue-400 truncate">{selectedFile.name}</p>
-                                    <p className="text-[10px] sm:text-xs text-gray-500">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                                    <p className="text-xs sm:text-sm font-semibold text-muted-foreground truncate">{selectedFile.name}</p>
+                                    <p className="text-[10px] sm:text-xs text-muted-foreground">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
                                 </div>
                             ) : (
                                 <div className="space-y-0.5 sm:space-y-1">
-                                    <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Clic para seleccionar archivo</p>
-                                    <p className="text-[10px] sm:text-xs text-gray-400">xlsx, xls, csv · máx. 20 MB</p>
+                                    <p className="text-xs sm:text-sm text-muted-foreground">Clic para seleccionar archivo</p>
+                                    <p className="text-[10px] sm:text-xs text-muted-foreground">xlsx, xls, csv · máx. 20 MB</p>
                                 </div>
                             )}
                             <input
@@ -307,14 +307,14 @@ function ImportModal({
                 </div>
 
                 {/* Pie */}
-                <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 border-t px-4 sm:px-6 py-3 sm:py-4 sticky bottom-0 bg-white dark:bg-gray-900">
+                <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 border-t px-4 sm:px-6 py-3 sm:py-4 sticky bottom-0 bg-card">
                     <Button variant="outline" onClick={onClose} disabled={isUploading} className="w-full sm:w-auto order-2 sm:order-1 h-9 sm:h-10 text-xs sm:text-sm">
                         Cancelar
                     </Button>
                     <Button
                         onClick={onImport}
                         disabled={!selectedFile || isUploading}
-                        className="bg-blue-600 hover:bg-blue-700 text-white font-semibold min-w-full sm:min-w-[130px] order-1 sm:order-2 h-9 sm:h-10 text-xs sm:text-sm"
+                        className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold min-w-full sm:min-w-[130px] order-1 sm:order-2 h-9 sm:h-10 text-xs sm:text-sm"
                     >
                         {isUploading
                             ? <><RefreshCw className="h-4 w-4 mr-2 animate-spin shrink-0" />Procesando...</>
@@ -478,18 +478,18 @@ export default function EventosTripulacionIndex({ eventos, filters, flash, error
                 {errors?.archivo && (
                     <div className="flex items-start gap-2 sm:gap-3 rounded-lg border border-red-200 bg-red-50 p-2 sm:p-3 text-red-800">
                         <XCircle className="h-4 w-4 sm:h-5 sm:w-5 shrink-0 mt-0.5 text-red-500" />
-                        <p className="text-xs sm:text-sm font-medium break-words">❌ {errors.archivo}</p>
+                        <p className="text-xs sm:text-sm font-medium break-words">{errors.archivo}</p>
                     </div>
                 )}
 
                 {/* Encabezado */}
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 sm:gap-4 border-b pb-3 sm:pb-4">
                     <div>
-                        <h1 className="text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                            <Users className="h-5 w-5 sm:h-6 sm:w-6 md:h-7 md:w-7 text-blue-600" />
+                        <h1 className="text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
+                            <Users className="h-5 w-5 sm:h-6 sm:w-6 md:h-7 md:w-7 text-muted-foreground" />
                             Eventos de Tripulación
                         </h1>
-                        <p className="text-xs sm:text-sm text-gray-500 mt-1">
+                        <p className="text-xs sm:text-sm text-muted-foreground mt-1">
                             {eventos.total} registro{eventos.total !== 1 ? 's' : ''} de tripulación
                         </p>
                     </div>
@@ -500,30 +500,30 @@ export default function EventosTripulacionIndex({ eventos, filters, flash, error
                             <Button
                                 variant="outline"
                                 onClick={() => setShowColPicker((v) => !v)}
-                                className="text-gray-600 border-gray-300 w-full sm:w-auto text-xs sm:text-sm"
+                                className="text-muted-foreground border-input w-full sm:w-auto text-xs sm:text-sm"
                             >
                                 Columnas ({columnasMostradas.length}/{COLUMNAS.length})
                             </Button>
                             {showColPicker && (
                                 <>
                                     <div className="fixed inset-0 z-40" onClick={() => setShowColPicker(false)} />
-                                    <div className="absolute right-0 left-0 sm:left-auto sm:w-72 top-full mt-1 z-50 bg-white dark:bg-gray-900 border rounded-lg shadow-xl p-3 w-full sm:w-72 max-h-[60vh] sm:max-h-[70vh] overflow-y-auto">
-                                        <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Mostrar / ocultar columnas</p>
+                                    <div className="absolute right-0 left-0 sm:left-auto sm:w-72 top-full mt-1 z-50 bg-card border rounded-lg shadow-md p-3 w-full sm:w-72 max-h-[60vh] sm:max-h-[70vh] overflow-y-auto">
+                                        <p className="text-xs font-semibold text-muted-foreground mb-2">Mostrar / ocultar columnas</p>
                                         <div className="space-y-1">
                                             {COLUMNAS.map(([k, label, fixed]) => (
                                                 <label
                                                     key={k}
-                                                    className={`flex items-center gap-2 text-xs sm:text-sm cursor-pointer rounded px-1 py-0.5 hover:bg-gray-50 dark:hover:bg-gray-800 ${fixed ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                    className={`flex items-center gap-2 text-xs sm:text-sm cursor-pointer rounded px-1 py-0.5 hover:bg-muted/60 ${fixed ? 'opacity-50 cursor-not-allowed' : ''}`}
                                                 >
                                                     <input
                                                         type="checkbox"
                                                         checked={colsVisibles.has(k)}
                                                         onChange={() => toggleCol(k)}
                                                         disabled={fixed}
-                                                        className="accent-blue-600 h-3.5 w-3.5"
+                                                        className="h-3.5 w-3.5"
                                                     />
                                                     <span className="truncate">{label}</span>
-                                                    {fixed && <span className="text-[10px] sm:text-xs text-gray-400 ml-auto shrink-0">fija</span>}
+                                                    {fixed && <span className="text-[10px] sm:text-xs text-muted-foreground ml-auto shrink-0">fija</span>}
                                                 </label>
                                             ))}
                                         </div>
@@ -544,7 +544,7 @@ export default function EventosTripulacionIndex({ eventos, filters, flash, error
 
                         <Button
                             onClick={() => setShowImportModal(true)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm w-full sm:w-auto"
+                            className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold text-xs sm:text-sm w-full sm:w-auto"
                         >
                             <Upload className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                             <span className="hidden sm:inline">Subir Excel</span>
@@ -567,12 +567,12 @@ export default function EventosTripulacionIndex({ eventos, filters, flash, error
                 </div>
 
                 {/* Filtros */}
-                <Card className="shadow-sm border bg-white dark:bg-gray-900">
+                <Card className="shadow-sm border bg-card">
                     <CardContent className="pt-3 sm:pt-4 p-3 sm:p-4 md:p-6">
                         <div className="space-y-2 sm:space-y-3">
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
                                 <div className="grid gap-1">
-                                    <Label className="text-[10px] sm:text-xs font-semibold uppercase text-gray-600">
+                                    <Label className="text-[10px] sm:text-xs font-semibold text-muted-foreground">
                                         <MapPin className="h-2.5 w-2.5 sm:h-3 sm:w-3 inline mr-0.5 sm:mr-1" />Placa
                                     </Label>
                                     <Input
@@ -583,7 +583,7 @@ export default function EventosTripulacionIndex({ eventos, filters, flash, error
                                     />
                                 </div>
                                 <div className="grid gap-1">
-                                    <Label className="text-[10px] sm:text-xs font-semibold uppercase text-gray-600">
+                                    <Label className="text-[10px] sm:text-xs font-semibold text-muted-foreground">
                                         <Briefcase className="h-2.5 w-2.5 sm:h-3 sm:w-3 inline mr-0.5 sm:mr-1" />Cédula
                                     </Label>
                                     <Input
@@ -594,7 +594,7 @@ export default function EventosTripulacionIndex({ eventos, filters, flash, error
                                     />
                                 </div>
                                 <div className="grid gap-1">
-                                    <Label className="text-[10px] sm:text-xs font-semibold uppercase text-gray-600">
+                                    <Label className="text-[10px] sm:text-xs font-semibold text-muted-foreground">
                                         <Users className="h-2.5 w-2.5 sm:h-3 sm:w-3 inline mr-0.5 sm:mr-1" />Nombre
                                     </Label>
                                     <Input
@@ -605,7 +605,7 @@ export default function EventosTripulacionIndex({ eventos, filters, flash, error
                                     />
                                 </div>
                                 <div className="grid gap-1">
-                                    <Label className="text-[10px] sm:text-xs font-semibold uppercase text-gray-600">
+                                    <Label className="text-[10px] sm:text-xs font-semibold text-muted-foreground">
                                         <FileSpreadsheet className="h-2.5 w-2.5 sm:h-3 sm:w-3 inline mr-0.5 sm:mr-1" />Doc.
                                     </Label>
                                     <Input
@@ -618,13 +618,13 @@ export default function EventosTripulacionIndex({ eventos, filters, flash, error
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
                                 <div className="grid gap-1">
-                                    <Label className="text-[10px] sm:text-xs font-semibold uppercase text-gray-600">
+                                    <Label className="text-[10px] sm:text-xs font-semibold text-muted-foreground">
                                         <Calendar className="h-2.5 w-2.5 sm:h-3 sm:w-3 inline mr-0.5 sm:mr-1" />F. Desde
                                     </Label>
                                     <Input type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} className="text-xs sm:text-sm h-9 sm:h-10" />
                                 </div>
                                 <div className="grid gap-1">
-                                    <Label className="text-[10px] sm:text-xs font-semibold uppercase text-gray-600">
+                                    <Label className="text-[10px] sm:text-xs font-semibold text-muted-foreground">
                                         <Calendar className="h-2.5 w-2.5 sm:h-3 sm:w-3 inline mr-0.5 sm:mr-1" />F. Hasta
                                     </Label>
                                     <Input type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} className="text-xs sm:text-sm h-9 sm:h-10" />
@@ -644,10 +644,10 @@ export default function EventosTripulacionIndex({ eventos, filters, flash, error
                 </Card>
 
                 {/* Tabla */}
-                <Card className="shadow-sm border-t-4 border-t-blue-600">
+                <Card className="border-sidebar-border/70 dark:border-sidebar-border">
                     <CardHeader className="pb-2 sm:pb-3 border-b p-3 sm:p-4 md:py-4 md:px-6">
                         <CardTitle className="text-sm sm:text-base font-semibold flex flex-wrap items-center gap-2">
-                            <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 shrink-0" />
+                            <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground shrink-0" />
                             <span className="truncate">Registros de eventos</span>
                             {eventos.from !== null && (
                                 <Badge variant="secondary" className="ml-0 sm:ml-2 text-[10px] sm:text-xs whitespace-nowrap">
@@ -659,7 +659,7 @@ export default function EventosTripulacionIndex({ eventos, filters, flash, error
                     <CardContent className="pt-0 p-0">
                         <div className="overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0">
                             <Table className="text-[10px] sm:text-xs whitespace-nowrap w-full">
-                                <TableHeader className="bg-gray-50 dark:bg-gray-800/50 sticky top-0">
+                                <TableHeader className="bg-muted/50 sticky top-0">
                                     <TableRow>
                                         {columnasMostradas.map(([k, label]) => (
                                             <TableHead
@@ -676,10 +676,10 @@ export default function EventosTripulacionIndex({ eventos, filters, flash, error
                                         <TableRow>
                                             <TableCell
                                                 colSpan={columnasMostradas.length}
-                                                className="text-center py-8 sm:py-12 text-gray-500"
+                                                className="text-center py-8 sm:py-12 text-muted-foreground"
                                             >
                                                 <div className="flex flex-col items-center gap-2 px-2">
-                                                    <FileSpreadsheet className="h-8 w-8 sm:h-10 sm:w-10 text-gray-300" />
+                                                    <FileSpreadsheet className="h-8 w-8 sm:h-10 sm:w-10 text-muted-foreground" />
                                                     <span className="text-xs sm:text-sm">
                                                         {hasActiveFilters
                                                             ? 'No se encontraron registros con ese criterio.'
@@ -692,7 +692,7 @@ export default function EventosTripulacionIndex({ eventos, filters, flash, error
                                         eventos.data.map((evento) => (
                                             <TableRow
                                                 key={evento.id}
-                                                className="hover:bg-gray-50/80 dark:hover:bg-gray-800/40 border-b"
+                                                className="hover:bg-muted/60/80 dark:hover:bg-muted/40 border-b"
                                             >
                                                 {columnasMostradas.map(([k]) => (
                                                     <TableCell
@@ -716,7 +716,7 @@ export default function EventosTripulacionIndex({ eventos, filters, flash, error
                         {/* Paginación */}
                         {eventos.last_page > 1 && (
                             <div className="flex flex-col sm:flex-row items-center sm:justify-between gap-2 px-2 sm:px-4 py-2 sm:py-3 border-t">
-                                <p className="text-[11px] sm:text-sm text-gray-500 text-center sm:text-left order-2 sm:order-1">
+                                <p className="text-[11px] sm:text-sm text-muted-foreground text-center sm:text-left order-2 sm:order-1">
                                     Pág. {eventos.current_page} de {eventos.last_page}
                                 </p>
                                 <div className="flex gap-1 flex-wrap justify-center order-1 sm:order-2 w-full sm:w-auto">
@@ -727,7 +727,7 @@ export default function EventosTripulacionIndex({ eventos, filters, flash, error
                                             variant={link.active ? 'default' : 'outline'}
                                             disabled={!link.url}
                                             onClick={() => link.url && router.get(link.url, {}, { preserveScroll: true })}
-                                            className={`h-7 sm:h-8 min-w-[1.75rem] sm:min-w-[2rem] px-1.5 sm:px-2 text-[10px] sm:text-xs flex-1 sm:flex-none ${link.active ? 'bg-blue-600 hover:bg-blue-700 text-white border-blue-600' : ''}`}
+                                            className={`h-7 sm:h-8 min-w-[1.75rem] sm:min-w-[2rem] px-1.5 sm:px-2 text-[10px] sm:text-xs flex-1 sm:flex-none ${link.active ? 'bg-primary text-primary-foreground border-primary' : ''}`}
                                             dangerouslySetInnerHTML={{ __html: link.label }}
                                         />
                                     ))}

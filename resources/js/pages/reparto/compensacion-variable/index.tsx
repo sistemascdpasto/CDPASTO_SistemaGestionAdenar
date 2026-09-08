@@ -184,7 +184,7 @@ function formatCurrency(amount: number): string {
     }).format(amount);
 }
 
-// 📈 COMPONENTE GRÁFICO DE LÍNEAS PARA HABILITADORES, AUSENCIAS JUSTIFICADAS/INJUSTIFICADAS Y TRI/FATALIDADES
+// COMPONENTE GRÁFICO DE LÍNEAS PARA HABILITADORES, AUSENCIAS JUSTIFICADAS/INJUSTIFICADAS Y TRI/FATALIDADES
 export function GraficoHabilitadoresYAusenciasPorDia({
     data = {
         habilitadores: [],
@@ -288,7 +288,7 @@ export function GraficoHabilitadoresYAusenciasPorDia({
     );
 }
 
-// 📊 COMPONENTE RECHAZOS DE MERCADO POR DÍA (BAR CHART COMPACTO CON RESULTADO PEQUEÑO INTEGRADO)
+// COMPONENTE RECHAZOS DE MERCADO POR DÍA (BAR CHART COMPACTO CON RESULTADO PEQUEÑO INTEGRADO)
 export function GraficoRechazosPorDia({
     rechazosPorDia = [],
     diasDisponibles = Array.from({ length: 30 }, (_, i) => i + 1),
@@ -388,7 +388,7 @@ export function GraficoRechazosPorDia({
     );
 }
 
-// 📊 COMPONENTE ADHERENCIA GP POR DÍA (BAR CHART COMPACTO CON RESULTADO PEQUEÑO INTEGRADO)
+// COMPONENTE ADHERENCIA GP POR DÍA (BAR CHART COMPACTO CON RESULTADO PEQUEÑO INTEGRADO)
 export function GraficoAdherenciaPorDia({
     adherenciaPorDia = [],
     diasDisponibles = Array.from({ length: 30 }, (_, i) => i + 1),
@@ -473,7 +473,7 @@ export function GraficoAdherenciaPorDia({
     );
 }
 
-// 📊 COMPONENTE % RECHAZOS POR DÍA (BAR CHART COMPACTO CON RESULTADO PEQUEÑO INTEGRADO)
+// COMPONENTE % RECHAZOS POR DÍA (BAR CHART COMPACTO CON RESULTADO PEQUEÑO INTEGRADO)
 export function GraficoPorcentajeRechazosPorDia({
     porcentajeRechazosPorDia = [],
     diasDisponibles = Array.from({ length: 30 }, (_, i) => i + 1),
@@ -558,7 +558,7 @@ export function GraficoPorcentajeRechazosPorDia({
     );
 }
 
-// 📊 COMPONENTE RADAR CHART COMPACTO
+// COMPONENTE RADAR CHART COMPACTO
 export function RadarPagosMensuales({
     pagosActual = [],
     pagosAnterior = [],
@@ -876,7 +876,7 @@ function MultiSelectSearchable({
 
             {/* Checklist Dropdown Panel */}
             {open && (
-                <div className="absolute left-0 z-50 mt-1 max-h-60 w-full min-w-[180px] overflow-hidden rounded-md border bg-popover p-1.5 text-popover-foreground shadow-lg ring-1 ring-black/5 animate-in fade-in-0 zoom-in-95">
+                <div className="absolute left-0 z-50 mt-1 max-h-60 w-full min-w-[180px] overflow-hidden rounded-md border bg-popover p-1.5 text-popover-foreground shadow-md ring-1 ring-black/5 animate-in fade-in-0 zoom-in-95">
                     {/* Checkbox Quick Actions */}
                     <div className="flex items-center justify-between border-b px-2 py-1 text-[11px] text-muted-foreground">
                         <Button type="button" variant="ghost" size="sm" onClick={selectAllFiltered} className="h-6 px-1.5 text-[11px] font-medium">
@@ -1264,7 +1264,7 @@ export default function CompensacionVariableIndex({
                         style={{ backgroundImage: `linear-gradient(135deg, ${COLOR_SUCCESS}, #2c5719)` }}
                     >
                         <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-white/80">Total Pago Variable DT</span>
+                            <span className="text-[10px] font-bold text-white/80">Total Pago Variable DT</span>
                             <div className="rounded-full bg-white/20 p-1.5">
                                 <DollarSign className="size-4 text-white" />
                             </div>
@@ -1292,7 +1292,7 @@ export default function CompensacionVariableIndex({
                     />
                 </KpiCardGrid>
 
-                {/* 📊 SECCIÓN DE GRÁFICOS INTERACTIVOS (INCLUYE EL NUEVO GRÁFICO DE LÍNEAS PARA HABILITADORES Y AUSENCIAS) */}
+                {/* SECCIÓN DE GRÁFICOS INTERACTIVOS (INCLUYE EL NUEVO GRÁFICO DE LÍNEAS PARA HABILITADORES Y AUSENCIAS) */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 items-start">
                     <RadarPagosMensuales
                         pagosActual={radar_data?.pagos_actual}
@@ -1330,7 +1330,7 @@ export default function CompensacionVariableIndex({
                 {/* PANEL DE FILTROS: AUTOCOMPLETADO DIRECTO EN CUADRO & RANGO DE FECHAS AMIGABLE */}
                 <div className="rounded-lg border border-sidebar-border/70 bg-card p-3 shadow-2xs space-y-3 dark:border-sidebar-border">
                     <div className="flex items-center justify-between border-b pb-2">
-                        <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-foreground">
+                        <div className="flex items-center gap-1.5 text-[11px] font-bold text-foreground">
                             <Filter className="size-3.5 text-muted-foreground" />
                             <span>Filtros Múltiples (Escritura Directa y Checklist)</span>
                         </div>
@@ -1628,7 +1628,7 @@ export default function CompensacionVariableIndex({
 
                                 {/* Table of Monthly History Compacta */}
                                 <div className="space-y-1.5">
-                                    <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
+                                    <h4 className="text-[11px] font-bold text-muted-foreground flex items-center justify-between">
                                         <span>Histórico Mensual del Colaborador</span>
                                         {loadingDetailHistory && <LoaderCircle className="size-3 animate-spin text-muted-foreground" />}
                                     </h4>

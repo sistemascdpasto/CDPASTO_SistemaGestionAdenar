@@ -23,9 +23,11 @@ import {
     AlertTriangle,
     CalendarDays,
     Calendar,
+    Check,
     CheckCircle2,
     ChevronsUpDown,
     Clock,
+    Fingerprint,
     Download,
     Eye,
     Filter,
@@ -203,13 +205,13 @@ const LS_COLS = 'cvd_cols_v1';
 function KpiCard({ label, value, sub, icon: Icon, color, spark, sparkColor }:
     { label: string; value: string; sub?: string; icon: any; color: string; spark?: number[]; sparkColor?: string }) {
     return (
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4 flex flex-col justify-between gap-2">
+        <div className="bg-card rounded-xl border border-sidebar-border/70 dark:border-sidebar-border shadow-sm p-4 flex flex-col justify-between gap-2">
             <div className="flex items-start justify-between">
-                <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide leading-tight">{label}</p>
+                <p className="text-[11px] font-semibold text-muted-foreground leading-tight">{label}</p>
                 {Icon && <Icon className="h-4 w-4 shrink-0" style={{ color }} />}
             </div>
             <p className="text-2xl font-extrabold" style={{ color }}>{value}</p>
-            {sub && <p className="text-[10px] text-gray-400">{sub}</p>}
+            {sub && <p className="text-[10px] text-muted-foreground">{sub}</p>}
             {spark && spark.length > 1 && (
                 <div className="mt-1">
                     <Spark data={spark} color={sparkColor ?? color} h={28} w={90} />
@@ -228,7 +230,7 @@ function PersonBar({ persona, metaPct }: { persona: CompensacionDiariaRow; metaP
             <div className="min-w-0 flex-1">
                 <div className="flex items-baseline justify-between gap-1 mb-0.5">
                     <div className="min-w-0 flex-1">
-                        <span className="text-[11px] font-semibold text-gray-700 dark:text-gray-200 truncate block">
+                        <span className="text-[11px] font-semibold text-foreground truncate block">
                             {persona.nombre_completo || persona.cedula}
                         </span>
                         <div className="flex items-center gap-1.5 mt-0.5">
@@ -240,17 +242,17 @@ function PersonBar({ persona, metaPct }: { persona: CompensacionDiariaRow; metaP
                                 </span>
                             )}
                             {persona.cargo && (
-                                <span className="text-[9px] text-gray-400 truncate">{persona.cargo}</span>
+                                <span className="text-[9px] text-muted-foreground truncate">{persona.cargo}</span>
                             )}
                         </div>
                     </div>
                     <span className="text-[11px] font-bold shrink-0" style={{ color }}>{pct}%</span>
                 </div>
-                <div className="h-1.5 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden relative">
+                <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden relative">
                     <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(pct * 10, 100)}%`, background: color }} />
                     <div className="absolute top-0 bottom-0 w-px opacity-60" style={{ left: `${metaPct * 10}%`, background: COLOR_BLUE }} />
                 </div>
-                <p className="text-[9px] text-gray-400 mt-0.5">
+                <p className="text-[9px] text-muted-foreground mt-0.5">
                     Var: {formatCurrency(Number(persona.valor_var ?? 0))} · Perd: {formatCurrency(Number(persona.valor_perdido ?? 0))}
                 </p>
             </div>
@@ -274,24 +276,24 @@ function GraficoBarrasValorDiario({ data }: { data: TotalesPorDia }) {
 
     if ((data?.fechas || []).length === 0) {
         return (
-            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-3">
-                <h3 className="text-[11px] font-bold text-gray-600 mb-0.5 flex items-center gap-1.5">
+            <div className="bg-card rounded-xl border border-sidebar-border/70 dark:border-sidebar-border shadow-sm p-3">
+                <h3 className="text-[11px] font-bold text-muted-foreground mb-0.5 flex items-center gap-1.5">
                     <TrendingUp className="h-3.5 w-3.5 shrink-0" style={{ color: COLOR_SUCCESS }} />
                     Valor Variable vs Perdido
                 </h3>
-                <p className="text-[9px] text-gray-400 mb-2">Comparativa diaria</p>
-                <div className="h-36 flex items-center justify-center text-gray-300 text-xs">Sin datos</div>
+                <p className="text-[9px] text-muted-foreground mb-2">Comparativa diaria</p>
+                <div className="h-36 flex items-center justify-center text-muted-foreground text-xs">Sin datos</div>
             </div>
         );
     }
 
     return (
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-3">
-            <h3 className="text-[11px] font-bold text-gray-600 mb-0.5 flex items-center gap-1.5">
+        <div className="bg-card rounded-xl border border-sidebar-border/70 dark:border-sidebar-border shadow-sm p-3">
+            <h3 className="text-[11px] font-bold text-muted-foreground mb-0.5 flex items-center gap-1.5">
                 <TrendingUp className="h-3.5 w-3.5 shrink-0" style={{ color: COLOR_SUCCESS }} />
                 Valor Variable vs Perdido
             </h3>
-            <p className="text-[9px] text-gray-400 mb-2">Comparativa diaria</p>
+            <p className="text-[9px] text-muted-foreground mb-2">Comparativa diaria</p>
             <div style={{ height: 160 }}>
                 <Bar data={chartData} options={{
                     responsive: true, maintainAspectRatio: false,
@@ -324,24 +326,24 @@ function GraficoLineaRechazos({ data }: { data: TotalesPorDia }) {
 
     if ((data?.fechas || []).length === 0) {
         return (
-            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-3">
-                <h3 className="text-[11px] font-bold text-gray-600 mb-0.5 flex items-center gap-1.5">
+            <div className="bg-card rounded-xl border border-sidebar-border/70 dark:border-sidebar-border shadow-sm p-3">
+                <h3 className="text-[11px] font-bold text-muted-foreground mb-0.5 flex items-center gap-1.5">
                     <TrendingDown className="h-3.5 w-3.5 shrink-0" style={{ color: COLOR_WARNING }} />
                     Tendencia Rechazos
                 </h3>
-                <p className="text-[9px] text-gray-400 mb-2">Evolución diaria</p>
-                <div className="h-36 flex items-center justify-center text-gray-300 text-xs">Sin datos</div>
+                <p className="text-[9px] text-muted-foreground mb-2">Evolución diaria</p>
+                <div className="h-36 flex items-center justify-center text-muted-foreground text-xs">Sin datos</div>
             </div>
         );
     }
 
     return (
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-3">
-            <h3 className="text-[11px] font-bold text-gray-600 mb-0.5 flex items-center gap-1.5">
+        <div className="bg-card rounded-xl border border-sidebar-border/70 dark:border-sidebar-border shadow-sm p-3">
+            <h3 className="text-[11px] font-bold text-muted-foreground mb-0.5 flex items-center gap-1.5">
                 <TrendingDown className="h-3.5 w-3.5 shrink-0" style={{ color: COLOR_WARNING }} />
                 Tendencia Rechazos
             </h3>
-            <p className="text-[9px] text-gray-400 mb-2">Evolución diaria</p>
+            <p className="text-[9px] text-muted-foreground mb-2">Evolución diaria</p>
             <div style={{ height: 160 }}>
                 <Line data={chartData} options={{
                     responsive: true, maintainAspectRatio: false,
@@ -371,24 +373,24 @@ function GraficoBarrasMensual({ data }: { data: TotalesMensuales }) {
 
     if (!hayDatos) {
         return (
-            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-3">
-                <h3 className="text-[11px] font-bold text-gray-600 mb-0.5 flex items-center gap-1.5">
+            <div className="bg-card rounded-xl border border-sidebar-border/70 dark:border-sidebar-border shadow-sm p-3">
+                <h3 className="text-[11px] font-bold text-muted-foreground mb-0.5 flex items-center gap-1.5">
                     <CalendarDays className="h-3.5 w-3.5 shrink-0" style={{ color: COLOR_MODULO }} />
                     Totales Mensuales vs Metas
                 </h3>
-                <p className="text-[9px] text-gray-400 mb-2">Acumulado mensual</p>
-                <div className="h-36 flex items-center justify-center text-gray-300 text-xs">Sin datos</div>
+                <p className="text-[9px] text-muted-foreground mb-2">Acumulado mensual</p>
+                <div className="h-36 flex items-center justify-center text-muted-foreground text-xs">Sin datos</div>
             </div>
         );
     }
 
     return (
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-3">
-            <h3 className="text-[11px] font-bold text-gray-600 mb-0.5 flex items-center gap-1.5">
+        <div className="bg-card rounded-xl border border-sidebar-border/70 dark:border-sidebar-border shadow-sm p-3">
+            <h3 className="text-[11px] font-bold text-muted-foreground mb-0.5 flex items-center gap-1.5">
                 <CalendarDays className="h-3.5 w-3.5 shrink-0" style={{ color: COLOR_MODULO }} />
                 Totales Mensuales vs Metas
             </h3>
-            <p className="text-[9px] text-gray-400 mb-2">Acumulado mensual</p>
+            <p className="text-[9px] text-muted-foreground mb-2">Acumulado mensual</p>
             <div style={{ height: 160 }}>
                 <Bar data={chartData} options={{
                     responsive: true, maintainAspectRatio: false,
@@ -423,37 +425,37 @@ function MultiSelectSearchable({ label, placeholder, selectedValues, options, on
     };
     return (
         <div className="relative grid gap-1">
-            <Label className="text-[10px] font-bold uppercase text-gray-400 flex items-center gap-1">
+            <Label className="text-[10px] font-bold text-muted-foreground flex items-center gap-1">
                 <Filter className="h-3 w-3 inline shrink-0" style={{ color: COLOR_MODULO }} />
                 {label}
             </Label>
             <button type="button" onClick={() => setOpen(!open)}
-                className="h-8 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 text-left text-xs flex items-center justify-between gap-1 hover:border-gray-400 focus:ring-1 focus:outline-none"
+                className="h-8 w-full rounded-lg border border-sidebar-border/70 dark:border-sidebar-border bg-card px-2 text-left text-xs flex items-center justify-between gap-1 hover:border-border focus:ring-1 focus:outline-none"
                 style={{ ['--tw-ring-color' as any]: COLOR_MODULO }}>
-                <span className={`truncate ${selectedArr.length ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400'}`}>
+                <span className={`truncate ${selectedArr.length ? 'text-foreground' : 'text-muted-foreground'}`}>
                     {selectedArr.length ? `${selectedArr.length} seleccionado(s)` : placeholder || 'Todos...'}
                 </span>
-                <ChevronsUpDown className="size-3 text-gray-400 shrink-0" />
+                <ChevronsUpDown className="size-3 text-muted-foreground shrink-0" />
             </button>
             {open && (
                 <>
                     <div className="fixed inset-0 z-10" onClick={() => { setOpen(false); setSearch(''); }} />
-                    <div className="absolute z-20 mt-1 w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg max-h-60 overflow-y-auto">
-                        <div className="sticky top-0 p-1.5 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
+                    <div className="absolute z-20 mt-1 w-full rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-card shadow-md max-h-60 overflow-y-auto">
+                        <div className="sticky top-0 p-1.5 bg-card border-b border-sidebar-border/70 dark:border-sidebar-border">
                             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar..."
-                                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-2 py-1 text-[11px] focus:outline-none" />
+                                className="w-full rounded-lg border border-sidebar-border/70 dark:border-sidebar-border bg-transparent px-2 py-1 text-[11px] focus:outline-none" />
                         </div>
                         <div className="py-1">
-                            {filtered.length === 0 && <div className="px-2 py-1.5 text-[11px] text-gray-400">Sin resultados</div>}
+                            {filtered.length === 0 && <div className="px-2 py-1.5 text-[11px] text-muted-foreground">Sin resultados</div>}
                             {filtered.map((opt) => (
                                 <div key={opt} onClick={() => toggle(opt)}
                                     className={`cursor-pointer px-3 py-1 text-[11px] flex items-center gap-2 ${selectedArr.includes(opt)
-                                        ? 'text-gray-900 dark:text-gray-100'
-                                        : 'hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300'}`}
+                                        ? 'text-foreground'
+                                        : 'hover:bg-muted/60 text-foreground'}`}
                                     style={selectedArr.includes(opt) ? { background: `${COLOR_MODULO}10` } : {}}>
-                                    <span className="w-3 h-3 border rounded-sm flex items-center justify-center border-gray-300 dark:border-gray-600"
+                                    <span className="flex h-3 w-3 items-center justify-center rounded-sm border border-input"
                                         style={selectedArr.includes(opt) ? { background: COLOR_MODULO, borderColor: COLOR_MODULO, color: '#fff' } : {}}>
-                                        {selectedArr.includes(opt) && '✓'}
+                                        {selectedArr.includes(opt) && <Check className="size-2.5" />}
                                     </span>
                                     <span className="truncate">{opt}</span>
                                 </div>
@@ -660,26 +662,22 @@ export default function CompensacionVariableDiariaIndex() {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Compensación Variable Diaria" />
 
-            <div className="min-h-screen bg-gray-50 dark:bg-gray-950 w-full overflow-x-hidden">
+            <div className="min-h-screen bg-muted/40 w-full overflow-x-hidden">
                 <div className="p-3 sm:p-4 md:p-5 lg:p-6 max-w-full 2xl:max-w-[1600px] mx-auto space-y-4 w-full box-border min-w-0">
 
                     {/* HERO / TÍTULO + métricas principales */}
-                    <div className="rounded-2xl border shadow-sm px-5 py-4"
-                        style={{
-                            background: 'linear-gradient(90deg, rgba(21, 128, 61, 0.10) 0%, rgba(16, 185, 129, 0.06) 40%, rgba(255, 255, 255, 1) 100%)',
-                            borderColor: 'rgba(21, 128, 61, 0.18)',
-                        }}>
+                    <div className="rounded-xl border border-sidebar-border/70 bg-card px-5 py-4 shadow-sm dark:border-sidebar-border">
 
                         {/* Fila superior: título + sparkline + mini stats a la derecha */}
                         <div className="flex flex-wrap items-start justify-between gap-4">
 
                             {/* Izquierda: título + sparkline */}
                             <div className="flex items-center gap-4 flex-wrap">
-                                <h1 className="text-2xl font-extrabold uppercase tracking-tight leading-tight" style={{ color: '#064e3b' }}>
-                                    COMPENSACIÓN VARIABLE DIARIA
+                                <h1 className="text-xl font-semibold leading-tight tracking-tight text-foreground">
+                                    Compensación variable diaria
                                 </h1>
                                 <div>
-                                    <p className="text-[9px] font-semibold uppercase tracking-wide text-gray-400 mb-0.5">Tendencia</p>
+                                    <p className="text-[9px] font-semibold text-muted-foreground mb-0.5">Tendencia</p>
                                     <Spark data={sparklineValorVar.slice(-14)} color="#15803d" h={28} w={120} />
                                 </div>
                             </div>
@@ -687,23 +685,23 @@ export default function CompensacionVariableDiariaIndex() {
                             {/* Derecha: rechazos + personas — pequeños */}
                             <div className="flex items-center gap-4 shrink-0">
                                 <div className="text-right">
-                                    <p className="text-[9px] font-semibold uppercase tracking-wide text-gray-400">Suma rechazos</p>
+                                    <p className="text-[9px] font-semibold text-muted-foreground">Suma rechazos</p>
                                     <p className="text-base font-extrabold tabular-nums leading-tight"
                                         style={{ color: totalRechazos > 10 ? '#dc2626' : totalRechazos > 5 ? '#d97706' : '#15803d' }}>
                                         {totalRechazos.toLocaleString('es-CO')}%
                                     </p>
-                                    <p className="text-[9px] text-gray-400">prom. {promRechazos}%/día</p>
+                                    <p className="text-[9px] text-muted-foreground">prom. {promRechazos}%/día</p>
                                 </div>
-                                <div className="w-px h-8 bg-gray-200" />
+                                <div className="w-px h-8 bg-border" />
                                 <div className="text-right">
-                                    <p className="text-[9px] font-semibold uppercase tracking-wide text-gray-400">Total personas</p>
+                                    <p className="text-[9px] font-semibold text-muted-foreground">Total personas</p>
                                     <p className="text-base font-extrabold tabular-nums leading-tight" style={{ color: '#15803d' }}>
                                         {colsUnicos.toLocaleString()}
                                     </p>
-                                    <p className="text-[9px] text-gray-400">{vehUnicos} vehículos</p>
+                                    <p className="text-[9px] text-muted-foreground">{vehUnicos} vehículos</p>
                                 </div>
-                                <div className="w-px h-8 bg-gray-200" />
-                                <p className="text-[9px] text-gray-400 text-right">
+                                <div className="w-px h-8 bg-border" />
+                                <p className="text-[9px] text-muted-foreground text-right">
                                     {totalRegistros.toLocaleString()}<br />registros
                                 </p>
                             </div>
@@ -712,26 +710,26 @@ export default function CompensacionVariableDiariaIndex() {
                         {/* Fila inferior: valor ganado (a la mitad del título) + valor perdido */}
                         <div className="mt-3 flex flex-wrap items-end gap-6">
                             <div>
-                                <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-0.5">Total ganado</p>
+                                <p className="text-[10px] font-semibold text-muted-foreground mb-0.5">Total ganado</p>
                                 <div className="flex items-baseline gap-1">
                                     <span className="text-3xl font-extrabold tabular-nums leading-none" style={{ color: '#15803d' }}>
                                         {new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(totalValorVar)}
                                     </span>
-                                    <span className="text-base font-bold text-gray-400">$</span>
+                                    <span className="text-base font-bold text-muted-foreground">$</span>
                                 </div>
-                                <p className="text-[10px] text-gray-400 mt-0.5">Valor variable acumulado</p>
+                                <p className="text-[10px] text-muted-foreground mt-0.5">Valor variable acumulado</p>
                             </div>
 
-                            <div className="hidden sm:block w-px h-10 bg-gray-200" />
+                            <div className="hidden sm:block w-px h-10 bg-border" />
 
                             <div>
-                                <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-0.5">Total perdido</p>
+                                <p className="text-[10px] font-semibold text-muted-foreground mb-0.5">Total perdido</p>
                                 <div className="flex items-baseline gap-1">
                                     <span className="text-3xl font-extrabold tabular-nums leading-none"
                                         style={{ color: totalValorPerd > 0 ? '#dc2626' : '#15803d' }}>
                                         {new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(totalValorPerd)}
                                     </span>
-                                    <span className="text-base font-bold text-gray-400">$</span>
+                                    <span className="text-base font-bold text-muted-foreground">$</span>
                                 </div>
                                 <p className="text-[10px] mt-0.5" style={{ color: totalValorPerd > 0 ? '#dc2626' : '#6b7280' }}>
                                     {totalValorPerd > 0 ? 'Por incumplimiento de metas' : 'Sin pérdidas en el período'}
@@ -743,10 +741,10 @@ export default function CompensacionVariableDiariaIndex() {
                     {/* MINI CARDS — Rechazos · Personas · Valor perdido */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         {/* Suma de rechazos */}
-                        <div className="rounded-2xl border p-4 flex flex-col gap-1.5"
+                        <div className="rounded-xl border p-4 flex flex-col gap-1.5"
                             style={{ background: 'rgba(21, 128, 61, 0.06)', borderColor: 'rgba(21, 128, 61, 0.18)' }}>
                             <div className="flex items-start justify-between gap-2">
-                                <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Suma de Rechazos</p>
+                                <p className="text-[10px] font-semibold text-muted-foreground">Suma de Rechazos</p>
                                 <div className="flex size-7 shrink-0 items-center justify-center rounded-full"
                                     style={{ background: 'rgba(21, 128, 61, 0.12)' }}>
                                     <AlertTriangle className="size-3.5" style={{ color: totalRechazos > 10 ? '#dc2626' : totalRechazos > 5 ? '#d97706' : '#15803d' }} />
@@ -756,16 +754,16 @@ export default function CompensacionVariableDiariaIndex() {
                                 style={{ color: totalRechazos > 10 ? '#dc2626' : totalRechazos > 5 ? '#d97706' : '#15803d' }}>
                                 {totalRechazos.toLocaleString('es-CO')}%
                             </p>
-                            <p className="text-[10px] text-gray-400 leading-snug">
+                            <p className="text-[10px] text-muted-foreground leading-snug">
                                 Prom. {promRechazos}%/día · {totalRegistros.toLocaleString()} jornadas
                             </p>
                         </div>
 
                         {/* Total personas del período */}
-                        <div className="rounded-2xl border bg-white p-4 flex flex-col gap-1.5 shadow-sm"
+                        <div className="rounded-xl border border-sidebar-border/70 bg-card p-4 flex flex-col gap-1.5 shadow-sm"
                             style={{ borderColor: 'rgba(21, 128, 61, 0.18)' }}>
                             <div className="flex items-start justify-between gap-2">
-                                <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Total Personas</p>
+                                <p className="text-[10px] font-semibold text-muted-foreground">Total Personas</p>
                                 <div className="flex size-7 shrink-0 items-center justify-center rounded-full"
                                     style={{ background: 'rgba(21, 128, 61, 0.12)' }}>
                                     <Users className="size-3.5" style={{ color: '#15803d' }} />
@@ -774,16 +772,16 @@ export default function CompensacionVariableDiariaIndex() {
                             <p className="text-3xl font-extrabold tabular-nums leading-none" style={{ color: '#15803d' }}>
                                 {colsUnicos.toLocaleString()}
                             </p>
-                            <p className="text-[10px] text-gray-400 leading-snug">
+                            <p className="text-[10px] text-muted-foreground leading-snug">
                                 Colaboradores únicos · {vehUnicos} vehículos
                             </p>
                         </div>
 
                         {/* Valor perdido */}
-                        <div className="rounded-2xl border bg-white p-4 flex flex-col gap-1.5 shadow-sm"
+                        <div className="rounded-xl border border-sidebar-border/70 bg-card p-4 flex flex-col gap-1.5 shadow-sm"
                             style={{ borderColor: totalValorPerd > 0 ? 'rgba(220, 38, 38, 0.18)' : 'rgba(21, 128, 61, 0.18)' }}>
                             <div className="flex items-start justify-between gap-2">
-                                <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Valor Perdido</p>
+                                <p className="text-[10px] font-semibold text-muted-foreground">Valor Perdido</p>
                                 <div className="flex size-7 shrink-0 items-center justify-center rounded-full"
                                     style={{ background: totalValorPerd > 0 ? 'rgba(220, 38, 38, 0.08)' : 'rgba(21, 128, 61, 0.12)' }}>
                                     <TrendingDown className="size-3.5" style={{ color: totalValorPerd > 0 ? '#dc2626' : '#15803d' }} />
@@ -793,14 +791,14 @@ export default function CompensacionVariableDiariaIndex() {
                                 style={{ color: totalValorPerd > 0 ? '#dc2626' : '#15803d' }}>
                                 {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(totalValorPerd)}
                             </p>
-                            <p className="text-[10px] text-gray-400 leading-snug">
+                            <p className="text-[10px] text-muted-foreground leading-snug">
                                 {totalValorPerd > 0 ? 'Por incumplimiento de metas de rechazo' : '¡Sin pérdidas en el período!'}
                             </p>
                         </div>
                     </div>
 
                     {flash?.status && (
-                        <div className={`flex items-center justify-between rounded-2xl p-3 text-xs font-medium shadow-sm border ${
+                        <div className={`flex items-center justify-between rounded-xl p-3 text-xs font-medium shadow-sm border ${
                             flash.status.type === 'success'
                                 ? 'text-emerald-800 dark:text-emerald-300'
                                 : 'text-rose-800 dark:text-rose-300'
@@ -818,10 +816,10 @@ export default function CompensacionVariableDiariaIndex() {
                     )}
 
                     {/* FILTROS (estilo Adherencia al Tiempo · grid compacto + responsive) */}
-                    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm px-4 sm:px-5 py-4 w-full box-border overflow-hidden">
+                    <div className="bg-card rounded-xl border border-sidebar-border/70 dark:border-sidebar-border shadow-sm px-4 sm:px-5 py-4 w-full box-border overflow-hidden">
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 items-end min-w-0">
                             <div className="grid gap-1 min-w-0">
-                                <Label className="text-[10px] font-bold uppercase text-gray-400 flex items-center gap-1">
+                                <Label className="text-[10px] font-bold text-muted-foreground flex items-center gap-1">
                                     <Calendar className="h-3 w-3 inline mr-1 shrink-0" style={{ color: COLOR_MODULO }} />
                                     Fecha desde
                                 </Label>
@@ -829,7 +827,7 @@ export default function CompensacionVariableDiariaIndex() {
                                     onChange={e => handleDateInputChange('fecha_desde')(e.target.value)} />
                             </div>
                             <div className="grid gap-1 min-w-0">
-                                <Label className="text-[10px] font-bold uppercase text-gray-400 flex items-center gap-1">
+                                <Label className="text-[10px] font-bold text-muted-foreground flex items-center gap-1">
                                     <Calendar className="h-3 w-3 inline mr-1 shrink-0" style={{ color: COLOR_MODULO }} />
                                     Fecha hasta
                                 </Label>
@@ -843,7 +841,7 @@ export default function CompensacionVariableDiariaIndex() {
                             <div className="min-w-0 sm:col-span-2 md:col-span-3 lg:col-span-1"><MultiSelectSearchable label="Transporte" placeholder="Todos los transportes" selectedValues={formFilters.transporte} options={catalogos.transportes} onChange={handleMultiSelectChange('transporte')} /></div>
                         </div>
                         <div className="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                            <div className="text-[10px] text-gray-400 break-words min-w-0">
+                            <div className="text-[10px] text-muted-foreground break-words min-w-0">
                                 Viendo <b>{totalRegistros.toLocaleString()} registros</b>
                                 {(formFilters.cargo as any)?.length > 0 && <> · cargo: <b>{(formFilters.cargo as any).length}</b></>}
                                 {(formFilters.cedula as any)?.length > 0 && <> · <b>{(formFilters.cedula as any).length} identificación{(formFilters.cedula as any).length !== 1 ? 'es' : ''}</b></>}
@@ -866,7 +864,7 @@ export default function CompensacionVariableDiariaIndex() {
                                     <Eye className="size-3 mr-1" /> Columnas
                                 </Button>
                                 {hasFilters && (
-                                    <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); limpiarFiltros(); }} className="h-7 text-xs text-gray-400 pointer-events-auto relative">
+                                    <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); limpiarFiltros(); }} className="h-7 text-xs text-muted-foreground pointer-events-auto relative">
                                         <X className="h-3 w-3 mr-1" /> Limpiar
                                     </Button>
                                 )}
@@ -894,29 +892,29 @@ export default function CompensacionVariableDiariaIndex() {
                         <section>
                             <div className="flex items-center gap-2 mb-3">
                                 <span className="text-[10px] font-bold text-white px-2 py-0.5 rounded-full" style={{ background: COLOR_BLUE }}>01</span>
-                                <h2 className="text-sm font-bold text-gray-700 dark:text-gray-200">Detalle de jornadas (paginado)</h2>
+                                <h2 className="text-sm font-bold text-foreground">Detalle de jornadas (paginado)</h2>
                             </div>
-                            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+                            <div className="bg-card rounded-xl border border-sidebar-border/70 dark:border-sidebar-border shadow-sm overflow-hidden">
                                 <div className="overflow-x-auto">
                                     <Table>
                                         <TableHeader>
-                                            <TableRow className="bg-gray-50 dark:bg-gray-950/50 hover:bg-gray-50 dark:hover:bg-gray-950/50">
+                                            <TableRow className="bg-muted/50 hover:bg-muted/60">
                                                 {visibleCols.map(([k, label]) => (
-                                                    <TableHead key={k as string} className="px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 whitespace-nowrap">{label}</TableHead>
+                                                    <TableHead key={k as string} className="px-3 py-2.5 text-[10px] font-bold text-muted-foreground whitespace-nowrap">{label}</TableHead>
                                                 ))}
-                                                <TableHead className="px-3 py-2.5 w-10"><Eye className="size-3.5 text-gray-400" /></TableHead>
+                                                <TableHead className="px-3 py-2.5 w-10"><Eye className="size-3.5 text-muted-foreground" /></TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
                                             {(data?.data || []).length === 0 && (
                                                 <TableRow>
-                                                    <TableCell colSpan={visibleCols.length + 1} className="text-center py-12 text-xs text-gray-400">
+                                                    <TableCell colSpan={visibleCols.length + 1} className="text-center py-12 text-xs text-muted-foreground">
                                                         No hay registros. Usa el botón <strong>"Calcular desde Eventos"</strong> para generar la compensación variable diaria.
                                                     </TableCell>
                                                 </TableRow>
                                             )}
                                             {(data?.data || []).map((row) => (
-                                                <TableRow key={row.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/40 cursor-pointer"
+                                                <TableRow key={row.id} className="hover:bg-muted/60 cursor-pointer"
                                                     onClick={() => handleOpenDetail(row)}>
                                                     {visibleCols.map(([k]) => {
                                                         const val = row[k as keyof CompensacionDiariaRow];
@@ -938,10 +936,10 @@ export default function CompensacionVariableDiariaIndex() {
                                                         }
                                                         if (k === 'meta_1') display = val !== null && val !== undefined && val !== '' ? `< ${Number(val)}%` : '≤ 2,1%';
                                                         if (k === 'meta_2') display = val !== null && val !== undefined && val !== '' ? `< ${Number(val)}%` : '< 2,6%';
-                                                        return <TableCell key={k as string} className="px-3 py-2 text-[11px] whitespace-nowrap text-gray-700 dark:text-gray-300">{display}</TableCell>;
+                                                        return <TableCell key={k as string} className="px-3 py-2 text-[11px] whitespace-nowrap text-foreground">{display}</TableCell>;
                                                     })}
                                                     <TableCell className="px-3 py-2 w-10" onClick={(e) => { e.stopPropagation(); handleOpenDetail(row); }}>
-                                                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 hover:bg-gray-100" style={{ color: COLOR_MODULO }}>
+                                                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 hover:bg-muted" style={{ color: COLOR_MODULO }}>
                                                             <Eye className="size-3.5" />
                                                         </Button>
                                                     </TableCell>
@@ -950,12 +948,12 @@ export default function CompensacionVariableDiariaIndex() {
                                         </TableBody>
                                     </Table>
                                 </div>
-                                <div className="flex items-center justify-between px-4 py-2.5 border-t border-gray-100 dark:border-gray-800 text-[11px] text-gray-500">
+                                <div className="flex items-center justify-between px-4 py-2.5 border-t border-sidebar-border/70 dark:border-sidebar-border text-[11px] text-muted-foreground">
                                     <div>Pág {data?.current_page} · Total {data?.total} registros</div>
                                     <div className="flex flex-wrap gap-1">
                                         {(data?.links || []).slice(1, -1).map((l, i) => (
                                             <Link key={i} href={l.url || '#'}
-                                                className={`px-2.5 py-1 rounded-md border text-[11px] ${l.active ? 'text-white border-transparent' : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:bg-gray-50'} ${!l.url ? 'opacity-40 pointer-events-none' : ''}`}
+                                                className={`px-2.5 py-1 rounded-md border text-[11px] ${l.active ? 'text-white border-transparent' : 'bg-card border-sidebar-border/70 dark:border-sidebar-border hover:bg-muted/60'} ${!l.url ? 'opacity-40 pointer-events-none' : ''}`}
                                                 preserveState preserveScroll
                                                 style={l.active ? { background: COLOR_MODULO } : {}}>
                                                 {l.label.replace(/&laquo;|&raquo;/g, '')}
@@ -968,10 +966,10 @@ export default function CompensacionVariableDiariaIndex() {
                     </div>
 
                     {/* FOOTER */}
-                    <footer className="text-[10px] text-gray-300 space-y-1 pt-2 border-t border-gray-100 dark:border-gray-800">
-                        <div><b className="text-gray-400">Fuente</b> · Tabla compensaciones_variables_diarias — generada desde Eventos de Tripulación.</div>
-                        <div><b className="text-gray-400">Cálculo</b> · Valor x Día = $3.846,15 · Cal-Rechazos 80% (Meta 2) + 20% (Meta 1) · Valor Perdido = (1 - % Variable) × Valor x Día.</div>
-                        <div><b className="text-gray-400">Alcance</b> · {totalRegistros.toLocaleString()} registros · {colsUnicos} colaboradores · {vehUnicos} vehículos</div>
+                    <footer className="text-[10px] text-muted-foreground space-y-1 pt-2 border-t border-sidebar-border/70 dark:border-sidebar-border">
+                        <div><b className="text-muted-foreground">Fuente</b> · Tabla compensaciones_variables_diarias — generada desde Eventos de Tripulación.</div>
+                        <div><b className="text-muted-foreground">Cálculo</b> · Valor x Día = $3.846,15 · Cal-Rechazos 80% (Meta 2) + 20% (Meta 1) · Valor Perdido = (1 - % Variable) × Valor x Día.</div>
+                        <div><b className="text-muted-foreground">Alcance</b> · {totalRegistros.toLocaleString()} registros · {colsUnicos} colaboradores · {vehUnicos} vehículos</div>
                         <div className="flex items-center gap-1">
                             <span className="w-1.5 h-1.5 rounded-full inline-block animate-pulse" style={{ background: COLOR_MODULO }} />
                             Recalculable manualmente con el botón <b>"Calcular desde Eventos"</b>
@@ -987,9 +985,9 @@ export default function CompensacionVariableDiariaIndex() {
                     <DialogHeader><DialogTitle className="text-sm font-bold">Personalizar Columnas</DialogTitle></DialogHeader>
                     <div className="grid grid-cols-2 gap-2 max-h-[60vh] overflow-y-auto py-2">
                         {COLUMNAS.map(([k, label]) => (
-                            <label key={k as string} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 rounded px-2 py-1">
+                            <label key={k as string} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-muted/60 rounded px-2 py-1">
                                 <input type="checkbox" checked={!hiddenCols.has(k as string)} onChange={() => toggleCol(k as string)}
-                                    className="rounded border-gray-300" style={{ accentColor: COLOR_MODULO }} />
+                                    className="rounded border-input" style={{ accentColor: COLOR_MODULO }} />
                                 <span>{label}</span>
                             </label>
                         ))}
@@ -1008,7 +1006,7 @@ export default function CompensacionVariableDiariaIndex() {
                         </DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 py-2">
-                        <p className="text-xs text-gray-600 dark:text-gray-400">
+                        <p className="text-xs text-muted-foreground">
                             El sistema calculará automáticamente la compensación variable diaria para{' '}
                             <strong>{new Date().toLocaleString('es-CO', { month: 'long', year: 'numeric' })}</strong>,
                             usando los datos de <strong>Eventos de Tripulación</strong> del mes en curso.
@@ -1038,21 +1036,27 @@ export default function CompensacionVariableDiariaIndex() {
             {/* Sheet detalle */}
             <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
                 <SheetContent side="right" className="w-full sm:max-w-xl md:max-w-2xl lg:max-w-3xl xl:max-w-4xl p-4 sm:p-6 overflow-y-auto">
-                    <SheetHeader className="pb-2 border-b border-gray-100 dark:border-gray-800">
-                        <SheetTitle className="text-base font-bold text-gray-900 dark:text-gray-100">Detalle del Registro</SheetTitle>
+                    <SheetHeader className="pb-2 border-b border-sidebar-border/70 dark:border-sidebar-border">
+                        <SheetTitle className="text-base font-bold text-foreground">Detalle del Registro</SheetTitle>
                     </SheetHeader>
                     {selectedRow && (
                         <div className="mt-4 space-y-4">
                             <div className="rounded-xl p-4 text-white shadow-md"
                                 style={{ backgroundImage: `linear-gradient(135deg, ${COLOR_MODULO}, ${COLOR_ROSE})` }}>
-                                <div className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#ffffffcc' }}>
+                                <div className="text-[10px] font-bold" style={{ color: '#ffffffcc' }}>
                                     {selectedRow.cargo || 'Cargo no especificado'}
                                 </div>
                                 <div className="text-lg sm:text-xl font-extrabold mt-0.5">{selectedRow.nombre_completo || '(Sin nombre)'}</div>
                                 <div className="mt-3 flex flex-wrap gap-2.5 sm:gap-4 text-[11px] font-medium" style={{ color: '#ffffffdd' }}>
-                                    <span className="bg-white/10 px-2 py-0.5 rounded-md">📅 {formatDate(selectedRow.fecha)}</span>
-                                    <span className="bg-white/10 px-2 py-0.5 rounded-md">🚛 {selectedRow.placa || '-'}</span>
-                                    <span className="bg-white/10 px-2 py-0.5 rounded-md">🆔 {selectedRow.cedula || '-'}</span>
+                                    <span className="flex items-center gap-1 rounded-md bg-white/10 px-2 py-0.5">
+                                        <Calendar className="size-3" /> {formatDate(selectedRow.fecha)}
+                                    </span>
+                                    <span className="flex items-center gap-1 rounded-md bg-white/10 px-2 py-0.5">
+                                        <Truck className="size-3" /> {selectedRow.placa || '-'}
+                                    </span>
+                                    <span className="flex items-center gap-1 rounded-md bg-white/10 px-2 py-0.5">
+                                        <Fingerprint className="size-3" /> {selectedRow.cedula || '-'}
+                                    </span>
                                 </div>
                             </div>
 
@@ -1071,14 +1075,14 @@ export default function CompensacionVariableDiariaIndex() {
                             </div>
 
                             {historialRow.length > 0 && (
-                                <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 sm:p-4 shadow-sm">
-                                    <div className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">
+                                <div className="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-card p-3 sm:p-4 shadow-sm">
+                                    <div className="text-[11px] font-bold text-muted-foreground mb-3">
                                         Últimos días del colaborador ({historialRow.length})
                                     </div>
                                     <div className="overflow-x-auto">
                                         <Table className="w-full">
                                             <TableHeader>
-                                                <TableRow className="bg-gray-50 dark:bg-gray-950/50">
+                                                <TableRow className="bg-muted/50">
                                                     <TableHead className="px-2 py-1.5 text-[10px]">Fecha</TableHead>
                                                     <TableHead className="px-2 py-1.5 text-[10px]">Placa</TableHead>
                                                     <TableHead className="px-2 py-1.5 text-[10px]">Rechazos</TableHead>
@@ -1088,7 +1092,7 @@ export default function CompensacionVariableDiariaIndex() {
                                             </TableHeader>
                                             <TableBody>
                                                 {historialRow.slice(0, 15).map(h => (
-                                                    <TableRow key={h.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/40">
+                                                    <TableRow key={h.id} className="hover:bg-muted/60">
                                                         <TableCell className="px-2 py-1.5 text-[11px]">{formatDate(h.fecha)}</TableCell>
                                                         <TableCell className="px-2 py-1.5 text-[11px]">{h.placa || '-'}</TableCell>
                                                         <TableCell className="px-2 py-1.5 text-[11px] font-semibold"

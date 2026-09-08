@@ -8,6 +8,7 @@ import {
     ChevronUp,
     CircleDollarSign,
     Info,
+    Lightbulb,
     Star,
     TrendingDown,
     TrendingUp,
@@ -112,7 +113,7 @@ function formatDateShort(d: string | null): string {
 // ─── Chip ────────────────────────────────────────────────────────────────────
 
 function Chip({ ok, label, color }: { ok?: boolean; label: string; color?: string }) {
-    const base = color ?? (ok ? 'bg-green-700 text-white' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300');
+    const base = color ?? (ok ? 'bg-green-700 text-white' : 'bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground');
     return (
         <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${base}`}>
             {ok !== undefined && (ok ? <CheckCircle2 className="size-2.5" /> : <XCircle className="size-2.5" />)}
@@ -125,7 +126,7 @@ function Chip({ ok, label, color }: { ok?: boolean; label: string; color?: strin
 
 function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
     return (
-        <div className={`rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900 ${className}`}>
+        <div className={`rounded-xl border border-sidebar-border/70 bg-card shadow-sm dark:border-sidebar-border ${className}`}>
             {children}
         </div>
     );
@@ -140,8 +141,8 @@ function SectionHeader({ icon: Icon, title, subtitle }: { icon: React.ElementTyp
                 <Icon className="size-4 text-white" />
             </div>
             <div>
-                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{title}</p>
-                {subtitle && <p className="text-xs capitalize text-gray-400">{subtitle}</p>}
+                <p className="text-sm font-semibold text-foreground">{title}</p>
+                {subtitle && <p className="text-xs capitalize text-muted-foreground">{subtitle}</p>}
             </div>
         </div>
     );
@@ -150,10 +151,10 @@ function SectionHeader({ icon: Icon, title, subtitle }: { icon: React.ElementTyp
 // ─── KPI ────────────────────────────────────────────────────────────────────
 
 function Kpi({ label, value, green, red, muted }: { label: string; value: React.ReactNode; green?: boolean; red?: boolean; muted?: boolean }) {
-    const color = green ? 'text-green-700 dark:text-green-400' : red ? 'text-red-600 dark:text-red-400' : muted ? 'text-gray-400' : 'text-gray-900 dark:text-gray-100';
+    const color = green ? 'text-green-700 dark:text-green-400' : red ? 'text-red-600 dark:text-red-400' : muted ? 'text-muted-foreground' : 'text-foreground';
     return (
         <div>
-            <p className="mb-0.5 text-[10px] text-gray-400">{label}</p>
+            <p className="mb-0.5 text-[10px] text-muted-foreground">{label}</p>
             <p className={`text-base font-bold tabular-nums leading-tight ${color}`}>{value}</p>
         </div>
     );
@@ -162,7 +163,7 @@ function Kpi({ label, value, green, red, muted }: { label: string; value: React.
 // ─── Operador ────────────────────────────────────────────────────────────────
 
 function Op({ children }: { children: React.ReactNode }) {
-    return <div className="flex shrink-0 items-center justify-center self-center text-xl font-bold text-gray-400">{children}</div>;
+    return <div className="flex shrink-0 items-center justify-center self-center text-xl font-bold text-muted-foreground">{children}</div>;
 }
 
 // ─── EcuacionCard — más pequeña + tooltip que nunca queda fuera ───────────────
@@ -185,11 +186,11 @@ function EcuacionCard({
 }) {
     const [open, setOpen] = useState(false);
 
-    const border = highlight === 'green' ? 'border-green-200 dark:border-green-700/40' : highlight === 'red' ? 'border-red-200 dark:border-red-700/40' : 'border-gray-200 dark:border-gray-700';
-    const bg    = highlight === 'green' ? 'bg-green-50 dark:bg-green-900/10' : highlight === 'red' ? 'bg-red-50 dark:bg-red-900/10' : 'bg-white dark:bg-gray-900';
-    const valColor = highlight === 'green' ? 'text-green-700 dark:text-green-400' : highlight === 'red' ? 'text-red-600 dark:text-red-400' : met === true ? 'text-green-700 dark:text-green-400' : met === false ? 'text-gray-500' : 'text-gray-900 dark:text-gray-100';
-    const iconBg   = highlight === 'green' ? 'bg-green-100 dark:bg-green-900/30' : highlight === 'red' ? 'bg-red-100 dark:bg-red-900/30' : met === true ? 'bg-green-100 dark:bg-green-900/30' : 'bg-gray-100 dark:bg-gray-800';
-    const iconCol  = highlight === 'green' ? 'text-green-700 dark:text-green-400' : highlight === 'red' ? 'text-red-600 dark:text-red-400' : met === true ? 'text-green-700 dark:text-green-400' : 'text-gray-400';
+    const border = highlight === 'green' ? 'border-green-200 dark:border-green-700/40' : highlight === 'red' ? 'border-red-200 dark:border-red-700/40' : 'border-sidebar-border/70 dark:border-sidebar-border';
+    const bg    = highlight === 'green' ? 'bg-green-50 dark:bg-green-900/10' : highlight === 'red' ? 'bg-red-50 dark:bg-red-900/10' : 'bg-card';
+    const valColor = highlight === 'green' ? 'text-green-700 dark:text-green-400' : highlight === 'red' ? 'text-red-600 dark:text-red-400' : met === true ? 'text-green-700 dark:text-green-400' : met === false ? 'text-muted-foreground' : 'text-foreground';
+    const iconBg   = highlight === 'green' ? 'bg-green-100 dark:bg-green-900/30' : highlight === 'red' ? 'bg-red-100 dark:bg-red-900/30' : met === true ? 'bg-green-100 dark:bg-green-900/30' : 'bg-muted';
+    const iconCol  = highlight === 'green' ? 'text-green-700 dark:text-green-400' : highlight === 'red' ? 'text-red-600 dark:text-red-400' : met === true ? 'text-green-700 dark:text-green-400' : 'text-muted-foreground';
 
     return (
         // El tooltip es un sibling que aparece en el flujo normal (no absolute),
@@ -204,23 +205,23 @@ function EcuacionCard({
                 onBlur={() => setOpen(false)}
                 tabIndex={0}
             >
-                {numero && <span className="text-[9px] font-semibold uppercase tracking-wide text-gray-400">{numero}</span>}
-                <p className="text-[11px] font-semibold text-gray-700 dark:text-gray-300">{label}</p>
+                {numero && <span className="text-[9px] font-semibold text-muted-foreground">{numero}</span>}
+                <p className="text-[11px] font-semibold text-foreground">{label}</p>
                 <div className={`flex size-8 items-center justify-center rounded-full ${iconBg}`}>
                     <Icon className={`size-4 ${iconCol}`} />
                 </div>
                 <p className={`text-sm font-extrabold tabular-nums ${valColor}`}>{value}</p>
-                {subvalue && <p className="text-[10px] font-semibold tabular-nums text-gray-400">{subvalue}</p>}
+                {subvalue && <p className="text-[10px] font-semibold tabular-nums text-muted-foreground">{subvalue}</p>}
                 {met !== undefined && <Chip ok={met} label={met ? 'Cumplida' : 'No cumplida'} />}
             </div>
 
             {/* Tooltip en flujo — aparece debajo con animación, desplaza el layout */}
             {open && (
-                <div className="z-10 mt-1.5 w-60 rounded-xl border border-gray-200 bg-white p-3 text-left shadow-xl dark:border-gray-700 dark:bg-gray-900">
-                    <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-gray-500">{tooltip.titulo}</p>
-                    <p className="mb-2 rounded bg-gray-50 px-2 py-1 font-mono text-[10px] text-gray-600 dark:bg-gray-800 dark:text-gray-300">{tooltip.formula}</p>
-                    <p className="mb-1 text-[10px] font-semibold text-gray-700 dark:text-gray-200">¿Qué significa?</p>
-                    <div className="text-[10px] leading-relaxed text-gray-500 dark:text-gray-400">{tooltip.explicacion}</div>
+                <div className="z-10 mt-1.5 w-60 rounded-xl border border-sidebar-border/70 bg-popover p-3 text-left shadow-md dark:border-sidebar-border">
+                    <p className="mb-1 text-[10px] font-bold text-muted-foreground">{tooltip.titulo}</p>
+                    <p className="mb-2 rounded bg-muted px-2 py-1 font-mono text-[10px] text-muted-foreground dark:bg-muted dark:text-muted-foreground">{tooltip.formula}</p>
+                    <p className="mb-1 text-[10px] font-semibold text-foreground">¿Qué significa?</p>
+                    <div className="text-[10px] leading-relaxed text-muted-foreground">{tooltip.explicacion}</div>
                     <p className={`mt-1.5 text-xs font-extrabold tabular-nums ${tooltip.resultColor ?? 'text-green-700 dark:text-green-400'}`}>
                         = {tooltip.resultado}
                     </p>
@@ -236,13 +237,13 @@ function AusenciaCard({ titulo, dias, meta, mensaje, ok }: { titulo: string; dia
     return (
         <div className={`flex flex-col gap-2 rounded-xl border p-3 ${ok ? 'border-green-100 bg-green-50 dark:border-green-800/40 dark:bg-green-900/10' : 'border-orange-100 bg-orange-50 dark:border-orange-800/40 dark:bg-orange-900/10'}`}>
             <div className="flex items-center justify-between gap-2">
-                <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">{titulo}</p>
+                <p className="text-xs font-semibold text-foreground">{titulo}</p>
                 <Chip ok={ok} label={ok ? mensaje : mensaje} />
             </div>
-            <p className="text-2xl font-extrabold tabular-nums text-gray-900 dark:text-gray-100">
+            <p className="text-2xl font-extrabold tabular-nums text-foreground">
                 {dias} {dias === 1 ? 'día' : 'días'}
             </p>
-            {meta && <p className="text-[10px] text-gray-400">{meta}</p>}
+            {meta && <p className="text-[10px] text-muted-foreground">{meta}</p>}
         </div>
     );
 }
@@ -253,16 +254,16 @@ function MetaMensualCard({ ganado, meta }: { ganado: number; meta: number }) {
     const pct = Math.min(Math.round((ganado / meta) * 100), 100);
     const alcanza = ganado >= meta;
     return (
-        <div className="flex flex-col gap-2 rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        <div className="flex flex-col gap-2 rounded-xl border border-sidebar-border/70 bg-card p-3 shadow-sm dark:border-sidebar-border">
             <div className="flex items-center justify-between gap-2">
-                <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">Tu meta mensual</p>
-                <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${alcanza ? 'bg-green-700 text-white' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300'}`}>
+                <p className="text-xs font-semibold text-foreground">Tu meta mensual</p>
+                <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${alcanza ? 'bg-green-700 text-white' : 'bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground'}`}>
                     <CircleDollarSign className="size-2.5" />
                     {alcanza ? '¡Alcanzada!' : 'Por mejorar'}
                 </span>
             </div>
             {/* Barra de progreso */}
-            <div className="h-2 w-full rounded-full bg-gray-100 dark:bg-gray-800">
+            <div className="h-2 w-full rounded-full bg-muted">
                 <div
                     className={`h-2 rounded-full transition-all ${alcanza ? 'bg-green-600' : 'bg-amber-400'}`}
                     style={{ width: `${pct}%` }}
@@ -270,16 +271,16 @@ function MetaMensualCard({ ganado, meta }: { ganado: number; meta: number }) {
             </div>
             <div className="grid grid-cols-3 gap-2 text-center">
                 <div>
-                    <p className="text-[9px] text-gray-400">Has ganado</p>
+                    <p className="text-[9px] text-muted-foreground">Has ganado</p>
                     <p className="text-sm font-bold text-green-700 dark:text-green-400">{formatCOP(ganado)}</p>
                 </div>
                 <div>
-                    <p className="text-[9px] text-gray-400">de tu meta</p>
-                    <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{pct}%</p>
+                    <p className="text-[9px] text-muted-foreground">de tu meta</p>
+                    <p className="text-sm font-bold text-foreground">{pct}%</p>
                 </div>
                 <div>
-                    <p className="text-[9px] text-gray-400">Meta total</p>
-                    <p className="text-sm font-bold text-gray-500">{formatCOP(meta)}</p>
+                    <p className="text-[9px] text-muted-foreground">Meta total</p>
+                    <p className="text-sm font-bold text-muted-foreground">{formatCOP(meta)}</p>
                 </div>
             </div>
         </div>
@@ -317,7 +318,7 @@ export default function MiCompensacionIndex() {
             <AppLayout>
                 <Head title="Mi Compensación Diaria" />
                 <div className="flex flex-col gap-5 px-4 pb-10 sm:px-6">
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Mi Compensación Diaria</h1>
+                    <h1 className="text-2xl font-bold text-foreground">Mi Compensación Diaria</h1>
                     <Card className="p-5"><p className="text-sm text-red-600">{error || 'No se pudo cargar la información.'}</p></Card>
                 </div>
             </AppLayout>
@@ -352,7 +353,7 @@ export default function MiCompensacionIndex() {
                 </ul>
             ),
             resultado: `${registroDia.cal_rechazos_2} × ${formatCOP(registroDia.valor_x_dia)} = ${formatCOP(registroDia.valor_x_dia * registroDia.cal_rechazos_2)}`,
-            resultColor: cumpleMeta1 ? 'text-green-700' : 'text-gray-500',
+            resultColor: cumpleMeta1 ? 'text-green-700' : 'text-muted-foreground',
         },
         meta2: {
             titulo: '3. Meta 2 — Rechazos 2 (20%)',
@@ -365,7 +366,7 @@ export default function MiCompensacionIndex() {
                 </ul>
             ),
             resultado: `${registroDia.cal_rechazos} × ${formatCOP(registroDia.valor_x_dia)} = ${formatCOP(registroDia.valor_x_dia * registroDia.cal_rechazos)}`,
-            resultColor: cumpleMeta2 ? 'text-green-700' : 'text-gray-500',
+            resultColor: cumpleMeta2 ? 'text-green-700' : 'text-muted-foreground',
         },
         valorGanas: {
             titulo: '4. Valor que ganas (Variable)',
@@ -385,7 +386,7 @@ export default function MiCompensacionIndex() {
             formula: `${formatCOP(registroDia.valor_x_dia)} − ${formatCOP(registroDia.valor_var)}`,
             explicacion: <p>Dinero que dejaste de ganar por no cumplir las metas. Si cumples todo, es <strong>$0</strong>.</p>,
             resultado: formatCOP(registroDia.valor_perdido),
-            resultColor: registroDia.valor_perdido > 0 ? 'text-red-600' : 'text-gray-400',
+            resultColor: registroDia.valor_perdido > 0 ? 'text-red-600' : 'text-muted-foreground',
         },
         pctVar: {
             titulo: '6. % Variable',
@@ -399,7 +400,7 @@ export default function MiCompensacionIndex() {
             formula: `100% − ${registroDia.porcentaje_variable}`,
             explicacion: <p>Porcentaje que dejaste de ganar.</p>,
             resultado: registroDia.porcentaje_variable_no_cum,
-            resultColor: parseFloat(registroDia.porcentaje_variable_no_cum) > 0 ? 'text-red-600' : 'text-gray-400',
+            resultColor: parseFloat(registroDia.porcentaje_variable_no_cum) > 0 ? 'text-red-600' : 'text-muted-foreground',
         },
     } : null;
 
@@ -412,8 +413,8 @@ export default function MiCompensacionIndex() {
 
                 {/* Título */}
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 sm:text-3xl">Mi Compensación Diaria</h1>
-                    <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">Detalle de tu compensación variable por día.</p>
+                    <h1 className="text-2xl font-bold text-foreground sm:text-3xl">Mi Compensación Diaria</h1>
+                    <p className="mt-0.5 text-sm text-muted-foreground">Detalle de tu compensación variable por día.</p>
                 </div>
 
                 {/* ══ CARD 1 — HERO ══ */}
@@ -427,23 +428,23 @@ export default function MiCompensacionIndex() {
                                     <User className="size-4 text-white" />
                                 </div>
                                 <div className="min-w-0">
-                                    <p className="truncate text-sm font-bold leading-tight text-gray-900 dark:text-gray-100">{colaborador.nombre_completo}</p>
-                                    <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-green-700 dark:text-green-400">
+                                    <p className="truncate text-sm font-bold leading-tight text-foreground">{colaborador.nombre_completo}</p>
+                                    <p className="mt-0.5 text-[10px] font-semibold text-green-700 dark:text-green-400">
                                         CC {colaborador.cedula} · {colaborador.cargo}
                                     </p>
                                 </div>
                             </div>
                             <div className="grid gap-1">
-                                <label htmlFor="fecha_dia" className="flex items-center gap-1 text-[11px] font-medium text-gray-500">
+                                <label htmlFor="fecha_dia" className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
                                     <CalendarDays className="size-3 text-green-700" /> Consultar día
                                 </label>
-                                <div className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1.5 dark:border-gray-700 dark:bg-gray-800">
-                                    <CalendarDays className="size-3.5 shrink-0 text-gray-400" />
+                                <div className="flex items-center gap-1.5 rounded-lg border border-sidebar-border/70 bg-muted px-2.5 py-1.5 dark:border-sidebar-border dark:bg-muted">
+                                    <CalendarDays className="size-3.5 shrink-0 text-muted-foreground" />
                                     <input
                                         id="fecha_dia" type="date" value={selectedDate}
                                         onChange={handleDateChange}
                                         max={new Date().toISOString().split('T')[0]}
-                                        className="w-full bg-transparent text-sm text-gray-700 focus:outline-none dark:text-gray-200"
+                                        className="w-full bg-transparent text-sm text-foreground focus:outline-none dark:text-foreground"
                                     />
                                 </div>
                             </div>
@@ -466,14 +467,14 @@ export default function MiCompensacionIndex() {
                                     </svg>
                                     <div className="absolute inset-0 flex flex-col items-center justify-center">
                                         <span className="text-lg font-extrabold leading-none text-green-700 dark:text-green-400">{pctNum}%</span>
-                                        <span className="text-[9px] font-medium text-gray-400">variable</span>
+                                        <span className="text-[9px] font-medium text-muted-foreground">variable</span>
                                     </div>
                                 </div>
                                 <div>
-                                    <p className="text-xs font-bold text-gray-900 dark:text-gray-100">
+                                    <p className="text-xs font-bold text-foreground">
                                         {cumpleTotal ? '¡Excelente!' : pctNum >= 80 ? '¡Bien!' : 'Mejora aquí'}
                                     </p>
-                                    <p className="mt-0.5 text-[11px] leading-snug text-gray-500 dark:text-gray-400">
+                                    <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
                                         {cumpleTotal ? 'Cumpliste el 100% de tu compensación del día.'
                                             : pctNum >= 80 ? 'Cumpliste la meta principal.'
                                             : 'Reduce tus rechazos para ganar más.'}
@@ -481,7 +482,7 @@ export default function MiCompensacionIndex() {
                                 </div>
                             </div>
                         ) : (
-                            <p className="text-xs text-gray-400 sm:shrink-0">Selecciona un día</p>
+                            <p className="text-xs text-muted-foreground sm:shrink-0">Selecciona un día</p>
                         )}
                     </div>
                 </Card>
@@ -489,9 +490,9 @@ export default function MiCompensacionIndex() {
                 {/* ══ Sin datos del día ══ */}
                 {!registroDia ? (
                     <Card className="flex flex-col items-center gap-2 p-8 text-center">
-                        <Info className="size-5 text-gray-300" />
-                        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Sin información para {formatDateShort(selectedDate)}</p>
-                        <p className="text-xs text-gray-400">Selecciona otro día o espera a que se cargue la información.</p>
+                        <Info className="size-5 text-muted-foreground" />
+                        <p className="text-sm font-medium text-foreground">Sin información para {formatDateShort(selectedDate)}</p>
+                        <p className="text-xs text-muted-foreground">Selecciona otro día o espera a que se cargue la información.</p>
                     </Card>
                 ) : (
                     <>
@@ -517,7 +518,10 @@ export default function MiCompensacionIndex() {
                         {/* ══ CARD 2 — ECUACIÓN VISUAL ══ */}
                         <Card className="p-4">
                             <SectionHeader icon={CircleDollarSign} title="¿Cómo se calculó mi pago?" subtitle={formatDateLong(registroDia.fecha)} />
-                            <p className="mt-2 text-[10px] text-gray-400">💡 Pasa el mouse sobre cada card para ver la explicación.</p>
+                            <p className="mt-2 flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                                <Lightbulb className="size-3 shrink-0" />
+                                Pasa el mouse sobre cada card para ver la explicación.
+                            </p>
 
                             {/* Ecuación horizontal — scroll en móvil */}
                             <div className="mt-3 overflow-x-auto pb-1">
@@ -544,7 +548,7 @@ export default function MiCompensacionIndex() {
                                         <p className={`text-xs font-bold ${cumpleTotal ? 'text-green-700' : 'text-amber-700'}`}>
                                             {cumpleTotal ? '¡Felicitaciones!' : pctNum >= 80 ? '¡Buen trabajo!' : 'Sigue mejorando'}
                                         </p>
-                                        <p className="text-[10px] text-gray-500">
+                                        <p className="text-[10px] text-muted-foreground">
                                             {cumpleTotal ? 'Cumpliste las dos metas y ganaste el 100% de tu compensación.'
                                                 : pctNum >= 80 ? 'Cumpliste la meta principal. Baja los rechazos para el 100%.'
                                                 : `Rechazos (${rechPct.toFixed(2)}%) superan las metas.`}
@@ -565,7 +569,7 @@ export default function MiCompensacionIndex() {
                             })()}
                                 <button
                                     onClick={() => setHistorialOpen(v => !v)}
-                                    className="flex items-center gap-1 rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-[11px] font-medium text-gray-600 transition hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+                                    className="flex items-center gap-1 rounded-lg border border-sidebar-border/70 bg-muted px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground transition hover:bg-muted dark:border-sidebar-border dark:bg-muted dark:text-muted-foreground dark:hover:bg-muted"
                                 >
                                     {historialOpen ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
                                     {historialOpen ? 'Ocultar historial' : 'Ver historial anual'}
@@ -576,20 +580,20 @@ export default function MiCompensacionIndex() {
                             <div className="mt-4 flex flex-wrap items-center gap-4">
                                 {/* Días trabajados */}
                                 <div>
-                                    <p className="mb-0.5 text-[10px] text-gray-400">Días trabajados</p>
-                                    <p className="text-base font-bold tabular-nums text-gray-900 dark:text-gray-100">{estadisticasMes.dias_trabajados}</p>
+                                    <p className="mb-0.5 text-[10px] text-muted-foreground">Días trabajados</p>
+                                    <p className="text-base font-bold tabular-nums text-foreground">{estadisticasMes.dias_trabajados}</p>
                                 </div>
 
                                 {/* Total ganado */}
                                 <div>
-                                    <p className="mb-0.5 text-[10px] text-gray-400">Total ganado</p>
+                                    <p className="mb-0.5 text-[10px] text-muted-foreground">Total ganado</p>
                                     <p className="text-base font-bold tabular-nums text-green-700 dark:text-green-400">{formatCOP(estadisticasMes.total_ganado)}</p>
                                 </div>
 
                                 {/* Total perdido — solo si > 0 */}
                                 {estadisticasMes.total_perdido > 0 && (
                                     <div>
-                                        <p className="mb-0.5 text-[10px] text-gray-400">Total perdido</p>
+                                        <p className="mb-0.5 text-[10px] text-muted-foreground">Total perdido</p>
                                         <p className="text-base font-bold tabular-nums text-red-600 dark:text-red-400">{formatCOP(estadisticasMes.total_perdido)}</p>
                                     </div>
                                 )}
@@ -599,14 +603,16 @@ export default function MiCompensacionIndex() {
                                     estadisticasMes.total_perdido === 0 && estadisticasMes.dias_trabajados > 0
                                         ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                                         : estadisticasMes.dias_trabajados === 0
-                                          ? 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
+                                          ? 'bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground'
                                           : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
                                 }`}>
-                                    <span className="text-sm">
-                                        {estadisticasMes.dias_trabajados === 0 ? '—'
-                                            : estadisticasMes.total_perdido === 0 ? '🏆'
-                                            : '📈'}
-                                    </span>
+                                    {estadisticasMes.dias_trabajados === 0 ? (
+                                        <span className="text-sm">—</span>
+                                    ) : estadisticasMes.total_perdido === 0 ? (
+                                        <Trophy className="size-3.5" />
+                                    ) : (
+                                        <TrendingUp className="size-3.5" />
+                                    )}
                                     <span className="text-[11px] font-semibold">
                                         {estadisticasMes.dias_trabajados === 0
                                             ? 'Sin registros'
@@ -619,10 +625,10 @@ export default function MiCompensacionIndex() {
 
                             {/* ── Historial enero-diciembre — desplegable ── */}
                             {historialOpen && (
-                                <div className="mt-4 overflow-x-auto rounded-xl border border-gray-100 dark:border-gray-800">
+                                <div className="mt-4 overflow-x-auto rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
                                     <table className="w-full text-xs">
                                         <thead>
-                                            <tr className="border-b border-gray-100 bg-gray-50 dark:border-gray-800 dark:bg-gray-800/50">
+                                            <tr className="border-b border-sidebar-border/70 bg-muted dark:border-sidebar-border dark:bg-muted">
                                                 <th className="px-3 py-2 text-left font-semibold text-green-700 dark:text-green-400">Mes</th>
                                                 <th className="px-3 py-2 text-center font-semibold text-green-700 dark:text-green-400">Días</th>
                                                 <th className="px-3 py-2 text-right font-semibold text-green-700 dark:text-green-400">Ganado</th>
@@ -632,7 +638,7 @@ export default function MiCompensacionIndex() {
                                                 <th className="px-3 py-2 text-center font-semibold text-green-700 dark:text-green-400">% Rechazos</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+                                        <tbody className="divide-y divide-border">
                                             {historialAnual.map((mes) => {
                                                 const esMesActual = mes.mes_num === mesActualIdx + 1;
                                                 return (
@@ -640,16 +646,16 @@ export default function MiCompensacionIndex() {
                                                         key={mes.mes_num}
                                                         className={`${esMesActual ? 'bg-green-50/60 font-semibold dark:bg-green-900/10' : ''} ${mes.es_futuro ? 'opacity-40' : ''}`}
                                                     >
-                                                        <td className="px-3 py-2 text-gray-700 dark:text-gray-300">
+                                                        <td className="px-3 py-2 text-foreground">
                                                             {mes.mes_nombre}
                                                             {esMesActual && <span className="ml-1 rounded-full bg-green-700 px-1.5 py-0.5 text-[9px] text-white">Actual</span>}
                                                         </td>
-                                                        <td className="px-3 py-2 text-center tabular-nums text-gray-600 dark:text-gray-400">{mes.es_futuro ? '—' : (mes.dias_trabajados ?? 0)}</td>
+                                                        <td className="px-3 py-2 text-center tabular-nums text-muted-foreground">{mes.es_futuro ? '—' : (mes.dias_trabajados ?? 0)}</td>
                                                         <td className="px-3 py-2 text-right tabular-nums text-green-700 dark:text-green-400">{mes.es_futuro ? '—' : formatCOP(mes.total_ganado ?? 0)}</td>
-                                                        <td className={`px-3 py-2 text-right tabular-nums ${(mes.total_perdido ?? 0) > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-400'}`}>{mes.es_futuro ? '—' : formatCOP(mes.total_perdido ?? 0)}</td>
-                                                        <td className={`px-3 py-2 text-center tabular-nums ${(mes.aus_justificada ?? 0) > 0 ? 'text-orange-600' : 'text-gray-400'}`}>{mes.es_futuro ? '—' : (mes.aus_justificada ?? 0)}</td>
-                                                        <td className={`px-3 py-2 text-center tabular-nums ${(mes.aus_injustificada ?? 0) > 0 ? 'text-red-600' : 'text-gray-400'}`}>{mes.es_futuro ? '—' : (mes.aus_injustificada ?? 0)}</td>
-                                                        <td className="px-3 py-2 text-center tabular-nums text-gray-600">{mes.es_futuro ? '—' : `${(mes.promedio_rechazos ?? 0).toFixed(2)}%`}</td>
+                                                        <td className={`px-3 py-2 text-right tabular-nums ${(mes.total_perdido ?? 0) > 0 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'}`}>{mes.es_futuro ? '—' : formatCOP(mes.total_perdido ?? 0)}</td>
+                                                        <td className={`px-3 py-2 text-center tabular-nums ${(mes.aus_justificada ?? 0) > 0 ? 'text-orange-600' : 'text-muted-foreground'}`}>{mes.es_futuro ? '—' : (mes.aus_justificada ?? 0)}</td>
+                                                        <td className={`px-3 py-2 text-center tabular-nums ${(mes.aus_injustificada ?? 0) > 0 ? 'text-red-600' : 'text-muted-foreground'}`}>{mes.es_futuro ? '—' : (mes.aus_injustificada ?? 0)}</td>
+                                                        <td className="px-3 py-2 text-center tabular-nums text-muted-foreground">{mes.es_futuro ? '—' : `${(mes.promedio_rechazos ?? 0).toFixed(2)}%`}</td>
                                                     </tr>
                                                 );
                                             })}
@@ -666,10 +672,10 @@ export default function MiCompensacionIndex() {
                                     <Star className="size-4 text-white" />
                                 </div>
                                 <div>
-                                    <p className="text-xs font-semibold text-gray-900 dark:text-gray-100">
+                                    <p className="text-xs font-semibold text-foreground">
                                         {cumpleTotal ? '¡Sigue así!' : '¡Tú puedes mejorar!'}
                                     </p>
-                                    <p className="text-[11px] text-gray-400">
+                                    <p className="text-[11px] text-muted-foreground">
                                         {cumpleTotal ? 'Vas por muy buen camino. Mantén tus indicadores en verde.'
                                             : 'Reducir tus rechazos es la clave para ganar el 100% cada día.'}
                                     </p>
