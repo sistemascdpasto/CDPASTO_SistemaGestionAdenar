@@ -377,10 +377,10 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
 
                                     {/* FLOTA 15% */}
                                     <div className="col-span-2 mt-2 mb-0.5 text-[10px] font-bold text-blue-700 dark:text-blue-400 flex items-center gap-1">
-                                        <CheckCircle2 className="h-3 w-3" /> Flota 15%
+                                        <CheckCircle2 className="h-3 w-3" /> Flota 15% (Ambos Aprobados = 15% | Si uno no está Aprobado = 0%)
                                     </div>
-                                    <div><span className="font-bold text-blue-700 dark:text-blue-400">Checklist Pre</span> <span className="text-muted-foreground">(7.5%)</span> — Solo conductores · Promedio ≥ {umbral_checklist}% = Aprobado</div>
-                                    <div><span className="font-bold text-blue-700 dark:text-blue-400">Checklist Post</span> <span className="text-muted-foreground">(7.5%)</span> — Solo conductores · Promedio ≥ {umbral_checklist}% = Aprobado</div>
+                                    <div><span className="font-bold text-blue-700 dark:text-blue-400">Checklist Pre</span> — Solo conductores · Default Aprobado (100%)</div>
+                                    <div><span className="font-bold text-blue-700 dark:text-blue-400">Checklist Post</span> — Solo conductores · Default Aprobado (100%)</div>
                                 </div>
                             )}
                         </div>

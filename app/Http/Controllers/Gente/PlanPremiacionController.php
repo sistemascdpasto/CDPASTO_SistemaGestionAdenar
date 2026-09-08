@@ -581,12 +581,12 @@ class PlanPremiacionController extends Controller
             $resultadoRepartoVal = round(($calRechazos * 11) + ($calSac * 8) + ($calAdherenciaTiempo * 8) + ($calRmd * 8), 1);
             $resultadoRepartoLabel = "{$resultadoRepartoVal}%";
 
-            // Cálculo Resultado Ponderado FLOTA (CL Pre=7.5%, CL Post=7.5% = 15%)
-            // Solo aplica para Conductores de Reparto. Cada checklist es binario: Aprobado=1, No Aprobado=0.
+            // Cálculo Resultado Ponderado FLOTA (15%)
+            // Solo aplica para Conductores. Ambos checklist (Pre y Post) deben estar Aprobados para obtener 15%, si alguno es No Aprobado -> 0%.
             if ($esConductor) {
-                $calCheckPre  = $porcentajeChecklistPre  !== null ? ($porcentajeChecklistPre  >= 100 ? 1.0 : 0.0) : 0.0;
-                $calCheckPost = $porcentajeChecklistPost !== null ? ($porcentajeChecklistPost >= 100 ? 1.0 : 0.0) : 0.0;
-                $resultadoFlotaVal = round(($calCheckPre * 7.5) + ($calCheckPost * 7.5), 1);
+                $clPreOk  = $porcentajeChecklistPre !== null && $porcentajeChecklistPre >= 100;
+                $clPostOk = $porcentajeChecklistPost !== null && $porcentajeChecklistPost >= 100;
+                $resultadoFlotaVal = ($clPreOk && $clPostOk) ? 15.0 : 0.0;
                 $resultadoFlotaLabel = "{$resultadoFlotaVal}%";
             } else {
                 $resultadoFlotaVal = null;
@@ -1048,19 +1048,20 @@ class PlanPremiacionController extends Controller
             $cRmd  = $pRmd  !== null ? (int)($pRmd >= 100) : 0;
             $rRep  = round($cRec*11 + $cSac*8 + $cAdt*8 + $cRmd*8, 1);
 
-            // Flota
+            // Flota (Ambos Aprobados = 15%, Si uno No Aprobado = 0%)
             $esConductorExp = str_contains(strtoupper((string)($colab->cargo ?? '')), 'CONDUCTOR');
             if ($esConductorExp) {
                 $mcExp = $checklistsManuales->get($colab->id);
-                $pCpre = ($mcExp ? (bool)$mcExp->cl_pre : true) ? 100.0 : 0.0;
-                $pCpost = ($mcExp ? (bool)$mcExp->cl_post : true) ? 100.0 : 0.0;
+                $clPreOk  = $mcExp ? (bool)$mcExp->cl_pre : true;
+                $clPostOk = $mcExp ? (bool)$mcExp->cl_post : true;
+                $pCpre = $clPreOk ? 100.0 : 0.0;
+                $pCpost = $clPostOk ? 100.0 : 0.0;
+                $rFlota = ($clPreOk && $clPostOk) ? 15.0 : 0.0;
             } else {
                 $pCpre = null;
                 $pCpost = null;
+                $rFlota = 0.0;
             }
-            $cCpre  = $pCpre !== null ? ($pCpre >= 100 ? 1.0 : 0.0) : 0;
-            $cCpost = $pCpost !== null ? ($pCpost >= 100 ? 1.0 : 0.0) : 0;
-            $rFlota = $esConductorExp ? round($cCpre*7.5 + $cCpost*7.5, 1) : 0.0;
 
             // Total
             $total = round($rSeg + $rGente + $rRep + $rFlota, 1);

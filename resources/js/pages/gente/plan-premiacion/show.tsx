@@ -200,7 +200,13 @@ export default function PlanPremiacionShow({ colaborador, metricas, historial_ac
     const pilares = ['Seguridad', 'Gente', 'Reparto', 'Flota'] as const;
     const resultadoPilares = pilares.map(pilar => {
         const items = metricasList.filter(m => m.pilar === pilar);
-        const puntos = items.reduce((acc, m) => acc + (m.valor !== null ? (Math.min(m.valor, 100) / 100) * m.peso : 0), 0);
+        let puntos = 0;
+        if (pilar === 'Flota') {
+            const todosAprobados = items.length > 0 && items.every(m => m.valor !== null && m.valor >= 100);
+            puntos = todosAprobados ? PILAR_CONFIG.Flota.max : 0;
+        } else {
+            puntos = items.reduce((acc, m) => acc + (m.valor !== null ? (Math.min(m.valor, 100) / 100) * m.peso : 0), 0);
+        }
         const maxPilar = PILAR_CONFIG[pilar].max;
         return { pilar, puntos: Math.min(puntos, maxPilar), max: maxPilar };
     });

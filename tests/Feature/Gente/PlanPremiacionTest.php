@@ -500,6 +500,17 @@ class PlanPremiacionTest extends TestCase
             'cl_pre' => false,
             'cl_post' => true,
         ]);
+
+        // Verificar que con 1 checklist No Aprobado, resultado_flota es 0%
+        $responseIndex = $this->actingAs($user)->get(route('gente.plan-premiacion.index', ['mes' => 9, 'anio' => 2026]));
+        $responseIndex->assertOk();
+        $responseIndex->assertInertia(fn ($page) => $page
+            ->component('gente/plan-premiacion/index')
+            ->where('colaboradores', function ($colabs) use ($colab) {
+                $c = collect($colabs)->keyBy('id');
+                return (float)$c[$colab->id]['resultado_flota'] === 0.0;
+            })
+        );
     }
 
     public function test_plan_premiacion_calcula_resultado_promedio_aci_ows_calificaciones(): void
