@@ -52,7 +52,7 @@ class EventosTripulacion extends Model
             'total_eventos'            => 'integer',
             'excesos_tiempo_ruta'      => 'integer',
             'alertas_velocidad_curvas' => 'integer',
-            'rechazos'                 => 'float',      // porcentaje ej: 3.50
+            'rechazos'                 => 'float',      // porcentaje ej: 3.5040
             'adherencia_checklist_pre' => 'float',
             'adherencia_checklist_post'=> 'float',
             'rendimiento_combustible'  => 'float',

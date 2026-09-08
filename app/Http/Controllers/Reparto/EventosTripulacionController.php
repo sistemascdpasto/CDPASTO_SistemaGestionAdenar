@@ -955,13 +955,13 @@ class EventosTripulacionController
                     $val = (float) $cleaned;
                     // Si ya viene como porcentaje legible (ej: 85.80), usar directo
                     // Si viene como decimal (ej: 0.858), escalar ×100
-                    return $val <= 1.0 ? round($val * 100, 2) : round($val, 2);
+                    return $val <= 1.0 ? round($val * 100, 4) : round($val, 4);
                 }
                 return null; // "SIN CALIFICACION" u otro texto → null
             }
             if (!is_numeric($raw)) return null;
             $val = (float) $raw;
-            return $val <= 1.0 ? round($val * 100, 2) : round($val, 2);
+            return $val <= 1.0 ? round($val * 100, 4) : round($val, 4);
         }
 
         // Mes: número o nombre
