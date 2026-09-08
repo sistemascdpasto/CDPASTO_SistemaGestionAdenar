@@ -1,7 +1,6 @@
 import HeadingSmall from '@/components/heading-small';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
@@ -56,10 +55,6 @@ export default function UsersIndex({ users, filters }: { users: UsersPaginator; 
 
     const toggleStatus = (user: UserRow) => {
         router.patch(route('admin.users.toggle-status', user.id), {}, { preserveScroll: true });
-    };
-
-    const destroyUser = (user: UserRow) => {
-        router.delete(route('admin.users.destroy', user.id), { preserveScroll: true });
     };
 
     return (
@@ -132,28 +127,6 @@ export default function UsersIndex({ users, filters }: { users: UsersPaginator; 
                                             <Button variant="outline" size="sm" onClick={() => toggleStatus(user)}>
                                                 {user.is_active ? 'Desactivar' : 'Activar'}
                                             </Button>
-                                            <Dialog>
-                                                <DialogTrigger asChild>
-                                                    <Button variant="destructive" size="sm">
-                                                        Eliminar
-                                                    </Button>
-                                                </DialogTrigger>
-                                                <DialogContent>
-                                                    <DialogTitle>¿Eliminar a {user.name}?</DialogTitle>
-                                                    <DialogDescription>
-                                                        Esta acción elimina al usuario de forma lógica; podrás restaurarlo directamente desde la
-                                                        base de datos si es necesario.
-                                                    </DialogDescription>
-                                                    <DialogFooter>
-                                                        <DialogClose asChild>
-                                                            <Button variant="secondary">Cancelar</Button>
-                                                        </DialogClose>
-                                                        <Button variant="destructive" onClick={() => destroyUser(user)}>
-                                                            Eliminar
-                                                        </Button>
-                                                    </DialogFooter>
-                                                </DialogContent>
-                                            </Dialog>
                                         </div>
                                     </TableCell>
                                 </TableRow>

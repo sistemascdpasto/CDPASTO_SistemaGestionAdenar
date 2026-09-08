@@ -93,13 +93,6 @@ class UserController extends Controller
         return to_route('admin.users.index')->with('status', 'Usuario actualizado correctamente.');
     }
 
-    public function destroy(User $user): RedirectResponse
-    {
-        $user->delete();
-
-        return to_route('admin.users.index')->with('status', 'Usuario eliminado correctamente.');
-    }
-
     public function resetPassword(ResetPasswordRequest $request, User $user): RedirectResponse
     {
         $user->update(['password' => $request->validated('password')]);
