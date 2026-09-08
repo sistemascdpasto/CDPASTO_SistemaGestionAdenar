@@ -21,7 +21,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 const ESTADO_BADGE: Record<string, string> = {
     en_taller: 'bg-amber-100 text-amber-700',
     cerrada:   'bg-green-700 text-white',
-    cancelada: 'bg-gray-100 text-gray-500',
+    cancelada: 'bg-muted text-muted-foreground',
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -29,8 +29,8 @@ const ESTADO_BADGE: Record<string, string> = {
 function Fila({ label, value }: { label: string; value: React.ReactNode }) {
     return (
         <div className="grid gap-0.5">
-            <p className="text-[10px] font-medium text-gray-400">{label}</p>
-            <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{value ?? '—'}</p>
+            <p className="text-[10px] font-medium text-muted-foreground">{label}</p>
+            <p className="text-sm font-medium text-foreground">{value ?? '—'}</p>
         </div>
     );
 }
@@ -40,7 +40,7 @@ function Campo({ label, required, error, children }: {
 }) {
     return (
         <div className="grid gap-1.5">
-            <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+            <Label className="text-xs font-medium text-foreground">
                 {label}{required && <span className="ml-0.5 text-red-500">*</span>}
             </Label>
             {children}
@@ -51,9 +51,9 @@ function Campo({ label, required, error, children }: {
 
 function SeccionCard({ title, children }: { title: string; children: React.ReactNode }) {
     return (
-        <div className="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900 overflow-hidden">
-            <div className="border-b border-gray-100 px-5 py-3.5 dark:border-gray-800">
-                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{title}</p>
+        <div className="rounded-xl border border-sidebar-border/70 bg-card shadow-sm dark:border-sidebar-border overflow-hidden">
+            <div className="border-b border-sidebar-border/70 px-5 py-3.5 dark:border-sidebar-border">
+                <p className="text-sm font-semibold text-foreground">{title}</p>
             </div>
             <div className="px-5 py-4">{children}</div>
         </div>
@@ -230,7 +230,7 @@ export default function ActasTallerShow({ acta, vehiculos }: Props) {
 
                     {/* Banner éxito */}
                     {successMsg && (
-                        <div className="flex items-center gap-3 rounded-2xl border border-green-200 bg-green-50 px-5 py-4 dark:border-green-800/40 dark:bg-green-900/10">
+                        <div className="flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 px-5 py-4 dark:border-green-800/40 dark:bg-green-900/10">
                             <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-green-700">
                                 <CheckCircle2 className="size-4 text-white" />
                             </div>
@@ -245,12 +245,12 @@ export default function ActasTallerShow({ acta, vehiculos }: Props) {
                     <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
                             <div className="flex items-center gap-2">
-                                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Acta {acta.numero_acta}</h1>
-                                <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${ESTADO_BADGE[estadoActa] ?? 'bg-gray-100 text-gray-500'}`}>
+                                <h1 className="text-2xl font-bold text-foreground">Acta {acta.numero_acta}</h1>
+                                <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${ESTADO_BADGE[estadoActa] ?? 'bg-muted text-muted-foreground'}`}>
                                     {estadoActa === 'cerrada' ? 'Cerrada' : estadoActa === 'en_taller' ? 'En taller' : 'Cancelada'}
                                 </span>
                             </div>
-                            <p className="mt-0.5 text-sm text-gray-500">Gestión de mantenimiento · Vehículo {acta.placa}</p>
+                            <p className="mt-0.5 text-sm text-muted-foreground">Gestión de mantenimiento · Vehículo {acta.placa}</p>
                         </div>
                         <div className="flex flex-wrap gap-2">
                             <Button variant="outline" size="sm" asChild>
@@ -355,13 +355,13 @@ export default function ActasTallerShow({ acta, vehiculos }: Props) {
                         ) : (
                             novedades.length > 0
                                 ? <NovedadesTabla novedades={novedades} />
-                                : <p className="text-sm text-gray-400">Sin novedades registradas.</p>
+                                : <p className="text-sm text-muted-foreground">Sin novedades registradas.</p>
                         )}
                     </SeccionCard>
 
                     {/* Estado del acta (solo edición) */}
                     {editando && (
-                        <div className={`flex items-center gap-3 rounded-2xl border px-5 py-3 ${
+                        <div className={`flex items-center gap-3 rounded-xl border px-5 py-3 ${
                             estadoActa === 'cerrada'
                                 ? 'border-green-200 bg-green-50 dark:border-green-800/40 dark:bg-green-900/10'
                                 : 'border-amber-200 bg-amber-50 dark:border-amber-800/40 dark:bg-amber-900/10'
@@ -374,15 +374,15 @@ export default function ActasTallerShow({ acta, vehiculos }: Props) {
                                 </svg>
                             </div>
                             <div>
-                                <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">
+                                <p className="text-xs font-semibold text-foreground">
                                     Estado del acta:{' '}
                                     <span className={estadoActa === 'cerrada' ? 'text-green-700 dark:text-green-400' : 'text-amber-700 dark:text-amber-400'}>
                                         {estadoActa === 'cerrada' ? 'Cerrada' : 'En taller'}
                                     </span>
                                 </p>
-                                <p className="text-[10px] text-gray-400">
+                                <p className="text-[10px] text-muted-foreground">
                                     {estadoActa === 'cerrada'
-                                        ? '✓ Todas las novedades están realizadas.'
+                                        ? 'Todas las novedades están realizadas.'
                                         : 'Se cerrará cuando todas las novedades estén marcadas como realizadas.'}
                                 </p>
                             </div>
@@ -423,21 +423,21 @@ export default function ActasTallerShow({ acta, vehiculos }: Props) {
                             <div className="grid gap-4 sm:grid-cols-2">
                                 {acta.diagnostico_taller && (
                                     <div>
-                                        <p className="mb-1 text-[10px] font-semibold uppercase text-gray-400">Diagnóstico del taller</p>
-                                        <p className="whitespace-pre-line text-sm text-gray-700 dark:text-gray-300">{acta.diagnostico_taller}</p>
+                                        <p className="mb-1 text-[10px] font-semibold text-muted-foreground">Diagnóstico del taller</p>
+                                        <p className="whitespace-pre-line text-sm text-foreground">{acta.diagnostico_taller}</p>
                                     </div>
                                 )}
                                 {acta.solucion_realizada && (
                                     <div>
-                                        <p className="mb-1 text-[10px] font-semibold uppercase text-gray-400">Solución realizada</p>
-                                        <p className="whitespace-pre-line text-sm text-gray-700 dark:text-gray-300">{acta.solucion_realizada}</p>
+                                        <p className="mb-1 text-[10px] font-semibold text-muted-foreground">Solución realizada</p>
+                                        <p className="whitespace-pre-line text-sm text-foreground">{acta.solucion_realizada}</p>
                                     </div>
                                 )}
                             </div>
                             {acta.observaciones && (
-                                <div className="mt-4 border-t border-gray-100 pt-3 dark:border-gray-800">
-                                    <p className="mb-1 text-[10px] font-semibold uppercase text-gray-400">Observaciones</p>
-                                    <p className="text-sm text-gray-700 dark:text-gray-300">{acta.observaciones}</p>
+                                <div className="mt-4 border-t border-sidebar-border/70 pt-3 dark:border-sidebar-border">
+                                    <p className="mb-1 text-[10px] font-semibold text-muted-foreground">Observaciones</p>
+                                    <p className="text-sm text-foreground">{acta.observaciones}</p>
                                 </div>
                             )}
                         </SeccionCard>
@@ -450,8 +450,8 @@ export default function ActasTallerShow({ acta, vehiculos }: Props) {
                                 {acta.evidencias.map((ev: any) => (
                                     <div key={ev.id}>
                                         <img src={ev.url} alt={ev.etiqueta ?? 'Evidencia'}
-                                            className="h-28 w-full rounded-xl object-cover border border-gray-200 shadow-sm" />
-                                        {ev.etiqueta && <p className="mt-1 text-center text-[10px] text-gray-400">{ev.etiqueta}</p>}
+                                            className="h-28 w-full rounded-xl object-cover border border-sidebar-border/70 shadow-sm" />
+                                        {ev.etiqueta && <p className="mt-1 text-center text-[10px] text-muted-foreground">{ev.etiqueta}</p>}
                                     </div>
                                 ))}
                             </div>
@@ -464,9 +464,9 @@ export default function ActasTallerShow({ acta, vehiculos }: Props) {
             {/* Modal eliminar */}
             {confirmEliminar && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-                    <div className="w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-6 shadow-xl dark:border-gray-800 dark:bg-gray-900">
-                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">¿Eliminar el acta {acta.numero_acta}?</p>
-                        <p className="mt-1 text-xs text-gray-500">Esta acción no se puede deshacer.</p>
+                    <div className="w-full max-w-sm rounded-xl border border-sidebar-border/70 bg-popover p-6 shadow-md dark:border-sidebar-border">
+                        <p className="text-sm font-semibold text-foreground">¿Eliminar el acta {acta.numero_acta}?</p>
+                        <p className="mt-1 text-xs text-muted-foreground">Esta acción no se puede deshacer.</p>
                         <div className="mt-4 flex justify-end gap-2">
                             <Button variant="outline" size="sm" onClick={() => setConfirmEliminar(false)}>Cancelar</Button>
                             <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white"

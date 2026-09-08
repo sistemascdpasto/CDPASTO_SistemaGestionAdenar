@@ -6,8 +6,8 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
 import {
-    AlertTriangle, BarChart3, CheckCircle2, Clock,
-    ClipboardList, Plus, Timer, Truck, Trophy, XCircle,
+    AlertTriangle, BarChart3, CalendarDays, CheckCircle2, Clock,
+    ClipboardList, Plus, Timer, Truck, Trophy, Wrench, XCircle,
 } from 'lucide-react';
 import { useState } from 'react';
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -25,15 +25,15 @@ function KpiCard({ label, value, sub, icon: Icon, color }: {
     label: string; value: string | number; sub?: string; icon: React.ElementType; color: string;
 }) {
     return (
-        <div className="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900 p-4 flex flex-col gap-1.5">
+        <div className="rounded-xl border border-sidebar-border/70 bg-card shadow-sm dark:border-sidebar-border p-4 flex flex-col gap-1.5">
             <div className="flex items-start justify-between gap-2">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">{label}</p>
-                <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
+                <p className="text-[10px] font-semibold text-muted-foreground">{label}</p>
+                <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted">
                     <Icon className="size-3.5" style={{ color }} />
                 </div>
             </div>
             <p className="text-3xl font-extrabold tabular-nums leading-none" style={{ color }}>{value}</p>
-            {sub && <p className="text-[10px] text-gray-400 leading-snug">{sub}</p>}
+            {sub && <p className="text-[10px] text-muted-foreground leading-snug">{sub}</p>}
         </div>
     );
 }
@@ -55,10 +55,10 @@ export default function ActasTallerDashboard({ kpis, novedades_por_mes, novedade
                 {/* Título */}
                 <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 sm:text-3xl">
+                        <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
                             Dashboard — Novedades a Taller
                         </h1>
-                        <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+                        <p className="mt-0.5 text-sm text-muted-foreground">
                             Resumen e indicadores de gestión
                         </p>
                     </div>
@@ -77,14 +77,14 @@ export default function ActasTallerDashboard({ kpis, novedades_por_mes, novedade
                 </div>
 
                 {/* Filtro de fechas */}
-                <div className="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900 px-4 py-3">
+                <div className="rounded-xl border border-sidebar-border/70 bg-card shadow-sm dark:border-sidebar-border px-4 py-3">
                     <div className="flex flex-wrap items-end gap-3">
                         <div className="grid gap-1">
-                            <Label className="text-[10px] font-semibold uppercase text-gray-400">Desde</Label>
+                            <Label className="text-[10px] font-semibold text-muted-foreground">Desde</Label>
                             <Input type="date" value={desde} className="h-8 text-xs w-36" onChange={e => setDesde(e.target.value)} />
                         </div>
                         <div className="grid gap-1">
-                            <Label className="text-[10px] font-semibold uppercase text-gray-400">Hasta</Label>
+                            <Label className="text-[10px] font-semibold text-muted-foreground">Hasta</Label>
                             <Input type="date" value={hasta} className="h-8 text-xs w-36" onChange={e => setHasta(e.target.value)} />
                         </div>
                         <Button size="sm" onClick={aplicar} className="h-8 bg-green-700 hover:bg-green-800 text-white">
@@ -108,18 +108,18 @@ export default function ActasTallerDashboard({ kpis, novedades_por_mes, novedade
                     <KpiCard label="Tiempo prom. solución" value={`${kpis.tiempo_promedio} días`} sub="Rápido: 0–2 días"     icon={Timer}  color="#15803d" />
                     <KpiCard label="Actas cerradas"        value={kpis.actas_cerradas}             sub={`${kpis.actas_creadas} creadas`} icon={CheckCircle2} color="#0891b2" />
                     <KpiCard label="Novedades vencidas"    value={kpis.vencidas}                   sub="Requieren atención"  icon={Clock}  color={kpis.vencidas > 0 ? '#dc2626' : '#15803d'} />
-                    <div className="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900 p-4">
-                        <p className="text-[10px] font-semibold uppercase text-gray-400 mb-1">Taller con mejor tiempo</p>
+                    <div className="rounded-xl border border-sidebar-border/70 bg-card shadow-sm dark:border-sidebar-border p-4">
+                        <p className="text-[10px] font-semibold text-muted-foreground mb-1">Taller con mejor tiempo</p>
                         {kpis.taller_mejor ? (
                             <>
                                 <div className="flex items-center gap-1.5">
                                     <Trophy className="size-4 text-amber-500" />
-                                    <p className="text-sm font-bold text-gray-800 dark:text-gray-200 truncate">{kpis.taller_mejor.taller}</p>
+                                    <p className="text-sm font-bold text-foreground truncate">{kpis.taller_mejor.taller}</p>
                                 </div>
-                                <p className="text-[10px] text-gray-400 mt-0.5">{kpis.taller_mejor.promedio} días promedio</p>
+                                <p className="text-[10px] text-muted-foreground mt-0.5">{kpis.taller_mejor.promedio} días promedio</p>
                             </>
                         ) : (
-                            <p className="text-sm text-gray-400">Sin datos</p>
+                            <p className="text-sm text-muted-foreground">Sin datos</p>
                         )}
                     </div>
                 </div>
@@ -128,8 +128,8 @@ export default function ActasTallerDashboard({ kpis, novedades_por_mes, novedade
                 <div className="grid gap-5 lg:grid-cols-2">
 
                     {/* Novedades por mes */}
-                    <div className="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900 p-5">
-                        <p className="mb-4 text-sm font-semibold text-gray-900 dark:text-gray-100">📅 Novedades por mes</p>
+                    <div className="rounded-xl border border-sidebar-border/70 bg-card shadow-sm dark:border-sidebar-border p-5">
+                        <p className="mb-4 flex items-center gap-1.5 text-sm font-semibold text-foreground"><CalendarDays className="size-4" /> Novedades por mes</p>
                         {novedades_por_mes.length > 0 ? (
                             <ResponsiveContainer width="100%" height={200}>
                                 <BarChart data={novedades_por_mes} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
@@ -140,12 +140,12 @@ export default function ActasTallerDashboard({ kpis, novedades_por_mes, novedade
                                     <Bar dataKey="total" fill="#15803d" radius={[4, 4, 0, 0]} name="Novedades" />
                                 </BarChart>
                             </ResponsiveContainer>
-                        ) : <p className="text-sm text-center text-gray-400 py-8">Sin datos</p>}
+                        ) : <p className="text-sm text-center text-muted-foreground py-8">Sin datos</p>}
                     </div>
 
                     {/* Novedades por tipo */}
-                    <div className="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900 p-5">
-                        <p className="mb-4 text-sm font-semibold text-gray-900 dark:text-gray-100">🔧 Novedades por tipo</p>
+                    <div className="rounded-xl border border-sidebar-border/70 bg-card shadow-sm dark:border-sidebar-border p-5">
+                        <p className="mb-4 flex items-center gap-1.5 text-sm font-semibold text-foreground"><Wrench className="size-4" /> Novedades por tipo</p>
                         {novedades_por_tipo.length > 0 ? (
                             <div className="flex items-center gap-4">
                                 <ResponsiveContainer width="50%" height={200}>
@@ -161,38 +161,38 @@ export default function ActasTallerDashboard({ kpis, novedades_por_mes, novedade
                                         <div key={i} className="flex items-center justify-between gap-2">
                                             <div className="flex items-center gap-1.5">
                                                 <div className="size-2.5 rounded-full shrink-0" style={{ background: COLORS[i % COLORS.length] }} />
-                                                <p className="text-[11px] text-gray-600 dark:text-gray-400 truncate max-w-[100px]">{item.categoria}</p>
+                                                <p className="text-[11px] text-muted-foreground truncate max-w-[100px]">{item.categoria}</p>
                                             </div>
-                                            <p className="text-[11px] font-bold text-gray-700 dark:text-gray-300">{item.total}</p>
+                                            <p className="text-[11px] font-bold text-foreground">{item.total}</p>
                                         </div>
                                     ))}
                                 </div>
                             </div>
-                        ) : <p className="text-sm text-center text-gray-400 py-8">Sin datos</p>}
+                        ) : <p className="text-sm text-center text-muted-foreground py-8">Sin datos</p>}
                     </div>
                 </div>
 
                 {/* Vehículos con más novedades */}
                 {vehiculos_mas_novedades.length > 0 && (
-                    <div className="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900 overflow-hidden">
-                        <div className="border-b border-gray-100 px-5 py-3 dark:border-gray-800">
-                            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">🚛 Vehículos con más novedades</p>
+                    <div className="rounded-xl border border-sidebar-border/70 bg-card shadow-sm dark:border-sidebar-border overflow-hidden">
+                        <div className="border-b border-sidebar-border/70 px-5 py-3 dark:border-sidebar-border">
+                            <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground"><Truck className="size-4" /> Vehículos con más novedades</p>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
                                 <thead>
-                                    <tr className="border-b border-gray-100 bg-gray-50 dark:border-gray-800 dark:bg-gray-800/50">
+                                    <tr className="border-b border-sidebar-border/70 bg-muted dark:border-sidebar-border dark:bg-muted">
                                         <th className="px-5 py-2.5 text-left text-[11px] font-semibold text-green-700 dark:text-green-400">#</th>
                                         <th className="px-5 py-2.5 text-left text-[11px] font-semibold text-green-700 dark:text-green-400">Placa</th>
                                         <th className="px-5 py-2.5 text-right text-[11px] font-semibold text-green-700 dark:text-green-400">Novedades</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+                                <tbody className="divide-y divide-border">
                                     {vehiculos_mas_novedades.map((v, i) => (
-                                        <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-800/30">
-                                            <td className="px-5 py-2 text-xs text-gray-400">{i + 1}</td>
+                                        <tr key={i} className="hover:bg-muted/60/30">
+                                            <td className="px-5 py-2 text-xs text-muted-foreground">{i + 1}</td>
                                             <td className="px-5 py-2 font-mono font-bold text-green-700 dark:text-green-400">{v.placa}</td>
-                                            <td className="px-5 py-2 text-right tabular-nums font-semibold text-gray-700 dark:text-gray-300">{v.total}</td>
+                                            <td className="px-5 py-2 text-right tabular-nums font-semibold text-foreground">{v.total}</td>
                                         </tr>
                                     ))}
                                 </tbody>

@@ -1,5 +1,6 @@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Phone } from 'lucide-react';
 import { FirmaPad, type FirmaPadHandle } from '../firma-pad';
 
 // ─── Modo edición (create / show editable) ────────────────────────────────────
@@ -42,7 +43,7 @@ type Props = EditProps | ReadProps;
 function FirmaSlot({ titulo, children }: { titulo: string; children: React.ReactNode }) {
     return (
         <div className="grid gap-3">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">{titulo}</p>
+            <p className="text-[11px] font-semibold text-muted-foreground">{titulo}</p>
             {children}
         </div>
     );
@@ -51,7 +52,7 @@ function FirmaSlot({ titulo, children }: { titulo: string; children: React.React
 function CampoFirma({ label, children }: { label: string; children: React.ReactNode }) {
     return (
         <div className="grid gap-1.5">
-            <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">{label}</Label>
+            <Label className="text-xs font-medium text-foreground">{label}</Label>
             {children}
         </div>
     );
@@ -65,10 +66,10 @@ function FirmaImagen({ src, nombre, cargo, identificacion, telefono }: {
         <>
             {(nombre || cargo) && (
                 <div className="grid gap-0.5">
-                    <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">{nombre ?? '—'}</p>
-                    {cargo         && <p className="text-[11px] text-gray-500">{cargo}</p>}
-                    {identificacion && <p className="text-[11px] text-gray-400">C.C. {identificacion}</p>}
-                    {telefono      && <p className="text-[11px] text-gray-400">📞 {telefono}</p>}
+                    <p className="text-sm font-semibold text-foreground">{nombre ?? '—'}</p>
+                    {cargo         && <p className="text-[11px] text-muted-foreground">{cargo}</p>}
+                    {identificacion && <p className="text-[11px] text-muted-foreground">C.C. {identificacion}</p>}
+                    {telefono      && <p className="flex items-center gap-1 text-[11px] text-muted-foreground"><Phone className="size-3" /> {telefono}</p>}
                 </div>
             )}
             {src ? (
@@ -76,7 +77,7 @@ function FirmaImagen({ src, nombre, cargo, identificacion, telefono }: {
                     className="h-[150px] w-full max-w-[400px] rounded-md border border-input bg-white object-contain" />
             ) : (
                 <div className="flex h-[150px] w-full max-w-[400px] items-center justify-center rounded-md border border-dashed border-input bg-white">
-                    <p className="text-xs text-gray-300">Sin firma</p>
+                    <p className="text-xs text-muted-foreground">Sin firma</p>
                 </div>
             )}
         </>

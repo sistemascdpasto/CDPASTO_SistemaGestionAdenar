@@ -34,7 +34,7 @@ function Campo({ label, required, error, children }: {
 }) {
     return (
         <div className="grid gap-1.5">
-            <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+            <Label className="text-xs font-medium text-foreground">
                 {label}{required && <span className="ml-0.5 text-red-500">*</span>}
             </Label>
             {children}
@@ -48,13 +48,13 @@ function Seccion({ titulo, children, defaultOpen = true }: {
 }) {
     const [open, setOpen] = useState(defaultOpen);
     return (
-        <div className="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900 overflow-hidden">
+        <div className="rounded-xl border border-sidebar-border/70 bg-card shadow-sm dark:border-sidebar-border overflow-hidden">
             <button type="button" onClick={() => setOpen(v => !v)}
-                className="flex w-full items-center justify-between px-5 py-3.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors">
-                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{titulo}</p>
-                {open ? <ChevronUp className="size-4 text-gray-400" /> : <ChevronDown className="size-4 text-gray-400" />}
+                className="flex w-full items-center justify-between px-5 py-3.5 text-left hover:bg-muted/60 transition-colors">
+                <p className="text-sm font-semibold text-foreground">{titulo}</p>
+                {open ? <ChevronUp className="size-4 text-muted-foreground" /> : <ChevronDown className="size-4 text-muted-foreground" />}
             </button>
-            {open && <div className="border-t border-gray-100 dark:border-gray-800 px-5 py-4">{children}</div>}
+            {open && <div className="border-t border-sidebar-border/70 dark:border-sidebar-border px-5 py-4">{children}</div>}
         </div>
     );
 }
@@ -185,7 +185,7 @@ export default function ActasTallerCreate({ vehiculos, colaboradores, numero_act
 
                     {/* Banner éxito */}
                     {successMsg && (
-                        <div className="flex items-center gap-3 rounded-2xl border border-green-200 bg-green-50 px-5 py-4 dark:border-green-800/40 dark:bg-green-900/10">
+                        <div className="flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 px-5 py-4 dark:border-green-800/40 dark:bg-green-900/10">
                             <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-green-700">
                                 <CheckCircle2 className="size-4 text-white" />
                             </div>
@@ -203,8 +203,8 @@ export default function ActasTallerCreate({ vehiculos, colaboradores, numero_act
                     {/* Título */}
                     <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
-                            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 sm:text-3xl">Nueva Acta de Taller</h1>
-                            <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">Nº {numero_acta}</p>
+                            <h1 className="text-2xl font-bold text-foreground sm:text-3xl">Nueva Acta de Taller</h1>
+                            <p className="mt-0.5 text-sm text-muted-foreground">Nº {numero_acta}</p>
                         </div>
                         <div className="flex gap-2">
                             <Button variant="outline" size="sm" asChild>
@@ -288,7 +288,7 @@ export default function ActasTallerCreate({ vehiculos, colaboradores, numero_act
                     </Seccion>
 
                     {/* Estado del acta */}
-                    <div className={`flex items-center gap-3 rounded-2xl border px-5 py-3 ${
+                    <div className={`flex items-center gap-3 rounded-xl border px-5 py-3 ${
                         estadoActa === 'cerrada'
                             ? 'border-green-200 bg-green-50 dark:border-green-800/40 dark:bg-green-900/10'
                             : 'border-amber-200 bg-amber-50 dark:border-amber-800/40 dark:bg-amber-900/10'
@@ -301,15 +301,15 @@ export default function ActasTallerCreate({ vehiculos, colaboradores, numero_act
                             </svg>
                         </div>
                         <div>
-                            <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">
+                            <p className="text-xs font-semibold text-foreground">
                                 Estado del acta:{' '}
                                 <span className={estadoActa === 'cerrada' ? 'text-green-700 dark:text-green-400' : 'text-amber-700 dark:text-amber-400'}>
                                     {estadoActa === 'cerrada' ? 'Cerrada' : 'Pendiente'}
                                 </span>
                             </p>
-                            <p className="text-[10px] text-gray-400">
+                            <p className="text-[10px] text-muted-foreground">
                                 {estadoActa === 'cerrada'
-                                    ? '✓ Todas las novedades están realizadas.'
+                                    ? 'Todas las novedades están realizadas.'
                                     : 'El acta se cerrará automáticamente cuando todas las novedades estén marcadas como realizadas.'}
                             </p>
                         </div>
