@@ -683,6 +683,10 @@ class EventosTripulacionController
                 $existentes[$key] = true;
                 $data['created_at'] = $now;
                 $data['updated_at'] = $now;
+                // Garantizar que placa nunca llegue null al INSERT mientras la BD lo requiera NOT NULL
+                if (!isset($data['placa']) || $data['placa'] === null) {
+                    $data['placa'] = '';
+                }
                 $batch[]            = $data;
                 $insertados++;
 
