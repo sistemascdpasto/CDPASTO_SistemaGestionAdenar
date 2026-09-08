@@ -579,11 +579,12 @@ class PlanPremiacionController extends Controller
 
             // Calificación Total (suma de los 4 pilares = 100%)
             // Para conductores: Seguridad(35%) + Gente(15%) + Reparto(35%) + Flota(15%) = 100%
-            // Para otros cargos: Seguridad(35%) + Gente(15%) + Reparto(35%) = 85% escalado a 100%
+            // Para otros cargos: Seguridad(35%) + Gente(15%) + Reparto(35%) escalado a 100%
             if ($esConductor) {
                 $calificacionTotalVal = round($resultadoVal + $resultadoAsistenciaVal + $resultadoRepartoVal + $resultadoFlotaVal, 1);
             } else {
-                $calificacionTotalVal = round($resultadoVal + $resultadoAsistenciaVal + $resultadoRepartoVal, 1);
+                $sumaBase = $resultadoVal + $resultadoAsistenciaVal + $resultadoRepartoVal;
+                $calificacionTotalVal = round(($sumaBase / 85) * 100, 1);
             }
             $calificacionTotalLabel = "{$calificacionTotalVal}%";
 
