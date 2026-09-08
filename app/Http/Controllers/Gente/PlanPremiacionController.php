@@ -486,8 +486,10 @@ class PlanPremiacionController extends Controller
                 $promedioRmdLabel = 'N/A';
             }
 
-            // % Adherencia CL Pre Op
-            $valsChecklistPre = $getMetricVals($checklistPrePorDocumento, $checklistPrePorNombre);
+            // % Adherencia CL Pre Op — solo aplica para cargo Conductor de Reparto
+            $esConductor = str_contains(strtoupper((string) ($colaborador->cargo ?? '')), 'CONDUCTOR');
+
+            $valsChecklistPre = $esConductor ? $getMetricVals($checklistPrePorDocumento, $checklistPrePorNombre) : [];
             if (!empty($valsChecklistPre)) {
                 $porcentajeChecklistPre = round(array_sum($valsChecklistPre) / count($valsChecklistPre), 1);
                 $porcentajeChecklistPreLabel = "{$porcentajeChecklistPre}%";
@@ -496,8 +498,8 @@ class PlanPremiacionController extends Controller
                 $porcentajeChecklistPreLabel = 'N/A';
             }
 
-            // % Adherencia CL Post Op
-            $valsChecklistPost = $getMetricVals($checklistPostPorDocumento, $checklistPostPorNombre);
+            // % Adherencia CL Post Op — solo aplica para cargo Conductor de Reparto
+            $valsChecklistPost = $esConductor ? $getMetricVals($checklistPostPorDocumento, $checklistPostPorNombre) : [];
             if (!empty($valsChecklistPost)) {
                 $porcentajeChecklistPost = round(array_sum($valsChecklistPost) / count($valsChecklistPost), 1);
                 $porcentajeChecklistPostLabel = "{$porcentajeChecklistPost}%";
