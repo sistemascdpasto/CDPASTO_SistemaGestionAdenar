@@ -970,8 +970,10 @@ class PlanPremiacionController extends Controller
             $sheet->getColumnDimension($col)->setWidth($ancho);
         }
 
-        // ── Filas de datos ────────────────────────────────────────────────────
-        $fila = 4;
+        // ── Filas de datos (calcular + ordenar por total desc + escribir) ───
+        $fmt = fn($v) => $v !== null ? $v.'%' : 'N/A';
+        $filasProcesadas = [];
+
         foreach ($colaboradores as $colab) {
             // ACI
             $aciRealizadas  = (int) ($conteosPorColaborador[$colab->id] ?? 0);
@@ -988,7 +990,7 @@ class PlanPremiacionController extends Controller
             $pCal = isset($promediosCalificaciones[$colab->cedula]) ? round((float)$promediosCalificaciones[$colab->cedula], 1) : null;
 
             // Resultado Seguridad — si un componente es N/A no resta
-            $cAci  = min($pAci, 100) / 100;  // ACI siempre tiene valor (puede ser 0)
+            $cAci  = min($pAci, 100) / 100;
             $cOwd  = $pOwd !== null ? min($pOwd, 100) / 100 : null;
             $cCal  = $pCal !== null ? min($pCal, 100) / 100 : null;
 
@@ -1064,13 +1066,18 @@ class PlanPremiacionController extends Controller
             }
 
             // Total
-            $total = round($rSeg + $rGente + $rRep + $rFlota, 1);
+            // Para conductores: Seguridad(35%) + Gente(15%) + Reparto(35%) + Flota(15%) = 100%
+            // Para no conductores: Seguridad(35%) + Gente(15%) + Reparto(35%) = 85% → escalado a 100%
+            if ($esConductorExp) {
+                $total = round($rSeg + $rGente + $rRep + $rFlota, 1);
+            } else {
+                $sumaBase = $rSeg + $rGente + $rRep;
+                $total = round(($sumaBase / 85) * 100, 1);
+            }
 
             $estado = $aciRealizadas >= self::META_BASE
                 ? 'Meta Alcanzada'
                 : ($aciRealizadas > 0 ? 'En Progreso' : 'Sin Participación');
-
-            $fmt = fn($v) => $v !== null ? $v.'%' : 'N/A';
 
             $datos = [
                 'A' => $colab->cedula,
@@ -1094,7 +1101,20 @@ class PlanPremiacionController extends Controller
                 'S' => $total.'%',
             ];
 
-            foreach ($datos as $col => $val) {
+            $filasProcesadas[] = [
+                'total'  => $total,
+                'datos'  => $datos,
+                'estado' => $estado,
+            ];
+        }
+
+        // Ordenar de mayor a menor calificación total (mismo orden que la vista)
+        usort($filasProcesadas, fn($a, $b) => $b['total'] <=> $a['total']);
+
+        // Escribir filas ordenadas en el Excel
+        $fila = 4;
+        foreach ($filasProcesadas as $filaData) {
+            foreach ($filaData['datos'] as $col => $val) {
                 $sheet->setCellValue($col.$fila, $val);
                 $bg = $pilarBg[$col] ?? null;
                 $style = ['borders'=>['allBorders'=>['borderStyle'=>'thin','color'=>['rgb'=>'E2E8F0']]]];
@@ -1108,7 +1128,7 @@ class PlanPremiacionController extends Controller
             }
 
             // Color estado en columna S
-            $colorEstado = match($estado) {
+            $colorEstado = match($filaData['estado']) {
                 'Meta Alcanzada'   => '059669',
                 'En Progreso'      => 'D97706',
                 default            => 'E11D48',

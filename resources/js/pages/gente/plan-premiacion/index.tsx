@@ -310,7 +310,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
         return `${selectedCargos.length} Cargos seleccionados`;
     };
 
-    const cargoParam = '';
+    const cargoParam = selectedCargos.length > 0 ? selectedCargos.join(',') : '';
     const exportUrl = [
         `/modules/gente/plan-premiacion/exportar`,
         `?mes=${mes}`,
@@ -318,6 +318,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
         `&meses_checklist=${mes}`,
         search ? `&search=${encodeURIComponent(search)}` : '',
         estado && estado !== 'todos' ? `&estado=${encodeURIComponent(estado)}` : '',
+        cargoParam ? `&cargo=${encodeURIComponent(cargoParam)}` : '',
     ].join('');
 
     return (
