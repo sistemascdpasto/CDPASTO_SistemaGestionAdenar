@@ -191,11 +191,13 @@ class EventosTripulacionController
     ];
 
     /**
-     * Campos que vienen como tiempo (HH:MM:SS o HH:MM:SS a. m./p. m.)
-     * → se convierten a minutos enteros para almacenar como SMALLINT.
-     * Ej: "1:30:00" → 90 min | "10:00:00 a. m." → 600 min
+     * Campos que vienen como tiempo — se guardan tal cual como texto.
+     * Ej: "07:47:00 a. m." se guarda como "07:47:00 a. m."
      */
-    private const TIME_AS_MINUTES_FIELDS = [
+    private const TIME_AS_MINUTES_FIELDS = [];
+
+    /** Campos que se guardan como texto de hora */
+    private const TIME_AS_STRING_FIELDS = [
         'excesos_tiempo_ruta',
     ];
 
@@ -903,8 +905,20 @@ class EventosTripulacionController
             }
         }
 
-        // Tiempos → minutos enteros
-        // Acepta: "1:30:00", "10:00:00 a. m.", "08:20:00 a. m.", "0:15:00 p. m.", serial Excel (fracción de día)
+        // Tiempos como texto — se guardan tal cual vienen del Excel
+        if (in_array($field, self::TIME_AS_STRING_FIELDS, true)) {
+            if (is_numeric($raw)) {
+                // Serial numérico de Excel (fracción del día) → convertir a HH:MM:SS
+                $totalSeconds = (int) round((float)$raw * 86400);
+                $h = intdiv($totalSeconds, 3600);
+                $m = intdiv($totalSeconds % 3600, 60);
+                $s = $totalSeconds % 60;
+                return sprintf('%02d:%02d:%02d', $h, $m, $s);
+            }
+            return trim((string) $raw);
+        }
+
+        // Tiempos → minutos enteros (campo vacío, no usado actualmente)
         if (in_array($field, self::TIME_AS_MINUTES_FIELDS, true)) {
             // Serial numérico de Excel (fracción del día: 0.5 = 12h = 720 min)
             if (is_numeric($raw)) {

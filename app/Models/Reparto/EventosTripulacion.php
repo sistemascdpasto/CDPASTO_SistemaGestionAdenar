@@ -50,7 +50,7 @@ class EventosTripulacion extends Model
             'anio'                     => 'integer',
             'mes'                      => 'integer',
             'total_eventos'            => 'integer',
-            'excesos_tiempo_ruta'      => 'integer',
+            // excesos_tiempo_ruta se guarda como texto (hora del día, ej: "07:47:00 a. m.")
             'alertas_velocidad_curvas' => 'integer',
             'rechazos'                 => 'float',      // porcentaje ej: 3.5040
             'adherencia_checklist_pre' => 'float',
