@@ -242,8 +242,9 @@ export default function ColaboradorCarpetaShow({
                 {/* SECCIÓN DE SUBCARPETAS (Si existen en el portal del colaborador) */}
                 {subcarpetas.length > 0 && (
                     <div className="space-y-3">
-                        <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                            📂 Subcarpetas de Aprendizaje ({subcarpetas.length})
+                        <h2 className="flex items-center gap-2 text-sm font-bold text-muted-foreground">
+                            <Folder className="size-4" />
+                            Subcarpetas de Aprendizaje ({subcarpetas.length})
                         </h2>
 
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -253,7 +254,7 @@ export default function ColaboradorCarpetaShow({
                                     <Link
                                         key={sub.id}
                                         href={route('portal.capacitaciones.carpetas.show', sub.id)}
-                                        className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border bg-card transition-all duration-200 hover:-translate-y-1 hover:shadow-lg border-sidebar-border/70 dark:border-sidebar-border"
+                                        className="group relative flex flex-col justify-between overflow-hidden rounded-xl border bg-card transition-all duration-200 hover:-translate-y-1 hover:shadow-md border-sidebar-border/70 dark:border-sidebar-border"
                                     >
                                         {sub.portada_url ? (
                                             <div className="relative h-36 w-full overflow-hidden bg-muted">
@@ -320,7 +321,7 @@ export default function ColaboradorCarpetaShow({
                 {/* Listado de Materiales con Vista Previa Clara */}
                 <div className="space-y-4">
                     {materiales.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-sidebar-border/80 p-12 text-center">
+                        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-sidebar-border/80 p-12 text-center">
                             <div className="flex size-14 items-center justify-center rounded-full bg-muted text-muted-foreground">
                                 <Folder className="size-7" />
                             </div>
@@ -517,7 +518,7 @@ export default function ColaboradorCarpetaShow({
                                 ) : materialSeleccionado.archivo_url ? (
                                     /* 5. Otros documentos (PowerPoint, Excel, Word, etc.) */
                                     <div className="flex flex-col items-center justify-center p-8 text-center space-y-4 max-w-md mx-auto">
-                                        <div className="size-20 rounded-2xl bg-teal-500/10 text-teal-600 flex items-center justify-center border-2 border-teal-200 dark:border-teal-800">
+                                        <div className="size-20 rounded-xl bg-teal-500/10 text-teal-600 flex items-center justify-center border-2 border-teal-200 dark:border-teal-800">
                                             <FileIcon tipo={materialSeleccionado.tipo} mime={materialSeleccionado.mime_type} className="size-10" />
                                         </div>
                                         <div>
@@ -546,7 +547,7 @@ export default function ColaboradorCarpetaShow({
                                 ) : materialSeleccionado.enlace_externo ? (
                                     /* 6. Enlace Externo */
                                     <div className="flex flex-col items-center justify-center p-8 text-center space-y-4 max-w-md mx-auto">
-                                        <div className="size-16 rounded-2xl bg-teal-500/10 text-teal-600 flex items-center justify-center">
+                                        <div className="size-16 rounded-xl bg-teal-500/10 text-teal-600 flex items-center justify-center">
                                             <FileIcon tipo={materialSeleccionado.tipo} mime={materialSeleccionado.mime_type} className="size-8" />
                                         </div>
                                         <div>
@@ -569,8 +570,9 @@ export default function ColaboradorCarpetaShow({
 
                             {/* Footer del diálogo */}
                             <div className="flex items-center justify-between pt-2 border-t">
-                                <span className="text-xs text-muted-foreground font-medium">
-                                    {materialSeleccionado.revisada ? '✓ Completado en tu avance' : 'Visualizando material'}
+                                <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                                    {materialSeleccionado.revisada && <CheckCircle2 className="size-3.5 text-[#15803d]" />}
+                                    {materialSeleccionado.revisada ? 'Completado en tu avance' : 'Visualizando material'}
                                 </span>
                                 <div className="flex gap-2">
                                     {materialSeleccionado.archivo_path && (

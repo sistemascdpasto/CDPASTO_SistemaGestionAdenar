@@ -2,12 +2,26 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/react';
 import {
+    AlarmClock,
+    AlertTriangle,
     CalendarDays,
+    CheckCircle2,
     ChevronLeft,
     ChevronRight,
+    ClipboardCheck,
     ClipboardList,
+    Clock,
+    Flag,
+    Flame,
+    Fuel,
+    Gem,
     Lightbulb,
+    Package,
+    Radio,
+    RotateCcw,
+    Sparkles,
     Star,
+    Trophy,
     Truck,
     User,
 } from 'lucide-react';
@@ -58,34 +72,34 @@ interface Props {
 // ─── Config de indicadores ────────────────────────────────────────────────────
 
 const CONFIG = [
-    { key: 'excesos',     titulo: 'No exceder el tiempo en ruta',    emoji: '🕐', invertido: true,
+    { key: 'excesos',     titulo: 'No exceder el tiempo en ruta',    Icon: Clock, invertido: true,
       fmtVal: (v: number|null) => v === null ? 'Sin dato' : v === 0 ? '0 excesos' : `${v} excesos/jornada`,
       fmtMeta: (_m: number) => '0 excesos por jornada' },
-    { key: 'alertas',     titulo: 'Manejar despacio en las curvas',   emoji: '🛣️', invertido: true,
+    { key: 'alertas',     titulo: 'Manejar despacio en las curvas',   Icon: AlertTriangle, invertido: true,
       fmtVal: (v: number|null) => v === null ? 'Sin dato' : v === 0 ? '0 alertas' : `${v} alertas/jornada`,
       fmtMeta: (_m: number) => '0 alertas por jornada' },
-    { key: 'cl_pre',      titulo: 'Revisar el camión antes de salir', emoji: '🔍', invertido: false,
+    { key: 'cl_pre',      titulo: 'Revisar el camión antes de salir', Icon: ClipboardCheck, invertido: false,
       fmtVal: (v: number|null) => v === null ? 'Sin dato' : `${v}%`,
       fmtMeta: (_m: number) => '100% (todos los días)' },
-    { key: 'cl_post',     titulo: 'Revisar el camión al volver',      emoji: '🏁', invertido: false,
+    { key: 'cl_post',     titulo: 'Revisar el camión al volver',      Icon: Flag, invertido: false,
       fmtVal: (v: number|null) => v === null ? 'Sin dato' : `${v}%`,
       fmtMeta: (_m: number) => '100% (todos los días)' },
-    { key: 'combustible', titulo: 'Rendimiento de Combustible',       emoji: '⛽', invertido: false,
+    { key: 'combustible', titulo: 'Rendimiento de Combustible',       Icon: Fuel, invertido: false,
       fmtVal: (v: number|null) => v === null ? 'Sin dato' : `${v}%`,
       fmtMeta: (m: number) => `${m}% o más` },
-    { key: 'modulacion',  titulo: 'Modulación',                       emoji: '📻', invertido: false,
+    { key: 'modulacion',  titulo: 'Modulación',                       Icon: Radio, invertido: false,
       fmtVal: (v: number|null) => v === null ? 'Sin dato' : `${v}%`,
       fmtMeta: (m: number) => `${m}% de las veces` },
-    { key: 'adh_tiempo',  titulo: 'Cumplir el horario del día',       emoji: '⏰', invertido: false,
+    { key: 'adh_tiempo',  titulo: 'Cumplir el horario del día',       Icon: AlarmClock, invertido: false,
       fmtVal: (v: number|null) => v === null ? 'Sin dato' : `${v}%`,
       fmtMeta: (m: number) => `${m}% o más` },
-    { key: 'entrega',     titulo: 'Entregar a tiempo',                 emoji: '📦', invertido: false,
+    { key: 'entrega',     titulo: 'Entregar a tiempo',                 Icon: Package, invertido: false,
       fmtVal: (v: number|null) => v === null ? 'Sin dato' : `${v}%`,
       fmtMeta: (m: number) => `${m}% o más` },
-    { key: 'rechazos',    titulo: 'Rechazos',                          emoji: '🔄', invertido: true,
+    { key: 'rechazos',    titulo: 'Rechazos',                          Icon: RotateCcw, invertido: true,
       fmtVal: (v: number|null) => v === null ? 'Sin dato' : `${v}%`,
       fmtMeta: (m: number) => `menos de ${m}%` },
-    { key: 'rmd',         titulo: 'Calificación (RMD)',               emoji: '🏆', invertido: false,
+    { key: 'rmd',         titulo: 'Calificación (RMD)',               Icon: Trophy, invertido: false,
       fmtVal: (v: number|null) => v === null ? 'Sin dato' : `${v} de 5`,
       fmtMeta: (m: number) => `${m} de 5` },
 ] as const;
@@ -99,7 +113,7 @@ const MESES_CORTOS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function chipCls(cumpl: number | null): string {
-    if (cumpl === null) return 'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500';
+    if (cumpl === null) return 'bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground';
     if (cumpl >= 95)    return 'bg-green-700 text-white';
     if (cumpl >= 70)    return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
     return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
@@ -107,13 +121,13 @@ function chipCls(cumpl: number | null): string {
 
 function estadoLabel(cumpl: number | null): string {
     if (cumpl === null) return 'Sin dato';
-    if (cumpl >= 95)    return '✓ Cumplida';
-    if (cumpl >= 70)    return '↑ Cerca';
-    return '✗ Por mejorar';
+    if (cumpl >= 95)    return 'Cumplida';
+    if (cumpl >= 70)    return 'Cerca';
+    return 'Por mejorar';
 }
 
 function barColor(cumpl: number | null): string {
-    if (cumpl === null) return 'bg-gray-200';
+    if (cumpl === null) return 'bg-muted';
     if (cumpl >= 95)    return 'bg-green-600';
     if (cumpl >= 70)    return 'bg-amber-400';
     return 'bg-red-400';
@@ -123,7 +137,7 @@ function barColor(cumpl: number | null): string {
 
 function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
     return (
-        <div className={`rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900 ${className}`}>
+        <div className={`rounded-xl border border-sidebar-border/70 bg-card shadow-sm dark:border-sidebar-border ${className}`}>
             {children}
         </div>
     );
@@ -139,8 +153,8 @@ function SectionHeader({ icon: Icon, title, subtitle, right }: {
                     <Icon className="size-4 text-white" />
                 </div>
                 <div>
-                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{title}</p>
-                    {subtitle && <p className="text-xs text-gray-400">{subtitle}</p>}
+                    <p className="text-sm font-semibold text-foreground">{title}</p>
+                    {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
                 </div>
             </div>
             {right}
@@ -165,7 +179,7 @@ function Barra({ pct, color }: { pct: number; color: string }) {
         return () => clearTimeout(t);
     }, [pct]);
     return (
-        <div className="h-1.5 w-full rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+        <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
             <div className={`h-full rounded-full transition-all duration-700 ease-out ${color}`} style={{ width: `${w}%` }} />
         </div>
     );
@@ -177,29 +191,29 @@ function FilaIndicador({ cfg, cumpl, promedio, meta }: {
     cfg: typeof CONFIG[number]; cumpl: number | null; promedio: number | null; meta: number;
 }) {
     return (
-        <div className="flex items-start gap-3 py-3 border-b border-gray-50 last:border-0 dark:border-gray-800">
-            <div className={`flex size-8 shrink-0 items-center justify-center rounded-full text-base ${cumpl !== null && cumpl >= 95 ? 'bg-green-100 dark:bg-green-900/30' : 'bg-gray-100 dark:bg-gray-800'}`}>
-                {cfg.emoji}
+        <div className="flex items-start gap-3 py-3 border-b border-sidebar-border/70 last:border-0 dark:border-sidebar-border">
+            <div className={`flex size-8 shrink-0 items-center justify-center rounded-full ${cumpl !== null && cumpl >= 95 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-muted text-muted-foreground'}`}>
+                <cfg.Icon className="size-4" />
             </div>
             <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 leading-snug">{cfg.titulo}</p>
+                    <p className="text-xs font-semibold text-foreground leading-snug">{cfg.titulo}</p>
                     <Chip cls={chipCls(cumpl)}>{estadoLabel(cumpl)}</Chip>
                 </div>
                 <div className="mt-1.5">
                     <Barra pct={cumpl ?? 0} color={barColor(cumpl)} />
                 </div>
                 <div className="mt-1 flex items-center justify-between gap-2">
-                    <p className="text-[10px] text-gray-400">
-                        Resultado: <strong className="text-gray-600 dark:text-gray-300">{cfg.fmtVal(promedio)}</strong>
+                    <p className="text-[10px] text-muted-foreground">
+                        Resultado: <strong className="text-muted-foreground">{cfg.fmtVal(promedio)}</strong>
                     </p>
-                    <p className="text-[10px] text-gray-400 hidden sm:block">
+                    <p className="text-[10px] text-muted-foreground hidden sm:block">
                         Meta: {cfg.fmtMeta(meta)}
                     </p>
                 </div>
             </div>
             {cumpl !== null && cumpl >= 95 && (
-                <span className="shrink-0 text-base">⭐</span>
+                <Star className="size-4 shrink-0 fill-amber-400 text-amber-400" />
             )}
         </div>
     );
@@ -277,10 +291,10 @@ export default function MisIndicadoresReparto({
 
                 {/* Título */}
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 sm:text-3xl">
+                    <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
                         Mis Estrellas del Camión
                     </h1>
-                    <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+                    <p className="mt-0.5 text-sm text-muted-foreground">
                         Tus indicadores de desempeño en reparto.
                     </p>
                 </div>
@@ -292,8 +306,8 @@ export default function MisIndicadoresReparto({
                             <span className="text-sm">ℹ️</span>
                         </div>
                         <div>
-                            <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">Sin reportes para este período</p>
-                            <p className="mt-0.5 text-xs text-gray-400">Cuando el equipo cargue los datos de reparto, verás aquí tus resultados.</p>
+                            <p className="text-sm font-semibold text-foreground">Sin reportes para este período</p>
+                            <p className="mt-0.5 text-xs text-muted-foreground">Cuando el equipo cargue los datos de reparto, verás aquí tus resultados.</p>
                         </div>
                     </Card>
                 )}
@@ -314,51 +328,52 @@ export default function MisIndicadoresReparto({
                                 )}
                             </div>
                             <div>
-                                <p className="text-sm font-bold leading-tight text-gray-900 dark:text-gray-100">{colaborador.nombre}</p>
-                                <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-green-700 dark:text-green-400">
+                                <p className="text-sm font-bold leading-tight text-foreground">{colaborador.nombre}</p>
+                                <p className="mt-0.5 text-[10px] font-semibold text-green-700 dark:text-green-400">
                                     {colaborador.cargo}{colaborador.placa ? ` · ${colaborador.placa}` : ''}
                                 </p>
                                 {/* Estrellas */}
                                 <div className="mt-2 flex items-center gap-0.5">
                                     {Array.from({ length: TOTAL }).map((_, i) => (
-                                        <span key={i} className={`text-sm transition-all duration-300 ${i < estrellas ? 'opacity-100' : 'opacity-25 grayscale'}`}
-                                            style={{ transitionDelay: `${i * 60}ms` }}>
-                                            ⭐
-                                        </span>
+                                        <Star
+                                            key={i}
+                                            className={`size-3.5 transition-all duration-300 ${i < estrellas ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/30'}`}
+                                            style={{ transitionDelay: `${i * 60}ms` }}
+                                        />
                                     ))}
-                                    <span className="ml-2 text-xs font-bold text-gray-500">{estrellas}/{TOTAL}</span>
+                                    <span className="ml-2 text-xs font-bold text-muted-foreground">{estrellas}/{TOTAL}</span>
                                 </div>
                             </div>
                         </div>
 
                         {/* Centro: selector de mes */}
                         <div className="relative" ref={calRef}>
-                            <label className="mb-1 flex items-center gap-1 text-[11px] font-medium text-gray-500">
+                            <label className="mb-1 flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
                                 <CalendarDays className="size-3 text-green-700" /> Período de consulta
                             </label>
                             <button
                                 type="button"
                                 onClick={() => setCalOpen(v => !v)}
                                 disabled={cargando}
-                                className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-100 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+                                className="flex items-center gap-2 rounded-lg border border-sidebar-border/70 bg-muted px-3 py-1.5 text-sm font-semibold text-foreground transition hover:bg-muted disabled:opacity-50 dark:border-sidebar-border dark:bg-muted dark:text-foreground"
                             >
                                 <CalendarDays className="size-4 text-green-700 shrink-0" />
                                 {MESES_COMPLETOS[propMesIdx]} {propAnio}
-                                <span className="text-gray-400 text-xs">{cargando ? '⏳' : calOpen ? '▲' : '▼'}</span>
+                                <span className="text-muted-foreground text-xs">{cargando ? '⏳' : calOpen ? '▲' : '▼'}</span>
                             </button>
 
                             {/* Dropdown calendario — solo meses del año */}
                             {calOpen && (
-                                <div className="absolute left-0 z-50 mt-2 w-72 rounded-2xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-900 overflow-hidden sm:right-0 sm:left-auto">
+                                <div className="absolute left-0 z-50 mt-2 w-72 rounded-xl border border-sidebar-border/70 bg-popover shadow-md dark:border-sidebar-border overflow-hidden sm:right-0 sm:left-auto">
                                     {/* Header año */}
                                     <div className="flex items-center justify-between bg-green-50 px-3 py-2.5 dark:bg-green-900/20">
                                         <button type="button" onClick={() => setAnioCalendario(a => a - 1)}
-                                            className="flex size-7 items-center justify-center rounded-lg hover:bg-white transition dark:hover:bg-gray-800">
+                                            className="flex size-7 items-center justify-center rounded-lg hover:bg-muted transition">
                                             <ChevronLeft className="size-4 text-green-700" />
                                         </button>
                                         <span className="text-sm font-bold text-green-800 dark:text-green-300">{anioCalendario}</span>
                                         <button type="button" onClick={() => setAnioCalendario(a => a + 1)}
-                                            className="flex size-7 items-center justify-center rounded-lg hover:bg-white transition dark:hover:bg-gray-800">
+                                            className="flex size-7 items-center justify-center rounded-lg hover:bg-muted transition">
                                             <ChevronRight className="size-4 text-green-700" />
                                         </button>
                                     </div>
@@ -378,8 +393,8 @@ export default function MisIndicadoresReparto({
                                                     className={`rounded-xl py-2 text-xs font-semibold transition-all ${
                                                         seleccionado ? 'bg-green-700 text-white shadow'
                                                         : esActual ? 'border border-amber-300 bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300'
-                                                        : disabled ? 'cursor-not-allowed text-gray-300 dark:text-gray-600'
-                                                        : 'bg-gray-50 text-gray-600 hover:bg-green-50 hover:text-green-700 dark:bg-gray-800 dark:text-gray-400'
+                                                        : disabled ? 'cursor-not-allowed text-muted-foreground dark:text-muted-foreground'
+                                                        : 'bg-muted text-muted-foreground hover:bg-green-50 hover:text-green-700 dark:bg-muted dark:text-muted-foreground'
                                                     }`}
                                                 >
                                                     {MESES_CORTOS[idx]}
@@ -387,13 +402,13 @@ export default function MisIndicadoresReparto({
                                             );
                                         })}
                                     </div>
-                                    <div className="flex gap-2 border-t border-gray-100 px-3 py-2 dark:border-gray-800">
+                                    <div className="flex gap-2 border-t border-sidebar-border/70 px-3 py-2 dark:border-sidebar-border">
                                         <button type="button" onClick={() => cambiarMes(mesActualKey)}
                                             className="flex-1 rounded-lg bg-amber-50 py-1.5 text-[11px] font-semibold text-amber-700 hover:bg-amber-100 transition dark:bg-amber-900/20 dark:text-amber-300">
                                             Mes actual
                                         </button>
                                         <button type="button" onClick={() => setCalOpen(false)}
-                                            className="flex-1 rounded-lg bg-gray-100 py-1.5 text-[11px] font-semibold text-gray-600 hover:bg-gray-200 transition dark:bg-gray-800 dark:text-gray-300">
+                                            className="flex-1 rounded-lg bg-muted py-1.5 text-[11px] font-semibold text-muted-foreground hover:bg-muted/60 transition dark:bg-muted dark:text-muted-foreground">
                                             Cerrar
                                         </button>
                                     </div>
@@ -405,8 +420,8 @@ export default function MisIndicadoresReparto({
                         <div className="flex items-center gap-4">
                             {periodo && (
                                 <div className="text-right">
-                                    <p className="text-[10px] text-gray-400">Período</p>
-                                    <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">{periodo.desde} → {periodo.hasta}</p>
+                                    <p className="text-[10px] text-muted-foreground">Período</p>
+                                    <p className="text-xs font-semibold text-foreground">{periodo.desde} → {periodo.hasta}</p>
                                 </div>
                             )}
                             <Truck className="size-8 text-green-200 dark:text-green-900 hidden sm:block" />
@@ -421,7 +436,7 @@ export default function MisIndicadoresReparto({
                             className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition sm:flex-none sm:px-4 ${
                                 tab === id
                                     ? 'border-green-700 bg-green-700 text-white shadow-sm'
-                                    : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400'
+                                    : 'border-sidebar-border/70 bg-card text-muted-foreground hover:bg-muted/60 dark:border-sidebar-border dark:text-muted-foreground'
                             }`}
                         >
                             <Icon className="size-3.5" />
@@ -437,18 +452,18 @@ export default function MisIndicadoresReparto({
                         <div className="grid gap-4 md:grid-cols-2">
                             {/* Lo que hago bien */}
                             <Card className="overflow-hidden">
-                                <div className="flex items-center justify-between border-b border-gray-100 bg-green-50 px-4 py-3 dark:border-gray-800 dark:bg-green-900/10">
+                                <div className="flex items-center justify-between border-b border-sidebar-border/70 bg-green-50 px-4 py-3 dark:border-sidebar-border dark:bg-green-900/10">
                                     <SectionHeader icon={Star} title="Lo que hago bien" />
                                     <Chip cls="bg-green-700 text-white">{okList.length}/{TOTAL}</Chip>
                                 </div>
-                                <div className="divide-y divide-gray-50 px-4 dark:divide-gray-800">
+                                <div className="divide-y divide-border px-4 dark:divide-border">
                                     {okList.length > 0 ? okList.map(c => (
                                         <FilaIndicador key={c.key} cfg={c}
                                             cumpl={safe.cumplimiento[c.key] ?? null}
                                             promedio={safe.promedios[c.key] ?? null}
                                             meta={safe.metas[c.key]} />
                                     )) : (
-                                        <p className="py-6 text-center text-sm text-gray-400">Sin indicadores cumplidos aún.</p>
+                                        <p className="py-6 text-center text-sm text-muted-foreground">Sin indicadores cumplidos aún.</p>
                                     )}
                                 </div>
                             </Card>
@@ -457,11 +472,11 @@ export default function MisIndicadoresReparto({
                             <div className="flex flex-col gap-4">
                                 {mejorarList.length > 0 && (
                                     <Card className="overflow-hidden">
-                                        <div className="flex items-center justify-between border-b border-gray-100 bg-red-50 px-4 py-3 dark:border-gray-800 dark:bg-red-900/10">
+                                        <div className="flex items-center justify-between border-b border-sidebar-border/70 bg-red-50 px-4 py-3 dark:border-sidebar-border dark:bg-red-900/10">
                                             <SectionHeader icon={Star} title="Lo que debo mejorar" />
                                             <Chip cls="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">{mejorarList.length}</Chip>
                                         </div>
-                                        <div className="divide-y divide-gray-50 px-4 dark:divide-gray-800">
+                                        <div className="divide-y divide-border px-4 dark:divide-border">
                                             {mejorarList.map(c => (
                                                 <FilaIndicador key={c.key} cfg={c}
                                                     cumpl={safe.cumplimiento[c.key] ?? null}
@@ -474,11 +489,11 @@ export default function MisIndicadoresReparto({
 
                                 {sinDatoList.length > 0 && (
                                     <Card className="overflow-hidden">
-                                        <div className="flex items-center justify-between border-b border-gray-100 bg-gray-50 px-4 py-3 dark:border-gray-800 dark:bg-gray-800/50">
+                                        <div className="flex items-center justify-between border-b border-sidebar-border/70 bg-muted px-4 py-3 dark:border-sidebar-border dark:bg-muted">
                                             <SectionHeader icon={Star} title="Datos que faltan" />
-                                            <Chip cls="bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">{sinDatoList.length}</Chip>
+                                            <Chip cls="bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground">{sinDatoList.length}</Chip>
                                         </div>
-                                        <div className="divide-y divide-gray-50 px-4 dark:divide-gray-800">
+                                        <div className="divide-y divide-border px-4 dark:divide-border">
                                             {sinDatoList.map(c => (
                                                 <FilaIndicador key={c.key} cfg={c}
                                                     cumpl={null} promedio={null}
@@ -501,9 +516,9 @@ export default function MisIndicadoresReparto({
                                     <div key={i} className={`flex size-10 items-center justify-center rounded-xl border-2 transition-all duration-500 ${
                                         i < estrellas
                                             ? 'border-amber-300 bg-amber-50 shadow dark:border-amber-600 dark:bg-amber-900/20'
-                                            : 'border-gray-200 bg-gray-50 opacity-40 dark:border-gray-700 dark:bg-gray-800'
+                                            : 'border-sidebar-border/70 bg-muted opacity-40 dark:border-sidebar-border dark:bg-muted'
                                     }`} style={{ transitionDelay: `${i * 60}ms` }}>
-                                        <span className="text-base">{i < estrellas ? '⭐' : '☆'}</span>
+                                        <Star className={i < estrellas ? 'size-4 fill-amber-400 text-amber-400' : 'size-4 text-muted-foreground/40'} />
                                     </div>
                                 ))}
                             </div>
@@ -511,25 +526,26 @@ export default function MisIndicadoresReparto({
                             {/* Insignias */}
                             <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
                                 {[
-                                    { icon: '🌟', title: `${okList.length} meta${okList.length !== 1 ? 's' : ''} cumplida${okList.length !== 1 ? 's' : ''}`, desc: 'Cumpliste la meta en el período', active: okList.length > 0 },
-                                    { icon: '🔥', title: 'Promedio ≥ 70%', desc: 'Jornadas con muy buen desempeño', active: CONFIG.filter(c => (safe.cumplimiento[c.key] ?? 0) >= 70).length > 0 },
-                                    { icon: '💎', title: `${TOTAL} estrellas`, desc: '¡Lo hiciste perfecto! Todas las metas', active: estrellas === TOTAL },
+                                    { Icon: Sparkles, title: `${okList.length} meta${okList.length !== 1 ? 's' : ''} cumplida${okList.length !== 1 ? 's' : ''}`, desc: 'Cumpliste la meta en el período', active: okList.length > 0 },
+                                    { Icon: Flame, title: 'Promedio ≥ 70%', desc: 'Jornadas con muy buen desempeño', active: CONFIG.filter(c => (safe.cumplimiento[c.key] ?? 0) >= 70).length > 0 },
+                                    { Icon: Gem, title: `${TOTAL} estrellas`, desc: '¡Lo hiciste perfecto! Todas las metas', active: estrellas === TOTAL },
                                 ].map((b, i) => (
                                     <div key={i} className={`rounded-xl border p-3 transition-all ${
                                         b.active
                                             ? 'border-amber-200 bg-amber-50 dark:border-amber-800/40 dark:bg-amber-900/10'
-                                            : 'border-gray-100 bg-gray-50 opacity-50 dark:border-gray-800 dark:bg-gray-800/40'
+                                            : 'border-sidebar-border/70 bg-muted opacity-50 dark:border-sidebar-border dark:bg-muted/40'
                                     }`}>
-                                        <span className="text-2xl">{b.icon}</span>
-                                        <p className="mt-1.5 text-xs font-bold text-gray-800 dark:text-gray-200">{b.title}</p>
-                                        <p className="text-[10px] text-gray-400">{b.desc}</p>
+                                        <b.Icon className={`size-6 ${b.active ? 'text-amber-500' : 'text-muted-foreground'}`} />
+                                        <p className="mt-1.5 text-xs font-bold text-foreground">{b.title}</p>
+                                        <p className="text-[10px] text-muted-foreground">{b.desc}</p>
                                     </div>
                                 ))}
                             </div>
 
                             {estrellas === TOTAL && (
-                                <div className="mt-4 rounded-xl bg-green-700 py-3 text-center text-sm font-bold text-white">
-                                    🎉 ¡Camión estrella del período! ¡Felicitaciones! 🎉
+                                <div className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-green-700 py-3 text-center text-sm font-bold text-white">
+                                    <Trophy className="size-4" />
+                                    ¡Camión estrella del período! ¡Felicitaciones!
                                 </div>
                             )}
                         </Card>
@@ -539,7 +555,7 @@ export default function MisIndicadoresReparto({
                 {/* ══ TAB: JORNADAS ══ */}
                 {tab === 'jornadas' && (
                     <Card>
-                        <div className="border-b border-gray-100 px-4 py-3 dark:border-gray-800">
+                        <div className="border-b border-sidebar-border/70 px-4 py-3 dark:border-sidebar-border">
                             <SectionHeader icon={ClipboardList} title="Mis últimas jornadas"
                                 right={<Chip cls="bg-green-700 text-white">{historial.length} jornadas</Chip>} />
                         </div>
@@ -548,31 +564,31 @@ export default function MisIndicadoresReparto({
                             <div className="overflow-x-auto">
                                 <table className="w-full text-xs">
                                     <thead>
-                                        <tr className="border-b border-gray-100 bg-gray-50 dark:border-gray-800 dark:bg-gray-800/50">
+                                        <tr className="border-b border-sidebar-border/70 bg-muted dark:border-sidebar-border dark:bg-muted">
                                             {['Fecha','Placa','Adh. Tiempo','Entrega','CL Pre'].map(h => (
                                                 <th key={h} className="px-4 py-2.5 text-left text-[11px] font-semibold text-green-700 dark:text-green-400">{h}</th>
                                             ))}
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+                                    <tbody className="divide-y divide-border">
                                         {historial.map((h, i) => (
-                                            <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
-                                                <td className="px-4 py-2 font-medium text-gray-700 dark:text-gray-300">{h.fecha}</td>
+                                            <tr key={i} className="hover:bg-muted/60/30 transition-colors">
+                                                <td className="px-4 py-2 font-medium text-foreground">{h.fecha}</td>
                                                 <td className="px-4 py-2 font-mono font-semibold text-green-700 dark:text-green-400">{h.placa || '—'}</td>
                                                 <td className="px-4 py-2">
                                                     {h.adh !== null
                                                         ? <Chip cls={chipCls(h.adh)}>{h.adh}%</Chip>
-                                                        : <span className="text-gray-300">—</span>}
+                                                        : <span className="text-muted-foreground">—</span>}
                                                 </td>
                                                 <td className="px-4 py-2">
                                                     {h.entrega !== null
                                                         ? <Chip cls={chipCls(h.entrega)}>{h.entrega}%</Chip>
-                                                        : <span className="text-gray-300">—</span>}
+                                                        : <span className="text-muted-foreground">—</span>}
                                                 </td>
                                                 <td className="px-4 py-2">
                                                     {h.cl_pre !== null
                                                         ? <Chip cls={chipCls(h.cl_pre >= 100 ? 100 : h.cl_pre)}>{h.cl_pre}%</Chip>
-                                                        : <span className="text-gray-300">—</span>}
+                                                        : <span className="text-muted-foreground">—</span>}
                                                 </td>
                                             </tr>
                                         ))}
@@ -581,14 +597,14 @@ export default function MisIndicadoresReparto({
                             </div>
                         ) : (
                             <div className="flex flex-col items-center gap-2 p-10 text-center">
-                                <ClipboardList className="size-6 text-gray-300" />
-                                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Sin jornadas registradas</p>
-                                <p className="text-xs text-gray-400">Cuando el equipo cargue las jornadas, aparecerán aquí.</p>
+                                <ClipboardList className="size-6 text-muted-foreground" />
+                                <p className="text-sm font-medium text-muted-foreground">Sin jornadas registradas</p>
+                                <p className="text-xs text-muted-foreground">Cuando el equipo cargue las jornadas, aparecerán aquí.</p>
                             </div>
                         )}
 
                         {/* Leyenda de colores */}
-                        <div className="flex flex-wrap gap-3 border-t border-gray-100 px-4 py-3 dark:border-gray-800">
+                        <div className="flex flex-wrap gap-3 border-t border-sidebar-border/70 px-4 py-3 dark:border-sidebar-border">
                             {[
                                 { cls: 'bg-green-700 text-white', label: 'Excelente — cumpliste la meta' },
                                 { cls: 'bg-amber-100 text-amber-700', label: 'Cerca — sigue mejorando' },
@@ -596,7 +612,7 @@ export default function MisIndicadoresReparto({
                             ].map(({ cls, label }) => (
                                 <div key={label} className="flex items-center gap-1.5">
                                     <span className={`inline-block size-2.5 rounded-full ${cls.split(' ')[0]}`} />
-                                    <span className="text-[10px] text-gray-500 dark:text-gray-400">{label}</span>
+                                    <span className="text-[10px] text-muted-foreground">{label}</span>
                                 </div>
                             ))}
                         </div>
@@ -606,7 +622,7 @@ export default function MisIndicadoresReparto({
                 {/* ══ TAB: CONSEJOS ══ */}
                 {tab === 'consejos' && (
                     <Card>
-                        <div className="border-b border-gray-100 px-4 py-3 dark:border-gray-800">
+                        <div className="border-b border-sidebar-border/70 px-4 py-3 dark:border-sidebar-border">
                             <SectionHeader icon={Lightbulb} title="Consejos para obtener todas las estrellas"
                                 subtitle="Una estrella por cada meta cumplida" />
                         </div>
@@ -621,14 +637,22 @@ export default function MisIndicadoresReparto({
                                             : 'border-amber-100 bg-amber-50 dark:border-amber-800/40 dark:bg-amber-900/10'
                                     }`}>
                                         <div className="flex items-start gap-2.5">
-                                            <span className="text-xl shrink-0">{c.emoji}</span>
+                                            <c.Icon className={`size-5 shrink-0 ${ok ? 'text-green-700 dark:text-green-400' : 'text-amber-700 dark:text-amber-400'}`} />
                                             <div>
-                                                <p className="text-xs font-bold text-gray-800 dark:text-gray-200">{c.titulo}</p>
-                                                <p className={`mt-0.5 text-[10px] font-semibold ${ok ? 'text-green-700 dark:text-green-400' : 'text-amber-700 dark:text-amber-400'}`}>
-                                                    {ok ? '✅ ¡Ya lo estás haciendo bien!' : '💡 Meta: ' + c.fmtMeta(safe.metas[c.key])}
+                                                <p className="text-xs font-bold text-foreground">{c.titulo}</p>
+                                                <p className={`mt-0.5 flex items-center gap-1 text-[10px] font-semibold ${ok ? 'text-green-700 dark:text-green-400' : 'text-amber-700 dark:text-amber-400'}`}>
+                                                    {ok ? (
+                                                        <>
+                                                            <CheckCircle2 className="size-3" /> ¡Ya lo estás haciendo bien!
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Lightbulb className="size-3" /> Meta: {c.fmtMeta(safe.metas[c.key])}
+                                                        </>
+                                                    )}
                                                 </p>
                                                 {!ok && (
-                                                    <p className="mt-0.5 text-[10px] text-gray-400">
+                                                    <p className="mt-0.5 text-[10px] text-muted-foreground">
                                                         Anótalo en tu checklist diario para mejorar.
                                                     </p>
                                                 )}
@@ -648,10 +672,10 @@ export default function MisIndicadoresReparto({
                             <Star className="size-4 text-white" />
                         </div>
                         <div>
-                            <p className="text-xs font-semibold text-gray-900 dark:text-gray-100">
+                            <p className="text-xs font-semibold text-foreground">
                                 {estrellas === TOTAL ? '¡Camión estrella!' : estrellas >= 7 ? '¡Muy buen trabajo!' : '¡Tú puedes mejorar!'}
                             </p>
-                            <p className="text-[11px] text-gray-400">
+                            <p className="text-[11px] text-muted-foreground">
                                 {estrellas === TOTAL
                                     ? 'Obtuviste todas las estrellas del período. ¡Eres el mejor!'
                                     : estrellas >= 7

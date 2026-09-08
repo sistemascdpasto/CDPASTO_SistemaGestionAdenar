@@ -92,7 +92,7 @@ function barColor(pct: number): string {
 
 function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
     return (
-        <div className={`rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900 ${className}`}>
+        <div className={`rounded-xl border border-sidebar-border/70 bg-card shadow-sm dark:border-sidebar-border ${className}`}>
             {children}
         </div>
     );
@@ -107,8 +107,8 @@ function SectionHeader({ icon: Icon, title, subtitle }: { icon: React.ElementTyp
                 <Icon className="size-4 text-white" />
             </div>
             <div>
-                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{title}</p>
-                {subtitle && <p className="text-xs capitalize text-gray-400">{subtitle}</p>}
+                <p className="text-sm font-semibold text-foreground">{title}</p>
+                {subtitle && <p className="text-xs capitalize text-muted-foreground">{subtitle}</p>}
             </div>
         </div>
     );
@@ -123,11 +123,11 @@ function Kpi({ label, value, green, red, muted }: {
     const color = green
         ? 'text-green-700 dark:text-green-400'
         : red ? 'text-red-600 dark:text-red-400'
-        : muted ? 'text-gray-400'
-        : 'text-gray-900 dark:text-gray-100';
+        : muted ? 'text-muted-foreground'
+        : 'text-foreground';
     return (
         <div>
-            <p className="mb-0.5 text-[10px] text-gray-400">{label}</p>
+            <p className="mb-0.5 text-[10px] text-muted-foreground">{label}</p>
             <p className={`text-base font-bold tabular-nums leading-tight ${color}`}>{value}</p>
         </div>
     );
@@ -154,9 +154,9 @@ function FilaMes({ registro, maxPago }: { registro: RegistroMes; maxPago: number
 
     if (registro.es_futuro) {
         return (
-            <div className="flex items-center gap-3 rounded-xl border border-dashed border-gray-200 px-4 py-3 dark:border-gray-800">
-                <span className="w-24 text-xs font-semibold text-gray-300 dark:text-gray-600">{registro.mes}</span>
-                <span className="text-[10px] text-gray-300 dark:text-gray-600">Sin datos aún</span>
+            <div className="flex items-center gap-3 rounded-xl border border-dashed border-sidebar-border/70 px-4 py-3 dark:border-sidebar-border">
+                <span className="w-24 text-xs font-semibold text-muted-foreground dark:text-muted-foreground">{registro.mes}</span>
+                <span className="text-[10px] text-muted-foreground dark:text-muted-foreground">Sin datos aún</span>
             </div>
         );
     }
@@ -167,15 +167,15 @@ function FilaMes({ registro, maxPago }: { registro: RegistroMes; maxPago: number
     const barWidth = maxPago > 0 ? Math.round((registro.pago_variable_dt / maxPago) * 100) : 0;
 
     return (
-        <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800">
+        <div className="overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
             {/* Fila principal — clickeable para expandir */}
             <button
                 type="button"
                 onClick={() => setOpen((v) => !v)}
-                className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/60/50"
             >
                 {/* Mes */}
-                <span className="w-24 shrink-0 text-xs font-bold text-gray-700 dark:text-gray-300">
+                <span className="w-24 shrink-0 text-xs font-bold text-foreground">
                     {registro.mes}
                 </span>
 
@@ -189,7 +189,7 @@ function FilaMes({ registro, maxPago }: { registro: RegistroMes; maxPago: number
                             {pctObtenido}%
                         </span>
                     </div>
-                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
                         <div
                             className={`h-full rounded-full transition-all duration-500 ${barColor(pctObtenido)}`}
                             style={{ width: `${barWidth}%` }}
@@ -203,14 +203,14 @@ function FilaMes({ registro, maxPago }: { registro: RegistroMes; maxPago: number
                 </div>
 
                 {/* Chevron */}
-                <div className="shrink-0 text-gray-400">
+                <div className="shrink-0 text-muted-foreground">
                     {open ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
                 </div>
             </button>
 
             {/* Detalle expandible */}
             {open && (
-                <div className="border-t border-gray-100 bg-gray-50 px-4 py-4 dark:border-gray-800 dark:bg-gray-800/30">
+                <div className="border-t border-sidebar-border/70 bg-muted px-4 py-4 dark:border-sidebar-border dark:bg-muted/30">
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
                         <Kpi label="Salario variable" value={formatCOP(registro.salario_variable)} />
                         <Kpi label="Pago variable DT" value={formatCOP(registro.pago_variable_dt)} green />
@@ -279,7 +279,7 @@ export default function MisCompensacionVariableIndex() {
             <AppLayout breadcrumbs={breadcrumbs}>
                 <Head title="Mi Compensación Variable" />
                 <div className="flex flex-col gap-5 px-4 pb-10 sm:px-6">
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Mi Compensación Variable</h1>
+                    <h1 className="text-2xl font-bold text-foreground">Mi Compensación Variable</h1>
                     <Card className="p-5">
                         <p className="text-sm text-red-600">{error || 'No se pudo cargar la información.'}</p>
                     </Card>
@@ -295,10 +295,10 @@ export default function MisCompensacionVariableIndex() {
 
                 {/* ── Título ── */}
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 sm:text-3xl">
+                    <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
                         Mi Compensación Variable
                     </h1>
-                    <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+                    <p className="mt-0.5 text-sm text-muted-foreground">
                         Historial mensual de tu compensación variable por año.
                     </p>
                 </div>
@@ -314,10 +314,10 @@ export default function MisCompensacionVariableIndex() {
                                     <User className="size-4 text-white" />
                                 </div>
                                 <div className="min-w-0">
-                                    <p className="truncate text-sm font-bold leading-tight text-gray-900 dark:text-gray-100">
+                                    <p className="truncate text-sm font-bold leading-tight text-foreground">
                                         {colaborador.nombre_completo}
                                     </p>
-                                    <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-green-700 dark:text-green-400">
+                                    <p className="mt-0.5 text-[10px] font-semibold text-green-700 dark:text-green-400">
                                         CC {colaborador.cedula} · {colaborador.cargo ?? 'Sin cargo'}
                                     </p>
                                 </div>
@@ -325,7 +325,7 @@ export default function MisCompensacionVariableIndex() {
 
                             {/* Selector de año */}
                             <div className="grid gap-1">
-                                <label className="flex items-center gap-1 text-[11px] font-medium text-gray-500">
+                                <label className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
                                     <CalendarDays className="size-3 text-green-700" /> Año
                                 </label>
                                 <div className="flex gap-1.5">
@@ -337,7 +337,7 @@ export default function MisCompensacionVariableIndex() {
                                             className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${
                                                 a === anio
                                                     ? 'border-green-600 bg-green-700 text-white'
-                                                    : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                                                    : 'border-sidebar-border/70 bg-card text-muted-foreground hover:bg-muted/60 dark:border-sidebar-border dark:text-muted-foreground'
                                             }`}
                                         >
                                             {a}
@@ -377,20 +377,20 @@ export default function MisCompensacionVariableIndex() {
                                         <span className="text-lg font-extrabold leading-none text-green-700 dark:text-green-400">
                                             {pctAnual}%
                                         </span>
-                                        <span className="text-[9px] font-medium text-gray-400">del año</span>
+                                        <span className="text-[9px] font-medium text-muted-foreground">del año</span>
                                     </div>
                                 </div>
                                 <div>
-                                    <p className="text-xs font-bold text-gray-900 dark:text-gray-100">
+                                    <p className="text-xs font-bold text-foreground">
                                         {pctAnual >= 90 ? '¡Excelente año!' : pctAnual >= 70 ? '¡Buen año!' : 'Hay oportunidad'}
                                     </p>
-                                    <p className="mt-0.5 text-[11px] leading-snug text-gray-500 dark:text-gray-400">
+                                    <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
                                         {resumen.meses_con_datos} {resumen.meses_con_datos === 1 ? 'mes' : 'meses'} con datos
                                     </p>
                                 </div>
                             </div>
                         ) : (
-                            <p className="text-xs text-gray-400 sm:shrink-0">Sin datos para {anio}</p>
+                            <p className="text-xs text-muted-foreground sm:shrink-0">Sin datos para {anio}</p>
                         )}
                     </div>
                 </Card>
@@ -398,11 +398,11 @@ export default function MisCompensacionVariableIndex() {
                 {/* ── Sin datos ── */}
                 {registros.filter((r) => !r.es_futuro).length === 0 && (
                     <Card className="flex flex-col items-center gap-2 p-8 text-center">
-                        <Info className="size-5 text-gray-300" />
-                        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        <Info className="size-5 text-muted-foreground" />
+                        <p className="text-sm font-medium text-foreground">
                             Sin información para {anio}
                         </p>
-                        <p className="text-xs text-gray-400">
+                        <p className="text-xs text-muted-foreground">
                             Selecciona otro año o espera a que se cargue la información.
                         </p>
                     </Card>
@@ -417,14 +417,14 @@ export default function MisCompensacionVariableIndex() {
                                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-100 dark:bg-green-900/40">
                                     <CircleDollarSign className="size-4 text-green-700 dark:text-green-400" />
                                 </div>
-                                <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                                <span className="text-[10px] font-semibold text-muted-foreground">
                                     Total ganado
                                 </span>
                             </div>
                             <p className="text-xl font-extrabold text-green-700 dark:text-green-400 tabular-nums">
                                 {formatCOP(resumen.total_pago_variable)}
                             </p>
-                            <p className="mt-1 text-[10px] text-gray-400">pago variable DT acumulado</p>
+                            <p className="mt-1 text-[10px] text-muted-foreground">pago variable DT acumulado</p>
                         </Card>
 
                         {/* Promedio rechazos */}
@@ -433,14 +433,14 @@ export default function MisCompensacionVariableIndex() {
                                 <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${resumen.promedio_rechazos < 2.1 ? 'bg-green-100 dark:bg-green-900/40' : 'bg-red-100 dark:bg-red-900/40'}`}>
                                     <AlertTriangle className={`size-4 ${resumen.promedio_rechazos < 2.1 ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`} />
                                 </div>
-                                <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                                <span className="text-[10px] font-semibold text-muted-foreground">
                                     Prom. rechazos
                                 </span>
                             </div>
                             <p className={`text-xl font-extrabold tabular-nums ${resumen.promedio_rechazos < 2.1 ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                                 {resumen.promedio_rechazos}%
                             </p>
-                            <p className="mt-1 text-[10px] text-gray-400">promedio anual · meta &lt;2.1%</p>
+                            <p className="mt-1 text-[10px] text-muted-foreground">promedio anual · meta &lt;2.1%</p>
                         </Card>
 
                         {/* Mejor mes */}
@@ -449,14 +449,14 @@ export default function MisCompensacionVariableIndex() {
                                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/40">
                                     <Trophy className="size-4 text-amber-600 dark:text-amber-400" />
                                 </div>
-                                <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                                <span className="text-[10px] font-semibold text-muted-foreground">
                                     Mejor mes
                                 </span>
                             </div>
                             <p className="text-xl font-extrabold text-amber-600 dark:text-amber-400">
                                 {resumen.mejor_mes?.mes ?? '—'}
                             </p>
-                            <p className="mt-1 text-[10px] text-gray-400">
+                            <p className="mt-1 text-[10px] text-muted-foreground">
                                 {resumen.mejor_mes ? formatCOP(resumen.mejor_mes.valor) : '—'}
                             </p>
                         </Card>
@@ -467,14 +467,14 @@ export default function MisCompensacionVariableIndex() {
                                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-100 dark:bg-rose-900/40">
                                     <TrendingDown className="size-4 text-rose-600 dark:text-rose-400" />
                                 </div>
-                                <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                                <span className="text-[10px] font-semibold text-muted-foreground">
                                     Mes más bajo
                                 </span>
                             </div>
                             <p className="text-xl font-extrabold text-rose-600 dark:text-rose-400">
                                 {resumen.peor_mes?.mes ?? '—'}
                             </p>
-                            <p className="mt-1 text-[10px] text-gray-400">
+                            <p className="mt-1 text-[10px] text-muted-foreground">
                                 {resumen.peor_mes ? formatCOP(resumen.peor_mes.valor) : '—'}
                             </p>
                         </Card>
@@ -494,15 +494,16 @@ export default function MisCompensacionVariableIndex() {
                                 title={`Detalle mensual ${anio}`}
                                 subtitle={`${registros.filter((r) => !r.es_futuro).length} meses con información`}
                             />
-                            <div className="text-gray-400">
+                            <div className="text-muted-foreground">
                                 {historialOpen ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
                             </div>
                         </button>
 
                         {historialOpen && (
                             <div className="flex flex-col gap-2 px-4 pb-5">
-                                <p className="text-[10px] text-gray-400 mb-1">
-                                    💡 Toca cada fila para ver el detalle del mes.
+                                <p className="mb-1 flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                                    <Info className="size-3 shrink-0" />
+                                    Toca cada fila para ver el detalle del mes.
                                 </p>
                                 {registros.map((registro) => (
                                     <FilaMes key={registro.id ?? registro.mes} registro={registro} maxPago={maxPago} />
@@ -513,7 +514,7 @@ export default function MisCompensacionVariableIndex() {
                 )}
 
                 {/* ── Leyenda de colores ── */}
-                <div className="flex flex-wrap gap-3 text-[10px] text-gray-400">
+                <div className="flex flex-wrap gap-3 text-[10px] text-muted-foreground">
                     <span className="flex items-center gap-1">
                         <span className="inline-block h-2 w-4 rounded-full bg-green-500" /> ≥ 90% del salario variable
                     </span>

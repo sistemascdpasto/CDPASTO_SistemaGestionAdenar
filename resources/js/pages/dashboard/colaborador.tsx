@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link } from '@inertiajs/react';
-import { AlertTriangle, BellRing, User } from 'lucide-react';
+import { AlertTriangle, BellRing, Trophy, User } from 'lucide-react';
 
 const breadcrumbs: BreadcrumbItem[] = [{ title: 'Dashboard', href: '/dashboard' }];
 
@@ -171,8 +171,8 @@ export default function ColaboradorDashboard({
                     <Card className="border-amber-200/70 bg-gradient-to-r from-amber-500/5 to-transparent dark:border-amber-800/40 dark:from-amber-950/20">
                         <CardContent className="flex items-center justify-between gap-4 py-4">
                             <div className="flex items-center gap-3">
-                                <div className="flex size-10 items-center justify-center rounded-full bg-amber-500/15 text-xl">
-                                    🏆
+                                <div className="flex size-10 items-center justify-center rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                                    <Trophy className="size-5" />
                                 </div>
                                 <div>
                                     <p className="text-sm font-semibold text-foreground">Plan Premiación</p>
