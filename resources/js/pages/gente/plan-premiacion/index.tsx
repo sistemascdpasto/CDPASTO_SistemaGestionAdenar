@@ -421,6 +421,41 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                         />
                                     </div>
                                 </div>
+
+                                {/* Filtro de Cargos */}
+                                {cargos.length > 0 && (
+                                    <div>
+                                        <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Cargo</label>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="outline" className="w-full justify-between text-sm font-normal truncate">
+                                                    <span className="truncate">{getCargoLabel()}</span>
+                                                    <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="start" className="w-64 max-h-72 overflow-y-auto">
+                                                <DropdownMenuCheckboxItem
+                                                    checked={selectedCargos.length === 0}
+                                                    onCheckedChange={() => handleToggleCargo('todos')}
+                                                    className="text-xs font-medium"
+                                                >
+                                                    Todos los Cargos
+                                                </DropdownMenuCheckboxItem>
+                                                <DropdownMenuSeparator />
+                                                {cargos.map((c) => (
+                                                    <DropdownMenuCheckboxItem
+                                                        key={c}
+                                                        checked={selectedCargos.includes(c)}
+                                                        onCheckedChange={() => handleToggleCargo(c)}
+                                                        className="text-xs"
+                                                    >
+                                                        {c}
+                                                    </DropdownMenuCheckboxItem>
+                                                ))}
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="flex flex-wrap items-center gap-2 md:self-end">

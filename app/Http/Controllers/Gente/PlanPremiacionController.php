@@ -55,6 +55,11 @@ class PlanPremiacionController extends Controller
         // Siempre filtrar solo por los tres cargos de reparto
         $queryColaboradores->whereIn('cargo', $cargosDisponibles);
 
+        // Filtro adicional por cargo seleccionado
+        if (!empty($cargosSeleccionados)) {
+            $queryColaboradores->whereIn('cargo', $cargosSeleccionados);
+        }
+
         if ($search !== '') {
             $queryColaboradores->where(function ($q) use ($search) {
                 $q->where('nombres', 'like', "%{$search}%")
@@ -669,6 +674,7 @@ class PlanPremiacionController extends Controller
             ],
             'top3' => $top3,
             'peores2' => $peores2,
+            'cargos' => $cargosDisponibles,
             'puede_editar' => $request->user()?->hasAnyRole(['Administrador', 'Gente']) ?? false,
             'filters' => [
                 'mes' => $mes,
