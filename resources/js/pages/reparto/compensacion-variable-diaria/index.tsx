@@ -727,6 +727,15 @@ export default function CompensacionVariableDiariaIndex() {
                                 </div>
                                 <div className="w-px h-8 bg-border" />
                                 <div className="text-right">
+                                    <p className="text-[9px] font-semibold text-muted-foreground">Valor perdido</p>
+                                    <p className="text-base font-extrabold tabular-nums leading-tight"
+                                        style={{ color: totalValorPerd > 0 ? '#dc2626' : '#15803d' }}>
+                                        {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(totalValorPerd)}
+                                    </p>
+                                    <p className="text-[9px] text-muted-foreground">{totalValorPerd > 0 ? 'por incumplimiento' : 'sin pérdidas'}</p>
+                                </div>
+                                <div className="w-px h-8 bg-border" />
+                                <div className="text-right">
                                     <p className="text-[9px] font-semibold text-muted-foreground">Total personas</p>
                                     <p className="text-base font-extrabold tabular-nums leading-tight" style={{ color: '#15803d' }}>
                                         {colsUnicos.toLocaleString()}
@@ -771,64 +780,6 @@ export default function CompensacionVariableDiariaIndex() {
                         </div>
                     </div>
 
-                    {/* MINI CARDS — Rechazos · Personas · Valor perdido */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        {/* Suma de rechazos */}
-                        <div className="rounded-xl border p-4 flex flex-col gap-1.5"
-                            style={{ background: 'rgba(21, 128, 61, 0.06)', borderColor: 'rgba(21, 128, 61, 0.18)' }}>
-                            <div className="flex items-start justify-between gap-2">
-                                <p className="text-[10px] font-semibold text-muted-foreground">Suma de Rechazos</p>
-                                <div className="flex size-7 shrink-0 items-center justify-center rounded-full"
-                                    style={{ background: 'rgba(21, 128, 61, 0.12)' }}>
-                                    <AlertTriangle className="size-3.5" style={{ color: totalRechazos > 10 ? '#dc2626' : totalRechazos > 5 ? '#d97706' : '#15803d' }} />
-                                </div>
-                            </div>
-                            <p className="text-3xl font-extrabold tabular-nums leading-none"
-                                style={{ color: totalRechazos > 10 ? '#dc2626' : totalRechazos > 5 ? '#d97706' : '#15803d' }}>
-                                {totalRechazos.toLocaleString('es-CO')}%
-                            </p>
-                            <p className="text-[10px] text-muted-foreground leading-snug">
-                                Prom. {promRechazos}%/día · {totalRegistros.toLocaleString()} jornadas
-                            </p>
-                        </div>
-
-                        {/* Total personas del período */}
-                        <div className="rounded-xl border border-sidebar-border/70 bg-card p-4 flex flex-col gap-1.5 shadow-sm"
-                            style={{ borderColor: 'rgba(21, 128, 61, 0.18)' }}>
-                            <div className="flex items-start justify-between gap-2">
-                                <p className="text-[10px] font-semibold text-muted-foreground">Total Personas</p>
-                                <div className="flex size-7 shrink-0 items-center justify-center rounded-full"
-                                    style={{ background: 'rgba(21, 128, 61, 0.12)' }}>
-                                    <Users className="size-3.5" style={{ color: '#15803d' }} />
-                                </div>
-                            </div>
-                            <p className="text-3xl font-extrabold tabular-nums leading-none" style={{ color: '#15803d' }}>
-                                {colsUnicos.toLocaleString()}
-                            </p>
-                            <p className="text-[10px] text-muted-foreground leading-snug">
-                                Colaboradores únicos · {vehUnicos} vehículos
-                            </p>
-                        </div>
-
-                        {/* Valor perdido */}
-                        <div className="rounded-xl border border-sidebar-border/70 bg-card p-4 flex flex-col gap-1.5 shadow-sm"
-                            style={{ borderColor: totalValorPerd > 0 ? 'rgba(220, 38, 38, 0.18)' : 'rgba(21, 128, 61, 0.18)' }}>
-                            <div className="flex items-start justify-between gap-2">
-                                <p className="text-[10px] font-semibold text-muted-foreground">Valor Perdido</p>
-                                <div className="flex size-7 shrink-0 items-center justify-center rounded-full"
-                                    style={{ background: totalValorPerd > 0 ? 'rgba(220, 38, 38, 0.08)' : 'rgba(21, 128, 61, 0.12)' }}>
-                                    <TrendingDown className="size-3.5" style={{ color: totalValorPerd > 0 ? '#dc2626' : '#15803d' }} />
-                                </div>
-                            </div>
-                            <p className="text-3xl font-extrabold tabular-nums leading-none"
-                                style={{ color: totalValorPerd > 0 ? '#dc2626' : '#15803d' }}>
-                                {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(totalValorPerd)}
-                            </p>
-                            <p className="text-[10px] text-muted-foreground leading-snug">
-                                {totalValorPerd > 0 ? 'Por incumplimiento de metas de rechazo' : '¡Sin pérdidas en el período!'}
-                            </p>
-                        </div>
-                    </div>
 
                     {statusAlert && (
                         <div className={`flex items-start gap-3 rounded-xl p-4 text-sm font-medium shadow-md border-2 ${
