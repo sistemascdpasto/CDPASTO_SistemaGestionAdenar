@@ -154,6 +154,26 @@ class CompensacionVariableDiariaController extends Controller
 
     public function index(Request $request): Response
     {
+        // Si no hay filtros de fecha/mes/anio, aplicar mes actual como defecto
+        $sinFiltroTemporal = !$request->filled('fecha_desde')
+            && !$request->filled('fecha_hasta')
+            && !$request->filled('anio')
+            && !$request->has('mes');
+
+        if ($sinFiltroTemporal) {
+            // Nombres de meses en español como los guarda el sistema
+            $mesesEs = [
+                1 => 'Enero',    2 => 'Febrero',   3 => 'Marzo',
+                4 => 'Abril',    5 => 'Mayo',       6 => 'Junio',
+                7 => 'Julio',    8 => 'Agosto',     9 => 'Septiembre',
+                10 => 'Octubre', 11 => 'Noviembre', 12 => 'Diciembre',
+            ];
+            $request->merge([
+                'anio' => (int) now()->format('Y'),
+                'mes'  => $mesesEs[(int) now()->format('n')],
+            ]);
+        }
+
         $query = CompensacionVariableDiaria::query();
         $this->applyFilters($query, $request);
         
@@ -363,8 +383,8 @@ class CompensacionVariableDiariaController extends Controller
         $historial = [];
         if ($cedula) {
             $historial = CompensacionVariableDiaria::where('cedula', $cedula)
+                ->when($registro->anio, fn ($q) => $q->where('anio', $registro->anio))
                 ->orderBy('fecha', 'desc')
-                ->limit(90)
                 ->get();
         }
 

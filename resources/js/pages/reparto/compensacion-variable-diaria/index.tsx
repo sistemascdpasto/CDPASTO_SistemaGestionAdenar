@@ -502,6 +502,8 @@ export default function CompensacionVariableDiariaIndex() {
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [selectedRow, setSelectedRow] = useState<CompensacionDiariaRow | null>(null);
     const [historialRow, setHistorialRow] = useState<CompensacionDiariaRow[]>([]);
+    const [historialPag, setHistorialPag] = useState(1);
+    const HIST_PER_PAGE = 15;
     const [calcularModalOpen, setCalcularModalOpen] = useState(false);
     const [showRanking, setShowRanking] = useState(true);
     const [rankMode, setRankMode] = useState<'bottom' | 'top'>('bottom');
@@ -614,6 +616,7 @@ export default function CompensacionVariableDiariaIndex() {
         setSelectedRow(row);
         setDrawerOpen(true);
         setHistorialRow([]);
+        setHistorialPag(1);
         try {
             const res = await fetch(route('reparto.compensacion-variable-diaria.detalle', { id: row.id }));
             const json = await res.json();
@@ -805,8 +808,8 @@ export default function CompensacionVariableDiariaIndex() {
                         </div>
                     )}
 
-                    {/* FILTROS (estilo Adherencia al Tiempo · grid compacto + responsive) */}
-                    <div className="bg-card rounded-xl border border-sidebar-border/70 dark:border-sidebar-border shadow-sm px-4 sm:px-5 py-4 w-full box-border overflow-hidden">
+                    {/* FILTROS */}
+                    <div className="bg-card rounded-xl border border-sidebar-border/70 dark:border-sidebar-border shadow-sm px-4 sm:px-5 py-4 w-full box-border relative z-30">
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 items-end min-w-0">
                             <div className="grid gap-1 min-w-0">
                                 <Label className="text-[10px] font-bold text-muted-foreground flex items-center gap-1">
@@ -830,6 +833,62 @@ export default function CompensacionVariableDiariaIndex() {
                             <div className="min-w-0"><MultiSelectSearchable label="Placa" placeholder="Todas las placas" selectedValues={formFilters.placa} options={catalogos.placas} onChange={handleMultiSelectChange('placa')} /></div>
                             <div className="min-w-0 sm:col-span-2 md:col-span-3 lg:col-span-1"><MultiSelectSearchable label="Transporte" placeholder="Todos los transportes" selectedValues={formFilters.transporte} options={catalogos.transportes} onChange={handleMultiSelectChange('transporte')} /></div>
                         </div>
+
+                        {/* ── Chips de filtros activos ── */}
+                        {hasFilters && (
+                            <div className="mt-3 flex flex-wrap gap-1.5">
+                                {formFilters.fecha_desde && (
+                                    <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-medium"
+                                        style={{ background: `${COLOR_MODULO}12`, borderColor: `${COLOR_MODULO}40`, color: COLOR_MODULO }}>
+                                        Desde: {formFilters.fecha_desde}
+                                        <button type="button" onClick={() => handleDateInputChange('fecha_desde')('')} className="ml-0.5 hover:opacity-70"><X className="size-2.5" /></button>
+                                    </span>
+                                )}
+                                {formFilters.fecha_hasta && (
+                                    <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-medium"
+                                        style={{ background: `${COLOR_MODULO}12`, borderColor: `${COLOR_MODULO}40`, color: COLOR_MODULO }}>
+                                        Hasta: {formFilters.fecha_hasta}
+                                        <button type="button" onClick={() => handleDateInputChange('fecha_hasta')('')} className="ml-0.5 hover:opacity-70"><X className="size-2.5" /></button>
+                                    </span>
+                                )}
+                                {(formFilters.cargo as string[])?.map((v: string) => (
+                                    <span key={v} className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-medium"
+                                        style={{ background: `${COLOR_MODULO}12`, borderColor: `${COLOR_MODULO}40`, color: COLOR_MODULO }}>
+                                        Cargo: {v}
+                                        <button type="button" onClick={() => handleMultiSelectChange('cargo')((formFilters.cargo as string[]).filter((x: string) => x !== v))} className="ml-0.5 hover:opacity-70"><X className="size-2.5" /></button>
+                                    </span>
+                                ))}
+                                {(formFilters.cedula as string[])?.map((v: string) => (
+                                    <span key={v} className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-medium"
+                                        style={{ background: `${COLOR_MODULO}12`, borderColor: `${COLOR_MODULO}40`, color: COLOR_MODULO }}>
+                                        ID: {v}
+                                        <button type="button" onClick={() => handleMultiSelectChange('cedula')((formFilters.cedula as string[]).filter((x: string) => x !== v))} className="ml-0.5 hover:opacity-70"><X className="size-2.5" /></button>
+                                    </span>
+                                ))}
+                                {(formFilters.nombre_completo as string[])?.map((v: string) => (
+                                    <span key={v} className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-medium"
+                                        style={{ background: `${COLOR_MODULO}12`, borderColor: `${COLOR_MODULO}40`, color: COLOR_MODULO }}>
+                                        {v}
+                                        <button type="button" onClick={() => handleMultiSelectChange('nombre_completo')((formFilters.nombre_completo as string[]).filter((x: string) => x !== v))} className="ml-0.5 hover:opacity-70"><X className="size-2.5" /></button>
+                                    </span>
+                                ))}
+                                {(formFilters.placa as string[])?.map((v: string) => (
+                                    <span key={v} className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-medium"
+                                        style={{ background: `${COLOR_BLUE}12`, borderColor: `${COLOR_BLUE}40`, color: COLOR_BLUE }}>
+                                        Placa: {v}
+                                        <button type="button" onClick={() => handleMultiSelectChange('placa')((formFilters.placa as string[]).filter((x: string) => x !== v))} className="ml-0.5 hover:opacity-70"><X className="size-2.5" /></button>
+                                    </span>
+                                ))}
+                                {(formFilters.transporte as string[])?.map((v: string) => (
+                                    <span key={v} className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-medium"
+                                        style={{ background: `${COLOR_BLUE}12`, borderColor: `${COLOR_BLUE}40`, color: COLOR_BLUE }}>
+                                        Transp: {v}
+                                        <button type="button" onClick={() => handleMultiSelectChange('transporte')((formFilters.transporte as string[]).filter((x: string) => x !== v))} className="ml-0.5 hover:opacity-70"><X className="size-2.5" /></button>
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+
                         <div className="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                             <div className="text-[10px] text-muted-foreground break-words min-w-0">
                                 Viendo <b>{totalRegistros.toLocaleString()} registros</b>
@@ -855,7 +914,7 @@ export default function CompensacionVariableDiariaIndex() {
                                 </Button>
                                 {hasFilters && (
                                     <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); limpiarFiltros(); }} className="h-7 text-xs text-muted-foreground pointer-events-auto relative">
-                                        <X className="h-3 w-3 mr-1" /> Limpiar
+                                        <X className="h-3 w-3 mr-1" /> Limpiar todo
                                     </Button>
                                 )}
                             </div>
@@ -1098,40 +1157,97 @@ export default function CompensacionVariableDiariaIndex() {
                                 <KpiCard label="Meta 2" value={selectedRow.meta_2 !== null && selectedRow.meta_2 !== undefined ? `< ${selectedRow.meta_2}%` : '< 2,6%'} icon={Target} color={COLOR_BLUE} />
                             </div>
 
-                            {historialRow.length > 0 && (
-                                <div className="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-card p-3 sm:p-4 shadow-sm">
-                                    <div className="text-[11px] font-bold text-muted-foreground mb-3">
-                                        Últimos días del colaborador ({historialRow.length})
-                                    </div>
-                                    <div className="overflow-x-auto">
-                                        <Table className="w-full">
-                                            <TableHeader>
-                                                <TableRow className="bg-muted/50">
-                                                    <TableHead className="px-2 py-1.5 text-[10px]">Fecha</TableHead>
-                                                    <TableHead className="px-2 py-1.5 text-[10px]">Placa</TableHead>
-                                                    <TableHead className="px-2 py-1.5 text-[10px]">Rechazos</TableHead>
-                                                    <TableHead className="px-2 py-1.5 text-[10px]">Valor Var</TableHead>
-                                                    <TableHead className="px-2 py-1.5 text-[10px]">% Var</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {historialRow.slice(0, 15).map(h => (
-                                                    <TableRow key={h.id} className="hover:bg-muted/60">
-                                                        <TableCell className="px-2 py-1.5 text-[11px]">{formatDate(h.fecha)}</TableCell>
-                                                        <TableCell className="px-2 py-1.5 text-[11px]">{h.placa || '-'}</TableCell>
-                                                        <TableCell className="px-2 py-1.5 text-[11px] font-semibold"
-                                                            style={{ color: Number(h.rechazos || 0) > 2.6 ? COLOR_CRITICAL : Number(h.rechazos || 0) > 2.1 ? COLOR_WARNING : COLOR_SUCCESS }}>
-                                                            {h.rechazos !== null && h.rechazos !== undefined ? `${h.rechazos}%` : '-'}
-                                                        </TableCell>
-                                                        <TableCell className="px-2 py-1.5 text-[11px]">{formatCurrency(Number(h.valor_var) || 0)}</TableCell>
-                                                        <TableCell className="px-2 py-1.5 text-[11px]">{h.porcentaje_variable || '-'}</TableCell>
+                            {historialRow.length > 0 && (() => {
+                                const totalPages = Math.ceil(historialRow.length / HIST_PER_PAGE);
+                                const paginated = historialRow.slice((historialPag - 1) * HIST_PER_PAGE, historialPag * HIST_PER_PAGE);
+                                const totalValVar   = historialRow.reduce((s, h) => s + (Number(h.valor_var) || 0), 0);
+                                const totalValPerd  = historialRow.reduce((s, h) => s + (Number(h.valor_perdido) || 0), 0);
+                                const promRech      = historialRow.length > 0
+                                    ? (historialRow.reduce((s, h) => s + (Number(h.rechazos) || 0), 0) / historialRow.length)
+                                    : 0;
+                                return (
+                                    <div className="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-card p-3 sm:p-4 shadow-sm">
+                                        <div className="flex items-center justify-between mb-3">
+                                            <span className="text-[11px] font-bold text-muted-foreground">
+                                                Todos los registros {selectedRow?.anio ?? ''} — {historialRow.length} día{historialRow.length !== 1 ? 's' : ''}
+                                            </span>
+                                            <span className="text-[10px] text-muted-foreground">
+                                                Pág {historialPag}/{totalPages}
+                                            </span>
+                                        </div>
+                                        <div className="overflow-x-auto">
+                                            <Table className="w-full">
+                                                <TableHeader>
+                                                    <TableRow className="bg-muted/50">
+                                                        <TableHead className="px-2 py-1.5 text-[10px]">Fecha</TableHead>
+                                                        <TableHead className="px-2 py-1.5 text-[10px]">Placa</TableHead>
+                                                        <TableHead className="px-2 py-1.5 text-[10px]">Rechazos</TableHead>
+                                                        <TableHead className="px-2 py-1.5 text-[10px]">Valor Var</TableHead>
+                                                        <TableHead className="px-2 py-1.5 text-[10px]">% Var</TableHead>
                                                     </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {paginated.map(h => (
+                                                        <TableRow key={h.id} className="hover:bg-muted/60">
+                                                            <TableCell className="px-2 py-1.5 text-[11px]">{formatDate(h.fecha)}</TableCell>
+                                                            <TableCell className="px-2 py-1.5 text-[11px]">{h.placa || '-'}</TableCell>
+                                                            <TableCell className="px-2 py-1.5 text-[11px] font-semibold"
+                                                                style={{ color: Number(h.rechazos || 0) > 2.6 ? COLOR_CRITICAL : Number(h.rechazos || 0) > 2.1 ? COLOR_WARNING : COLOR_SUCCESS }}>
+                                                                {h.rechazos !== null && h.rechazos !== undefined ? `${h.rechazos}%` : '-'}
+                                                            </TableCell>
+                                                            <TableCell className="px-2 py-1.5 text-[11px]">{formatCurrency(Number(h.valor_var) || 0)}</TableCell>
+                                                            <TableCell className="px-2 py-1.5 text-[11px]">{h.porcentaje_variable || '-'}</TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                                {/* Fila de totales */}
+                                                <tfoot>
+                                                    <tr className="border-t-2 bg-muted/40 font-bold">
+                                                        <td className="px-2 py-2 text-[10px] font-bold text-muted-foreground" colSpan={2}>
+                                                            TOTAL {historialRow.length} días
+                                                        </td>
+                                                        <td className="px-2 py-2 text-[11px] font-bold"
+                                                            style={{ color: promRech > 2.6 ? COLOR_CRITICAL : promRech > 2.1 ? COLOR_WARNING : COLOR_SUCCESS }}>
+                                                            {promRech.toFixed(2)}% prom
+                                                        </td>
+                                                        <td className="px-2 py-2 text-[11px] font-bold" style={{ color: COLOR_SUCCESS }}>
+                                                            {formatCurrency(totalValVar)}
+                                                        </td>
+                                                        <td className="px-2 py-2 text-[11px] font-bold" style={{ color: COLOR_CRITICAL }}>
+                                                            {formatCurrency(totalValPerd)} perd
+                                                        </td>
+                                                    </tr>
+                                                </tfoot>
+                                            </Table>
+                                        </div>
+                                        {/* Paginación */}
+                                        {totalPages > 1 && (
+                                            <div className="flex items-center justify-center gap-1 mt-3">
+                                                <button
+                                                    onClick={() => setHistorialPag(p => Math.max(1, p - 1))}
+                                                    disabled={historialPag === 1}
+                                                    className="px-2.5 py-1 rounded-md border text-[10px] bg-card hover:bg-muted/60 disabled:opacity-40">
+                                                    ‹
+                                                </button>
+                                                {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                                                    <button key={p}
+                                                        onClick={() => setHistorialPag(p)}
+                                                        className={`px-2.5 py-1 rounded-md border text-[10px] ${p === historialPag ? 'text-white border-transparent' : 'bg-card hover:bg-muted/60'}`}
+                                                        style={p === historialPag ? { background: COLOR_MODULO } : {}}>
+                                                        {p}
+                                                    </button>
                                                 ))}
-                                            </TableBody>
-                                        </Table>
+                                                <button
+                                                    onClick={() => setHistorialPag(p => Math.min(totalPages, p + 1))}
+                                                    disabled={historialPag === totalPages}
+                                                    className="px-2.5 py-1 rounded-md border text-[10px] bg-card hover:bg-muted/60 disabled:opacity-40">
+                                                    ›
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
-                                </div>
-                            )}
+                                );
+                            })()}
                         </div>
                     )}
                 </SheetContent>
