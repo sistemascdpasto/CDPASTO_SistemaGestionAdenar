@@ -15,6 +15,7 @@ import { Link, usePage } from '@inertiajs/react';
 import {
     BellRing,
     Calendar,
+    Clock,
     DollarSign,
     GraduationCap,
     HeartPulse,
@@ -112,6 +113,7 @@ export function AppSidebar() {
                   { title: 'Mi Plan Premiación', url: '/portal/mi-plan-premiacion', icon: Trophy, color: '#D97706' },
                   { title: 'Mi Compensación Diaria', url: '/portal/mi-compensacion', icon: Calendar, color: '#0891B2' },
                   { title: 'Mi Compensación Variable', url: '/portal/mi-compensacion-variable', icon: DollarSign, color: '#15803d' },
+                  { title: 'Medición de Tiempos en Inventario', url: '/modules/reparto/medicion-tiempos-inventario', icon: Clock, color: '#D4102A' },
                   { title: 'Condición de Salud', url: '/portal/condicion-salud', icon: HeartPulse, color: '#3F7A22' },
                   { title: 'Encuesta de Morbilidad', url: '/portal/encuesta-morbilidad', icon: Stethoscope, color: '#3F7A22' },
                   { title: 'Mis Capacitaciones', url: '/portal/capacitaciones', icon: GraduationCap, color: '#0D9488' },

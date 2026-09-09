@@ -537,7 +537,7 @@ export default function CompensacionVariableDiariaIndex() {
     const { post: postCalcular, processing: processingCalcular } = useForm({});
 
     const handleCalcular = () => {
-        router.post(route('reparto.compensacion-variable-diaria.calcular'), {
+        router.post(route('compensacion-variable-diaria.calcular'), {
             anio: calcularForm.anio,
             mes: calcularForm.mes,
         }, {
