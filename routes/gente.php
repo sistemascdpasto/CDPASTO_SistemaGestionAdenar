@@ -12,6 +12,7 @@ use App\Http\Controllers\Gente\GeovictoriaAsistenciaController;
 use App\Http\Controllers\Gente\LlamadoAtencionController;
 use App\Http\Controllers\Gente\PlanPremiacionController;
 use App\Http\Controllers\Gente\ReferenciaExternaController;
+use App\Http\Controllers\Gente\ResponsableRutaController;
 use App\Http\Controllers\Gente\SacController;
 use App\Http\Controllers\Gente\SeguimientoPruebasController;
 use Illuminate\Support\Facades\Route;
@@ -109,6 +110,12 @@ Route::middleware(['auth', 'active', 'role:Administrador|Gente'])
         // Festivos custom — toggle (agregar/eliminar un día como festivo)
         Route::post('festivos-custom/toggle', [FestivoCustomController::class, 'toggle'])
             ->name('festivos-custom.toggle');
+
+        // Responsable de Ruta - Inicio / Finalización de la verificación de carga
+        Route::post('responsable-ruta/inicio', [ResponsableRutaController::class, 'storeInicio'])
+            ->name('responsable-ruta.inicio');
+        Route::post('responsable-ruta/finalizacion', [ResponsableRutaController::class, 'storeFin'])
+            ->name('responsable-ruta.finalizacion');
     });
 
 Route::middleware(['auth', 'active', 'role:Administrador|Seguridad|Reparto|Flota|Gente'])
@@ -132,6 +139,10 @@ Route::middleware(['auth', 'active', 'role:Administrador|Seguridad|Reparto|Flota
             ->name('plan-premiacion.exportar');
         Route::get('plan-premiacion/{colaborador}', [PlanPremiacionController::class, 'show'])
             ->name('plan-premiacion.show');
+
+        // Formulario Responsables de Ruta (lectura)
+        Route::get('responsable-ruta', [ResponsableRutaController::class, 'index'])
+            ->name('responsable-ruta.index');
 
         // Festivos custom — lectura (disponible para todos los roles que ven plan premiación)
         Route::get('festivos-custom', [FestivoCustomController::class, 'index'])

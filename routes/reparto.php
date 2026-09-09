@@ -6,6 +6,7 @@ use App\Http\Controllers\Reparto\CompensacionVariableController;
 use App\Http\Controllers\Reparto\CompensacionVariableDiariaController;
 use App\Http\Controllers\Reparto\EventosTripulacionController;
 use App\Http\Controllers\Reparto\IndicadoresController;
+use App\Http\Controllers\Reparto\MedicionTiempoInventarioController;
 use App\Http\Controllers\Reparto\ModulacionController;
 use Illuminate\Support\Facades\Route;
 
@@ -123,5 +124,24 @@ Route::middleware(['auth', 'active'])
             ->name('checklist.import.index');
         Route::post('/checklist/import', [ChecklistImportController::class, 'store'])
             ->name('checklist.import.store');
+
+        // Medición de Tiempos en Inventario de Vehículos de Distribución
+        // Solo para colaboradores, administradores y reparto
+        Route::middleware('role:Colaborador|Administrador|Reparto')->group(function () {
+            Route::get('/medicion-tiempos-inventario', [MedicionTiempoInventarioController::class, 'index'])
+                ->name('reparto.medicion-tiempos-inventario.index');
+            Route::get('/medicion-tiempos-inventario/create', [MedicionTiempoInventarioController::class, 'create'])
+                ->name('reparto.medicion-tiempos-inventario.create');
+            Route::post('/medicion-tiempos-inventario', [MedicionTiempoInventarioController::class, 'store'])
+                ->name('reparto.medicion-tiempos-inventario.store');
+            Route::get('/medicion-tiempos-inventario/{medicionTiempoInventario}', [MedicionTiempoInventarioController::class, 'show'])
+                ->name('reparto.medicion-tiempos-inventario.show');
+            Route::get('/medicion-tiempos-inventario/{medicionTiempoInventario}/edit', [MedicionTiempoInventarioController::class, 'edit'])
+                ->name('reparto.medicion-tiempos-inventario.edit');
+            Route::put('/medicion-tiempos-inventario/{medicionTiempoInventario}', [MedicionTiempoInventarioController::class, 'update'])
+                ->name('reparto.medicion-tiempos-inventario.update');
+            Route::delete('/medicion-tiempos-inventario/{medicionTiempoInventario}', [MedicionTiempoInventarioController::class, 'destroy'])
+                ->name('reparto.medicion-tiempos-inventario.destroy');
+        });
     });
 

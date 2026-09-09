@@ -506,10 +506,41 @@ export default function CompensacionVariableDiariaIndex() {
     const [showPlacas, setShowPlacas] = useState(false);
     const [showCargos, setShowCargos] = useState(false);
 
+    const MESES_ES: Record<number, string> = {
+        1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
+        5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
+        9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre',
+    };
+
+    const hoy = new Date();
+    const anioActual = hoy.getFullYear();
+    const mesActual = hoy.getMonth() + 1;
+    const [calcularForm, setCalcularForm] = useState({ anio: anioActual, mes: mesActual });
+
+    useEffect(() => {
+        if (calcularModalOpen) {
+            setCalcularForm({ anio: anioActual, mes: mesActual });
+        }
+    }, [calcularModalOpen]);
+
+    const aniosDisponibles = useMemo(() => {
+        const arr: number[] = [];
+        for (let y = anioActual - 3; y <= anioActual + 1; y++) arr.push(y);
+        return arr;
+    }, [anioActual]);
+
+    const periodoSeleccionado = useMemo(() => {
+        const m = MESES_ES[calcularForm.mes] || `Mes ${calcularForm.mes}`;
+        return `${m} de ${calcularForm.anio}`;
+    }, [calcularForm]);
+
     const { post: postCalcular, processing: processingCalcular } = useForm({});
 
     const handleCalcular = () => {
-        router.post(route('reparto.compensacion-variable-diaria.calcular'), {}, {
+        router.post(route('reparto.compensacion-variable-diaria.calcular'), {
+            anio: calcularForm.anio,
+            mes: calcularForm.mes,
+        }, {
             onSuccess: () => setCalcularModalOpen(false),
         });
     };
@@ -1002,15 +1033,49 @@ export default function CompensacionVariableDiariaIndex() {
                     <DialogHeader>
                         <DialogTitle className="text-sm font-bold flex items-center gap-2">
                             <RefreshCw className="size-4" style={{ color: COLOR_MODULO }} />
-                            Calcular Compensación del Mes Actual
+                            Calcular Compensación Variable Diaria
                         </DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 py-2">
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="grid gap-1">
+                                <Label className="text-[11px] font-bold text-muted-foreground flex items-center gap-1">
+                                    <Calendar className="h-3 w-3 shrink-0" style={{ color: COLOR_MODULO }} />
+                                    Mes
+                                </Label>
+                                <select
+                                    value={calcularForm.mes}
+                                    onChange={(e) => setCalcularForm({ ...calcularForm, mes: Number(e.target.value) })}
+                                    className="h-9 w-full rounded-lg border border-sidebar-border/70 dark:border-sidebar-border bg-card px-2 text-xs focus:ring-1 focus:outline-none"
+                                    style={{ ['--tw-ring-color' as any]: COLOR_MODULO }}>
+                                    {Object.entries(MESES_ES).map(([num, nombre]) => (
+                                        <option key={num} value={Number(num)}>{nombre}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="grid gap-1">
+                                <Label className="text-[11px] font-bold text-muted-foreground flex items-center gap-1">
+                                    <CalendarDays className="h-3 w-3 shrink-0" style={{ color: COLOR_MODULO }} />
+                                    Año
+                                </Label>
+                                <select
+                                    value={calcularForm.anio}
+                                    onChange={(e) => setCalcularForm({ ...calcularForm, anio: Number(e.target.value) })}
+                                    className="h-9 w-full rounded-lg border border-sidebar-border/70 dark:border-sidebar-border bg-card px-2 text-xs focus:ring-1 focus:outline-none"
+                                    style={{ ['--tw-ring-color' as any]: COLOR_MODULO }}>
+                                    {aniosDisponibles.map((y) => (
+                                        <option key={y} value={y}>{y}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
                         <p className="text-xs text-muted-foreground">
                             El sistema calculará automáticamente la compensación variable diaria para{' '}
-                            <strong>{new Date().toLocaleString('es-CO', { month: 'long', year: 'numeric' })}</strong>,
-                            usando los datos de <strong>Eventos de Tripulación</strong> del mes en curso.
+                            <strong style={{ color: COLOR_MODULO }}>{periodoSeleccionado}</strong>,
+                            usando los datos de <strong>Eventos de Tripulación</strong> del período seleccionado.
                         </p>
+
                         <div className="rounded-xl p-3 text-[11px] space-y-1 border"
                             style={{ background: `${COLOR_MODULO}0d`, borderColor: `${COLOR_MODULO}33`, color: COLOR_MODULO }}>
                             <p className="font-semibold">El sistema calculará automáticamente:</p>
@@ -1027,7 +1092,7 @@ export default function CompensacionVariableDiariaIndex() {
                             onClick={handleCalcular} disabled={processingCalcular}>
                             {processingCalcular
                                 ? <><LoaderCircle className="size-3.5 mr-1 animate-spin" />Calculando...</>
-                                : <><RefreshCw className="size-3.5 mr-1" />Calcular Mes Actual</>}
+                                : <><RefreshCw className="size-3.5 mr-1" />Calcular {periodoSeleccionado}</>}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

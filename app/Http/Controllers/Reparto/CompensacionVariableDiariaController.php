@@ -321,16 +321,31 @@ class CompensacionVariableDiariaController extends Controller
 
     public function importar(Request $request, CompensacionVariableDiariaImportService $service): RedirectResponse
     {
-        $resultado = $service->calcularDesdeEventos();
+        $anio = $request->filled('anio') ? (int) $request->input('anio') : null;
+        $mes  = $request->filled('mes')  ? (int) $request->input('mes')  : null;
 
-        $mes = now()->locale('es')->isoFormat('MMMM YYYY');
-        $mensaje = "Compensación calculada para {$mes}: {$resultado['registros_creados']} nuevos registros, {$resultado['registros_actualizados']} actualizados ({$resultado['total_procesados']} eventos procesados).";
+        $resultado = $service->calcularDesdeEventos($anio, $mes);
 
-        return redirect()->route('reparto.compensacion-variable-diaria.index')
-            ->with('status', [
-                'message' => $mensaje,
-                'type'    => $resultado['total_procesados'] > 0 ? 'success' : 'error',
-            ]);
+        $periodo = $resultado['periodo'] ?? now()->locale('es')->isoFormat('MMMM YYYY');
+        $mensaje = "Compensación calculada para {$periodo}: {$resultado['registros_creados']} nuevos registros, {$resultado['registros_actualizados']} actualizados ({$resultado['total_procesados']} eventos procesados).";
+
+        $mesNombre = null;
+        if (isset($resultado['mes'])) {
+            $meses = [
+                1 => 'Enero', 2 => 'Febrero', 3 => 'Marzo', 4 => 'Abril',
+                5 => 'Mayo', 6 => 'Junio', 7 => 'Julio', 8 => 'Agosto',
+                9 => 'Septiembre', 10 => 'Octubre', 11 => 'Noviembre', 12 => 'Diciembre',
+            ];
+            $mesNombre = $meses[(int) $resultado['mes']] ?? null;
+        }
+
+        return redirect()->route('reparto.compensacion-variable-diaria.index', [
+            'anio' => $resultado['anio'] ?? null,
+            'mes'  => $mesNombre,
+        ])->with('status', [
+            'message' => $mensaje,
+            'type'    => $resultado['total_procesados'] > 0 ? 'success' : 'error',
+        ]);
     }
 
     public function detalle(string $id): JsonResponse

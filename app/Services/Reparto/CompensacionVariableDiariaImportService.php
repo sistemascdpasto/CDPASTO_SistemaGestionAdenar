@@ -38,16 +38,25 @@ class CompensacionVariableDiariaImportService
 
     /**
      * Sincroniza la tabla compensaciones_variables_diarias desde eventos_tripulacion.
-     * SIEMPRE calcula el mes actual — no requiere parámetros de fecha.
+     * Calcula el mes/año indicado. Si no se envía parámetro, usa el mes actual.
+     *
+     * @param int|null $anio  Año a calcular (ej: 2026). Si null → año actual.
+     * @param int|null $mes   Mes a calcular (1-12). Si null → mes actual.
      */
-    public function calcularDesdeEventos(): array
+    public function calcularDesdeEventos(?int $anio = null, ?int $mes = null): array
     {
         set_time_limit(600);
         ini_set('memory_limit', '512M');
 
-        // Calcular siempre el mes actual
-        $fechaDesde = now()->startOfMonth()->format('Y-m-d');
-        $fechaHasta = now()->endOfMonth()->format('Y-m-d');
+        // Validar y normalizar mes/año. Si faltan, usar el momento actual.
+        $hoy = now();
+        $anio = $anio > 0 ? $anio : (int) $hoy->format('Y');
+        $mes  = ($mes >= 1 && $mes <= 12) ? $mes : (int) $hoy->format('n');
+
+        $fechaDesde = \Carbon\Carbon::create($anio, $mes, 1)->startOfMonth()->format('Y-m-d');
+        $fechaHasta = \Carbon\Carbon::create($anio, $mes, 1)->endOfMonth()->format('Y-m-d');
+        $mesNombre  = self::MESES_ES[$mes] ?? "Mes {$mes}";
+        $periodo    = "{$mesNombre} {$anio}";
 
         // ── Lookup colaboradores (una sola query) ──────────────────────────────
         $colaboradores = Colaborador::whereNotNull('cedula')
@@ -139,12 +148,17 @@ class CompensacionVariableDiariaImportService
             }
         });
 
-        Log::info("CVD: Sincronización completada. Creados: {$registrosCreados}, Actualizados: {$registrosActualizados}");
+        Log::info("CVD: Sincronización completada para {$periodo}. Creados: {$registrosCreados}, Actualizados: {$registrosActualizados}");
 
         return [
             'total_procesados'      => $totalProcesados,
             'registros_creados'     => $registrosCreados,
             'registros_actualizados'=> $registrosActualizados,
+            'periodo'               => $periodo,
+            'anio'                  => $anio,
+            'mes'                   => $mes,
+            'fecha_desde'           => $fechaDesde,
+            'fecha_hasta'           => $fechaHasta,
         ];
     }
 
