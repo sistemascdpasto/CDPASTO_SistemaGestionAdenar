@@ -20,7 +20,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Pruebas de Alcoholemia', href: '/modules/seguridad/pruebas' },
 ];
 
-const TIPO_LABELS: Record<string, string> = { pre_ruta: 'Pre Ruta', ruta: 'Ruta', post_ruta: 'Post Ruta' };
+const TIPO_LABELS: Record<string, string> = { pre_ruta: 'Pre Ruta', ruta: 'Ruta', post_ruta: 'Post Ruta', jl: 'JL', segundo_viaje: 'Segundo viaje' };
 
 interface PruebaRow {
     id: number;
@@ -117,6 +117,8 @@ export default function PruebasIndex({ pruebas, filters }: { pruebas: PruebasPag
                                 <SelectItem value="pre_ruta">Pre Ruta</SelectItem>
                                 <SelectItem value="ruta">Ruta</SelectItem>
                                 <SelectItem value="post_ruta">Post Ruta</SelectItem>
+                                <SelectItem value="jl">JL</SelectItem>
+                                <SelectItem value="segundo_viaje">Segundo viaje</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>

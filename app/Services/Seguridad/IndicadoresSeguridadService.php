@@ -53,7 +53,7 @@ class IndicadoresSeguridadService
         $realizadas = $pruebas->where('estado', 'realizada');
         $positivas = $realizadas->filter(fn ($p) => $p->resultado !== null && (float) $p->resultado > $umbral);
 
-        $tipoLabels = ['pre_ruta' => 'Pre Ruta', 'ruta' => 'Ruta', 'post_ruta' => 'Post Ruta'];
+        $tipoLabels = ['pre_ruta' => 'Pre Ruta', 'ruta' => 'Ruta', 'post_ruta' => 'Post Ruta', 'jl' => 'JL', 'segundo_viaje' => 'Segundo viaje'];
         $porTipo = collect($tipoLabels)
             ->map(fn ($label, $key) => ['tipo' => $label, 'total' => $realizadas->where('tipo', $key)->count()])
             ->values();

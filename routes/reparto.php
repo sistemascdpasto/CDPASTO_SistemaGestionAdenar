@@ -126,22 +126,27 @@ Route::middleware(['auth', 'active'])
             ->name('checklist.import.store');
 
         // Medición de Tiempos en Inventario de Vehículos de Distribución
-        // Solo para colaboradores, administradores y reparto
+        // Colaboradores: solo pueden registrar (crear) y finalizar su propio inventario del día.
+        // Admin y Reparto: acceso completo.
         Route::middleware('role:Colaborador|Administrador|Reparto')->group(function () {
-            Route::get('/medicion-tiempos-inventario', [MedicionTiempoInventarioController::class, 'index'])
-                ->name('reparto.medicion-tiempos-inventario.index');
             Route::get('/medicion-tiempos-inventario/create', [MedicionTiempoInventarioController::class, 'create'])
-                ->name('reparto.medicion-tiempos-inventario.create');
+                ->name('medicion-tiempos-inventario.create');
             Route::post('/medicion-tiempos-inventario', [MedicionTiempoInventarioController::class, 'store'])
-                ->name('reparto.medicion-tiempos-inventario.store');
-            Route::get('/medicion-tiempos-inventario/{medicionTiempoInventario}', [MedicionTiempoInventarioController::class, 'show'])
-                ->name('reparto.medicion-tiempos-inventario.show');
+                ->name('medicion-tiempos-inventario.store');
+            // edit y update también accesibles por colaboradores para finalizar su propio inventario
             Route::get('/medicion-tiempos-inventario/{medicionTiempoInventario}/edit', [MedicionTiempoInventarioController::class, 'edit'])
-                ->name('reparto.medicion-tiempos-inventario.edit');
+                ->name('medicion-tiempos-inventario.edit');
             Route::put('/medicion-tiempos-inventario/{medicionTiempoInventario}', [MedicionTiempoInventarioController::class, 'update'])
-                ->name('reparto.medicion-tiempos-inventario.update');
+                ->name('medicion-tiempos-inventario.update');
+        });
+
+        Route::middleware('role:Administrador|Reparto')->group(function () {
+            Route::get('/medicion-tiempos-inventario', [MedicionTiempoInventarioController::class, 'index'])
+                ->name('medicion-tiempos-inventario.index');
+            Route::get('/medicion-tiempos-inventario/{medicionTiempoInventario}', [MedicionTiempoInventarioController::class, 'show'])
+                ->name('medicion-tiempos-inventario.show');
             Route::delete('/medicion-tiempos-inventario/{medicionTiempoInventario}', [MedicionTiempoInventarioController::class, 'destroy'])
-                ->name('reparto.medicion-tiempos-inventario.destroy');
+                ->name('medicion-tiempos-inventario.destroy');
         });
     });
 

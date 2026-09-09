@@ -1,26 +1,23 @@
 import HeadingSmall from '@/components/heading-small';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, Clock, Save } from 'lucide-react';
+import { ArrowLeft, PlayCircle, X } from 'lucide-react';
+import { useRef, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
     { title: 'Reparto', href: '/modules/reparto' },
-    { title: 'Medición de Tiempos en Inventario', href: '/modules/reparto/medicion-tiempos-inventario' },
-    { title: 'Nueva Medición', href: '' },
+    { title: 'Nueva Medición de Tiempo en Inventario', href: '' },
 ];
 
 interface Vehiculo {
     id: number;
     placa: string;
-    modelo: string;
+    modelo: string | null;
 }
 
 interface Colaborador {
@@ -33,47 +30,62 @@ interface Colaborador {
 interface Props {
     vehiculos: Vehiculo[];
     colaboradores: Colaborador[];
+    esColaborador?: boolean;
 }
 
-export default function MedicionTiemposInventarioCreate({ vehiculos, colaboradores }: Props) {
+export default function MedicionTiemposInventarioCreate({ vehiculos, colaboradores, esColaborador = false }: Props) {
     const { data, setData, post, processing, errors } = useForm({
         fecha_medicion: new Date().toISOString().split('T')[0],
-        placa_vehiculo: '',
-        centro: '',
-        regional: '',
-        cedula_colaborador: '',
-        nombre_colaborador: '',
-        hora_inicio: '',
-        hora_fin: '',
-        tipo_inventario: '',
-        estado: 'completado',
-        observaciones: '',
         vehiculo_id: '',
         colaborador_id: '',
     });
 
+    // ── Combobox Vehículo ──────────────────────────────────────────────────────
+    const [vehiculoInput, setVehiculoInput] = useState('');
+    const [showVehiculoList, setShowVehiculoList] = useState(false);
+    const vehiculosFiltrados = vehiculoInput
+        ? vehiculos.filter(
+              (v) =>
+                  v.placa.toLowerCase().includes(vehiculoInput.toLowerCase()) ||
+                  (v.modelo ?? '').toLowerCase().includes(vehiculoInput.toLowerCase()),
+          )
+        : vehiculos;
+
+    const selectVehiculo = (v: Vehiculo) => {
+        setData('vehiculo_id', v.id.toString());
+        setVehiculoInput(v.modelo ? `${v.placa} — ${v.modelo}` : v.placa);
+        setShowVehiculoList(false);
+    };
+    const clearVehiculo = () => {
+        setData('vehiculo_id', '');
+        setVehiculoInput('');
+    };
+
+    // ── Combobox Colaborador ───────────────────────────────────────────────────
+    const [colaboradorInput, setColaboradorInput] = useState('');
+    const [showColaboradorList, setShowColaboradorList] = useState(false);
+    const colaboradoresFiltrados = colaboradorInput
+        ? colaboradores.filter(
+              (c) =>
+                  c.nombres.toLowerCase().includes(colaboradorInput.toLowerCase()) ||
+                  c.apellidos.toLowerCase().includes(colaboradorInput.toLowerCase()) ||
+                  c.cedula.includes(colaboradorInput),
+          )
+        : colaboradores;
+
+    const selectColaborador = (c: Colaborador) => {
+        setData('colaborador_id', c.id.toString());
+        setColaboradorInput(`${c.nombres} ${c.apellidos} — ${c.cedula}`);
+        setShowColaboradorList(false);
+    };
+    const clearColaborador = () => {
+        setData('colaborador_id', '');
+        setColaboradorInput('');
+    };
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         post(route('reparto.medicion-tiempos-inventario.store'));
-    };
-
-    const handleVehiculoChange = (vehiculoId: string) => {
-        const vehiculo = vehiculos.find(v => v.id === parseInt(vehiculoId));
-        setData({
-            ...data,
-            vehiculo_id: vehiculoId,
-            placa_vehiculo: vehiculo?.placa || '',
-        });
-    };
-
-    const handleColaboradorChange = (colaboradorId: string) => {
-        const colaborador = colaboradores.find(c => c.id === parseInt(colaboradorId));
-        setData({
-            ...data,
-            colaborador_id: colaboradorId,
-            cedula_colaborador: colaborador?.cedula || '',
-            nombre_colaborador: colaborador ? `${colaborador.nombres} ${colaborador.apellidos}` : '',
-        });
     };
 
     return (
@@ -83,208 +95,142 @@ export default function MedicionTiemposInventarioCreate({ vehiculos, colaborador
             <div className="space-y-6">
                 <div className="flex items-center justify-between">
                     <HeadingSmall>Nueva Medición de Tiempo en Inventario</HeadingSmall>
-                    <Link href={route('reparto.medicion-tiempos-inventario.index')}>
-                        <Button variant="outline">
-                            <ArrowLeft className="mr-2 h-4 w-4" />
-                            Volver
-                        </Button>
-                    </Link>
+                    {!esColaborador && (
+                        <Link href={route('reparto.medicion-tiempos-inventario.index')}>
+                            <Button variant="outline">
+                                <ArrowLeft className="mr-2 h-4 w-4" />
+                                Volver
+                            </Button>
+                        </Link>
+                    )}
                 </div>
 
                 <div className="rounded-lg border bg-card p-6">
                     <form onSubmit={handleSubmit} className="space-y-6">
-                        {/* Información básica */}
-                        <div className="space-y-4">
-                            <h3 className="text-lg font-semibold">Información Básica</h3>
-                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                <div className="space-y-2">
-                                    <Label htmlFor="fecha_medicion">Fecha de Medición *</Label>
-                                    <Input
-                                        id="fecha_medicion"
-                                        type="date"
-                                        value={data.fecha_medicion}
-                                        onChange={(e) => setData('fecha_medicion', e.target.value)}
-                                        error={errors.fecha_medicion}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="tipo_inventario">Tipo de Inventario</Label>
-                                    <Select value={data.tipo_inventario} onValueChange={(value) => setData('tipo_inventario', value)}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Seleccionar tipo" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="inicial">Inicial</SelectItem>
-                                            <SelectItem value="final">Final</SelectItem>
-                                            <SelectItem value="parcial">Parcial</SelectItem>
-                                            <SelectItem value="rotativo">Rotativo</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-                        </div>
 
-                        {/* Información del vehículo */}
-                        <div className="space-y-4">
-                            <h3 className="text-lg font-semibold">Información del Vehículo</h3>
-                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                <div className="space-y-2">
-                                    <Label htmlFor="vehiculo_id">Vehículo</Label>
-                                    <Select value={data.vehiculo_id} onValueChange={handleVehiculoChange}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Seleccionar vehículo" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {vehiculos.map((vehiculo) => (
-                                                <SelectItem key={vehiculo.id} value={vehiculo.id.toString()}>
-                                                    {vehiculo.placa} - {vehiculo.modelo}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="placa_vehiculo">Placa (Manual)</Label>
-                                    <Input
-                                        id="placa_vehiculo"
-                                        value={data.placa_vehiculo}
-                                        onChange={(e) => setData('placa_vehiculo', e.target.value)}
-                                        placeholder="Ej: ABC-123"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="centro">Centro</Label>
-                                    <Input
-                                        id="centro"
-                                        value={data.centro}
-                                        onChange={(e) => setData('centro', e.target.value)}
-                                        placeholder="Ej: Centro Norte"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="regional">Regional</Label>
-                                    <Input
-                                        id="regional"
-                                        value={data.regional}
-                                        onChange={(e) => setData('regional', e.target.value)}
-                                        placeholder="Ej: Bogotá"
-                                    />
-                                </div>
-                            </div>
-                        </div>
+                        {/* fecha_medicion oculta — se actualiza al momento de finalizar */}
+                        <input type="hidden" name="fecha_medicion" value={data.fecha_medicion} />
 
-                        {/* Información del colaborador */}
+                        {/* Vehículo — combobox con búsqueda */}
                         <div className="space-y-4">
-                            <h3 className="text-lg font-semibold">Información del Colaborador</h3>
-                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                <div className="space-y-2">
-                                    <Label htmlFor="colaborador_id">Colaborador</Label>
-                                    <Select value={data.colaborador_id} onValueChange={handleColaboradorChange}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Seleccionar colaborador" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {colaboradores.map((colaborador) => (
-                                                <SelectItem key={colaborador.id} value={colaborador.id.toString()}>
-                                                    {colaborador.nombres} {colaborador.apellidos} - {colaborador.cedula}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="cedula_colaborador">Cédula (Manual)</Label>
-                                    <Input
-                                        id="cedula_colaborador"
-                                        value={data.cedula_colaborador}
-                                        onChange={(e) => setData('cedula_colaborador', e.target.value)}
-                                        placeholder="Ej: 123456789"
-                                    />
-                                </div>
-                                <div className="space-y-2 md:col-span-2">
-                                    <Label htmlFor="nombre_colaborador">Nombre del Colaborador (Manual)</Label>
-                                    <Input
-                                        id="nombre_colaborador"
-                                        value={data.nombre_colaborador}
-                                        onChange={(e) => setData('nombre_colaborador', e.target.value)}
-                                        placeholder="Ej: Juan Pérez"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Información de tiempo */}
-                        <div className="space-y-4">
-                            <h3 className="text-lg font-semibold flex items-center gap-2">
-                                <Clock className="h-5 w-5" />
-                                Información de Tiempo
-                            </h3>
-                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                <div className="space-y-2">
-                                    <Label htmlFor="hora_inicio">Hora Inicio</Label>
-                                    <Input
-                                        id="hora_inicio"
-                                        type="time"
-                                        value={data.hora_inicio}
-                                        onChange={(e) => setData('hora_inicio', e.target.value)}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="hora_fin">Hora Fin</Label>
-                                    <Input
-                                        id="hora_fin"
-                                        type="time"
-                                        value={data.hora_fin}
-                                        onChange={(e) => setData('hora_fin', e.target.value)}
-                                    />
-                                </div>
-                            </div>
-                            <p className="text-sm text-muted-foreground">
-                                La duración se calculará automáticamente basándose en las horas de inicio y fin.
-                            </p>
-                        </div>
-
-                        {/* Estado y observaciones */}
-                        <div className="space-y-4">
-                            <h3 className="text-lg font-semibold">Estado y Observaciones</h3>
-                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                <div className="space-y-2">
-                                    <Label htmlFor="estado">Estado *</Label>
-                                    <Select value={data.estado} onValueChange={(value) => setData('estado', value)}>
-                                        <SelectTrigger>
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="completado">Completado</SelectItem>
-                                            <SelectItem value="en_proceso">En Proceso</SelectItem>
-                                            <SelectItem value="cancelado">Cancelado</SelectItem>
-                                            <SelectItem value="pendiente">Pendiente</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
+                            <h3 className="text-lg font-semibold">Vehículo</h3>
                             <div className="space-y-2">
-                                <Label htmlFor="observaciones">Observaciones</Label>
-                                <Textarea
-                                    id="observaciones"
-                                    value={data.observaciones}
-                                    onChange={(e) => setData('observaciones', e.target.value)}
-                                    placeholder="Agregue cualquier observación relevante..."
-                                    rows={3}
-                                />
+                                <Label>Placa / Modelo <span className="text-destructive">*</span></Label>
+                                <div className="relative">
+                                    <Input
+                                        type="text"
+                                        placeholder="Buscar por placa o modelo..."
+                                        value={vehiculoInput}
+                                        onChange={(e) => {
+                                            setVehiculoInput(e.target.value);
+                                            setData('vehiculo_id', '');
+                                            setShowVehiculoList(true);
+                                        }}
+                                        onFocus={() => setShowVehiculoList(true)}
+                                        autoComplete="off"
+                                        required
+                                        className="pr-7 font-mono uppercase"
+                                    />
+                                    {vehiculoInput && (
+                                        <button
+                                            type="button"
+                                            onClick={clearVehiculo}
+                                            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                        >
+                                            <X className="h-3.5 w-3.5" />
+                                        </button>
+                                    )}
+                                    {showVehiculoList && vehiculosFiltrados.length > 0 && (
+                                        <div className="absolute z-50 mt-1 w-full bg-popover border rounded-md shadow-md max-h-48 overflow-y-auto">
+                                            {vehiculosFiltrados.map((v) => (
+                                                <button
+                                                    key={v.id}
+                                                    type="button"
+                                                    onMouseDown={() => selectVehiculo(v)}
+                                                    className="w-full text-left px-3 py-2 text-sm font-mono hover:bg-muted"
+                                                >
+                                                    <span className="font-semibold">{v.placa}</span>
+                                                    {v.modelo && <span className="ml-2 text-muted-foreground">{v.modelo}</span>}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {showVehiculoList && (
+                                        <div className="fixed inset-0 z-40" onClick={() => setShowVehiculoList(false)} />
+                                    )}
+                                </div>
                             </div>
                         </div>
 
-                        {/* Botones de acción */}
+                        {/* Colaborador — combobox con búsqueda */}
+                        <div className="space-y-4">
+                            <h3 className="text-lg font-semibold">Colaborador</h3>
+                            <div className="space-y-2">
+                                <Label>Nombre / Cédula <span className="text-destructive">*</span></Label>
+                                <div className="relative">
+                                    <Input
+                                        type="text"
+                                        placeholder="Buscar por nombre o cédula..."
+                                        value={colaboradorInput}
+                                        onChange={(e) => {
+                                            setColaboradorInput(e.target.value);
+                                            setData('colaborador_id', '');
+                                            setShowColaboradorList(true);
+                                        }}
+                                        onFocus={() => setShowColaboradorList(true)}
+                                        autoComplete="off"
+                                        required
+                                    />
+                                    {colaboradorInput && (
+                                        <button
+                                            type="button"
+                                            onClick={clearColaborador}
+                                            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                        >
+                                            <X className="h-3.5 w-3.5" />
+                                        </button>
+                                    )}
+                                    {showColaboradorList && colaboradoresFiltrados.length > 0 && (
+                                        <div className="absolute z-50 mt-1 w-full bg-popover border rounded-md shadow-md max-h-48 overflow-y-auto">
+                                            {colaboradoresFiltrados.map((c) => (
+                                                <button
+                                                    key={c.id}
+                                                    type="button"
+                                                    onMouseDown={() => selectColaborador(c)}
+                                                    className="w-full text-left px-3 py-2 text-sm hover:bg-muted"
+                                                >
+                                                    <span className="font-semibold">{c.nombres} {c.apellidos}</span>
+                                                    <span className="ml-2 text-xs text-muted-foreground font-mono">{c.cedula}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {showColaboradorList && (
+                                        <div className="fixed inset-0 z-40" onClick={() => setShowColaboradorList(false)} />
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Aviso hora automática */}
+                        <div className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-800/40 dark:bg-emerald-900/20 dark:text-emerald-300">
+                            Al pulsar <strong>Iniciar Inventario</strong> se registrará la hora exacta de inicio automáticamente.
+                        </div>
+
+                        {/* Botones */}
                         <div className="flex justify-end gap-4 pt-4 border-t">
-                            <Link href={route('reparto.medicion-tiempos-inventario.index')}>
-                                <Button variant="outline" type="button">
-                                    Cancelar
-                                </Button>
-                            </Link>
-                            <Button type="submit" disabled={processing}>
-                                <Save className="mr-2 h-4 w-4" />
-                                {processing ? 'Guardando...' : 'Guardar Medición'}
+                            {!esColaborador && (
+                                <Link href={route('reparto.medicion-tiempos-inventario.index')}>
+                                    <Button variant="outline" type="button">Cancelar</Button>
+                                </Link>
+                            )}
+                            <Button
+                                type="submit"
+                                disabled={processing}
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                            >
+                                <PlayCircle className="mr-2 h-4 w-4" />
+                                {processing ? 'Iniciando...' : 'Iniciar Inventario'}
                             </Button>
                         </div>
                     </form>

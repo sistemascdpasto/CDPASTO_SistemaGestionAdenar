@@ -14,17 +14,10 @@ class MedicionTiempoInventario extends Model
 
     protected $fillable = [
         'fecha_medicion',
-        'placa_vehiculo',
-        'centro',
-        'regional',
-        'cedula_colaborador',
-        'nombre_colaborador',
         'hora_inicio',
         'hora_fin',
         'duracion_minutos',
         'tipo_inventario',
-        'estado',
-        'observaciones',
         'user_id',
         'colaborador_id',
         'vehiculo_id',
@@ -72,13 +65,19 @@ class MedicionTiempoInventario extends Model
     /** Scope para filtrar por placa de vehículo */
     public function scopePorPlaca($query, $placa)
     {
-        return $query->where('placa_vehiculo', $placa);
+        return $query->whereHas('vehiculo', function ($q) use ($placa) {
+            $q->where('placa', 'like', "%{$placa}%");
+        });
     }
 
     /** Scope para filtrar por colaborador */
     public function scopePorColaborador($query, $cedula)
     {
-        return $query->where('cedula_colaborador', $cedula);
+        return $query->whereHas('colaborador', function ($q) use ($cedula) {
+            $q->where('cedula', 'like', "%{$cedula}%")
+              ->orWhere('nombres', 'like', "%{$cedula}%")
+              ->orWhere('apellidos', 'like', "%{$cedula}%");
+        });
     }
 
     /** Scope para registros del usuario actual */

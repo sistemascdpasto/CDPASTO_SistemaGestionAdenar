@@ -327,7 +327,11 @@ class CompensacionVariableDiariaController extends Controller
         $resultado = $service->calcularDesdeEventos($anio, $mes);
 
         $periodo = $resultado['periodo'] ?? now()->locale('es')->isoFormat('MMMM YYYY');
-        $mensaje = "Compensación calculada para {$periodo}: {$resultado['registros_creados']} nuevos registros, {$resultado['registros_actualizados']} actualizados ({$resultado['total_procesados']} eventos procesados).";
+        if ($resultado['total_procesados'] > 0) {
+            $mensaje = "✓ Compensación calculada para {$periodo}: {$resultado['registros_creados']} registros nuevos y {$resultado['registros_actualizados']} actualizados ({$resultado['total_procesados']} eventos procesados).";
+        } else {
+            $mensaje = "No se encontraron eventos de tripulación para {$periodo}. Verifica que existan datos cargados en ese período.";
+        }
 
         $mesNombre = null;
         if (isset($resultado['mes'])) {

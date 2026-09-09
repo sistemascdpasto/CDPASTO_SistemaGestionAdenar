@@ -32,7 +32,7 @@ const EVALUACION_VARIANT: Record<string, 'default' | 'secondary' | 'destructive'
     'No Apto': 'destructive',
 };
 
-const TIPO_LABELS: Record<string, string> = { pre_ruta: 'Pre Ruta', ruta: 'Ruta', post_ruta: 'Post Ruta' };
+const TIPO_LABELS: Record<string, string> = { pre_ruta: 'Pre Ruta', ruta: 'Ruta', post_ruta: 'Post Ruta', jl: 'JL', segundo_viaje: 'Segundo viaje' };
 
 export default function PruebaShow({ prueba, qrSvg }: { prueba: PruebaDetalle; qrSvg: string | null }) {
     const breadcrumbs: BreadcrumbItem[] = [

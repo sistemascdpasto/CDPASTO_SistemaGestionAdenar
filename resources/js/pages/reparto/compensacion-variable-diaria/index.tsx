@@ -487,6 +487,8 @@ export default function CompensacionVariableDiariaIndex() {
     const filters: FiltrosReales = pageProps.filters || {};
     const catalogos: Catalogos = pageProps.catalogos || DEFAULT_CATALOGOS;
     const flash = pageProps.flash || {};
+    // El controlador usa ->with('status', [...]) que el middleware comparte como pageProps.status
+    const statusAlert = pageProps.status || null;
 
     console.log('CompensacionVariableDiariaIndex data:', { data, indicadores, totales_por_dia, totales_mensuales, filters, catalogos });
 
@@ -537,7 +539,7 @@ export default function CompensacionVariableDiariaIndex() {
     const { post: postCalcular, processing: processingCalcular } = useForm({});
 
     const handleCalcular = () => {
-        router.post(route('compensacion-variable-diaria.calcular'), {
+        router.post(route('reparto.compensacion-variable-diaria.calcular'), {
             anio: calcularForm.anio,
             mes: calcularForm.mes,
         }, {
@@ -828,20 +830,26 @@ export default function CompensacionVariableDiariaIndex() {
                         </div>
                     </div>
 
-                    {flash?.status && (
-                        <div className={`flex items-center justify-between rounded-xl p-3 text-xs font-medium shadow-sm border ${
-                            flash.status.type === 'success'
-                                ? 'text-emerald-800 dark:text-emerald-300'
-                                : 'text-rose-800 dark:text-rose-300'
+                    {statusAlert && (
+                        <div className={`flex items-start gap-3 rounded-xl p-4 text-sm font-medium shadow-md border-2 ${
+                            statusAlert.type === 'success'
+                                ? 'text-emerald-800 dark:text-emerald-200'
+                                : 'text-rose-800 dark:text-rose-200'
                         }`}
-                            style={flash.status.type === 'success'
-                                ? { background: `${COLOR_SUCCESS}0d`, borderColor: `${COLOR_SUCCESS}33` }
-                                : { background: `${COLOR_CRITICAL}0d`, borderColor: `${COLOR_CRITICAL}33` }}>
-                            <div className="flex items-center gap-2">
-                                {flash.status.type === 'success'
-                                    ? <CheckCircle2 className="size-4" style={{ color: COLOR_SUCCESS }} />
-                                    : <AlertTriangle className="size-4" style={{ color: COLOR_CRITICAL }} />}
-                                <span>{flash.status.message}</span>
+                            style={statusAlert.type === 'success'
+                                ? { background: `${COLOR_SUCCESS}18`, borderColor: COLOR_SUCCESS }
+                                : { background: '#dc26261a', borderColor: '#dc2626' }}>
+                            <div className="flex size-8 shrink-0 items-center justify-center rounded-full"
+                                style={{ background: statusAlert.type === 'success' ? `${COLOR_SUCCESS}25` : '#dc262625' }}>
+                                {statusAlert.type === 'success'
+                                    ? <CheckCircle2 className="size-5" style={{ color: COLOR_SUCCESS }} />
+                                    : <AlertTriangle className="size-5" style={{ color: '#dc2626' }} />}
+                            </div>
+                            <div className="flex flex-col gap-0.5 min-w-0">
+                                <span className="font-bold text-sm" style={{ color: statusAlert.type === 'success' ? COLOR_SUCCESS : '#dc2626' }}>
+                                    {statusAlert.type === 'success' ? '✓ Cálculo completado' : 'Error en el cálculo'}
+                                </span>
+                                <span className="text-xs font-normal opacity-90">{statusAlert.message}</span>
                             </div>
                         </div>
                     )}

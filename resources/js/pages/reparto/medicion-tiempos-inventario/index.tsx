@@ -20,17 +20,10 @@ const breadcrumbs: BreadcrumbItem[] = [
 interface MedicionTiempo {
     id: number;
     fecha_medicion: string | null;
-    placa_vehiculo: string | null;
-    centro: string | null;
-    regional: string | null;
-    cedula_colaborador: string | null;
-    nombre_colaborador: string | null;
     hora_inicio: string | null;
     hora_fin: string | null;
     duracion_minutos: number | null;
     tipo_inventario: string | null;
-    estado: string | null;
-    observaciones: string | null;
     creado_por: string | null;
     fecha_creacion: string | null;
     usuario: string | null;
@@ -93,21 +86,14 @@ function formatDuracion(minutos: number | null) {
     return `${mins}m`;
 }
 
-function getEstadoBadge(estado: string | null) {
-    if (!estado) return <Badge variant="secondary">Sin estado</Badge>;
-    
-    const variant = estado.toLowerCase() === 'completado' ? 'default' : 
-                    estado.toLowerCase() === 'en_proceso' ? 'secondary' : 
-                    estado.toLowerCase() === 'cancelado' ? 'destructive' : 'outline';
-    
-    return <Badge variant={variant}>{estado}</Badge>;
-}
+
 
 export default function MedicionTiemposInventarioIndex({ registros, filters, puedeVerTodos }: Props) {
-    const [fechaDesde, setFechaDesde] = useState(filters.fecha_desde ?? '');
-    const [fechaHasta, setFechaHasta] = useState(filters.fecha_hasta ?? '');
-    const [placa, setPlaca] = useState(filters.placa ?? '');
-    const [colaborador, setColaborador] = useState(filters.colaborador ?? '');
+    const safeFilters = filters || {};
+    const [fechaDesde, setFechaDesde] = useState(safeFilters.fecha_desde ?? '');
+    const [fechaHasta, setFechaHasta] = useState(safeFilters.fecha_hasta ?? '');
+    const [placa, setPlaca] = useState(safeFilters.placa ?? '');
+    const [colaborador, setColaborador] = useState(safeFilters.colaborador ?? '');
 
     const debouncedFechaDesde = useDebouncedValue(fechaDesde);
     const debouncedFechaHasta = useDebouncedValue(fechaHasta);
@@ -200,7 +186,7 @@ export default function MedicionTiemposInventarioIndex({ registros, filters, pue
                             <Label htmlFor="colaborador">Colaborador</Label>
                             <Input
                                 id="colaborador"
-                                placeholder="Buscar por nombre..."
+                                placeholder="Buscar por cédula o nombre..."
                                 value={colaborador}
                                 onChange={(e) => setColaborador(e.target.value)}
                             />
@@ -224,7 +210,6 @@ export default function MedicionTiemposInventarioIndex({ registros, filters, pue
                                 <TableHead>Horario</TableHead>
                                 <TableHead>Duración</TableHead>
                                 <TableHead>Tipo</TableHead>
-                                <TableHead>Estado</TableHead>
                                 <TableHead>Registrado por</TableHead>
                                 <TableHead className="text-right">Acciones</TableHead>
                             </TableRow>
@@ -232,7 +217,7 @@ export default function MedicionTiemposInventarioIndex({ registros, filters, pue
                         <TableBody>
                             {registros.data.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={9} className="text-center py-8">
+                                    <TableCell colSpan={8} className="text-center py-8">
                                         No se encontraron registros
                                     </TableCell>
                                 </TableRow>
@@ -246,16 +231,10 @@ export default function MedicionTiemposInventarioIndex({ registros, filters, pue
                                             </div>
                                         </TableCell>
                                         <TableCell>
-                                            <div className="font-medium">{registro.placa_vehiculo || '-'}</div>
-                                            {registro.centro && (
-                                                <div className="text-sm text-muted-foreground">{registro.centro}</div>
-                                            )}
+                                            <div className="font-medium">{registro.vehiculo_info || '-'}</div>
                                         </TableCell>
                                         <TableCell>
-                                            <div className="font-medium">{registro.nombre_colaborador || '-'}</div>
-                                            {registro.cedula_colaborador && (
-                                                <div className="text-sm text-muted-foreground">{registro.cedula_colaborador}</div>
-                                            )}
+                                            <div className="font-medium">{registro.colaborador_info || '-'}</div>
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
@@ -268,9 +247,6 @@ export default function MedicionTiemposInventarioIndex({ registros, filters, pue
                                         </TableCell>
                                         <TableCell>
                                             <Badge variant="outline">{registro.tipo_inventario || '-'}</Badge>
-                                        </TableCell>
-                                        <TableCell>
-                                            {getEstadoBadge(registro.estado)}
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">

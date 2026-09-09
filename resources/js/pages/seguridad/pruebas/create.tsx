@@ -483,6 +483,8 @@ export default function CreatePrueba({
                                         <SelectItem value="pre_ruta">Pre Ruta</SelectItem>
                                         <SelectItem value="ruta">Ruta</SelectItem>
                                         <SelectItem value="post_ruta">Post Ruta</SelectItem>
+                                        <SelectItem value="jl">JL</SelectItem>
+                                        <SelectItem value="segundo_viaje">Segundo viaje</SelectItem>
                                     </SelectContent>
                                 </Select>
                                 <InputError message={errors.tipo} />
