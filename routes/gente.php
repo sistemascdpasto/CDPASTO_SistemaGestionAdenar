@@ -77,6 +77,10 @@ Route::middleware(['auth', 'active', 'role:Administrador|Gente'])
         Route::post('plan-premiacion/toggle-checklist', [PlanPremiacionController::class, 'toggleChecklist'])
             ->name('plan-premiacion.toggle-checklist');
 
+        // Plan Premiación — toggle manual de ausentismo
+        Route::post('plan-premiacion/toggle-ausentismo', [PlanPremiacionController::class, 'toggleAusentismo'])
+            ->name('plan-premiacion.toggle-ausentismo');
+
         // Seguimiento de Pruebas y Plan Padrino (7, 30 y 90 días)
         Route::get('plan-padrinos', [SeguimientoPruebasController::class, 'index'])
             ->name('plan-padrinos.index');

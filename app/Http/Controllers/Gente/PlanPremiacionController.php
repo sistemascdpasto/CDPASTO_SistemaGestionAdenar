@@ -416,23 +416,11 @@ class PlanPremiacionController extends Controller
             $porcentajeDpo = $estaEnDpo ? 0.0 : 100.0;
             $porcentajeDpoLabel = $estaEnDpo ? '0%' : '100%';
 
-            // Cálculo % Ausentismo
-            $scoresAusentismo = $ausentismosPorColaboradorId[$colaborador->id] ?? null;
-            if ($scoresAusentismo === null && !empty($colaborador->cedula)) {
-                $scoresAusentismo = $ausentismosPorIdentificador[$normStr($colaborador->cedula)] ?? null;
-            }
-            if ($scoresAusentismo === null && !empty($colaborador->codigo_qr_skap)) {
-                $scoresAusentismo = $ausentismosPorIdentificador[$normStr($colaborador->codigo_qr_skap)] ?? null;
-            }
-
-            if (!empty($scoresAusentismo)) {
-                // Si algún día del mes tiene 0% (incapacidad en día hábil) → 0%, si no → 100%
-                $porcentajeAusentismo = in_array(0.0, $scoresAusentismo, true) ? 0.0 : 100.0;
-                $porcentajeAusentismoLabel = "{$porcentajeAusentismo}%";
-            } else {
-                $porcentajeAusentismo = null;
-                $porcentajeAusentismoLabel = 'N/A';
-            }
+            // Cálculo % Ausentismo — manual: default 100%, se pone 0% manualmente
+            $manualAusentismo = $checklistsManuales->get($colaborador->id);
+            $ausentismoAprobado = $manualAusentismo ? (bool) $manualAusentismo->ausentismo_ok : true;
+            $porcentajeAusentismo = $ausentismoAprobado ? 100.0 : 0.0;
+            $porcentajeAusentismoLabel = $ausentismoAprobado ? '100%' : '0%';
 
             // Cálculo % Malas Marcaciones: Si está en el listado de correcciones_marcaciones -> 0%, si no -> 100%
             $estaEnMalasMarcaciones = false;
@@ -1009,11 +997,9 @@ class PlanPremiacionController extends Controller
             if (!$enDpo && !empty($colab->nombre_completo)) $enDpo = isset($dpoNombresSet[$normStr($colab->nombre_completo)]);
             $pDpo  = $enDpo ? 0.0 : 100.0;
 
-            // Ausentismo
-            $scsAus = $ausentismosPorColaboradorId[$colab->id] ?? null;
-            if ($scsAus === null && !empty($colab->cedula))         $scsAus = $ausentismosPorIdentificador[$normStr($colab->cedula)] ?? null;
-            if ($scsAus === null && !empty($colab->codigo_qr_skap)) $scsAus = $ausentismosPorIdentificador[$normStr($colab->codigo_qr_skap)] ?? null;
-            $pAus = !empty($scsAus) ? (in_array(0.0, $scsAus, true) ? 0.0 : 100.0) : null;
+            // Ausentismo — manual: default 100%
+            $mcAus = $checklistsManuales->get($colab->id);
+            $pAus  = $mcAus ? ($mcAus->ausentismo_ok ? 100.0 : 0.0) : 100.0;
 
             // Malas Marcaciones
             $enMarc = false;
@@ -1024,7 +1010,7 @@ class PlanPremiacionController extends Controller
 
             // Resultado Gente
             $cDpo  = min($pDpo, 100)  / 100;
-            $cAus  = $pAus  !== null ? min($pAus,  100) / 100 : 0;
+            $cAus  = min($pAus, 100) / 100;
             $cMarc = min($pMarc, 100) / 100;
             $rGente = round($cDpo*5 + $cAus*5 + $cMarc*5, 1);
 
@@ -1262,22 +1248,9 @@ class PlanPremiacionController extends Controller
         $clPreAprobado  = $manualCheck ? (bool)$manualCheck->cl_pre : true;
         $clPostAprobado = $manualCheck ? (bool)$manualCheck->cl_post : true;
 
-        // ── Ausentismo ────────────────────────────────────────────────────
-        $ausentismo = DB::table('ausentismos')
-            ->whereMonth('fecha', $mes)
-            ->whereYear('fecha', $anio)
-            ->where(function ($q) use ($colaborador) {
-                $q->where('colaborador_id', $colaborador->id)
-                  ->orWhere('identificador', $colaborador->cedula);
-            })
-            ->get();
-
-        $tieneIncapacidad = $ausentismo->contains(function ($row) {
-            $vacios = ['','00:00','00:00:00','0','--:--'];
-            return in_array(trim((string)($row->entro_1 ?? '')), $vacios, true)
-                && in_array(trim((string)($row->entro_2 ?? '')), $vacios, true);
-        });
-        $porcentajeAusentismo = $ausentismo->isEmpty() ? null : ($tieneIncapacidad ? 0.0 : 100.0);
+        // ── Ausentismo — manual: default Aprobado (true), se puede marcar No Aprobado ──
+        $ausentismoAprobado   = $manualCheck ? (bool)$manualCheck->ausentismo_ok : true;
+        $porcentajeAusentismo = $ausentismoAprobado ? 100.0 : 0.0;
 
         // ── Malas Marcaciones ─────────────────────────────────────────────
         $tieneMalasMarcaciones = DB::table('correcciones_marcaciones')
@@ -1302,7 +1275,7 @@ class PlanPremiacionController extends Controller
             'calificaciones' => ['valor' => $promedioCalif, 'label' => $promedioCalif !== null ? "{$promedioCalif}%" : 'N/A', 'pilar' => 'Seguridad', 'peso' => 10, 'emoji' => '🎓', 'titulo' => 'Calificaciones', 'meta_desc' => 'Promedio de notas por módulo'],
             // GENTE
             'dpo'            => ['valor' => $estaEnDpo ? 0.0 : 100.0, 'label' => $estaEnDpo ? '0%' : '100%', 'pilar' => 'Gente', 'peso' => 5, 'emoji' => '📚', 'titulo' => 'DPO Academy', 'meta_desc' => 'Sin registro = 100% | En listado = 0%'],
-            'ausentismo'     => ['valor' => $porcentajeAusentismo, 'label' => $porcentajeAusentismo !== null ? "{$porcentajeAusentismo}%" : 'N/A', 'pilar' => 'Gente', 'peso' => 5, 'emoji' => '📅', 'titulo' => 'Ausentismo', 'meta_desc' => 'Sin incapacidad = 100%'],
+            'ausentismo'     => ['valor' => $porcentajeAusentismo, 'label' => $ausentismoAprobado ? '100%' : '0%', 'pilar' => 'Gente', 'peso' => 5, 'emoji' => '📅', 'titulo' => 'Ausentismo', 'meta_desc' => 'Default 100% · Manual'],
             'marcaciones'    => ['valor' => $tieneMalasMarcaciones ? 0.0 : 100.0, 'label' => $tieneMalasMarcaciones ? '0%' : '100%', 'pilar' => 'Gente', 'peso' => 5, 'emoji' => '🕐', 'titulo' => 'Malas Marcaciones', 'meta_desc' => 'Sin corrección = 100%'],
             // REPARTO
             'rechazos'       => ['valor' => $evento?->rechazos !== null ? (float)$evento->rechazos >= 2.4 ? 0.0 : 100.0 : null, 'label' => $evento?->rechazos !== null ? ((float)$evento->rechazos >= 2.4 ? '0%' : '100%') : 'N/A', 'pilar' => 'Reparto', 'peso' => 11, 'emoji' => '🔄', 'titulo' => 'Rechazos', 'meta_desc' => '< 2.4% rechazos = 100%'],
@@ -1350,6 +1323,7 @@ class PlanPremiacionController extends Controller
             'anio'               => $anio,
             'meses_disponibles'  => $mesesDisponibles,
             'umbral_checklist'   => self::UMBRAL_CHECKLIST,
+            'puede_editar'       => $request->user()?->hasAnyRole(['Administrador', 'Gente']) ?? false,
         ]);
     }
 
@@ -1386,6 +1360,39 @@ class PlanPremiacionController extends Controller
         }
 
         $record->updated_by = $request->user()?->id;
+        $record->save();
+
+        return back();
+    }
+
+    /**
+     * Alterna manualmente el estado del ausentismo para un colaborador en un mes/año.
+     * POST /modules/gente/plan-premiacion/toggle-ausentismo
+     */
+    public function toggleAusentismo(Request $request): \Illuminate\Http\RedirectResponse
+    {
+        $validated = $request->validate([
+            'colaborador_id' => ['required', 'integer', 'exists:colaboradores,id'],
+            'mes'            => ['required', 'integer', 'min:1', 'max:12'],
+            'anio'           => ['required', 'integer', 'min:2000', 'max:2100'],
+        ]);
+
+        $record = ChecklistPlanPremiacion::firstOrCreate(
+            [
+                'colaborador_id' => $validated['colaborador_id'],
+                'mes'            => $validated['mes'],
+                'anio'           => $validated['anio'],
+            ],
+            [
+                'cl_pre'         => true,
+                'cl_post'        => true,
+                'ausentismo_ok'  => true,
+                'updated_by'     => $request->user()?->id,
+            ]
+        );
+
+        $record->ausentismo_ok = !$record->ausentismo_ok;
+        $record->updated_by    = $request->user()?->id;
         $record->save();
 
         return back();

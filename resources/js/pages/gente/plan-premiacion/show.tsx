@@ -69,6 +69,7 @@ interface Props {
     anio: number;
     meses_disponibles: MesDisponible[];
     umbral_checklist?: number;
+    puede_editar?: boolean;
 }
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
@@ -133,11 +134,12 @@ function Barra({ pct, color }: { pct: number; color: string }) {
     );
 }
 
-function FilaMetrica({ metrica }: { metrica: Metrica }) {
-    const esChecklist = metrica.titulo === 'Checklist Pre' || metrica.titulo === 'Checklist Post';
-    const aprobado    = metrica.valor !== null && metrica.valor >= 100;
-    const cumple      = esChecklist ? aprobado : (metrica.valor !== null && metrica.valor >= 95);
-    const PilarIcon   = PILAR_CONFIG[metrica.pilar].icon;
+function FilaMetrica({ metrica, onToggle, puedeEditar = false }: { metrica: Metrica; onToggle?: () => void; puedeEditar?: boolean }) {
+    const esChecklist  = metrica.titulo === 'Checklist Pre' || metrica.titulo === 'Checklist Post';
+    const esAusentismo = metrica.titulo === 'Ausentismo';
+    const aprobado     = metrica.valor !== null && metrica.valor >= 100;
+    const cumple       = (esChecklist || esAusentismo) ? aprobado : (metrica.valor !== null && metrica.valor >= 95);
+    const PilarIcon    = PILAR_CONFIG[metrica.pilar].icon;
     return (
         <div className="flex items-start gap-3 py-3 border-b border-sidebar-border/70 last:border-0 dark:border-sidebar-border">
             <div className={`flex size-8 shrink-0 items-center justify-center rounded-full ${cumple ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-muted text-muted-foreground'}`}>
@@ -152,8 +154,23 @@ function FilaMetrica({ metrica }: { metrica: Metrica }) {
                         </p>
                         <p className="text-[10px] text-muted-foreground">{metrica.meta_desc}</p>
                     </div>
-                    {esChecklist ? (
-                        /* Checklist: badge Aprobado / No Aprobado */
+                    {esAusentismo ? (
+                        /* Ausentismo: botón toggle manual Aprobado / No Aprobado */
+                        <button
+                            type="button"
+                            disabled={!puedeEditar || !onToggle}
+                            onClick={onToggle}
+                            title={puedeEditar ? `Haz clic para cambiar a ${aprobado ? '0%' : '100%'}` : undefined}
+                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold transition-all ${
+                                aprobado
+                                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50'
+                                    : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50'
+                            } ${puedeEditar && onToggle ? 'cursor-pointer hover:scale-105 shadow-xs' : 'cursor-default'}`}
+                        >
+                            {metrica.label}
+                        </button>
+                    ) : esChecklist ? (
+                        /* Checklist: badge estático Aprobado / No Aprobado */
                         metrica.valor !== null ? (
                             <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${aprobado ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
                                 {aprobado ? 'Aprobado' : 'No Aprobado'}
@@ -187,7 +204,7 @@ function FilaMetrica({ metrica }: { metrica: Metrica }) {
 
 // ─── Página ───────────────────────────────────────────────────────────────────
 
-export default function PlanPremiacionShow({ colaborador, metricas, historial_aci, mes, anio, umbral_checklist = 90 }: Props) {
+export default function PlanPremiacionShow({ colaborador, metricas, historial_aci, mes, anio, umbral_checklist = 90, puede_editar = false }: Props) {
 
     const metricasList = Object.values(metricas);
     const cumplidas    = metricasList.filter(m => m.valor !== null && m.valor >= 95);
@@ -211,6 +228,16 @@ export default function PlanPremiacionShow({ colaborador, metricas, historial_ac
         return { pilar, puntos: Math.min(puntos, maxPilar), max: maxPilar };
     });
     const calificacionTotal = resultadoPilares.reduce((acc, p) => acc + p.puntos, 0);
+
+    // Toggle manual de ausentismo
+    const handleToggleAusentismo = () => {
+        if (!puede_editar) return;
+        router.post(
+            '/modules/gente/plan-premiacion/toggle-ausentismo',
+            { colaborador_id: colaborador.id, mes, anio },
+            { preserveScroll: true }
+        );
+    };
 
     // Selector de mes
     const [calOpen, setCalOpen] = useState(false);
@@ -471,7 +498,7 @@ export default function PlanPremiacionShow({ colaborador, metricas, historial_ac
                         </div>
                         <div className="divide-y divide-border px-4 dark:divide-border">
                             {cumplidas.length > 0 ? cumplidas.map((m, i) => (
-                                <FilaMetrica key={i} metrica={m} />
+                                <FilaMetrica key={i} metrica={m} onToggle={m.titulo === 'Ausentismo' ? handleToggleAusentismo : undefined} puedeEditar={puede_editar} />
                             )) : (
                                 <p className="py-6 text-center text-sm text-muted-foreground">Sin metas cumplidas aún.</p>
                             )}
@@ -495,7 +522,7 @@ export default function PlanPremiacionShow({ colaborador, metricas, historial_ac
                                 </div>
                                 <div className="divide-y divide-border px-4 dark:divide-border">
                                     {porMejorar.map((m, i) => (
-                                        <FilaMetrica key={i} metrica={m} />
+                                        <FilaMetrica key={i} metrica={m} onToggle={m.titulo === 'Ausentismo' ? handleToggleAusentismo : undefined} puedeEditar={puede_editar} />
                                     ))}
                                 </div>
                             </Card>
@@ -516,7 +543,7 @@ export default function PlanPremiacionShow({ colaborador, metricas, historial_ac
                                 </div>
                                 <div className="divide-y divide-border px-4 dark:divide-border">
                                     {sinDato.map((m, i) => (
-                                        <FilaMetrica key={i} metrica={m} />
+                                        <FilaMetrica key={i} metrica={m} onToggle={m.titulo === 'Ausentismo' ? handleToggleAusentismo : undefined} puedeEditar={puede_editar} />
                                     ))}
                                 </div>
                             </Card>

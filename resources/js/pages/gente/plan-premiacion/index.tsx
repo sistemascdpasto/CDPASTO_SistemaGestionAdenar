@@ -304,6 +304,20 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
         );
     };
 
+    const handleToggleAusentismo = (colaboradorId: number, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!puede_editar) return;
+        router.post(
+            '/modules/gente/plan-premiacion/toggle-ausentismo',
+            {
+                colaborador_id: colaboradorId,
+                mes,
+                anio,
+            },
+            { preserveScroll: true }
+        );
+    };
+
     const getCargoLabel = () => {
         if (selectedCargos.length === 0) return 'Todos los Cargos';
         if (selectedCargos.length === 1) return selectedCargos[0];
@@ -858,22 +872,24 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                                                 </TableCell>
                                                 )}
 
-                                                {/* % Ausentismo */}
+                                                {/* % Ausentismo — toggle manual Aprobado/No Aprobado */}
                                                 {cv('ausentismo') && (
-                                                <TableCell className="text-right">
-                                                    {colab.porcentaje_ausentismo !== null ? (
-                                                        <div className="flex items-center justify-end gap-2">
-                                                            <div className="w-16 overflow-hidden rounded-full bg-muted h-2">
-                                                                <div className={`h-full rounded-full transition-all duration-300 ${colab.porcentaje_ausentismo >= 100 ? 'bg-emerald-500' : colab.porcentaje_ausentismo >= 50 ? 'bg-amber-500' : 'bg-rose-500'}`}
-                                                                    style={{ width: `${colab.porcentaje_ausentismo}%` }} />
-                                                            </div>
-                                                            <span className={`font-bold min-w-[40px] ${colab.porcentaje_ausentismo >= 100 ? 'text-emerald-600 dark:text-emerald-400' : colab.porcentaje_ausentismo >= 50 ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                                                                {colab.porcentaje_ausentismo_label}
-                                                            </span>
-                                                        </div>
-                                                    ) : (
-                                                        <Badge variant="outline" className="text-muted-foreground border-input">N/A</Badge>
-                                                    )}
+                                                <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                                                    <div className="flex flex-col items-end gap-0.5">
+                                                        <button
+                                                            type="button"
+                                                            disabled={!puede_editar}
+                                                            onClick={(e) => handleToggleAusentismo(colab.id, e)}
+                                                            title={puede_editar ? `Haz clic para cambiar a ${colab.porcentaje_ausentismo !== null && colab.porcentaje_ausentismo >= 100 ? '0%' : '100%'}` : undefined}
+                                                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold transition-all ${
+                                                                colab.porcentaje_ausentismo !== null && colab.porcentaje_ausentismo >= 100
+                                                                    ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50'
+                                                                    : 'bg-rose-100 text-rose-700 hover:bg-rose-200 dark:bg-rose-900/30 dark:text-rose-400 dark:hover:bg-rose-900/50'
+                                                            } ${puede_editar ? 'cursor-pointer hover:scale-105 shadow-xs' : 'cursor-default'}`}
+                                                        >
+                                                            {colab.porcentaje_ausentismo_label}
+                                                        </button>
+                                                    </div>
                                                 </TableCell>
                                                 )}
 

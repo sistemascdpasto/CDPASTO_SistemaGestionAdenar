@@ -17,14 +17,16 @@ class ChecklistPlanPremiacion extends Model
         'anio',
         'cl_pre',
         'cl_post',
+        'ausentismo_ok',
         'updated_by',
     ];
 
     protected $casts = [
-        'mes' => 'integer',
-        'anio' => 'integer',
-        'cl_pre' => 'boolean',
-        'cl_post' => 'boolean',
+        'mes'           => 'integer',
+        'anio'          => 'integer',
+        'cl_pre'        => 'boolean',
+        'cl_post'       => 'boolean',
+        'ausentismo_ok' => 'boolean',
     ];
 
     public function colaborador(): BelongsTo
