@@ -218,9 +218,7 @@ function EcuacionCard({
             {/* Tooltip en flujo — aparece debajo con animación, desplaza el layout */}
             {open && (
                 <div className="z-10 mt-1.5 w-60 rounded-xl border border-sidebar-border/70 bg-popover p-3 text-left shadow-md dark:border-sidebar-border">
-                    <p className="mb-1 text-[10px] font-bold text-muted-foreground">{tooltip.titulo}</p>
-                    <p className="mb-2 rounded bg-muted px-2 py-1 font-mono text-[10px] text-muted-foreground dark:bg-muted dark:text-muted-foreground">{tooltip.formula}</p>
-                    <p className="mb-1 text-[10px] font-semibold text-foreground">¿Qué significa?</p>
+                    <p className="mb-2 text-[10px] font-bold text-foreground">{tooltip.titulo}</p>
                     <div className="text-[10px] leading-relaxed text-muted-foreground">{tooltip.explicacion}</div>
                     <p className={`mt-1.5 text-xs font-extrabold tabular-nums ${tooltip.resultColor ?? 'text-green-700 dark:text-green-400'}`}>
                         = {tooltip.resultado}
@@ -337,68 +335,68 @@ export default function MiCompensacionIndex() {
     // Tooltips con datos reales
     const tt = registroDia ? {
         valorDia: {
-            titulo: '1. Valor del día (Fijo)',
-            formula: '= $100.000 / 26 días hábiles',
-            explicacion: <p>Valor base fijo por cada día trabajado. Se calcula dividiendo el salario variable mensual entre 26 días hábiles.</p>,
+            titulo: '1. Valor del día',
+            formula: 'Es fijo. El mismo valor cada día que trabajas.',
+            explicacion: <p>Cada día laborado vale <strong>{formatCOP(registroDia.valor_x_dia)}</strong>. Este monto es igual para todos los días — es tu punto de partida.</p>,
             resultado: formatCOP(registroDia.valor_x_dia),
         },
         meta1: {
-            titulo: '2. Meta 1 — Rechazos (80%)',
-            formula: `=SI([RECHAZOS] ≥ ${registroDia.meta_1}%, 0, 0.8)`,
+            titulo: '2. Meta principal (80%)',
+            formula: `Si tus rechazos son menores al ${registroDia.meta_2}%, ganas el 80% del día.`,
             explicacion: (
                 <ul className="space-y-0.5">
-                    <li>· Rechazos ≥ {registroDia.meta_1}% → factor <strong>0</strong></li>
-                    <li>· Rechazos &lt; {registroDia.meta_1}% → factor <strong>0.8 (80%)</strong></li>
-                    <li className="font-medium text-green-600">Hoy: {rechPct.toFixed(2)}% → factor {registroDia.cal_rechazos_2}</li>
+                    <li>✅ Rechazos <strong>menores a {registroDia.meta_2}%</strong> → ganas el <strong>80%</strong></li>
+                    <li>❌ Rechazos <strong>{registroDia.meta_2}% o más</strong> → no ganas este porcentaje</li>
+                    <li className="font-medium text-green-600">Hoy tuviste {rechPct.toFixed(2)}% de rechazos</li>
                 </ul>
             ),
             resultado: `${registroDia.cal_rechazos_2} × ${formatCOP(registroDia.valor_x_dia)} = ${formatCOP(registroDia.valor_x_dia * registroDia.cal_rechazos_2)}`,
             resultColor: cumpleMeta1 ? 'text-green-700' : 'text-muted-foreground',
         },
         meta2: {
-            titulo: '3. Meta 2 — Rechazos 2 (20%)',
-            formula: `=SI([RECHAZOS] ≥ ${registroDia.meta_2}%, 0, 0.2)`,
+            titulo: '3. Meta adicional (20%)',
+            formula: `Si tus rechazos son ${registroDia.meta_1}% o menos, ganas el 20% extra.`,
             explicacion: (
                 <ul className="space-y-0.5">
-                    <li>· Rechazos ≥ {registroDia.meta_2}% → factor <strong>0</strong></li>
-                    <li>· Rechazos &lt; {registroDia.meta_2}% → factor <strong>0.2 (20%)</strong></li>
-                    <li className="font-medium text-green-600">Hoy: {rechPct.toFixed(2)}% → factor {registroDia.cal_rechazos}</li>
+                    <li>✅ Rechazos <strong>{registroDia.meta_1}% o menos</strong> → ganas el <strong>20% extra</strong></li>
+                    <li>❌ Rechazos <strong>mayores a {registroDia.meta_1}%</strong> → no aplica el extra</li>
+                    <li className="font-medium text-green-600">Hoy tuviste {rechPct.toFixed(2)}% de rechazos</li>
                 </ul>
             ),
             resultado: `${registroDia.cal_rechazos} × ${formatCOP(registroDia.valor_x_dia)} = ${formatCOP(registroDia.valor_x_dia * registroDia.cal_rechazos)}`,
             resultColor: cumpleMeta2 ? 'text-green-700' : 'text-muted-foreground',
         },
         valorGanas: {
-            titulo: '4. Valor que ganas (Variable)',
-            formula: `(Meta1[${registroDia.cal_rechazos_2}] + Meta2[${registroDia.cal_rechazos}]) × ${formatCOP(registroDia.valor_x_dia)}`,
+            titulo: '4. Lo que ganaste hoy',
+            formula: 'Es la suma de las dos metas que cumpliste.',
             explicacion: (
                 <ul className="space-y-0.5">
-                    <li>· Cumples Meta 1 → ganas el <strong>80%</strong></li>
-                    <li>· Cumples Meta 2 → ganas el <strong>20%</strong> adicional</li>
-                    <li>· Cumples ambas → ganas el <strong className="text-green-700">100%</strong></li>
+                    <li>· Meta principal cumplida → <strong>80%</strong> del día</li>
+                    <li>· Meta adicional cumplida → <strong>20%</strong> más</li>
+                    <li>· Ambas cumplidas → <strong className="text-green-700">100%</strong> del día</li>
                 </ul>
             ),
             resultado: formatCOP(registroDia.valor_var),
             resultColor: 'text-green-700',
         },
         valorPerdido: {
-            titulo: '5. Valor perdido',
-            formula: `${formatCOP(registroDia.valor_x_dia)} − ${formatCOP(registroDia.valor_var)}`,
-            explicacion: <p>Dinero que dejaste de ganar por no cumplir las metas. Si cumples todo, es <strong>$0</strong>.</p>,
+            titulo: '5. Lo que dejaste de ganar',
+            formula: 'Es la diferencia entre el valor del día y lo que ganaste.',
+            explicacion: <p>Si cumpliste todas las metas, este valor es <strong>$0</strong>. Si no, aquí ves cuánto dejaste de recibir por los rechazos del día.</p>,
             resultado: formatCOP(registroDia.valor_perdido),
             resultColor: registroDia.valor_perdido > 0 ? 'text-red-600' : 'text-muted-foreground',
         },
         pctVar: {
-            titulo: '6. % Variable',
-            formula: '([Valor ganado] / [Valor día]) × 100',
-            explicacion: <p>Porcentaje del valor del día que ganaste. 100% = cumpliste todo.</p>,
+            titulo: '6. % que ganaste',
+            formula: 'Qué parte del día ganaste según tus rechazos.',
+            explicacion: <p>100% significa que cumpliste todo y ganaste el valor completo del día. Menos del 100% indica que hubo rechazos por encima de las metas.</p>,
             resultado: registroDia.porcentaje_variable,
             resultColor: 'text-green-700',
         },
         pctNoCum: {
-            titulo: '7. % Variable No Cumplido',
-            formula: `100% − ${registroDia.porcentaje_variable}`,
-            explicacion: <p>Porcentaje que dejaste de ganar.</p>,
+            titulo: '7. % que no ganaste',
+            formula: 'Lo que faltó para llegar al 100%.',
+            explicacion: <p>Si este valor es 0%, ¡lo lograste todo! Si es mayor, muestra el porcentaje del día que no pudiste ganar por los rechazos.</p>,
             resultado: registroDia.porcentaje_variable_no_cum,
             resultColor: parseFloat(registroDia.porcentaje_variable_no_cum) > 0 ? 'text-red-600' : 'text-muted-foreground',
         },
@@ -520,28 +518,28 @@ export default function MiCompensacionIndex() {
                             <SectionHeader icon={CircleDollarSign} title="¿Cómo se calculó mi pago?" subtitle={formatDateLong(registroDia.fecha)} />
                             <p className="mt-2 flex items-center gap-1.5 text-[10px] text-muted-foreground">
                                 <Lightbulb className="size-3 shrink-0" />
-                                Pasa el mouse sobre cada card para ver la explicación.
+                                Toca cada card para entender qué significa ese valor.
                             </p>
 
                             {/* Ecuación horizontal — scroll en móvil */}
                             <div className="mt-3 overflow-x-auto pb-1">
                                 <div className="flex min-w-max items-stretch gap-1.5 sm:gap-2">
-                                    <EcuacionCard numero="1. Valor del día" label="(Fijo)" value={formatCOP(registroDia.valor_x_dia)} icon={CalendarDays} neutral tooltip={tt!.valorDia} />
+                                    <EcuacionCard numero="Valor del día" label="Base fija" value={formatCOP(registroDia.valor_x_dia)} icon={CalendarDays} neutral tooltip={tt!.valorDia} />
                                     <Op>×</Op>
-                                    <EcuacionCard numero="2. Meta 1" label="Rechazos (80%)" value="80%" subvalue={formatCOP(registroDia.valor_x_dia * 0.8)} icon={cumpleMeta1 ? CheckCircle2 : XCircle} met={cumpleMeta1} tooltip={tt!.meta1} />
+                                    <EcuacionCard numero="Meta principal" label="80% del día" value="80%" subvalue={formatCOP(registroDia.valor_x_dia * 0.8)} icon={cumpleMeta1 ? CheckCircle2 : XCircle} met={cumpleMeta1} tooltip={tt!.meta1} />
                                     <Op>+</Op>
-                                    <EcuacionCard numero="3. Rechazos 2" label="Meta 2 (20%)" value="20%" subvalue={formatCOP(registroDia.valor_x_dia * 0.2)} icon={cumpleMeta2 ? CheckCircle2 : XCircle} met={cumpleMeta2} tooltip={tt!.meta2} />
+                                    <EcuacionCard numero="Meta adicional" label="20% extra" value="20%" subvalue={formatCOP(registroDia.valor_x_dia * 0.2)} icon={cumpleMeta2 ? CheckCircle2 : XCircle} met={cumpleMeta2} tooltip={tt!.meta2} />
                                     <Op>=</Op>
-                                    <EcuacionCard numero="4. Valor que ganas" label="(Variable)" value={formatCOP(registroDia.valor_var)} icon={TrendingUp} highlight="green" tooltip={tt!.valorGanas} />
+                                    <EcuacionCard numero="Lo que ganaste" label="Hoy" value={formatCOP(registroDia.valor_var)} icon={TrendingUp} highlight="green" tooltip={tt!.valorGanas} />
                                     <Op>−</Op>
-                                    <EcuacionCard numero="5. Valor perdido" label={registroDia.valor_perdido > 0 ? 'No ganaste' : 'Sin pérdida'} value={formatCOP(registroDia.valor_perdido)} icon={TrendingDown} highlight={registroDia.valor_perdido > 0 ? 'red' : undefined} neutral={registroDia.valor_perdido === 0} tooltip={tt!.valorPerdido} />
+                                    <EcuacionCard numero="Lo que no ganaste" label={registroDia.valor_perdido > 0 ? 'Por rechazos' : 'Sin pérdida'} value={formatCOP(registroDia.valor_perdido)} icon={TrendingDown} highlight={registroDia.valor_perdido > 0 ? 'red' : undefined} neutral={registroDia.valor_perdido === 0} tooltip={tt!.valorPerdido} />
                                 </div>
                             </div>
 
                             {/* Fila % variable + mensaje */}
                             <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                                <EcuacionCard numero="6. % Variable" label="Lo que ganaste" value={registroDia.porcentaje_variable} icon={TrendingUp} highlight="green" tooltip={tt!.pctVar} />
-                                <EcuacionCard numero="7. % No Cumplido" label="Lo que no ganaste" value={registroDia.porcentaje_variable_no_cum} icon={TrendingDown} highlight={parseFloat(registroDia.porcentaje_variable_no_cum) > 0 ? 'red' : undefined} neutral={parseFloat(registroDia.porcentaje_variable_no_cum) === 0} tooltip={tt!.pctNoCum} />
+                                <EcuacionCard numero="% Ganado" label="Del día" value={registroDia.porcentaje_variable} icon={TrendingUp} highlight="green" tooltip={tt!.pctVar} />
+                                <EcuacionCard numero="% No ganado" label="Del día" value={registroDia.porcentaje_variable_no_cum} icon={TrendingDown} highlight={parseFloat(registroDia.porcentaje_variable_no_cum) > 0 ? 'red' : undefined} neutral={parseFloat(registroDia.porcentaje_variable_no_cum) === 0} tooltip={tt!.pctNoCum} />
                                 <div className={`col-span-2 flex items-center gap-2.5 rounded-xl border px-3 py-2.5 ${cumpleTotal ? 'border-green-200 bg-green-50 dark:border-green-700/40 dark:bg-green-900/10' : 'border-amber-200 bg-amber-50 dark:border-amber-700/40 dark:bg-amber-900/10'}`}>
                                     <Trophy className={`size-5 shrink-0 ${cumpleTotal ? 'text-green-700' : 'text-amber-500'}`} />
                                     <div>

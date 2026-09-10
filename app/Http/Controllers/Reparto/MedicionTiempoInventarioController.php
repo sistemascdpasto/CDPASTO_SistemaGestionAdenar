@@ -8,6 +8,7 @@ use App\Models\Flota\Vehiculo;
 use App\Models\Seguridad\Colaborador;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -310,5 +311,95 @@ class MedicionTiempoInventarioController extends Controller
 
         return to_route('reparto.medicion-tiempos-inventario.index')
             ->with('status', 'Medición de tiempo eliminada correctamente.');
+    }
+
+    /**
+     * Exportar registros a CSV con todos los campos, respetando los filtros activos.
+     */
+    public function exportar(Request $request): StreamedResponse
+    {
+        $filtros = [
+            'fecha_desde' => $request->string('fecha_desde')->toString(),
+            'fecha_hasta' => $request->string('fecha_hasta')->toString(),
+            'placa'       => $request->string('placa')->toString(),
+            'colaborador' => $request->string('colaborador')->toString(),
+        ];
+
+        $query = MedicionTiempoInventario::query()
+            ->with(['user:id,name', 'colaborador:id,cedula,nombres,apellidos', 'vehiculo:id,placa,modelo'])
+            ->when($filtros['fecha_desde'], fn ($q) => $q->whereDate('fecha_medicion', '>=', $filtros['fecha_desde']))
+            ->when($filtros['fecha_hasta'], fn ($q) => $q->whereDate('fecha_medicion', '<=', $filtros['fecha_hasta']))
+            ->when($filtros['placa'], fn ($q) => $q->whereHas('vehiculo', fn ($q2) => $q2->where('placa', 'like', "%{$filtros['placa']}%")))
+            ->when($filtros['colaborador'], fn ($q) => $q->whereHas('colaborador', fn ($q2) => $q2
+                ->where('cedula', 'like', "%{$filtros['colaborador']}%")
+                ->orWhere('nombres', 'like', "%{$filtros['colaborador']}%")
+                ->orWhere('apellidos', 'like', "%{$filtros['colaborador']}%")
+            ))
+            ->orderBy('fecha_medicion', 'desc')
+            ->orderBy('created_at', 'desc');
+
+        $filename = 'medicion_tiempos_inventario_' . now()->format('Y-m-d_H-i') . '.csv';
+
+        $headers = [
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            'Cache-Control'       => 'no-cache, no-store, must-revalidate',
+        ];
+
+        $callback = function () use ($query) {
+            $file = fopen('php://output', 'w');
+            fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+            fputcsv($file, [
+                'ID',
+                'FECHA MEDICIÓN',
+                'HORA INICIO',
+                'HORA FIN',
+                'DURACIÓN (min)',
+                'TIPO INVENTARIO',
+                'PLACA VEHÍCULO',
+                'MODELO VEHÍCULO',
+                'CÉDULA COLABORADOR',
+                'NOMBRE COLABORADOR',
+                'REGISTRADO POR',
+                'FECHA REGISTRO',
+            ]);
+
+            $query->chunk(500, function ($registros) use ($file) {
+                foreach ($registros as $r) {
+                    $horaInicio = $r->hora_inicio instanceof \DateTimeInterface
+                        ? $r->hora_inicio->format('H:i')
+                        : (string) ($r->hora_inicio ?? '');
+                    $horaFin = $r->hora_fin instanceof \DateTimeInterface
+                        ? $r->hora_fin->format('H:i')
+                        : (string) ($r->hora_fin ?? '');
+                    $fechaMedicion = $r->fecha_medicion instanceof \DateTimeInterface
+                        ? $r->fecha_medicion->format('Y-m-d')
+                        : (string) ($r->fecha_medicion ?? '');
+                    $nombreColaborador = $r->colaborador
+                        ? trim("{$r->colaborador->nombres} {$r->colaborador->apellidos}")
+                        : '';
+
+                    fputcsv($file, [
+                        $r->id,
+                        $fechaMedicion,
+                        $horaInicio,
+                        $horaFin,
+                        $r->duracion_minutos ?? '',
+                        $r->tipo_inventario ?? '',
+                        $r->vehiculo?->placa ?? '',
+                        $r->vehiculo?->modelo ?? '',
+                        $r->colaborador?->cedula ?? '',
+                        $nombreColaborador,
+                        $r->user?->name ?? $r->creado_por ?? '',
+                        $r->created_at?->format('Y-m-d H:i') ?? '',
+                    ]);
+                }
+            });
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 }

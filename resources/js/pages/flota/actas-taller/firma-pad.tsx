@@ -92,7 +92,7 @@ export const FirmaPad = forwardRef<FirmaPadHandle, FirmaPadProps>(function Firma
                 onPointerUp={end}
                 onPointerLeave={end}
             />
-            <p className="text-muted-foreground text-xs">Dibuja la firma con el dedo o el mouse.</p>
+            <p className="text-muted-foreground text-xs">Dibuja tu firma aquí.</p>
         </div>
     );
 });

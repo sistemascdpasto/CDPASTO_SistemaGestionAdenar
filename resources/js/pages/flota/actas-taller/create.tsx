@@ -29,11 +29,11 @@ interface Props {
 
 // ─── Helpers locales ──────────────────────────────────────────────────────────
 
-function Campo({ label, required, error, children }: {
-    label: string; required?: boolean; error?: string; children: React.ReactNode;
+function Campo({ label, required, error, children, className }: {
+    label: string; required?: boolean; error?: string; children: React.ReactNode; className?: string;
 }) {
     return (
-        <div className="grid gap-1.5">
+        <div className={`grid gap-1.5${className ? ` ${className}` : ''}`}>
             <Label className="text-xs font-medium text-foreground">
                 {label}{required && <span className="ml-0.5 text-red-500">*</span>}
             </Label>
@@ -85,6 +85,7 @@ export default function ActasTallerCreate({ vehiculos, colaboradores, numero_act
     const [idEntrega,      setIdEntrega]      = useState('');
     const [telefonoEntrega,setTelefonoEntrega]= useState('');
     const [nombreRecibe,   setNombreRecibe]   = useState('');
+    const [contactoTaller, setContactoTaller] = useState('');
 
     // Novedades
     const [novedades, setNovedades] = useState<NovedadLocal[]>([]);
@@ -152,6 +153,7 @@ export default function ActasTallerCreate({ vehiculos, colaboradores, numero_act
         fd.append('identificacion_entrega',  idEntrega);
         fd.append('telefono_entrega',        telefonoEntrega);
         fd.append('nombre_recibe',           nombreRecibe);
+        fd.append('contacto_taller',         contactoTaller);
 
         novedades.forEach((nov, i) => {
             (['titulo', 'descripcion', 'categoria', 'prioridad', 'responsable', 'fecha_reporte', 'fecha_solucion'] as const)
@@ -240,35 +242,59 @@ export default function ActasTallerCreate({ vehiculos, colaboradores, numero_act
                                 <Input type="number" min={0} max={100} value={combustible}
                                     onChange={e => setCombustible(e.target.value)} className="h-9 text-sm" placeholder="0-100" />
                             </Campo>
-                            <Campo label="Motivo de ingreso" error={errors['motivo_ingreso']}>
+                            <Campo label="Motivo de ingreso" error={errors['motivo_ingreso']} className="sm:col-span-2">
                                 <Input value={motivoIngreso} onChange={e => setMotivoIngreso(e.target.value)}
                                     className="h-9 text-sm" placeholder="Describe el motivo de ingreso al taller..." />
                             </Campo>
-                            <Campo label="Quien reporta" error={errors['quien_reporta']}>
-                                <select
-                                    value={quienReporta}
-                                    onChange={e => {
-                                        const col = colaboradores.find(c => c.nombre_completo === e.target.value);
-                                        setQuienReporta(e.target.value);
-                                        if (col) {
-                                            setNombreEntrega(col.nombre_completo);
-                                            setCargoEntrega(col.cargo);
-                                            setIdEntrega(col.cedula);
-                                            setTelefonoEntrega(col.celular);
-                                        }
-                                    }}
-                                    className="h-9 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring">
-                                    <option value="">Seleccionar colaborador</option>
-                                    {colaboradores.map(c => (
-                                        <option key={c.id} value={c.nombre_completo}>
-                                            {c.nombre_completo} · {c.cargo}
-                                        </option>
-                                    ))}
-                                </select>
-                            </Campo>                            <Campo label="Fecha estimada solución" error={errors['fecha_estimada_solucion']}>
+                            <Campo label="Fecha estimada solución" error={errors['fecha_estimada_solucion']} className="sm:col-span-2">
                                 <Input type="datetime-local" value={fechaEstimada}
                                     onChange={e => setFechaEstimada(e.target.value)} className="h-9 text-sm" />
                             </Campo>
+                        </div>
+
+                        {/* Datos de quien reporta */}
+                        <div className="mt-4 border-t border-border pt-4">
+                            <p className="mb-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Quien reporta</p>
+                            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                                <Campo label="Colaborador" error={errors['quien_reporta']} className="lg:col-span-2">
+                                    <select
+                                        value={quienReporta}
+                                        onChange={e => {
+                                            const col = colaboradores.find(c => c.nombre_completo === e.target.value);
+                                            setQuienReporta(e.target.value);
+                                            if (col) {
+                                                setNombreEntrega(col.nombre_completo);
+                                                setCargoEntrega(col.cargo);
+                                                setIdEntrega(col.cedula);
+                                                setTelefonoEntrega(col.celular);
+                                            }
+                                        }}
+                                        className="h-9 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring">
+                                        <option value="">Seleccionar colaborador</option>
+                                        {colaboradores.map(c => (
+                                            <option key={c.id} value={c.nombre_completo}>
+                                                {c.nombre_completo} · {c.cargo}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </Campo>
+                                <Campo label="Identificación" error={errors['identificacion_entrega']}>
+                                    <Input value={idEntrega} onChange={e => setIdEntrega(e.target.value)}
+                                        className="h-9 text-sm" placeholder="Cédula..." />
+                                </Campo>
+                                <Campo label="Cargo" error={errors['cargo_entrega']}>
+                                    <Input value={cargoEntrega} onChange={e => setCargoEntrega(e.target.value)}
+                                        className="h-9 text-sm" placeholder="Cargo..." />
+                                </Campo>
+                                <Campo label="Teléfono / Celular" error={errors['telefono_entrega']}>
+                                    <Input value={telefonoEntrega} onChange={e => setTelefonoEntrega(e.target.value)}
+                                        className="h-9 text-sm" placeholder="Celular..." />
+                                </Campo>
+                                <Campo label="Contacto del taller" error={errors['contacto_taller']}>
+                                    <Input value={contactoTaller} onChange={e => setContactoTaller(e.target.value)}
+                                        className="h-9 text-sm" placeholder="Número de contacto del taller..." />
+                                </Campo>
+                            </div>
                         </div>
                     </Seccion>
 
@@ -321,12 +347,6 @@ export default function ActasTallerCreate({ vehiculos, colaboradores, numero_act
                             mode="edit"
                             nombreEntrega={nombreEntrega}
                             onNombreEntrega={setNombreEntrega}
-                            cargoEntrega={cargoEntrega}
-                            onCargoEntrega={setCargoEntrega}
-                            idEntrega={idEntrega}
-                            onIdEntrega={setIdEntrega}
-                            telefonoEntrega={telefonoEntrega}
-                            onTelefonoEntrega={setTelefonoEntrega}
                             nombreRecibe={nombreRecibe}
                             onNombreRecibe={setNombreRecibe}
                             firmaEntregaRef={firmaEntregaRef}

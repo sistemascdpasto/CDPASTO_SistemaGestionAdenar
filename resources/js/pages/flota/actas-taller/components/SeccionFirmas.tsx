@@ -9,12 +9,6 @@ interface EditProps {
     mode: 'edit';
     nombreEntrega: string;
     onNombreEntrega: (v: string) => void;
-    cargoEntrega?: string;
-    onCargoEntrega?: (v: string) => void;
-    idEntrega?: string;
-    onIdEntrega?: (v: string) => void;
-    telefonoEntrega?: string;
-    onTelefonoEntrega?: (v: string) => void;
     nombreRecibe: string;
     onNombreRecibe: (v: string) => void;
     firmaEntregaRef: React.RefObject<FirmaPadHandle | null>;
@@ -90,9 +84,6 @@ export default function SeccionFirmas(props: Props) {
     if (props.mode === 'edit') {
         const {
             nombreEntrega, onNombreEntrega,
-            cargoEntrega = '', onCargoEntrega,
-            idEntrega = '', onIdEntrega,
-            telefonoEntrega = '', onTelefonoEntrega,
             nombreRecibe, onNombreRecibe,
             firmaEntregaRef, firmaRecibeRef, errors = {},
         } = props;
@@ -102,38 +93,22 @@ export default function SeccionFirmas(props: Props) {
 
                 {/* ── Entrega en el taller ── */}
                 <FirmaSlot titulo="Entrega en el taller">
-                    <div className="grid gap-3">
-                        <CampoFirma label="Nombre">
-                            <Input value={nombreEntrega} onChange={e => onNombreEntrega(e.target.value)}
-                                className="h-9 text-sm" placeholder="Nombre completo..." />
-                            {errors['nombre_entrega'] && <p className="text-[11px] text-red-500">{errors['nombre_entrega']}</p>}
-                        </CampoFirma>
-                        <div className="grid grid-cols-2 gap-3">
-                            <CampoFirma label="Identificación">
-                                <Input value={idEntrega} onChange={e => onIdEntrega?.(e.target.value)}
-                                    className="h-9 text-sm" placeholder="Cédula..." />
-                            </CampoFirma>
-                            <CampoFirma label="Cargo">
-                                <Input value={cargoEntrega} onChange={e => onCargoEntrega?.(e.target.value)}
-                                    className="h-9 text-sm" placeholder="Cargo..." />
-                            </CampoFirma>
-                        </div>
-                        <CampoFirma label="Teléfono / Celular">
-                            <Input value={telefonoEntrega} onChange={e => onTelefonoEntrega?.(e.target.value)}
-                                className="h-9 text-sm" placeholder="Celular..." />
-                        </CampoFirma>
-                    </div>
                     <FirmaPad ref={firmaEntregaRef} label="Firma (opcional)" fileName="firma_entrega.png" />
+                    <CampoFirma label="Nombre">
+                        <Input value={nombreEntrega} onChange={e => onNombreEntrega(e.target.value)}
+                            className="h-9 text-sm" placeholder="Nombre completo..." />
+                        {errors['nombre_entrega'] && <p className="text-[11px] text-red-500">{errors['nombre_entrega']}</p>}
+                    </CampoFirma>
                 </FirmaSlot>
 
                 {/* ── Recibe (técnico del taller) ── */}
                 <FirmaSlot titulo="Recibe (técnico del taller)">
+                    <FirmaPad ref={firmaRecibeRef} label="Firma (opcional)" fileName="firma_recibe.png" />
                     <CampoFirma label="Nombre del técnico">
                         <Input value={nombreRecibe} onChange={e => onNombreRecibe(e.target.value)}
                             className="h-9 text-sm" placeholder="Nombre completo del técnico externo..." />
                         {errors['nombre_recibe'] && <p className="text-[11px] text-red-500">{errors['nombre_recibe']}</p>}
                     </CampoFirma>
-                    <FirmaPad ref={firmaRecibeRef} label="Firma (opcional)" fileName="firma_recibe.png" />
                 </FirmaSlot>
 
             </div>

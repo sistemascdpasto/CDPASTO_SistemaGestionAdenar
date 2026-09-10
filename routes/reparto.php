@@ -40,8 +40,8 @@ Route::middleware(['auth', 'active'])
         Route::delete('/modulacion/novedad/{id}', [ModulacionController::class, 'destroyNovedad'])
             ->name('modulacion.destroyNovedad');
 
-        // Compensación Variable — solo Administrador y Colaborador
-        Route::middleware('role:Administrador|Colaborador')->group(function () {
+        // Compensación Variable — solo Administrador y Reparto
+        Route::middleware('role:Administrador|Reparto')->group(function () {
             Route::get('/compensacion-variable', [CompensacionVariableController::class, 'index'])
                 ->name('compensacion-variable.index');
 
@@ -143,6 +143,8 @@ Route::middleware(['auth', 'active'])
         Route::middleware('role:Administrador|Reparto')->group(function () {
             Route::get('/medicion-tiempos-inventario', [MedicionTiempoInventarioController::class, 'index'])
                 ->name('medicion-tiempos-inventario.index');
+            Route::get('/medicion-tiempos-inventario-exportar', [MedicionTiempoInventarioController::class, 'exportar'])
+                ->name('medicion-tiempos-inventario.exportar');
             Route::get('/medicion-tiempos-inventario/{medicionTiempoInventario}', [MedicionTiempoInventarioController::class, 'show'])
                 ->name('medicion-tiempos-inventario.show');
             Route::delete('/medicion-tiempos-inventario/{medicionTiempoInventario}', [MedicionTiempoInventarioController::class, 'destroy'])

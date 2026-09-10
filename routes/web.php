@@ -67,32 +67,23 @@ require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
 require __DIR__.'/admin.php';
 
-// ── DIAGNÓSTICO TEMPORAL — eliminar después ─────────────────────────────────
+
+// ── DIAGNÓSTICO TEMPORAL ────────────────────────────────────────────────────
 Route::get('/diagnostico-cvd', function () {
-    $meses = [
-        1 => 'Enero', 2 => 'Febrero', 3 => 'Marzo', 4 => 'Abril',
-        5 => 'Mayo',  6 => 'Junio',   7 => 'Julio',  8 => 'Agosto',
-        9 => 'Septiembre', 10 => 'Octubre', 11 => 'Noviembre', 12 => 'Diciembre',
-    ];
-    $resultado = [
-        'app_timezone'  => config('app.timezone'),
-        'php_date_now'  => now()->toDateTimeString(),
-        'mysql_now'     => DB::selectOne('SELECT NOW() as now')->now,
-        'total_eventos' => DB::table('eventos_tripulacion')->count(),
-        'por_mes'       => [],
+    $meses = [1=>'Enero',2=>'Febrero',3=>'Marzo',4=>'Abril',5=>'Mayo',6=>'Junio',7=>'Julio',8=>'Agosto',9=>'Septiembre',10=>'Octubre',11=>'Noviembre',12=>'Diciembre'];
+    $r = [
+        'app_timezone'     => config('app.timezone'),
+        'total_eventos'    => DB::table('eventos_tripulacion')->count(),
+        'total_cvd'        => DB::table('compensaciones_variables_diarias')->count(),
+        'eventos_por_mes'  => [],
+        'cvd_por_mes'      => [],
     ];
     foreach (range(1, 9) as $m) {
-        $desde = \Carbon\Carbon::create(2026, $m, 1)->startOfMonth()->format('Y-m-d');
-        $hasta = \Carbon\Carbon::create(2026, $m, 1)->endOfMonth()->format('Y-m-d');
-        $resultado['por_mes'][] = [
-            'mes'    => $meses[$m] . " 2026 ($desde → $hasta)",
-            'total'  => DB::table('eventos_tripulacion')
-                ->whereNotNull('documento')->where('documento', '!=', '')
-                ->whereNotNull('rechazos')
-                ->where('fecha', '>=', $desde)->where('fecha', '<=', $hasta)
-                ->count(),
-        ];
+        $desde = \Carbon\Carbon::create(2026,$m,1)->startOfMonth()->format('Y-m-d');
+        $hasta = \Carbon\Carbon::create(2026,$m,1)->endOfMonth()->format('Y-m-d');
+        $r['eventos_por_mes'][] = ['mes'=>$meses[$m], 'total'=> DB::table('eventos_tripulacion')->where('fecha','>=',$desde)->where('fecha','<=',$hasta)->count()];
+        $r['cvd_por_mes'][]     = ['mes'=>$meses[$m], 'total'=> DB::table('compensaciones_variables_diarias')->where('fecha','>=',$desde)->where('fecha','<=',$hasta)->count()];
     }
-    return response()->json($resultado, 200, [], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    return response()->json($r, 200, [], JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE);
 });
 // ── FIN DIAGNÓSTICO ─────────────────────────────────────────────────────────
