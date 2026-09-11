@@ -67,6 +67,7 @@ export default function CentroCapacitacionesIndex({
     recientes,
     resultadosBusqueda,
     filters,
+    banner,
 }: {
     carpetas: CarpetaProgreso[];
     progreso: ProgresoGeneral;
@@ -74,6 +75,7 @@ export default function CentroCapacitacionesIndex({
     recientes: MaterialItem[];
     resultadosBusqueda: MaterialItem[] | null;
     filters: { buscar?: string };
+    banner: { frase: string | null; sub_frase: string | null; imagen_url: string | null } | null;
 }) {
     const [busqueda, setBusqueda] = useState(filters.buscar || '');
 
@@ -102,6 +104,50 @@ export default function CentroCapacitacionesIndex({
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Centro de Capacitaciones" />
+
+            {banner && (banner.imagen_url || banner.frase) && (
+                <div className="relative flex min-h-[200px] md:min-h-[260px] w-full overflow-hidden bg-teal-950">
+                    {/* Imagen rectangular que ocupa más de la mitad */}
+                    {banner.imagen_url && (
+                        <div className="hidden md:block w-[58%] shrink-0 relative">
+                            <img
+                                src={banner.imagen_url}
+                                alt="Banner capacitaciones"
+                                className="h-full w-full object-cover"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent to-teal-950/80" />
+                        </div>
+                    )}
+                    {/* Imagen en móvil — ocupa todo el ancho con overlay fuerte */}
+                    {banner.imagen_url && (
+                        <div className="absolute inset-0 md:hidden">
+                            <img
+                                src={banner.imagen_url}
+                                alt="Banner capacitaciones"
+                                className="h-full w-full object-cover"
+                            />
+                            <div className="absolute inset-0 bg-teal-950/75" />
+                        </div>
+                    )}
+                    {/* Texto — al lado derecho en desktop, centrado en móvil */}
+                    <div className={`relative z-10 flex flex-col justify-center gap-4 p-6 md:p-10 ${banner.imagen_url ? 'md:flex-1' : 'w-full items-center text-center'}`}>
+                        <div className="inline-flex w-fit items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white backdrop-blur-md">
+                            <GraduationCap className="size-4 text-teal-300" />
+                            <span>Portal de Aprendizaje</span>
+                        </div>
+                        {banner.frase && (
+                            <p className="text-xl md:text-3xl font-extrabold leading-tight tracking-tight text-white">
+                                {banner.frase}
+                            </p>
+                        )}
+                        {banner.sub_frase && (
+                            <p className="text-sm md:text-base text-teal-100 max-w-lg">
+                                {banner.sub_frase}
+                            </p>
+                        )}
+                    </div>
+                </div>
+            )}
 
             <div className="flex h-full flex-1 flex-col gap-8 rounded-xl p-4 md:p-6 max-w-7xl mx-auto w-full">
                 {/* 1. ENCABEZADO Y BUSCADOR DINAMICO EN TIEMPO REAL */}

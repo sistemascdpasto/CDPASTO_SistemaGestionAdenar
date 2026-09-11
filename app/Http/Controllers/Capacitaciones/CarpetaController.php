@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Capacitaciones;
 
 use App\Http\Controllers\Controller;
+use App\Models\Capacitaciones\CapacitacionBanner;
 use App\Models\Capacitaciones\CapacitacionCarpeta;
 use App\Models\Capacitaciones\CapacitacionMaterial;
 use App\Models\Capacitaciones\CapacitacionRevision;
@@ -225,6 +226,7 @@ class CarpetaController extends Controller
                 'rankingCapacitaciones' => $rankingCapacitaciones,
                 'actividadReciente' => $actividadReciente,
                 'graficaActividad' => $graficaActividad,
+                'banner' => CapacitacionBanner::actual()->only(['frase', 'sub_frase', 'imagen_url']),
                 'filters' => [
                     'buscar' => $buscar ?? '',
                     'carpeta_id' => $carpetaId ?? '',
@@ -253,6 +255,7 @@ class CarpetaController extends Controller
                 'rankingCapacitaciones' => [],
                 'actividadReciente' => [],
                 'graficaActividad' => [],
+                'banner' => CapacitacionBanner::actual()->only(['frase', 'sub_frase', 'imagen_url']),
                 'filters' => [
                     'buscar' => $buscar ?? '',
                     'carpeta_id' => $carpetaId ?? '',
@@ -390,5 +393,35 @@ class CarpetaController extends Controller
         $carpeta->delete();
 
         return to_route('capacitaciones.index')->with('status', 'Carpeta eliminada correctamente.');
+    }
+
+    /**
+     * Guardar o actualizar el banner de la vista de capacitaciones del colaborador.
+     * POST /modules/capacitaciones/banner
+     */
+    public function saveBanner(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'frase'     => ['nullable', 'string', 'max:300'],
+            'sub_frase' => ['nullable', 'string', 'max:300'],
+            'imagen'    => ['nullable', 'image', 'max:4096'],
+        ]);
+
+        $banner = CapacitacionBanner::firstOrNew(['id' => 1]);
+
+        if ($request->hasFile('imagen')) {
+            // Eliminar imagen anterior si existe
+            if ($banner->imagen_path && Storage::disk('public')->exists($banner->imagen_path)) {
+                Storage::disk('public')->delete($banner->imagen_path);
+            }
+            $banner->imagen_path = $request->file('imagen')->store('capacitaciones/banner', 'public');
+        }
+
+        $banner->frase     = $validated['frase'] ?? $banner->frase;
+        $banner->sub_frase = $validated['sub_frase'] ?? $banner->sub_frase;
+        $banner->updated_by = $request->user()?->id;
+        $banner->save();
+
+        return back()->with('status', 'Banner actualizado correctamente.');
     }
 }

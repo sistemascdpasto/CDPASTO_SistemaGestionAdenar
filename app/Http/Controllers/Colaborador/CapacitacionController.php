@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Colaborador;
 
 use App\Http\Controllers\Controller;
+use App\Models\Capacitaciones\CapacitacionBanner;
 use App\Models\Capacitaciones\CapacitacionCarpeta;
 use App\Models\Capacitaciones\CapacitacionMaterial;
 use App\Models\Capacitaciones\CapacitacionRevision;
@@ -139,6 +140,7 @@ class CapacitacionController extends Controller
             'destacadas' => $destacadas,
             'recientes' => $recientes,
             'resultadosBusqueda' => $resultadosBusqueda,
+            'banner' => CapacitacionBanner::actual()->only(['frase', 'sub_frase', 'imagen_url']),
             'filters' => [
                 'buscar' => $buscar ?? '',
             ],

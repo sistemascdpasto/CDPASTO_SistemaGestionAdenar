@@ -15,8 +15,9 @@ import {
     Trophy,
     User,
     XCircle,
+    ChevronRight,
 } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 
 // ─── Breadcrumbs ─────────────────────────────────────────────────────────────
 
@@ -30,8 +31,10 @@ const META_MENSUAL = 800; // COP — hardcoded por diseño del negocio
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface RegistroDia {
-    id: number;
-    fecha: string;
+    id: number | null;
+    fecha_desde: string;
+    fecha_hasta: string;
+    dias_en_rango: number;
     rechazos: number;
     rechazos_porcentaje: number;
     valor_x_dia: number;
@@ -285,12 +288,155 @@ function MetaMensualCard({ ganado, meta }: { ganado: number; meta: number }) {
     );
 }
 
+// ─── DateRangePicker con atajos ───────────────────────────────────────────────
+
+interface Atajo { label: string; desde: string; hasta: string; }
+
+function hoy()         { return new Date().toISOString().split('T')[0]; }
+function diasAtras(n: number) {
+    const d = new Date(); d.setDate(d.getDate() - n);
+    return d.toISOString().split('T')[0];
+}
+function primerDiaMes(offset = 0) {
+    const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + offset);
+    return d.toISOString().split('T')[0];
+}
+function ultimoDiaMes(offset = 0) {
+    const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + offset + 1); d.setDate(0);
+    return d.toISOString().split('T')[0];
+}
+function lunesDeEstaSemana() {
+    const d = new Date();
+    const day = d.getDay(); // 0=dom
+    const diff = day === 0 ? -6 : 1 - day;
+    d.setDate(d.getDate() + diff);
+    return d.toISOString().split('T')[0];
+}
+
+const ATAJOS: Atajo[] = [
+    { label: 'Hoy',            desde: hoy(),              hasta: hoy()              },
+    { label: 'Ayer',           desde: diasAtras(1),       hasta: diasAtras(1)       },
+    { label: 'Esta semana',    desde: lunesDeEstaSemana(), hasta: hoy()             },
+    { label: 'Últimos 7 días', desde: diasAtras(6),       hasta: hoy()              },
+    { label: 'Últimos 15 días',desde: diasAtras(14),      hasta: hoy()              },
+    { label: 'Mes actual',     desde: primerDiaMes(),     hasta: hoy()              },
+    { label: 'Mes anterior',   desde: primerDiaMes(-1),   hasta: ultimoDiaMes(-1)   },
+];
+
+function DateRangePicker({
+    desde, hasta,
+    onChange,
+}: {
+    desde: string; hasta: string;
+    onChange: (desde: string, hasta: string) => void;
+}) {
+    const [open, setOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+
+    const labelAtajo = ATAJOS.find(a => a.desde === desde && a.hasta === hasta)?.label ?? null;
+
+    const aplicar = (d: string, h: string) => { onChange(d, h); setOpen(false); };
+
+    // Formato legible del rango
+    const labelRango = (() => {
+        if (desde === hasta) return formatDateShort(desde);
+        return `${formatDateShort(desde)} — ${formatDateShort(hasta)}`;
+    })();
+
+    return (
+        <div className="grid gap-1" ref={ref}>
+            <label className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+                <CalendarDays className="size-3 text-green-700" />
+                Período consultado
+            </label>
+
+            {/* Botón disparador */}
+            <button
+                type="button"
+                onClick={() => setOpen(v => !v)}
+                className="flex items-center gap-2 rounded-lg border border-sidebar-border/70 bg-muted px-2.5 py-1.5 text-left text-sm text-foreground transition hover:border-green-400 focus:outline-none dark:border-sidebar-border dark:bg-muted"
+            >
+                <CalendarDays className="size-3.5 shrink-0 text-muted-foreground" />
+                <span className="flex-1 truncate">
+                    {labelAtajo
+                        ? <><span className="font-semibold text-green-700">{labelAtajo}</span> <span className="text-[11px] text-muted-foreground">({labelRango})</span></>
+                        : labelRango
+                    }
+                </span>
+                <ChevronRight className={`size-3.5 shrink-0 text-muted-foreground transition-transform ${open ? 'rotate-90' : ''}`} />
+            </button>
+
+            {/* Panel desplegable */}
+            {open && (
+                <div className="mt-1 rounded-xl border border-sidebar-border/70 bg-card shadow-lg dark:border-sidebar-border z-30 overflow-hidden">
+                    {/* Atajos rápidos */}
+                    <div className="flex flex-wrap gap-1.5 p-3 border-b border-sidebar-border/70 dark:border-sidebar-border">
+                        {ATAJOS.map(a => {
+                            const activo = a.desde === desde && a.hasta === hasta;
+                            return (
+                                <button
+                                    key={a.label}
+                                    type="button"
+                                    onClick={() => aplicar(a.desde, a.hasta)}
+                                    className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-colors border ${
+                                        activo
+                                            ? 'bg-green-700 text-white border-green-700'
+                                            : 'bg-muted text-muted-foreground border-sidebar-border/70 hover:border-green-400 hover:text-green-700 dark:border-sidebar-border'
+                                    }`}
+                                >
+                                    {a.label}
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    {/* Inputs manuales */}
+                    <div className="grid grid-cols-2 gap-2 p-3">
+                        <div className="grid gap-1">
+                            <label className="text-[10px] font-semibold text-muted-foreground">Desde</label>
+                            <input
+                                type="date"
+                                value={desde}
+                                max={hasta}
+                                onChange={e => onChange(e.target.value, hasta)}
+                                className="h-8 w-full rounded-lg border border-sidebar-border/70 bg-muted px-2 text-xs text-foreground focus:outline-none dark:border-sidebar-border dark:bg-muted"
+                            />
+                        </div>
+                        <div className="grid gap-1">
+                            <label className="text-[10px] font-semibold text-muted-foreground">Hasta</label>
+                            <input
+                                type="date"
+                                value={hasta}
+                                min={desde}
+                                max={hoy()}
+                                onChange={e => onChange(desde, e.target.value)}
+                                className="h-8 w-full rounded-lg border border-sidebar-border/70 bg-muted px-2 text-xs text-foreground focus:outline-none dark:border-sidebar-border dark:bg-muted"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end gap-2 px-3 pb-3">
+                        <button
+                            type="button"
+                            onClick={() => setOpen(false)}
+                            className="rounded-lg border border-sidebar-border/70 bg-muted px-3 py-1 text-xs font-medium text-muted-foreground hover:bg-muted/80 dark:border-sidebar-border"
+                        >
+                            Cerrar
+                        </button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function MiCompensacionIndex() {
     const pageProps = usePage<any>().props || {};
     const colaborador: Colaborador | null      = pageProps.colaborador;
-    const fechaSeleccionada: string | null      = pageProps.fecha_seleccionada;
+    const fechaDesdeProps: string              = pageProps.fecha_desde ?? new Date().toISOString().slice(0, 7) + '-01';
+    const fechaHastaProps: string              = pageProps.fecha_hasta ?? new Date().toISOString().split('T')[0];
     const registroDia: RegistroDia | null       = pageProps.registro_dia;
     const ausencias: Ausencias                  = pageProps.ausencias ?? { justificada: 0, injustificada: 0 };
     const historialAnual: MesHistorial[]        = pageProps.historial_anual ?? [];
@@ -300,15 +446,18 @@ export default function MiCompensacionIndex() {
     };
     const error: string | null = pageProps.error;
 
-    const [selectedDate, setSelectedDate] = useState(
-        fechaSeleccionada || new Date().toISOString().split('T')[0],
-    );
+    const [fechaDesde, setFechaDesde] = useState(fechaDesdeProps);
+    const [fechaHasta, setFechaHasta] = useState(fechaHastaProps);
     const [historialOpen, setHistorialOpen] = useState(false);
 
-    const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const d = e.target.value;
-        setSelectedDate(d);
-        router.get(route('portal.mi-compensacion.index'), { fecha: d }, { preserveState: true, preserveScroll: true });
+    const handleRangeChange = (desde: string, hasta: string) => {
+        setFechaDesde(desde);
+        setFechaHasta(hasta);
+        router.get(
+            route('portal.mi-compensacion.index'),
+            { fecha_desde: desde, fecha_hasta: hasta },
+            { preserveState: true, preserveScroll: true },
+        );
     };
 
     if (error || !colaborador) {
@@ -328,46 +477,54 @@ export default function MiCompensacionIndex() {
     const cumpleMeta1 = registroDia ? rechPct <= registroDia.meta_1 : false;
     const pctNum      = registroDia ? parseFloat(registroDia.porcentaje_variable) : 0;
     const cumpleTotal = pctNum >= 100;
+    const esUnDia     = registroDia ? registroDia.fecha_desde === registroDia.fecha_hasta : false;
 
     const CIRCUM = 276.46;
     const dash   = Math.min((pctNum / 100) * CIRCUM, CIRCUM);
 
+    // Etiqueta del período para los tooltips y subtítulos
+    const labelPeriodo = registroDia
+        ? (esUnDia
+            ? formatDateLong(registroDia.fecha_desde)
+            : `${formatDateShort(registroDia.fecha_desde)} — ${formatDateShort(registroDia.fecha_hasta)} (${registroDia.dias_en_rango} día${registroDia.dias_en_rango !== 1 ? 's' : ''})`)
+        : '';
+
     // Tooltips con datos reales
     const tt = registroDia ? {
         valorDia: {
-            titulo: '1. Valor del día',
-            formula: 'Es fijo. El mismo valor cada día que trabajas.',
-            explicacion: <p>Cada día laborado vale <strong>{formatCOP(registroDia.valor_x_dia)}</strong>. Este monto es igual para todos los días — es tu punto de partida.</p>,
+            titulo: esUnDia ? '1. Valor del día' : '1. Valor total del período',
+            formula: esUnDia ? 'Es fijo. El mismo valor cada día que trabajas.' : 'Suma del valor base de cada día del rango.',
+            explicacion: <p>{esUnDia ? 'Cada día laborado vale' : 'El total de los días del rango vale'} <strong>{formatCOP(registroDia.valor_x_dia)}</strong>.</p>,
             resultado: formatCOP(registroDia.valor_x_dia),
         },
         meta1: {
-            titulo: '2. Meta principal (80%)',
+            titulo: esUnDia ? '2. Meta principal (80%)' : '2. Meta principal — acumulado',
             formula: `Si tus rechazos son menores al ${registroDia.meta_2}%, ganas el 80% del día.`,
             explicacion: (
                 <ul className="space-y-0.5">
                     <li>✅ Rechazos <strong>menores a {registroDia.meta_2}%</strong> → ganas el <strong>80%</strong></li>
                     <li>❌ Rechazos <strong>{registroDia.meta_2}% o más</strong> → no ganas este porcentaje</li>
-                    <li className="font-medium text-green-600">Hoy tuviste {rechPct.toFixed(2)}% de rechazos</li>
+                    <li className="font-medium text-green-600">{esUnDia ? 'Hoy' : 'En el período'} promedio: {rechPct.toFixed(2)}% rechazos</li>
                 </ul>
             ),
-            resultado: `${registroDia.cal_rechazos_2} × ${formatCOP(registroDia.valor_x_dia)} = ${formatCOP(registroDia.valor_x_dia * registroDia.cal_rechazos_2)}`,
+            resultado: `${formatCOP(registroDia.cal_rechazos_2)}`,
             resultColor: cumpleMeta1 ? 'text-green-700' : 'text-muted-foreground',
         },
         meta2: {
-            titulo: '3. Meta adicional (20%)',
+            titulo: esUnDia ? '3. Meta adicional (20%)' : '3. Meta adicional — acumulado',
             formula: `Si tus rechazos son ${registroDia.meta_1}% o menos, ganas el 20% extra.`,
             explicacion: (
                 <ul className="space-y-0.5">
                     <li>✅ Rechazos <strong>{registroDia.meta_1}% o menos</strong> → ganas el <strong>20% extra</strong></li>
                     <li>❌ Rechazos <strong>mayores a {registroDia.meta_1}%</strong> → no aplica el extra</li>
-                    <li className="font-medium text-green-600">Hoy tuviste {rechPct.toFixed(2)}% de rechazos</li>
+                    <li className="font-medium text-green-600">{esUnDia ? 'Hoy' : 'Promedio período'}: {rechPct.toFixed(2)}% rechazos</li>
                 </ul>
             ),
-            resultado: `${registroDia.cal_rechazos} × ${formatCOP(registroDia.valor_x_dia)} = ${formatCOP(registroDia.valor_x_dia * registroDia.cal_rechazos)}`,
+            resultado: `${formatCOP(registroDia.cal_rechazos)}`,
             resultColor: cumpleMeta2 ? 'text-green-700' : 'text-muted-foreground',
         },
         valorGanas: {
-            titulo: '4. Lo que ganaste hoy',
+            titulo: esUnDia ? '4. Lo que ganaste hoy' : '4. Lo que ganaste en el período',
             formula: 'Es la suma de las dos metas que cumpliste.',
             explicacion: (
                 <ul className="space-y-0.5">
@@ -380,23 +537,23 @@ export default function MiCompensacionIndex() {
             resultColor: 'text-green-700',
         },
         valorPerdido: {
-            titulo: '5. Lo que dejaste de ganar',
+            titulo: esUnDia ? '5. Lo que dejaste de ganar' : '5. Total perdido en el período',
             formula: 'Es la diferencia entre el valor del día y lo que ganaste.',
-            explicacion: <p>Si cumpliste todas las metas, este valor es <strong>$0</strong>. Si no, aquí ves cuánto dejaste de recibir por los rechazos del día.</p>,
+            explicacion: <p>Si cumpliste todas las metas, este valor es <strong>$0</strong>. Si no, aquí ves cuánto dejaste de recibir por los rechazos.</p>,
             resultado: formatCOP(registroDia.valor_perdido),
             resultColor: registroDia.valor_perdido > 0 ? 'text-red-600' : 'text-muted-foreground',
         },
         pctVar: {
-            titulo: '6. % que ganaste',
-            formula: 'Qué parte del día ganaste según tus rechazos.',
-            explicacion: <p>100% significa que cumpliste todo y ganaste el valor completo del día. Menos del 100% indica que hubo rechazos por encima de las metas.</p>,
+            titulo: esUnDia ? '6. % que ganaste' : '6. % promedio ganado',
+            formula: 'Qué parte del período ganaste según tus rechazos.',
+            explicacion: <p>100% significa que cumpliste todo y ganaste el valor completo. Menos del 100% indica que hubo rechazos por encima de las metas.</p>,
             resultado: registroDia.porcentaje_variable,
             resultColor: 'text-green-700',
         },
         pctNoCum: {
-            titulo: '7. % que no ganaste',
+            titulo: esUnDia ? '7. % que no ganaste' : '7. % promedio no ganado',
             formula: 'Lo que faltó para llegar al 100%.',
-            explicacion: <p>Si este valor es 0%, ¡lo lograste todo! Si es mayor, muestra el porcentaje del día que no pudiste ganar por los rechazos.</p>,
+            explicacion: <p>Si este valor es 0%, ¡lo lograste todo! Si es mayor, muestra el porcentaje del período que no pudiste ganar.</p>,
             resultado: registroDia.porcentaje_variable_no_cum,
             resultColor: parseFloat(registroDia.porcentaje_variable_no_cum) > 0 ? 'text-red-600' : 'text-muted-foreground',
         },
@@ -412,7 +569,7 @@ export default function MiCompensacionIndex() {
                 {/* Título */}
                 <div>
                     <h1 className="text-2xl font-bold text-foreground sm:text-3xl">Mi Compensación Diaria</h1>
-                    <p className="mt-0.5 text-sm text-muted-foreground">Detalle de tu compensación variable por día.</p>
+                    <p className="mt-0.5 text-sm text-muted-foreground">Selecciona un rango de fechas para ver tu compensación acumulada.</p>
                 </div>
 
                 {/* ══ CARD 1 — HERO ══ */}
@@ -432,20 +589,11 @@ export default function MiCompensacionIndex() {
                                     </p>
                                 </div>
                             </div>
-                            <div className="grid gap-1">
-                                <label htmlFor="fecha_dia" className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
-                                    <CalendarDays className="size-3 text-green-700" /> Consultar día
-                                </label>
-                                <div className="flex items-center gap-1.5 rounded-lg border border-sidebar-border/70 bg-muted px-2.5 py-1.5 dark:border-sidebar-border dark:bg-muted">
-                                    <CalendarDays className="size-3.5 shrink-0 text-muted-foreground" />
-                                    <input
-                                        id="fecha_dia" type="date" value={selectedDate}
-                                        onChange={handleDateChange}
-                                        max={new Date().toISOString().split('T')[0]}
-                                        className="w-full bg-transparent text-sm text-foreground focus:outline-none dark:text-foreground"
-                                    />
-                                </div>
-                            </div>
+                            <DateRangePicker
+                                    desde={fechaDesde}
+                                    hasta={fechaHasta}
+                                    onChange={handleRangeChange}
+                                />
                         </div>
 
                         {/* Centro decorativo — sin borde ni fondo propio */}
@@ -480,7 +628,7 @@ export default function MiCompensacionIndex() {
                                 </div>
                             </div>
                         ) : (
-                            <p className="text-xs text-muted-foreground sm:shrink-0">Selecciona un día</p>
+                            <p className="text-xs text-muted-foreground sm:shrink-0">Selecciona un período</p>
                         )}
                     </div>
                 </Card>
@@ -489,8 +637,10 @@ export default function MiCompensacionIndex() {
                 {!registroDia ? (
                     <Card className="flex flex-col items-center gap-2 p-8 text-center">
                         <Info className="size-5 text-muted-foreground" />
-                        <p className="text-sm font-medium text-foreground">Sin información para {formatDateShort(selectedDate)}</p>
-                        <p className="text-xs text-muted-foreground">Selecciona otro día o espera a que se cargue la información.</p>
+                        <p className="text-sm font-medium text-foreground">
+                            Sin información para {fechaDesde === fechaHasta ? formatDateShort(fechaDesde) : `${formatDateShort(fechaDesde)} — ${formatDateShort(fechaHasta)}`}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Selecciona otro período o espera a que se cargue la información.</p>
                     </Card>
                 ) : (
                     <>
@@ -515,7 +665,7 @@ export default function MiCompensacionIndex() {
 
                         {/* ══ CARD 2 — ECUACIÓN VISUAL ══ */}
                         <Card className="p-4">
-                            <SectionHeader icon={CircleDollarSign} title="¿Cómo se calculó mi pago?" subtitle={formatDateLong(registroDia.fecha)} />
+                            <SectionHeader icon={CircleDollarSign} title="¿Cómo se calculó mi pago?" subtitle={labelPeriodo} />
                             <p className="mt-2 flex items-center gap-1.5 text-[10px] text-muted-foreground">
                                 <Lightbulb className="size-3 shrink-0" />
                                 Toca cada card para entender qué significa ese valor.
@@ -561,9 +711,12 @@ export default function MiCompensacionIndex() {
                             <div className="flex items-center justify-between gap-3">
                                 {/* Nombre del mes filtrado */}
                             {(() => {
-                                const [y, m] = selectedDate.split('-').map(Number);
+                                const [y, m] = fechaHasta.split('-').map(Number);
                                 const nombreMes = new Date(y, m - 1, 1).toLocaleDateString('es-CO', { month: 'long', year: 'numeric' });
-                                return <SectionHeader icon={Trophy} title="Resumen del mes" subtitle={nombreMes.charAt(0).toUpperCase() + nombreMes.slice(1)} />;
+                                const tituloResumen = fechaDesde === fechaHasta
+                                    ? nombreMes.charAt(0).toUpperCase() + nombreMes.slice(1)
+                                    : `${formatDateShort(fechaDesde)} — ${formatDateShort(fechaHasta)}`;
+                                return <SectionHeader icon={Trophy} title="Resumen del período" subtitle={tituloResumen} />;
                             })()}
                                 <button
                                     onClick={() => setHistorialOpen(v => !v)}

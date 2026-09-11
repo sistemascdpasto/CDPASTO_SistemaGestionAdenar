@@ -1,4 +1,3 @@
-import HeadingSmall from '@/components/heading-small';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -8,14 +7,41 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
-import { Eye, Plus, Trash2, Edit, Clock, User, Calendar, Download, Truck, Timer } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { Eye, Plus, Trash2, Edit, Clock, User, Download, Truck, Timer, TrendingDown, Activity, Users } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+    BarElement, CategoryScale, Chart as ChartJS,
+    Legend, LinearScale, Tooltip,
+} from 'chart.js';
+import { Bar } from 'react-chartjs-2';
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
     { title: 'Reparto', href: '/modules/reparto' },
     { title: 'Medición de Tiempos en Inventario', href: '/modules/reparto/medicion-tiempos-inventario' },
 ];
+
+interface Indicadores {
+    total_registros: number;
+    con_duracion: number;
+    promedio_minutos: number | null;
+    minimo_minutos: number | null;
+    maximo_minutos: number | null;
+    suma_minutos: number;
+    vehiculos_unicos: number;
+    colaboradores_unicos: number;
+}
+
+interface DatosPorPeriodo {
+    dias?: string[];
+    meses?: string[];
+    promedio: number[];
+    cantidad: number[];
+    minimo: number[];
+    maximo: number[];
+}
 
 interface MedicionTiempo {
     id: number;
@@ -57,6 +83,9 @@ interface Props {
         colaborador: string;
     };
     puedeVerTodos: boolean;
+    indicadores?: Indicadores;
+    por_dia?: DatosPorPeriodo;
+    por_mes?: DatosPorPeriodo;
 }
 
 type Filters = {
@@ -87,8 +116,130 @@ function formatDuracion(minutos: number | null) {
     return horas > 0 ? `${horas}h ${mins}m` : `${mins}m`;
 }
 
-export default function MedicionTiemposInventarioIndex({ registros, filters, puedeVerTodos }: Props) {
+// ─── KpiCard ─────────────────────────────────────────────────────────────────
+function KpiCard({
+    label, value, sub, icon: Icon, color = '#3b82f6',
+}: {
+    label: string; value: string; sub?: string;
+    icon: React.ElementType; color?: string;
+}) {
+    return (
+        <div className="flex flex-col justify-between gap-2 rounded-xl border border-sidebar-border/70 bg-card p-4 shadow-sm dark:border-sidebar-border">
+            <div className="flex items-start justify-between">
+                <p className="text-[11px] font-semibold text-muted-foreground leading-tight">{label}</p>
+                <Icon className="size-4 shrink-0" style={{ color }} />
+            </div>
+            <p className="text-2xl font-extrabold tabular-nums leading-none" style={{ color }}>{value}</p>
+            {sub && <p className="text-[10px] text-muted-foreground">{sub}</p>}
+        </div>
+    );
+}
+
+// ─── GraficaBarras ───────────────────────────────────────────────────────────
+function GraficaBarras({
+    titulo, subtitulo, labels, promedio, minimo, maximo, cantidad, color = '#3b82f6',
+}: {
+    titulo: string; subtitulo: string;
+    labels: string[]; promedio: number[]; minimo: number[]; maximo: number[]; cantidad: number[];
+    color?: string;
+}) {
+    if (labels.length === 0) {
+        return (
+            <div className="rounded-xl border border-sidebar-border/70 bg-card p-4 shadow-sm dark:border-sidebar-border">
+                <p className="text-xs font-bold text-muted-foreground">{titulo}</p>
+                <p className="mt-1 text-[10px] text-muted-foreground">{subtitulo}</p>
+                <div className="mt-4 flex h-36 items-center justify-center text-xs text-muted-foreground">Sin datos</div>
+            </div>
+        );
+    }
+
+    const chartData = {
+        labels,
+        datasets: [
+            {
+                label: 'Promedio (min)',
+                data: promedio,
+                backgroundColor: `${color}cc`,
+                borderColor: color,
+                borderWidth: 1,
+                borderRadius: 4,
+                order: 1,
+            },
+            {
+                label: 'Mínimo (min)',
+                data: minimo,
+                backgroundColor: '#22c55e99',
+                borderColor: '#22c55e',
+                borderWidth: 1,
+                borderRadius: 4,
+                order: 2,
+            },
+            {
+                label: 'Máximo (min)',
+                data: maximo,
+                backgroundColor: '#ef444499',
+                borderColor: '#ef4444',
+                borderWidth: 1,
+                borderRadius: 4,
+                order: 3,
+            },
+        ],
+    };
+
+    const options = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: true,
+                position: 'top' as const,
+                labels: { font: { size: 10 }, boxWidth: 10, padding: 8 },
+            },
+            tooltip: {
+                callbacks: {
+                    afterBody: (items: any[]) => {
+                        const idx = items[0]?.dataIndex;
+                        return idx !== undefined ? [`Inventarios: ${cantidad[idx]}`] : [];
+                    },
+                },
+            },
+        },
+        scales: {
+            x: {
+                ticks: { color: '#9ca3af', font: { size: 8 }, maxRotation: 45, minRotation: 0 },
+                grid: { display: false },
+            },
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    color: '#9ca3af', font: { size: 9 }, maxTicksLimit: 6,
+                    callback: (v: any) => `${v}m`,
+                },
+                grid: { color: 'rgba(0,0,0,.04)' },
+            },
+        },
+    };
+
+    return (
+        <div className="rounded-xl border border-sidebar-border/70 bg-card p-4 shadow-sm dark:border-sidebar-border">
+            <p className="text-xs font-bold text-foreground">{titulo}</p>
+            <p className="mt-0.5 text-[10px] text-muted-foreground">{subtitulo}</p>
+            <div className="mt-3" style={{ height: 200 }}>
+                <Bar data={chartData} options={options} />
+            </div>
+        </div>
+    );
+}
+
+export default function MedicionTiemposInventarioIndex({ registros, filters, puedeVerTodos, indicadores, por_dia, por_mes }: Props) {
     const safeFilters = filters || {};
+    const ind = indicadores ?? {} as Indicadores;
+
+    const fmtMin = (m: number | null | undefined) => {
+        if (m == null) return '-';
+        const h = Math.floor(m / 60), min = m % 60;
+        return h > 0 ? `${h}h ${min}m` : `${min}m`;
+    };
     const [fechaDesde, setFechaDesde] = useState(safeFilters.fecha_desde ?? '');
     const [fechaHasta, setFechaHasta] = useState(safeFilters.fecha_hasta ?? '');
     const [placa, setPlaca] = useState(safeFilters.placa ?? '');
@@ -201,6 +352,66 @@ export default function MedicionTiemposInventarioIndex({ registros, filters, pue
                         </div>
                     )}
                 </div>
+
+                {/* ── KPI Cards ── */}
+                {ind.total_registros !== undefined && ind.total_registros > 0 && (
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-4">
+                        <KpiCard
+                            label="Total inventarios"
+                            value={String(ind.total_registros)}
+                            sub={`${ind.con_duracion} con duración registrada`}
+                            icon={Timer}
+                            color="#3b82f6"
+                        />
+                        <KpiCard
+                            label="Promedio duración"
+                            value={fmtMin(ind.promedio_minutos)}
+                            sub="Por inventario"
+                            icon={Activity}
+                            color="#8b5cf6"
+                        />
+                        <KpiCard
+                            label="Más rápido / Más lento"
+                            value={fmtMin(ind.minimo_minutos)}
+                            sub={`Máximo: ${fmtMin(ind.maximo_minutos)}`}
+                            icon={TrendingDown}
+                            color="#22c55e"
+                        />
+                        <KpiCard
+                            label="Vehículos · Colaboradores"
+                            value={`${ind.vehiculos_unicos} · ${ind.colaboradores_unicos}`}
+                            sub="Participantes únicos"
+                            icon={Users}
+                            color="#f59e0b"
+                        />
+                    </div>
+                )}
+
+                {/* ── Gráficas de barras ── */}
+                {(por_dia?.dias?.length ?? 0) > 0 || (por_mes?.meses?.length ?? 0) > 0 ? (
+                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                        <GraficaBarras
+                            titulo="Duración por día"
+                            subtitulo="Promedio, mínimo y máximo de cada jornada (minutos)"
+                            labels={por_dia?.dias ?? []}
+                            promedio={por_dia?.promedio ?? []}
+                            minimo={por_dia?.minimo ?? []}
+                            maximo={por_dia?.maximo ?? []}
+                            cantidad={por_dia?.cantidad ?? []}
+                            color="#3b82f6"
+                        />
+                        <GraficaBarras
+                            titulo="Duración por mes"
+                            subtitulo="Promedio, mínimo y máximo mensual (minutos)"
+                            labels={por_mes?.meses ?? []}
+                            promedio={por_mes?.promedio ?? []}
+                            minimo={por_mes?.minimo ?? []}
+                            maximo={por_mes?.maximo ?? []}
+                            cantidad={por_mes?.cantidad ?? []}
+                            color="#8b5cf6"
+                        />
+                    </div>
+                ) : null}
 
                 {/* ── Tabla (md+) / Cards (mobile) ── */}
                 {registros.data.length === 0 ? (

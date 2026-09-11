@@ -115,8 +115,8 @@ class MedicionTiempoInventarioController extends Controller
             'colaborador' => $request->string('colaborador')->toString(),
         ];
 
-        $query = MedicionTiempoInventario::query()
-            ->with(['user:id,name', 'colaborador:id,nombres,apellidos', 'vehiculo:id,placa'])
+        // ── Query base reutilizable para indicadores y gráficas ──────────────
+        $baseQuery = MedicionTiempoInventario::query()
             ->when($esColaborador, fn ($q) => $q->where('user_id', $request->user()->id))
             ->when($filtros['fecha_desde'], fn ($q) => $q->whereDate('fecha_medicion', '>=', $filtros['fecha_desde']))
             ->when($filtros['fecha_hasta'], fn ($q) => $q->whereDate('fecha_medicion', '<=', $filtros['fecha_hasta']))
@@ -127,7 +127,11 @@ class MedicionTiempoInventarioController extends Controller
                 $q->where('cedula', 'like', "%{$filtros['colaborador']}%")
                   ->orWhere('nombres', 'like', "%{$filtros['colaborador']}%")
                   ->orWhere('apellidos', 'like', "%{$filtros['colaborador']}%");
-            }))
+            }));
+
+        // ── Tabla paginada ────────────────────────────────────────────────────
+        $query = (clone $baseQuery)
+            ->with(['user:id,name', 'colaborador:id,nombres,apellidos', 'vehiculo:id,placa'])
             ->latest('fecha_medicion')
             ->latest('created_at')
             ->paginate(15)
@@ -148,12 +152,97 @@ class MedicionTiempoInventarioController extends Controller
                 'vehiculo_info' => $registro->vehiculo?->placa,
             ]);
 
+        // ── Indicadores globales ──────────────────────────────────────────────
+        $statsRaw = (clone $baseQuery)
+            ->whereNotNull('duracion_minutos')
+            ->selectRaw('
+                COUNT(*) as total,
+                ROUND(AVG(duracion_minutos), 1) as promedio,
+                MIN(duracion_minutos) as minimo,
+                MAX(duracion_minutos) as maximo,
+                SUM(duracion_minutos) as suma
+            ')
+            ->first();
+
+        $totalRegistros    = (clone $baseQuery)->count();
+        $conDuracion       = (int) ($statsRaw->total ?? 0);
+        $vehiculosUnicos   = (clone $baseQuery)->distinct('vehiculo_id')->whereNotNull('vehiculo_id')->count('vehiculo_id');
+        $colaboradoresUnic = (clone $baseQuery)->distinct('colaborador_id')->whereNotNull('colaborador_id')->count('colaborador_id');
+
+        $indicadores = [
+            'total_registros'      => $totalRegistros,
+            'con_duracion'         => $conDuracion,
+            'promedio_minutos'     => $conDuracion > 0 ? (float) $statsRaw->promedio : null,
+            'minimo_minutos'       => $conDuracion > 0 ? (int) $statsRaw->minimo : null,
+            'maximo_minutos'       => $conDuracion > 0 ? (int) $statsRaw->maximo : null,
+            'suma_minutos'         => $conDuracion > 0 ? (int) $statsRaw->suma : 0,
+            'vehiculos_unicos'     => $vehiculosUnicos,
+            'colaboradores_unicos' => $colaboradoresUnic,
+        ];
+
+        // ── Totales por día ───────────────────────────────────────────────────
+        $porDiaRaw = (clone $baseQuery)
+            ->whereNotNull('duracion_minutos')
+            ->whereNotNull('fecha_medicion')
+            ->selectRaw("
+                DATE(fecha_medicion) as dia,
+                COUNT(*) as cantidad,
+                ROUND(AVG(duracion_minutos), 1) as promedio,
+                MIN(duracion_minutos) as minimo,
+                MAX(duracion_minutos) as maximo
+            ")
+            ->groupBy('dia')
+            ->orderBy('dia')
+            ->limit(60)
+            ->get();
+
+        $porDia = [
+            'dias'     => $porDiaRaw->pluck('dia')->toArray(),
+            'promedio' => $porDiaRaw->pluck('promedio')->map(fn ($v) => (float) $v)->toArray(),
+            'cantidad' => $porDiaRaw->pluck('cantidad')->map(fn ($v) => (int) $v)->toArray(),
+            'minimo'   => $porDiaRaw->pluck('minimo')->map(fn ($v) => (int) $v)->toArray(),
+            'maximo'   => $porDiaRaw->pluck('maximo')->map(fn ($v) => (int) $v)->toArray(),
+        ];
+
+        // ── Totales por mes ───────────────────────────────────────────────────
+        $mesesNombres = [
+            1=>'Ene',2=>'Feb',3=>'Mar',4=>'Abr',5=>'May',6=>'Jun',
+            7=>'Jul',8=>'Ago',9=>'Sep',10=>'Oct',11=>'Nov',12=>'Dic',
+        ];
+
+        $porMesRaw = (clone $baseQuery)
+            ->whereNotNull('duracion_minutos')
+            ->whereNotNull('fecha_medicion')
+            ->selectRaw("
+                YEAR(fecha_medicion) as anio,
+                MONTH(fecha_medicion) as mes_num,
+                COUNT(*) as cantidad,
+                ROUND(AVG(duracion_minutos), 1) as promedio,
+                MIN(duracion_minutos) as minimo,
+                MAX(duracion_minutos) as maximo
+            ")
+            ->groupByRaw('YEAR(fecha_medicion), MONTH(fecha_medicion)')
+            ->orderByRaw('YEAR(fecha_medicion), MONTH(fecha_medicion)')
+            ->limit(24)
+            ->get();
+
+        $porMes = [
+            'meses'    => $porMesRaw->map(fn ($r) => ($mesesNombres[(int)$r->mes_num] ?? "M{$r->mes_num}") . ' ' . $r->anio)->toArray(),
+            'promedio' => $porMesRaw->pluck('promedio')->map(fn ($v) => (float) $v)->toArray(),
+            'cantidad' => $porMesRaw->pluck('cantidad')->map(fn ($v) => (int) $v)->toArray(),
+            'minimo'   => $porMesRaw->pluck('minimo')->map(fn ($v) => (int) $v)->toArray(),
+            'maximo'   => $porMesRaw->pluck('maximo')->map(fn ($v) => (int) $v)->toArray(),
+        ];
+
         return Inertia::render('reparto/medicion-tiempos-inventario/index', [
             'registros'       => $query,
             'filtros'         => $filtros,
             'puedeVerTodos'   => $puedeVerTodos,
             'esColaborador'   => $esColaborador,
             'registroEnCurso' => null,
+            'indicadores'     => $indicadores,
+            'por_dia'         => $porDia,
+            'por_mes'         => $porMes,
         ]);
     }
 

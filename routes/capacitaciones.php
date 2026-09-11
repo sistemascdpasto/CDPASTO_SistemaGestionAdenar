@@ -22,4 +22,7 @@ Route::middleware(['auth', 'active', 'role:Administrador|Seguridad|Reparto|Gente
         Route::match(['put', 'post'], 'materiales/{material}', [MaterialController::class, 'update'])->name('materiales.update');
         Route::delete('materiales/{material}', [MaterialController::class, 'destroy'])->name('materiales.destroy');
         Route::get('materiales/{material}/descargar', [MaterialController::class, 'descargar'])->name('materiales.descargar');
+
+        // Banner del portal de capacitaciones (colaborador)
+        Route::post('banner', [CarpetaController::class, 'saveBanner'])->name('banner.save');
     });

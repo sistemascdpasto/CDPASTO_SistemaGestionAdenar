@@ -5,7 +5,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
-import { FileText } from 'lucide-react';
+import { FileText, X, ZoomIn } from 'lucide-react';
+import { useState } from 'react';
 
 interface PruebaDetalle {
     id: number;
@@ -48,6 +49,8 @@ export default function PruebaShow({ prueba, qrSvg }: { prueba: PruebaDetalle; q
     const evidenciaPaths = [prueba.evidencia_path, ...prueba.evidencias.map((e) => e.path)].filter((p): p is string => Boolean(p));
     const fotos = evidenciaPaths.filter((p) => !/\.pdf$/i.test(p));
     const pdfs = evidenciaPaths.filter((p) => /\.pdf$/i.test(p));
+
+    const [fotoAmpliada, setFotoAmpliada] = useState<string | null>(null);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -108,12 +111,22 @@ export default function PruebaShow({ prueba, qrSvg }: { prueba: PruebaDetalle; q
                         <h2 className="mb-2 text-lg font-medium tracking-tight">Evidencias</h2>
                         <div className="flex flex-wrap gap-3">
                             {fotos.map((path) => (
-                                <SafeImage
+                                <button
                                     key={path}
-                                    src={`/storage/${path}`}
-                                    alt="Evidencia de la prueba"
-                                    className="h-32 w-32 rounded-lg border border-sidebar-border/70 object-cover dark:border-sidebar-border"
-                                />
+                                    type="button"
+                                    onClick={() => setFotoAmpliada(`/storage/${path}`)}
+                                    className="group relative h-32 w-32 shrink-0 overflow-hidden rounded-lg border border-sidebar-border/70 transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:border-sidebar-border"
+                                    title="Haz clic para ampliar"
+                                >
+                                    <SafeImage
+                                        src={`/storage/${path}`}
+                                        alt="Evidencia de la prueba"
+                                        className="h-full w-full object-cover"
+                                    />
+                                    <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/30">
+                                        <ZoomIn className="size-6 text-white opacity-0 drop-shadow transition-opacity group-hover:opacity-100" />
+                                    </div>
+                                </button>
                             ))}
                         </div>
                     </div>
@@ -139,6 +152,33 @@ export default function PruebaShow({ prueba, qrSvg }: { prueba: PruebaDetalle; q
                     </div>
                 )}
             </div>
+
+            {/* Lightbox */}
+            {fotoAmpliada && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+                    onClick={() => setFotoAmpliada(null)}
+                >
+                    <div
+                        className="relative max-h-full w-full max-w-4xl"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <button
+                            type="button"
+                            onClick={() => setFotoAmpliada(null)}
+                            aria-label="Cerrar vista ampliada"
+                            className="absolute top-3 right-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white shadow-lg transition-colors hover:bg-black/80"
+                        >
+                            <X className="size-5" />
+                        </button>
+                        <img
+                            src={fotoAmpliada}
+                            alt="Vista ampliada"
+                            className="max-h-[90vh] w-full rounded-xl object-contain shadow-2xl"
+                        />
+                    </div>
+                </div>
+            )}
         </AppLayout>
     );
 }

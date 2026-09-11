@@ -184,6 +184,12 @@ interface DistribucionItem {
     color: string;
 }
 
+interface BannerAdmin {
+    frase: string | null;
+    sub_frase: string | null;
+    imagen_url: string | null;
+}
+
 export default function CapacitacionesAdminIndex({
     carpetas = [],
     recientes = [],
@@ -194,6 +200,7 @@ export default function CapacitacionesAdminIndex({
     actividadReciente = [],
     graficaActividad = [],
     filters = {},
+    banner = null,
 }: {
     carpetas?: Carpeta[];
     recientes?: MaterialReciente[];
@@ -209,6 +216,7 @@ export default function CapacitacionesAdminIndex({
     actividadReciente?: ActividadItem[];
     graficaActividad?: GraficaActividadItem[];
     filters?: any;
+    banner?: BannerAdmin | null;
 }) {
     // Asignar colaboradores recibidos del backend a colaboradoresDetalle para uso interno
     const colaboradoresDetalle = colaboradores || [];
@@ -228,6 +236,14 @@ export default function CapacitacionesAdminIndex({
     const [carpetaEditar, setCarpetaEditar] = useState<Carpeta | null>(null);
     const [carpetaEliminar, setCarpetaEliminar] = useState<Carpeta | null>(null);
     const [capacitacionDetalle, setCapacitacionDetalle] = useState<CapacitacionRanking | null>(null);
+
+    // Estado del formulario del banner
+    const [bannerForm, setBannerForm] = useState({
+        frase: banner?.frase ?? '',
+        sub_frase: banner?.sub_frase ?? '',
+        imagen: null as File | null,
+    });
+    const [bannerSeccionAbierta, setBannerSeccionAbierta] = useState(false);
 
     // Garantizar que el puntero nunca quede bloqueado por Radix UI
     useEffect(() => {
@@ -349,6 +365,115 @@ export default function CapacitacionesAdminIndex({
                         Nueva carpeta
                     </Button>
                 </div>
+
+                {/* 1.B BANNER DEL PORTAL COLABORADOR */}
+                <Card className="border-sidebar-border/70 bg-card shadow-sm">
+                    <CardHeader
+                        className="pb-2 cursor-pointer select-none"
+                        onClick={() => setBannerSeccionAbierta((p) => !p)}
+                    >
+                        <CardTitle className="text-base font-bold flex items-center justify-between">
+                            <span>🖼️ Banner del portal colaborador</span>
+                            <ChevronDown
+                                className={`size-4 text-muted-foreground transition-transform duration-200 ${bannerSeccionAbierta ? 'rotate-180' : ''}`}
+                            />
+                        </CardTitle>
+                        <p className="text-xs text-muted-foreground mt-1">
+                            Imagen y frase que ven los colaboradores al entrar al centro de capacitaciones.
+                        </p>
+                    </CardHeader>
+
+                    {bannerSeccionAbierta && (
+                        <CardContent className="pt-0 pb-5">
+                            <form
+                                onSubmit={(e) => {
+                                    e.preventDefault();
+                                    const formData = new FormData();
+                                    formData.append('frase', bannerForm.frase ?? '');
+                                    formData.append('sub_frase', bannerForm.sub_frase ?? '');
+                                    if (bannerForm.imagen) {
+                                        formData.append('imagen', bannerForm.imagen);
+                                    }
+                                    router.post(route('capacitaciones.banner.save'), formData, {
+                                        forceFormData: true,
+                                        preserveScroll: true,
+                                    });
+                                }}
+                                className="space-y-4"
+                            >
+                                {/* Preview de imagen actual */}
+                                {banner?.imagen_url && (
+                                    <div className="rounded-lg overflow-hidden border max-w-xs">
+                                        <img
+                                            src={banner.imagen_url}
+                                            alt="Banner actual"
+                                            className="w-full h-32 object-cover"
+                                        />
+                                        <p className="text-[11px] text-muted-foreground px-2 py-1">Imagen actual del banner</p>
+                                    </div>
+                                )}
+
+                                <div className="space-y-1">
+                                    <Label htmlFor="banner-imagen" className="text-xs font-semibold">
+                                        Nueva imagen (opcional)
+                                    </Label>
+                                    <Input
+                                        id="banner-imagen"
+                                        type="file"
+                                        accept="image/*"
+                                        className="text-xs h-9"
+                                        onChange={(e) =>
+                                            setBannerForm((prev) => ({
+                                                ...prev,
+                                                imagen: e.target.files?.[0] ?? null,
+                                            }))
+                                        }
+                                    />
+                                </div>
+
+                                <div className="space-y-1">
+                                    <Label htmlFor="banner-frase" className="text-xs font-semibold">
+                                        Frase principal (máx. 300 caracteres)
+                                    </Label>
+                                    <textarea
+                                        id="banner-frase"
+                                        maxLength={300}
+                                        rows={2}
+                                        value={bannerForm.frase}
+                                        onChange={(e) =>
+                                            setBannerForm((prev) => ({ ...prev, frase: e.target.value }))
+                                        }
+                                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none"
+                                        placeholder="Ej: Tu aprendizaje impulsa tu seguridad y la de tus compañeros."
+                                    />
+                                    <p className="text-[11px] text-muted-foreground text-right">{bannerForm.frase.length}/300</p>
+                                </div>
+
+                                <div className="space-y-1">
+                                    <Label htmlFor="banner-sub-frase" className="text-xs font-semibold">
+                                        Sub-frase (máx. 300 caracteres)
+                                    </Label>
+                                    <textarea
+                                        id="banner-sub-frase"
+                                        maxLength={300}
+                                        rows={2}
+                                        value={bannerForm.sub_frase}
+                                        onChange={(e) =>
+                                            setBannerForm((prev) => ({ ...prev, sub_frase: e.target.value }))
+                                        }
+                                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none"
+                                        placeholder="Ej: Explora los materiales disponibles y marca tu progreso."
+                                    />
+                                    <p className="text-[11px] text-muted-foreground text-right">{bannerForm.sub_frase.length}/300</p>
+                                </div>
+
+                                <Button type="submit" size="sm" className="mt-1">
+                                    Guardar banner
+                                </Button>
+                            </form>
+                        </CardContent>
+                    )}
+                </Card>
 
                 {/* 2. BARRA DE FILTROS AVANZADOS */}
                 <Card className="border-sidebar-border/70 bg-card shadow-sm">

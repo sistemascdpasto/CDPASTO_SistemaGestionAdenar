@@ -30,66 +30,42 @@ class CompensacionColaboradorController extends Controller
             ]);
         }
 
-        // Obtener la fecha seleccionada (por defecto hoy)
-        $fechaSeleccionada = $request->input('fecha', date('Y-m-d'));
-        
-        // Obtener todos los registros del colaborador (últimos 90 días)
+        // ── Rango de fechas seleccionado (por defecto: mes actual) ──────────
+        $hoy          = date('Y-m-d');
+        $primerDiaMes = date('Y-m-01');
+
+        $fechaDesde = $request->input('fecha_desde', $primerDiaMes);
+        $fechaHasta = $request->input('fecha_hasta', $hoy);
+
+        // Sanitizar: desde no puede ser mayor que hasta
+        if ($fechaDesde > $fechaHasta) {
+            [$fechaDesde, $fechaHasta] = [$fechaHasta, $fechaDesde];
+        }
+
+        // Obtener registros del colaborador dentro del rango (para la mini-tabla y el sparkline)
         $registros = CompensacionVariableDiaria::where('cedula', $colaborador->cedula)
-            ->where('fecha', '>=', now()->subDays(90))
+            ->whereBetween('fecha', [$fechaDesde, $fechaHasta])
             ->orderBy('fecha', 'desc')
             ->get(['id', 'fecha', 'rechazos', 'valor_x_dia', 'valor_var', 'valor_perdido', 'porcentaje_variable', 'cal_rechazos', 'cal_rechazos_2', 'meta_1', 'meta_2'])
             ->map(function ($registro) {
                 return [
-                    'id' => $registro->id,
-                    'fecha' => $registro->fecha instanceof \DateTimeInterface ? $registro->fecha->format('Y-m-d') : $registro->fecha,
-                    'rechazos' => (float) ($registro->rechazos ?? 0),
-                    'valor_x_dia' => (float) ($registro->valor_x_dia ?? 0),
-                    'valor_var' => (float) ($registro->valor_var ?? 0),
-                    'valor_perdido' => (float) ($registro->valor_perdido ?? 0),
+                    'id'                  => $registro->id,
+                    'fecha'               => $registro->fecha instanceof \DateTimeInterface ? $registro->fecha->format('Y-m-d') : $registro->fecha,
+                    'rechazos'            => (float) ($registro->rechazos ?? 0),
+                    'valor_x_dia'         => (float) ($registro->valor_x_dia ?? 0),
+                    'valor_var'           => (float) ($registro->valor_var ?? 0),
+                    'valor_perdido'       => (float) ($registro->valor_perdido ?? 0),
                     'porcentaje_variable' => $registro->porcentaje_variable ?? '0%',
-                    'cal_rechazos' => (float) ($registro->cal_rechazos ?? 0),
-                    'cal_rechazos_2' => (float) ($registro->cal_rechazos_2 ?? 0),
-                    'meta_1' => (float) ($registro->meta_1 ?? 2.1),
-                    'meta_2' => (float) ($registro->meta_2 ?? 2.6),
+                    'cal_rechazos'        => (float) ($registro->cal_rechazos ?? 0),
+                    'cal_rechazos_2'      => (float) ($registro->cal_rechazos_2 ?? 0),
+                    'meta_1'              => (float) ($registro->meta_1 ?? 2.1),
+                    'meta_2'              => (float) ($registro->meta_2 ?? 2.6),
                 ];
             });
 
-        // Obtener el registro del día seleccionado
-        $registroDia = CompensacionVariableDiaria::where('cedula', $colaborador->cedula)
-            ->whereDate('fecha', $fechaSeleccionada)
-            ->first();
-
-        $registroDiaFormateado = null;
-        if ($registroDia) {
-            // Calcular rechazos en formato porcentaje para mostrar
-            $rechazosRaw = (float) ($registroDia->rechazos ?? 0);
-            $rechazosPct = $rechazosRaw > 1 ? $rechazosRaw : $rechazosRaw * 100; // Convertir a %
-            
-            $registroDiaFormateado = [
-                'id' => $registroDia->id,
-                'fecha' => $registroDia->fecha instanceof \DateTimeInterface ? $registroDia->fecha->format('Y-m-d') : $registroDia->fecha,
-                'rechazos' => $rechazosRaw,
-                'rechazos_porcentaje' => round($rechazosPct, 2),
-                'valor_x_dia' => (float) ($registroDia->valor_x_dia ?? 0),
-                'valor_var' => (float) ($registroDia->valor_var ?? 0),
-                'valor_perdido' => (float) ($registroDia->valor_perdido ?? 0),
-                'porcentaje_variable' => $registroDia->porcentaje_variable ?? '0%',
-                'porcentaje_variable_no_cum' => $registroDia->porcentaje_variable_no_cum ?? '0%',
-                'cal_rechazos' => (float) ($registroDia->cal_rechazos ?? 0),
-                'cal_rechazos_2' => (float) ($registroDia->cal_rechazos_2 ?? 0),
-                'meta_1' => (float) ($registroDia->meta_1 ?? 2.1),
-                'meta_2' => (float) ($registroDia->meta_2 ?? 2.6),
-                'placa' => $registroDia->placa,
-                'transporte' => $registroDia->transporte,
-                'nombre_completo' => $registroDia->nombre_completo,
-                'cargo' => $registroDia->cargo,
-            ];
-        }
-
-        // Calcular estadísticas del mes de la fecha seleccionada (no siempre el mes actual)
-        $mesSeleccionadoYm = substr($fechaSeleccionada, 0, 7); // "2026-04"
+        // ── Acumulado del rango seleccionado ─────────────────────────────────
         $estadisticasMes = CompensacionVariableDiaria::where('cedula', $colaborador->cedula)
-            ->whereRaw("DATE_FORMAT(fecha, '%Y-%m') = ?", [$mesSeleccionadoYm])
+            ->whereBetween('fecha', [$fechaDesde, $fechaHasta])
             ->selectRaw('
                 COUNT(*) as dias_trabajados,
                 SUM(valor_var) as total_ganado,
@@ -99,6 +75,50 @@ class CompensacionColaboradorController extends Controller
                 SUM(CASE WHEN rechazos <= 0.026 THEN 1 ELSE 0 END) as dias_meta_2
             ')
             ->first();
+
+        // ── Resumen del rango (equivale al antiguo registroDiaFormateado) ────
+        // Cuando el rango es de un solo día mantenemos compatibilidad total.
+        // Para rangos múltiples acumulamos los valores.
+        $registrosRango = CompensacionVariableDiaria::where('cedula', $colaborador->cedula)
+            ->whereBetween('fecha', [$fechaDesde, $fechaHasta])
+            ->get();
+
+        $registroDiaFormateado = null;
+        if ($registrosRango->isNotEmpty()) {
+            $totalValorVar    = (float) $registrosRango->sum('valor_var');
+            $totalValorPerd   = (float) $registrosRango->sum('valor_perdido');
+            $totalValorXDia   = (float) $registrosRango->sum('valor_x_dia');
+            $promRechazosRaw  = (float) $registrosRango->avg('rechazos');
+            $rechazosPct      = $promRechazosRaw > 1 ? $promRechazosRaw : round($promRechazosRaw * 100, 2);
+            $diasCount        = $registrosRango->count();
+            $pctVar           = $totalValorXDia > 0 ? round(($totalValorVar / $totalValorXDia) * 100, 1) : 0;
+            $pctNoCum         = max(0, round(100 - $pctVar, 1));
+
+            // Meta de referencia del último registro (son constantes del negocio)
+            $ultimo = $registrosRango->first();
+
+            $registroDiaFormateado = [
+                'id'                        => null,
+                'fecha_desde'               => $fechaDesde,
+                'fecha_hasta'               => $fechaHasta,
+                'dias_en_rango'             => $diasCount,
+                'rechazos'                  => round($promRechazosRaw, 4),
+                'rechazos_porcentaje'       => $rechazosPct,
+                'valor_x_dia'               => round($totalValorXDia, 2),
+                'valor_var'                 => round($totalValorVar, 2),
+                'valor_perdido'             => round($totalValorPerd, 2),
+                'porcentaje_variable'       => $pctVar . '%',
+                'porcentaje_variable_no_cum'=> $pctNoCum . '%',
+                'cal_rechazos'              => round((float) $registrosRango->sum('cal_rechazos'), 2),
+                'cal_rechazos_2'            => round((float) $registrosRango->sum('cal_rechazos_2'), 2),
+                'meta_1'                    => (float) ($ultimo->meta_1 ?? 2.1),
+                'meta_2'                    => (float) ($ultimo->meta_2 ?? 2.6),
+                'placa'                     => $ultimo->placa,
+                'transporte'                => $ultimo->transporte,
+                'nombre_completo'           => $ultimo->nombre_completo,
+                'cargo'                     => $ultimo->cargo,
+            ];
+        }
 
         // ── Ausencias del mes actual desde compensaciones_variables ──────────
         // La tabla usa "identificador" (no cedula) y "mes" como string del nombre del mes
@@ -175,24 +195,27 @@ class CompensacionColaboradorController extends Controller
 
         return Inertia::render('colaborador/mi-compensacion/index', [
             'colaborador' => [
-                'cedula' => $colaborador->cedula,
+                'cedula'          => $colaborador->cedula,
                 'nombre_completo' => trim($colaborador->nombres . ' ' . $colaborador->apellidos),
-                'cargo' => $colaborador->cargo,
+                'cargo'           => $colaborador->cargo,
             ],
-            'registros' => $registros,
-            'fecha_seleccionada' => $fechaSeleccionada,
-            'registro_dia' => $registroDiaFormateado,
-            'estadisticas_mes' => [
-                'dias_trabajados'   => $estadisticasMes->dias_trabajados ?? 0,
+            'registros'          => $registros,
+            'fecha_desde'        => $fechaDesde,
+            'fecha_hasta'        => $fechaHasta,
+            // Compat: fecha_seleccionada sigue existiendo como alias de fecha_hasta
+            'fecha_seleccionada' => $fechaHasta,
+            'registro_dia'       => $registroDiaFormateado,
+            'estadisticas_mes'   => [
+                'dias_trabajados'   => (int) ($estadisticasMes->dias_trabajados ?? 0),
                 'total_ganado'      => round((float) ($estadisticasMes->total_ganado ?? 0), 2),
                 'total_perdido'     => round((float) ($estadisticasMes->total_perdido ?? 0), 2),
                 'promedio_rechazos' => round((float) ($estadisticasMes->promedio_rechazos ?? 0), 2),
-                'dias_meta_1'       => $estadisticasMes->dias_meta_1 ?? 0,
-                'dias_meta_2'       => $estadisticasMes->dias_meta_2 ?? 0,
+                'dias_meta_1'       => (int) ($estadisticasMes->dias_meta_1 ?? 0),
+                'dias_meta_2'       => (int) ($estadisticasMes->dias_meta_2 ?? 0),
             ],
-            'ausencias'      => $ausencias,
-            'historial_anual'=> $historialAnual,
-            'error' => null,
+            'ausencias'       => $ausencias,
+            'historial_anual' => $historialAnual,
+            'error'           => null,
         ]);
     }
 }
