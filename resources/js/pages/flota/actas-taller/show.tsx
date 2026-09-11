@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
@@ -117,13 +118,6 @@ export default function ActasTallerShow({ acta, vehiculos }: Props) {
     const [telEntrega,    setTelEntrega]    = useState(acta.telefono_entrega ?? '');
     const [nombreRecibe,  setNombreRecibe]  = useState(acta.nombre_recibe ?? '');
     const [novedades,     setNovedades]     = useState<NovedadLocal[]>((acta.novedades ?? []).map(toLocal));
-
-    // Sincroniza estado_acta cuando cambian las novedades
-    useEffect(() => {
-        if (!editando) return;
-        const todas = novedades.length > 0 && novedades.every(n => n.realizada);
-        setEstadoActa(todas ? 'cerrada' : 'en_taller');
-    }, [novedades, editando]);
 
     // Novedades helpers
     const novVacia = (): NovedadLocal => ({
@@ -373,18 +367,18 @@ export default function ActasTallerShow({ acta, vehiculos }: Props) {
                                         : <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />}
                                 </svg>
                             </div>
-                            <div>
-                                <p className="text-xs font-semibold text-foreground">
-                                    Estado del acta:{' '}
-                                    <span className={estadoActa === 'cerrada' ? 'text-green-700 dark:text-green-400' : 'text-amber-700 dark:text-amber-400'}>
-                                        {estadoActa === 'cerrada' ? 'Cerrada' : 'En taller'}
-                                    </span>
-                                </p>
-                                <p className="text-[10px] text-muted-foreground">
-                                    {estadoActa === 'cerrada'
-                                        ? 'Todas las novedades están realizadas.'
-                                        : 'Se cerrará cuando todas las novedades estén marcadas como realizadas.'}
-                                </p>
+                            <div className="flex-1">
+                                <p className="mb-1 text-xs font-semibold text-foreground">Estado del acta</p>
+                                <Select value={estadoActa} onValueChange={setEstadoActa}>
+                                    <SelectTrigger className="h-8 w-44 text-xs">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="en_taller">En taller</SelectItem>
+                                        <SelectItem value="cerrada">Cerrada</SelectItem>
+                                        <SelectItem value="cancelada">Cancelada</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </div>
                     )}
