@@ -21,7 +21,7 @@ import { FirmaPad, type FirmaPadHandle } from '@/pages/seguridad/pruebas/firma-p
 import { type BreadcrumbItem } from '@/types';
 import { Head, useForm } from '@inertiajs/react';
 import { CalendarClock, Camera, ClipboardList, Gauge, LoaderCircle, Paperclip, PenTool, ShieldCheck, Users, X } from 'lucide-react';
-import { FormEventHandler, useRef, useState } from 'react';
+import { FormEventHandler, useEffect, useRef, useState } from 'react';
 
 const breadcrumbsBase: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
@@ -312,6 +312,27 @@ export default function CreatePrueba({
     const colaboradorSeleccionado = colaboradores.find((c) => String(c.id) === data.colaborador_id);
 
     const firmaPadRef = useRef<FirmaPadHandle>(null);
+
+    // Precarga la última firma registrada al seleccionar un colaborador
+    useEffect(() => {
+        if (!data.colaborador_id) {
+            firmaPadRef.current?.clear();
+            return;
+        }
+        // En modo edición no sobreescribimos la firma existente
+        if (prueba) return;
+
+        fetch(route('seguridad.pruebas.ultima-firma', { colaborador: data.colaborador_id }))
+            .then((res) => res.json())
+            .then((json: { firma_url: string | null }) => {
+                if (json.firma_url) {
+                    firmaPadRef.current?.loadFromUrl(json.firma_url);
+                } else {
+                    firmaPadRef.current?.clear();
+                }
+            })
+            .catch(() => { /* ignorar errores de red */ });
+    }, [data.colaborador_id]);
     const evidenciaInputRef = useRef<HTMLInputElement>(null);
     const evidenciasInputRef = useRef<HTMLInputElement>(null);
     // Rutas guardadas en el servidor; nunca se mutan localmente, solo se marcan para borrar.

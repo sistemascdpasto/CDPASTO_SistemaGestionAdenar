@@ -4,6 +4,8 @@ import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 
 export interface FirmaPadHandle {
     getFile: () => Promise<File | null>;
+    loadFromUrl: (url: string) => Promise<void>;
+    clear: () => void;
 }
 
 export const FirmaPad = forwardRef<FirmaPadHandle>(function FirmaPad(_props, ref) {
@@ -62,12 +64,37 @@ export const FirmaPad = forwardRef<FirmaPadHandle>(function FirmaPad(_props, ref
                     resolve(blob ? new File([blob], 'firma.png', { type: 'image/png' }) : null);
                 }, 'image/png');
             }),
+        loadFromUrl: (url: string) =>
+            new Promise<void>((resolve) => {
+                const canvas = canvasRef.current;
+                const ctx = getContext();
+                if (!canvas || !ctx) { resolve(); return; }
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
+                    const x = (canvas.width - img.width * scale) / 2;
+                    const y = (canvas.height - img.height * scale) / 2;
+                    ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+                    setHasSignature(true);
+                    resolve();
+                };
+                img.onerror = () => resolve();
+                img.src = url;
+            }),
+        clear: () => {
+            const canvas = canvasRef.current;
+            const ctx = getContext();
+            if (canvas && ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+            setHasSignature(false);
+        },
     }));
 
     return (
         <div className="grid gap-2">
             <div className="flex items-center justify-between">
-                <Label>Firma del colaborador (opcional)</Label>
+                <Label>Firma del colaborador <span className="text-muted-foreground font-normal text-xs">(se precarga la última registrada)</span></Label>
                 {hasSignature && (
                     <Button type="button" variant="ghost" size="sm" onClick={limpiar}>
                         Limpiar

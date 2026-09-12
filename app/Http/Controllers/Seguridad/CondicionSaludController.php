@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 use Maatwebsite\Excel\Facades\Excel;
@@ -111,6 +112,7 @@ class CondicionSaludController extends Controller
                     'hora_ingreso' => $ingreso?->fecha_hora?->format('H:i'),
                     'estado_ingreso' => $ingreso?->estado,
                     'observacion_ingreso' => $ingreso?->observacion,
+                    'ingreso_id' => $ingreso?->id,
                     'hora_salida' => $salida?->fecha_hora?->format('H:i'),
                     'estado_salida' => $salida?->estado,
                     'observacion_salida' => $salida?->observacion,
@@ -172,5 +174,36 @@ class CondicionSaludController extends Controller
         ]);
 
         return back()->with('status', 'Firma registrada correctamente.');
+    }
+
+    /**
+     * Actualiza el estado y observación de un registro individual de
+     * condición de salud (ingreso o salida).
+     */
+    public function update(Request $request, CondicionSalud $condicion): RedirectResponse
+    {
+        $validated = $request->validate([
+            'estado' => ['required', Rule::in(['Bueno', 'Regular', 'Malo'])],
+            'observacion' => [
+                Rule::requiredIf(static fn () => in_array($request->input('estado'), ['Regular', 'Malo'], true)),
+                'nullable',
+                'string',
+                'max:2000',
+            ],
+        ]);
+
+        $condicion->update($validated);
+
+        return back()->with('status', 'Registro de condición de salud actualizado correctamente.');
+    }
+
+    /**
+     * Elimina un registro individual de condición de salud (ingreso o salida).
+     */
+    public function destroy(CondicionSalud $condicion): RedirectResponse
+    {
+        $condicion->delete();
+
+        return back()->with('status', 'Registro de condición de salud eliminado correctamente.');
     }
 }

@@ -11,12 +11,21 @@ return [
 
     // Opciones del selector "Indicador afectado".
     'indicadores' => [
+        'Adherencia a la secuencia',
+        'Adherencia en tiempo planeado',
+        'Adherencia a los kilómetros',
+        'Cashless',
+        'Delivery Experience (NPS)',
         'Devolución',
         'Entrega en rango',
         'Modulación',
-        'Adherencia a la secuencia',
-        'Cashless',
+        'Paradas no planeadas',
+        'Rechazos',
+        'RMD',
+        'Rotura',
+        'SAC',
         'Tiempo en ruta',
+        'Tiempo interno',
         'Tiempo medio de liberación',
     ],
 

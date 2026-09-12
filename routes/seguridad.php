@@ -34,10 +34,10 @@ use App\Http\Controllers\Seguridad\RecomendacionSeguimientoController;
 use App\Http\Controllers\Seguridad\RutaCriticaController;
 use Illuminate\Support\Facades\Route;
 
-// HU037: verificación pública del QR — intencionalmente fuera del grupo `auth`.
+// HU037: verificaciÃ³n pÃºblica del QR â€” intencionalmente fuera del grupo `auth`.
 Route::get('verificar-prueba/{prueba}/{token}', [PublicVerificationController::class, 'show'])->name('seguridad.verificacion');
 
-// Las rutas de colaboradores viven en routes/gente.php: el módulo es
+// Las rutas de colaboradores viven en routes/gente.php: el mÃ³dulo es
 // propiedad de Gente (crear/importar/editar/eliminar), con acceso de solo
 // lectura para Administrador, Seguridad, Reparto y Flota.
 
@@ -49,11 +49,12 @@ Route::middleware(['auth', 'active', 'role:Administrador|Seguridad'])
         Route::post('dispositivos/{dispositivo}/mantenimientos', [AlcoholimetroController::class, 'storeMantenimiento'])
             ->name('dispositivos.mantenimientos.store');
 
-        // Rutas específicas de "pruebas" antes del resource para que no choquen
-        // con la ruta comodín pruebas/{prueba}.
+        // Rutas especÃ­ficas de "pruebas" antes del resource para que no choquen
+        // con la ruta comodÃ­n pruebas/{prueba}.
         Route::get('pruebas/calendario', [PruebaAlcoholemiaController::class, 'calendario'])->name('pruebas.calendario');
         Route::get('pruebas/exportar/pdf', [PruebaAlcoholemiaController::class, 'exportarPdf'])->name('pruebas.exportar-pdf');
         Route::get('pruebas/exportar/excel', [PruebaAlcoholemiaController::class, 'exportarExcel'])->name('pruebas.exportar-excel');
+        Route::get('pruebas/ultima-firma/{colaborador}', [PruebaAlcoholemiaController::class, 'ultimaFirma'])->name('pruebas.ultima-firma');
         Route::resource('pruebas', PruebaAlcoholemiaController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update']);
 
         Route::get('condiciones-salud', [CondicionSaludController::class, 'index'])->name('condiciones-salud.index');
@@ -61,6 +62,8 @@ Route::middleware(['auth', 'active', 'role:Administrador|Seguridad'])
         Route::get('condiciones-salud/exportar/excel', [CondicionSaludController::class, 'exportarExcel'])->name('condiciones-salud.exportar-excel');
         Route::post('condiciones-salud', [CondicionSaludController::class, 'store'])->name('condiciones-salud.store');
         Route::post('condiciones-salud/{condicion}/firmar', [CondicionSaludController::class, 'firmar'])->name('condiciones-salud.firmar');
+        Route::patch('condiciones-salud/{condicion}', [CondicionSaludController::class, 'update'])->name('condiciones-salud.update');
+        Route::delete('condiciones-salud/{condicion}', [CondicionSaludController::class, 'destroy'])->name('condiciones-salud.destroy');
 
         Route::get('alertas', [AlertaController::class, 'index'])->name('alertas.index');
         Route::get('alertas/bell', [AlertaController::class, 'bell'])->name('alertas.bell');
@@ -72,15 +75,15 @@ Route::middleware(['auth', 'active', 'role:Administrador|Seguridad'])
         Route::get('rutas-criticas', [RutaCriticaController::class, 'index'])
             ->name('rutas-criticas.index');
 
-        // Rutas específicas de "acis" antes del resource-like get('acis/{aci}')
-        // para que no choquen con la ruta comodín.
+        // Rutas especÃ­ficas de "acis" antes del resource-like get('acis/{aci}')
+        // para que no choquen con la ruta comodÃ­n.
         Route::post('acis/importar', [AciImportController::class, 'store'])->name('acis.importar');
         Route::get('acis-consultar-qr', [AciConsultaSkapController::class, 'index'])->name('acis.consultar-qr');
         Route::get('acis-indicadores', [AciIndicadorController::class, 'index'])->name('acis.indicadores');
         Route::get('acis', [AciController::class, 'index'])->name('acis.index');
         Route::get('acis/{aci}', [AciController::class, 'show'])->name('acis.show');
 
-        // Rutas específicas de "evaluaciones-owd" antes del comodín
+        // Rutas especÃ­ficas de "evaluaciones-owd" antes del comodÃ­n
         // evaluaciones-owd/{evaluacionOwd} (HU-030 a HU-043).
         Route::post('evaluaciones-owd/importar', [EvaluacionOwdImportController::class, 'store'])->name('evaluaciones-owd.importar');
         Route::get('evaluaciones-owd/exportar', [EvaluacionOwdExportController::class, 'evaluaciones'])->name('evaluaciones-owd.exportar');
@@ -96,7 +99,7 @@ Route::middleware(['auth', 'active', 'role:Administrador|Seguridad'])
         Route::get('evaluaciones-owd', [EvaluacionOwdController::class, 'index'])->name('evaluaciones-owd.index');
         Route::get('evaluaciones-owd/{evaluacionOwd}', [EvaluacionOwdController::class, 'show'])->name('evaluaciones-owd.show');
 
-        // Planes de acción generados a partir de incumplimientos OWD (HU-039/042).
+        // Planes de acciÃ³n generados a partir de incumplimientos OWD (HU-039/042).
         Route::get('planes-accion-owd/priorizacion', [PlanAccionOwdController::class, 'priorizacion'])->name('planes-accion-owd.priorizacion');
         Route::get('planes-accion-owd/exportar', [EvaluacionOwdExportController::class, 'planesAccion'])->name('planes-accion-owd.exportar');
         Route::get('planes-accion-owd', [PlanAccionOwdController::class, 'index'])->name('planes-accion-owd.index');
@@ -105,23 +108,23 @@ Route::middleware(['auth', 'active', 'role:Administrador|Seguridad'])
             ->name('planes-accion-owd.seguimientos.store');
 
         // Vista de consulta de SST para la Encuesta de Morbilidad Sentida
-        // (HU-01 a HU-10). La sección psicosocial (9) solo es visible aquí
+        // (HU-01 a HU-10). La secciÃ³n psicosocial (9) solo es visible aquÃ­
         // porque esta pantalla ya vive dentro del grupo role:Administrador|Seguridad.
         Route::get('encuestas-morbilidad', [EncuestaMorbilidadController::class, 'index'])->name('encuestas-morbilidad.index');
         Route::get('encuestas-morbilidad/{encuestaMorbilidad}', [EncuestaMorbilidadController::class, 'show'])->name('encuestas-morbilidad.show');
 
-        // Gestión dinámica del catálogo de preguntas de morbilidad (solo Administrador | Seguridad)
+        // GestiÃ³n dinÃ¡mica del catÃ¡logo de preguntas de morbilidad (solo Administrador | Seguridad)
         Route::get('encuestas-morbilidad-preguntas', [EncuestaMorbilidadPreguntaController::class, 'index'])->name('encuestas-morbilidad.preguntas.index');
         Route::post('encuestas-morbilidad-preguntas', [EncuestaMorbilidadPreguntaController::class, 'store'])->name('encuestas-morbilidad.preguntas.store');
         Route::patch('encuestas-morbilidad-preguntas/{pregunta}', [EncuestaMorbilidadPreguntaController::class, 'update'])->name('encuestas-morbilidad.preguntas.update');
         Route::delete('encuestas-morbilidad-preguntas/{pregunta}', [EncuestaMorbilidadPreguntaController::class, 'destroy'])->name('encuestas-morbilidad.preguntas.destroy');
 
-        // Gestión de secciones (imagen de portada)
+        // GestiÃ³n de secciones (imagen de portada)
         Route::get('encuestas-morbilidad-secciones', [EncuestaMorbilidadSeccionController::class, 'index'])->name('encuestas-morbilidad.secciones.index');
         Route::post('encuestas-morbilidad-secciones/{seccion}/portada', [EncuestaMorbilidadSeccionController::class, 'subirPortada'])->name('encuestas-morbilidad.secciones.portada');
         Route::delete('encuestas-morbilidad-secciones/{seccion}/portada', [EncuestaMorbilidadSeccionController::class, 'eliminarPortada'])->name('encuestas-morbilidad.secciones.portada.destroy');
 
-        // Exámenes médicos ocupacionales (HU-045 y siguientes, Fase 1).
+        // ExÃ¡menes mÃ©dicos ocupacionales (HU-045 y siguientes, Fase 1).
         Route::get('examenes-medicos-indicadores', [ExamenMedicoIndicadorController::class, 'index'])->name('examenes-medicos.indicadores');
         Route::get('examenes-medicos-catalogo', [ExamenCatalogoController::class, 'index'])->name('examenes-medicos.catalogo.index');
         Route::post('examenes-medicos-catalogo', [ExamenCatalogoController::class, 'store'])->name('examenes-medicos.catalogo.store');
@@ -134,12 +137,12 @@ Route::middleware(['auth', 'active', 'role:Administrador|Seguridad'])
         Route::post('examenes-medicos-conceptos', [ConceptoAptitudController::class, 'store'])->name('examenes-medicos.conceptos.store');
         Route::patch('examenes-medicos-conceptos/{conceptoAptitud}', [ConceptoAptitudController::class, 'update'])->name('examenes-medicos.conceptos.update');
 
-        // Catálogo de recomendaciones (HU-054, Fase 2).
+        // CatÃ¡logo de recomendaciones (HU-054, Fase 2).
         Route::get('examenes-medicos-recomendaciones', [RecomendacionCatalogoController::class, 'index'])->name('examenes-medicos.recomendaciones.catalogo.index');
         Route::post('examenes-medicos-recomendaciones', [RecomendacionCatalogoController::class, 'store'])->name('examenes-medicos.recomendaciones.catalogo.store');
         Route::patch('examenes-medicos-recomendaciones/{recomendacion}', [RecomendacionCatalogoController::class, 'update'])->name('examenes-medicos.recomendaciones.catalogo.update');
 
-        // Rutas específicas antes del comodín examenes-medicos/{evaluacion}.
+        // Rutas especÃ­ficas antes del comodÃ­n examenes-medicos/{evaluacion}.
         Route::get('examenes-medicos/exportar/basica', [EvaluacionMedicaExportController::class, 'basica'])->name('examenes-medicos.exportar.basica');
         Route::get('examenes-medicos/exportar/completa', [EvaluacionMedicaExportController::class, 'completa'])->name('examenes-medicos.exportar.completa');
         Route::get('examenes-medicos/crear', [EvaluacionMedicaController::class, 'create'])->name('examenes-medicos.create');
@@ -160,7 +163,7 @@ Route::middleware(['auth', 'active', 'role:Administrador|Seguridad'])
         Route::patch('examenes-medicos/{evaluacion}/concepto-aptitud', [EvaluacionMedicaController::class, 'actualizarConceptoAptitud'])
             ->name('examenes-medicos.concepto-aptitud');
 
-        // Recomendaciones de una evaluación y su seguimiento (HU-054/055).
+        // Recomendaciones de una evaluaciÃ³n y su seguimiento (HU-054/055).
         Route::post('examenes-medicos/{evaluacion}/recomendaciones', [EvaluacionRecomendacionController::class, 'store'])
             ->name('examenes-medicos.recomendaciones.store');
         Route::patch('examenes-medicos/{evaluacion}/recomendaciones/{evaluacionRecomendacion}/activa', [EvaluacionRecomendacionController::class, 'toggleActiva'])
@@ -189,3 +192,4 @@ Route::middleware(['auth', 'active', 'role:Administrador|Seguridad'])
         Route::patch('examenes-medicos/{evaluacion}/egreso/seguimiento', [EvaluacionMedicaController::class, 'actualizarSeguimientoEgreso'])
             ->name('examenes-medicos.egreso.seguimiento');
     });
+

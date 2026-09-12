@@ -11,6 +11,7 @@ use App\Models\Seguridad\PruebaAlcoholemia;
 use App\Services\Seguridad\QrCodeGenerator;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -136,7 +137,7 @@ class PruebaAlcoholemiaController extends Controller
             'estado' => $esProgramacion ? 'programada' : 'realizada',
         ]);
 
-        // Eliminar evidencias marcadas para eliminación
+        // Eliminar evidencias marcadas para eliminaciÃ³n
         $deletedIndices = $request->input('deleted_evidencias_indices', []);
         if (! empty($deletedIndices)) {
             $evidencias = $prueba->evidencias()->get();
@@ -258,6 +259,23 @@ class PruebaAlcoholemiaController extends Controller
     }
 
     /**
+     * Devuelve la URL de la última firma registrada para un colaborador.
+     * GET /modules/seguridad/pruebas/ultima-firma/{colaborador}
+     */
+    public function ultimaFirma(Colaborador $colaborador): JsonResponse
+    {
+        $ultima = PruebaAlcoholemia::query()
+            ->where('colaborador_id', $colaborador->id)
+            ->whereNotNull('firma_path')
+            ->latest('fecha_hora')
+            ->first(['firma_path']);
+
+        return response()->json([
+            'firma_url' => $ultima ? '/storage/' . $ultima->firma_path : null,
+        ]);
+    }
+
+    /**
      * @return array<string, string>
      */
     private function filtrosDesdeRequest(Request $request): array
@@ -271,3 +289,4 @@ class PruebaAlcoholemiaController extends Controller
         ];
     }
 }
+

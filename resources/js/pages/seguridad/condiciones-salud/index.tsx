@@ -1,16 +1,28 @@
 import HeadingSmall from '@/components/heading-small';
+import { IconActionButton } from '@/components/icon-action-button';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import {
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
 import { FirmaPad, type FirmaPadHandle } from '@/pages/seguridad/pruebas/firma-pad';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { FileSpreadsheet, FileText, LoaderCircle, PenLine, Search } from 'lucide-react';
-import { FormEventHandler, useRef, useState } from 'react';
+import { FileSpreadsheet, FileText, LoaderCircle, Pencil, PenLine, Search, Trash2 } from 'lucide-react';
+import { FormEventHandler, useEffect, useRef, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
@@ -44,6 +56,7 @@ interface RegistroFila {
     hora_ingreso: string | null;
     estado_ingreso: string | null;
     observacion_ingreso: string | null;
+    ingreso_id: number | null;
     hora_salida: string | null;
     estado_salida: string | null;
     observacion_salida: string | null;
@@ -122,6 +135,201 @@ function FirmarSupervisorDialog({ salidaId }: { salidaId: number }) {
                 </form>
             </DialogContent>
         </Dialog>
+    );
+}
+
+interface EditarCondicionDialogProps {
+    condicionId: number;
+    momento: 'ingreso' | 'salida';
+    estadoActual: string | null;
+    observacionActual: string | null;
+    colaboradorNombre: string;
+    fecha: string;
+}
+
+function EditarCondicionDialog({
+    condicionId,
+    momento,
+    estadoActual,
+    observacionActual,
+    colaboradorNombre,
+    fecha,
+}: EditarCondicionDialogProps) {
+    const [open, setOpen] = useState(false);
+    const { data, setData, patch, processing, errors, reset } = useForm<{ estado: string; observacion: string }>({
+        estado: estadoActual ?? 'Bueno',
+        observacion: observacionActual ?? '',
+    });
+
+    useEffect(() => {
+        if (open) {
+            setData({ estado: estadoActual ?? 'Bueno', observacion: observacionActual ?? '' });
+        }
+    }, [open, estadoActual, observacionActual, setData]);
+
+    const submit: FormEventHandler = (e) => {
+        e.preventDefault();
+        patch(route('seguridad.condiciones-salud.update', condicionId), {
+            preserveScroll: true,
+            onSuccess: () => {
+                setOpen(false);
+                reset();
+            },
+        });
+    };
+
+    const momentoLabel = momento === 'ingreso' ? 'Ingreso' : 'Salida';
+    const requiereObservacion = data.estado === 'Regular' || data.estado === 'Malo';
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+                <IconActionButton icon={Pencil} label={`Editar ${momentoLabel}`} />
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>
+                        Editar condición de salud — {momentoLabel}
+                    </DialogTitle>
+                    <DialogDescription>
+                        {colaboradorNombre} · {fecha}
+                    </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={submit} className="space-y-4">
+                    <div className="grid gap-2">
+                        <Label htmlFor={`estado-${condicionId}-${momento}`}>Estado</Label>
+                        <Select value={data.estado} onValueChange={(value) => setData('estado', value)}>
+                            <SelectTrigger id={`estado-${condicionId}-${momento}`}>
+                                <SelectValue placeholder="Seleccione el estado" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="Bueno">Bueno</SelectItem>
+                                <SelectItem value="Regular">Regular</SelectItem>
+                                <SelectItem value="Malo">Malo</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        {errors.estado && <p className="text-xs text-destructive">{errors.estado}</p>}
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor={`observacion-${condicionId}-${momento}`}>
+                            Observación {requiereObservacion && <span className="text-destructive">*</span>}
+                        </Label>
+                        <Textarea
+                            id={`observacion-${condicionId}-${momento}`}
+                            value={data.observacion}
+                            onChange={(e) => setData('observacion', e.target.value)}
+                            placeholder={requiereObservacion ? 'Describa la condición del colaborador' : 'Observaciones adicionales (opcional)'}
+                            rows={3}
+                        />
+                        {errors.observacion && <p className="text-xs text-destructive">{errors.observacion}</p>}
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild>
+                            <Button type="button" variant="secondary">
+                                Cancelar
+                            </Button>
+                        </DialogClose>
+                        <Button type="submit" disabled={processing}>
+                            {processing && <LoaderCircle className="size-4 animate-spin" />}
+                            Guardar cambios
+                        </Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+interface EliminarCondicionDialogProps {
+    condicionId: number;
+    momento: 'ingreso' | 'salida';
+    colaboradorNombre: string;
+    fecha: string;
+}
+
+function EliminarCondicionDialog({ condicionId, momento, colaboradorNombre, fecha }: EliminarCondicionDialogProps) {
+    const momentoLabel = momento === 'ingreso' ? 'Ingreso' : 'Salida';
+
+    const destroy = () => {
+        router.delete(route('seguridad.condiciones-salud.destroy', condicionId), { preserveScroll: true });
+    };
+
+    return (
+        <Dialog>
+            <DialogTrigger asChild>
+                <IconActionButton
+                    icon={Trash2}
+                    label={`Eliminar ${momentoLabel}`}
+                    className="text-destructive hover:text-destructive"
+                />
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>
+                        ¿Eliminar registro de {momentoLabel.toLowerCase()}?
+                    </DialogTitle>
+                    <DialogDescription>
+                        Esta acción eliminará permanentemente el registro de condición de salud de{' '}
+                        <strong>{colaboradorNombre}</strong> del día {fecha}.
+                    </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                    <DialogClose asChild>
+                        <Button variant="secondary">Cancelar</Button>
+                    </DialogClose>
+                    <Button variant="destructive" onClick={destroy}>
+                        Eliminar
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+function AccionesFila({ fila }: { fila: RegistroFila }) {
+    const nombreCompleto = `${fila.colaborador.nombres} ${fila.colaborador.apellidos}`;
+
+    return (
+        <div className="flex flex-col gap-2">
+            {fila.ingreso_id && (
+                <div className="flex items-center gap-1">
+                    <span className="text-[10px] uppercase text-muted-foreground w-14">Ingreso</span>
+                    <EditarCondicionDialog
+                        condicionId={fila.ingreso_id}
+                        momento="ingreso"
+                        estadoActual={fila.estado_ingreso}
+                        observacionActual={fila.observacion_ingreso}
+                        colaboradorNombre={nombreCompleto}
+                        fecha={fila.fecha}
+                    />
+                    <EliminarCondicionDialog
+                        condicionId={fila.ingreso_id}
+                        momento="ingreso"
+                        colaboradorNombre={nombreCompleto}
+                        fecha={fila.fecha}
+                    />
+                </div>
+            )}
+            {fila.salida_id && (
+                <div className="flex items-center gap-1">
+                    <span className="text-[10px] uppercase text-muted-foreground w-14">Salida</span>
+                    <EditarCondicionDialog
+                        condicionId={fila.salida_id}
+                        momento="salida"
+                        estadoActual={fila.estado_salida}
+                        observacionActual={fila.observacion_salida}
+                        colaboradorNombre={nombreCompleto}
+                        fecha={fila.fecha}
+                    />
+                    <EliminarCondicionDialog
+                        condicionId={fila.salida_id}
+                        momento="salida"
+                        colaboradorNombre={nombreCompleto}
+                        fecha={fila.fecha}
+                    />
+                </div>
+            )}
+        </div>
     );
 }
 
@@ -209,12 +417,13 @@ export default function CondicionesSaludIndex({ registros, filters }: { registro
                                 <TableHead>Observación salida</TableHead>
                                 <TableHead>Firma Colaborador</TableHead>
                                 <TableHead>Firma Supervisor</TableHead>
+                                <TableHead className="text-right">Acciones</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {registros.data.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={12} className="text-muted-foreground py-6 text-center">
+                                    <TableCell colSpan={13} className="text-muted-foreground py-6 text-center">
                                         No se encontraron registros en el rango seleccionado.
                                     </TableCell>
                                 </TableRow>
@@ -253,6 +462,9 @@ export default function CondicionesSaludIndex({ registros, filters }: { registro
                                         ) : (
                                             <span className="text-muted-foreground">—</span>
                                         )}
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        <AccionesFila fila={fila} />
                                     </TableCell>
                                 </TableRow>
                             ))}
