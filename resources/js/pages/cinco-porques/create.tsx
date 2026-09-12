@@ -168,7 +168,8 @@ export default function CincoPorquesCreate({
 
     const nivelDefinido = (i: number) => textoNivel(niveles[i]).length > 0;
     const todosLosPorques = NIVELES.every((_, i) => nivelDefinido(i));
-    const puedeGuardar = cabeceraLista && todosLosPorques && causaRaiz.trim() !== '' && planAccion.trim() !== '' && !enviando;
+    const puedeGuardar =
+        vehiculo !== '' && cabeceraLista && todosLosPorques && causaRaiz.trim() !== '' && planAccion.trim() !== '' && !enviando;
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
@@ -469,10 +470,15 @@ export default function CincoPorquesCreate({
                         </Card>
                     )}
 
-                    <Button type="submit" disabled={!puedeGuardar}>
-                        {enviando && <LoaderCircle className="size-4 animate-spin" />}
-                        Guardar análisis
-                    </Button>
+                    <div className="flex flex-col items-start gap-1.5">
+                        <Button type="submit" disabled={!puedeGuardar}>
+                            {enviando && <LoaderCircle className="size-4 animate-spin" />}
+                            Guardar análisis
+                        </Button>
+                        {vehiculo === '' && todosLosPorques && causaRaiz.trim() !== '' && planAccion.trim() !== '' && (
+                            <p className="text-muted-foreground text-xs">Selecciona la placa del vehículo para poder guardar el análisis.</p>
+                        )}
+                    </div>
                 </form>
             </div>
         </AppLayout>
