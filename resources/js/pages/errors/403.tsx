@@ -5,7 +5,9 @@ import { ShieldAlert } from 'lucide-react';
 export default function Forbidden() {
     return (
         <div className="bg-background flex min-h-svh flex-col items-center justify-center gap-6 p-6 text-center md:p-10">
-            <Head title="Acceso denegado" />
+            <Head title="Acceso denegado">
+                <meta name="robots" content="noindex, nofollow" />
+            </Head>
             <div className="flex size-16 items-center justify-center rounded-full bg-destructive/10 text-destructive">
                 <ShieldAlert className="size-8" />
             </div>

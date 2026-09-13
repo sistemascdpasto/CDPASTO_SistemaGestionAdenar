@@ -113,8 +113,21 @@ export default function Welcome() {
     return (
         <>
             <Head title="ADENAR S.A.S. — Sistema Integral de Gestión">
-                <link rel="preconnect" href="https://fonts.bunny.net" />
-                <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet" />
+                <meta
+                    name="description"
+                    content="Sistema integral de gestión de ADENAR S.A.S., distribuidor autorizado Bavaria en Nariño: seguridad, reparto, gente y flota en una sola plataforma."
+                />
+                <meta name="robots" content="index, follow" />
+                <link rel="canonical" href={typeof window !== 'undefined' ? window.location.origin + '/' : '/'} />
+
+                <meta property="og:type" content="website" />
+                <meta property="og:title" content="ADENAR S.A.S. — Sistema Integral de Gestión" />
+                <meta
+                    property="og:description"
+                    content="Seguridad, reparto, gente y flota digitalizados en una sola plataforma para ADENAR S.A.S., distribuidor autorizado Bavaria en Nariño."
+                />
+                <meta property="og:image" content="/images/logo-adenar.webp" />
+                <meta name="twitter:card" content="summary_large_image" />
             </Head>
 
             <div className="min-h-screen overflow-x-hidden bg-background text-foreground">
@@ -272,7 +285,7 @@ export default function Welcome() {
                                             no recorte ni distorsione la imagen al aplicar object-cover. */}
                                         <div className="aspect-[2/1] w-full overflow-hidden rounded-lg">
                                             <TiltedCard
-                                                imageSrc="/images/Logo adenar.png"
+                                                imageSrc="/images/logo-adenar.webp"
                                                 altText="ADENAR S.A.S. — Almacén Distribuidora Nariño S.A.S., distribuidor autorizado de Bavaria"
                                                 containerWidth="100%"
                                                 containerHeight="100%"
