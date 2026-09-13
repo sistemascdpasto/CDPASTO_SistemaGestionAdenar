@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/react';
-import { AlertCircle, CheckCircle2, Clock, Download, FileSpreadsheet, HelpCircle, Search, Trash2, Upload, UserCheck, Users } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Clock, Download, FileSpreadsheet, HelpCircle, Search, Trash2, Upload, UserCheck, Users, X } from 'lucide-react';
 import { useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -180,10 +180,10 @@ export default function SacIndex({ registros, kpis, options, filters }: Props) {
                 {/* Encabezado y Acciones */}
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
+                        <h1 className="text-2xl font-bold tracking-tight text-foreground">
                             SAC - Servicio al Cliente
                         </h1>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                        <p className="text-sm text-muted-foreground">
                             Gestión, seguimiento e importación de casos de Servicio al Cliente asociados a colaboradores.
                         </p>
                     </div>
@@ -233,45 +233,45 @@ export default function SacIndex({ registros, kpis, options, filters }: Props) {
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-medium text-gray-500">Total Casos</CardTitle>
+                            <CardTitle className="text-sm font-medium text-muted-foreground">Total Casos</CardTitle>
                             <FileSpreadsheet className="h-4 w-4 text-amber-500" />
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold">{safeKpis.total}</div>
-                            <p className="text-xs text-gray-500">Casos registrados en SAC</p>
+                            <p className="text-xs text-muted-foreground">Casos registrados en SAC</p>
                         </CardContent>
                     </Card>
 
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-medium text-gray-500">Casos Resueltos</CardTitle>
+                            <CardTitle className="text-sm font-medium text-muted-foreground">Casos Resueltos</CardTitle>
                             <CheckCircle2 className="h-4 w-4 text-emerald-500" />
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold text-emerald-600">{safeKpis.resueltos}</div>
-                            <p className="text-xs text-gray-500">Con fecha de solución registrada</p>
+                            <p className="text-xs text-muted-foreground">Con fecha de solución registrada</p>
                         </CardContent>
                     </Card>
 
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-medium text-gray-500">Responsables Asociados</CardTitle>
+                            <CardTitle className="text-sm font-medium text-muted-foreground">Responsables Asociados</CardTitle>
                             <UserCheck className="h-4 w-4 text-blue-500" />
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold text-blue-600">{safeKpis.asociados}</div>
-                            <p className="text-xs text-gray-500">Vinculados a tabla colaboradores</p>
+                            <p className="text-xs text-muted-foreground">Vinculados a tabla colaboradores</p>
                         </CardContent>
                     </Card>
 
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-medium text-gray-500">% Coincidencia Colaborador</CardTitle>
+                            <CardTitle className="text-sm font-medium text-muted-foreground">% Coincidencia Colaborador</CardTitle>
                             <Users className="h-4 w-4 text-purple-500" />
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold text-purple-600">{safeKpis.porcentaje_asociados}%</div>
-                            <p className="text-xs text-gray-500">Efectividad del mapeo automático</p>
+                            <p className="text-xs text-muted-foreground">Efectividad del mapeo automático</p>
                         </CardContent>
                     </Card>
                 </div>
@@ -282,7 +282,7 @@ export default function SacIndex({ registros, kpis, options, filters }: Props) {
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
                             <div className="lg:col-span-2">
                                 <div className="relative">
-                                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+                                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                                     <Input
                                         placeholder="Buscar caso, cuenta, contacto, placa..."
                                         value={search}
@@ -384,7 +384,7 @@ export default function SacIndex({ registros, kpis, options, filters }: Props) {
 
                                 {(search || mes !== 'todos' || anio !== 'todos' || subcategoria !== 'todas' || responsable !== 'todos') && (
                                     <Button variant="ghost" size="sm" onClick={resetFilters} title="Limpiar filtros">
-                                        X
+                                        <X className="h-4 w-4" />
                                     </Button>
                                 )}
                             </div>
@@ -398,7 +398,7 @@ export default function SacIndex({ registros, kpis, options, filters }: Props) {
                         <div className="overflow-x-auto">
                             <Table>
                                 <TableHeader>
-                                    <TableRow className="bg-gray-50 dark:bg-gray-800/50">
+                                    <TableRow className="bg-muted dark:bg-muted">
                                         <TableHead className="w-[120px]">Caso / Fecha</TableHead>
                                         <TableHead>Cuenta & Contacto</TableHead>
                                         <TableHead>Motivo / Subcategoría</TableHead>
@@ -412,7 +412,7 @@ export default function SacIndex({ registros, kpis, options, filters }: Props) {
                                 <TableBody>
                                     {safeRegistros.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={8} className="h-32 text-center text-gray-500">
+                                            <TableCell colSpan={8} className="h-32 text-center text-muted-foreground">
                                                 No se encontraron registros de SAC con los filtros aplicados.
                                             </TableCell>
                                         </TableRow>
@@ -423,7 +423,7 @@ export default function SacIndex({ registros, kpis, options, filters }: Props) {
                                                     <div className="text-amber-700 dark:text-amber-400 font-semibold">
                                                         {row.numero_caso_estandar || `#${row.id}`}
                                                     </div>
-                                                    <div className="text-xs text-gray-500">
+                                                    <div className="text-xs text-muted-foreground">
                                                         {row.fecha || 'Sin fecha'}
                                                     </div>
                                                     {row.anio && (
@@ -434,11 +434,11 @@ export default function SacIndex({ registros, kpis, options, filters }: Props) {
                                                 </TableCell>
 
                                                 <TableCell className="align-top">
-                                                    <div className="font-medium text-gray-900 dark:text-gray-100">
+                                                    <div className="font-medium text-foreground">
                                                         {row.nombre_cuenta || '-'}
                                                     </div>
                                                     {row.nombre_contacto && (
-                                                        <div className="text-xs text-gray-500">
+                                                        <div className="text-xs text-muted-foreground">
                                                             Contacto: {row.nombre_contacto}
                                                         </div>
                                                     )}
@@ -462,14 +462,14 @@ export default function SacIndex({ registros, kpis, options, filters }: Props) {
                                                         </Badge>
                                                     )}
                                                     {row.documento_transporte && (
-                                                        <div className="text-xs text-gray-500 mt-0.5">
+                                                        <div className="text-xs text-muted-foreground mt-0.5">
                                                             {row.documento_transporte}
                                                         </div>
                                                     )}
                                                 </TableCell>
 
                                                 <TableCell className="align-top text-sm">
-                                                    {row.responsable || <span className="text-gray-400 italic">No especificado</span>}
+                                                    {row.responsable || <span className="text-muted-foreground italic">No especificado</span>}
                                                 </TableCell>
 
                                                 <TableCell className="align-top">
@@ -479,12 +479,12 @@ export default function SacIndex({ registros, kpis, options, filters }: Props) {
                                                                 <CheckCircle2 className="h-3.5 w-3.5" />
                                                                 {row.colaborador.nombres} {row.colaborador.apellidos}
                                                             </span>
-                                                            <span className="text-xs text-gray-500">
+                                                            <span className="text-xs text-muted-foreground">
                                                                 CC: {row.colaborador.cedula}
                                                             </span>
                                                         </div>
                                                     ) : (
-                                                        <Badge variant="outline" className="bg-gray-100 dark:bg-gray-800 text-gray-500 border-gray-300">
+                                                        <Badge variant="outline" className="bg-muted text-muted-foreground border-border">
                                                             Sin Coincidencia
                                                         </Badge>
                                                     )}
@@ -502,7 +502,7 @@ export default function SacIndex({ registros, kpis, options, filters }: Props) {
                                                             </div>
                                                         )}
                                                         {row.tiempo_cierre_caso && (
-                                                            <div className="text-gray-500">
+                                                            <div className="text-muted-foreground">
                                                                 Tiempo: {row.tiempo_cierre_caso}h
                                                             </div>
                                                         )}
@@ -516,12 +516,12 @@ export default function SacIndex({ registros, kpis, options, filters }: Props) {
 
                                                 <TableCell className="align-top max-w-[200px]">
                                                     {row.descripcion && (
-                                                        <p className="text-xs text-gray-700 dark:text-gray-300 line-clamp-2" title={row.descripcion}>
+                                                        <p className="text-xs text-foreground line-clamp-2" title={row.descripcion}>
                                                             {row.descripcion}
                                                         </p>
                                                     )}
                                                     {row.comentario && (
-                                                        <p className="text-[11px] text-gray-500 italic mt-1 line-clamp-1" title={row.comentario}>
+                                                        <p className="text-[11px] text-muted-foreground italic mt-1 line-clamp-1" title={row.comentario}>
                                                             {row.comentario}
                                                         </p>
                                                     )}
@@ -538,7 +538,7 @@ export default function SacIndex({ registros, kpis, options, filters }: Props) {
                 {/* Paginación */}
                 {registros && registros.last_page > 1 && (
                     <div className="flex items-center justify-between pt-2">
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-muted-foreground">
                             Mostrando {registros.data.length} de {registros.total} registros (Página {registros.current_page} de {registros.last_page})
                         </p>
                         <div className="flex items-center gap-2">
@@ -577,12 +577,12 @@ export default function SacIndex({ registros, kpis, options, filters }: Props) {
                     </DialogHeader>
 
                     <form onSubmit={handleImportSubmit} className="space-y-4 py-2">
-                        <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 p-6 text-center hover:border-amber-500 transition-colors">
-                            <FileSpreadsheet className="h-10 w-10 text-gray-400 mb-2" />
+                        <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-border p-6 text-center hover:border-amber-500 transition-colors">
+                            <FileSpreadsheet className="h-10 w-10 text-muted-foreground mb-2" />
                             <label htmlFor="sac-file-input" className="cursor-pointer text-sm font-medium text-amber-600 hover:text-amber-700">
                                 {importFile ? importFile.name : 'Haga clic para seleccionar archivo'}
                             </label>
-                            <p className="text-xs text-gray-500 mt-1">Soporta .xlsx, .xls o .csv (Max 20MB)</p>
+                            <p className="text-xs text-muted-foreground mt-1">Soporta .xlsx, .xls o .csv (Max 20MB)</p>
                             <input
                                 id="sac-file-input"
                                 type="file"
