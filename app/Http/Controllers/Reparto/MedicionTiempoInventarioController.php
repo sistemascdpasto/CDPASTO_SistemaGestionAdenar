@@ -8,9 +8,12 @@ use App\Models\Flota\Vehiculo;
 use App\Models\Seguridad\Colaborador;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Inertia\Inertia;
 use Inertia\Response;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 
 class MedicionTiempoInventarioController extends Controller
 {
@@ -142,6 +145,7 @@ class MedicionTiempoInventarioController extends Controller
                 'hora_inicio' => $registro->hora_inicio?->format('H:i'),
                 'hora_fin' => $registro->hora_fin?->format('H:i'),
                 'duracion_minutos' => $registro->duracion_minutos,
+                'meta_minutos' => $registro->meta_minutos,
                 'tipo_inventario' => $registro->tipo_inventario,
                 'creado_por' => $registro->creado_por,
                 'fecha_creacion' => $registro->fecha_creacion?->toIso8601String(),
@@ -490,5 +494,173 @@ class MedicionTiempoInventarioController extends Controller
         };
 
         return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Importar registros desde un archivo Excel.
+     */
+    public function importar(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'archivo' => 'required|file|mimes:xlsx,xls,csv|max:10240',
+        ]);
+
+        $file = $request->file('archivo');
+
+        try {
+            $spreadsheet = IOFactory::load($file->getPathname());
+            $worksheet = $spreadsheet->getActiveSheet();
+            $rows = $worksheet->toArray(null, true, true, true);
+        } catch (\Exception $e) {
+            return back()->with('error', 'Error al leer el archivo Excel: ' . $e->getMessage());
+        }
+
+        if (count($rows) < 2) {
+            return back()->with('error', 'El archivo no contiene datos.');
+        }
+
+        // Obtener el encabezado y normalizar
+        $header = array_shift($rows);
+        $headerMap = [];
+        foreach ($header as $col => $val) {
+            if ($val) {
+                $headerMap[trim(mb_strtolower($val))] = $col;
+            }
+        }
+
+        $expectedColumns = ['hora de inicio', 'hora de finalización', 'fecha', 'nombre responsable de ruta', 'placa', 'meta'];
+        $missing = [];
+        foreach ($expectedColumns as $col) {
+            // Buscamos si existe alguna columna que contenga la palabra (ej: "hora de inicio", "hora inicio")
+            $found = false;
+            foreach ($headerMap as $h => $c) {
+                if (str_contains(str_replace('ó', 'o', $h), str_replace('ó', 'o', $col))) {
+                    $found = true;
+                    break;
+                }
+            }
+            if (!$found) {
+                $missing[] = $col;
+            }
+        }
+        
+        // Si no encuentra por coincidencia parcial, usar un mapa mÃ¡s flexible
+        $flexMap = [
+            'fecha' => 'fecha',
+            'hora de inicio' => 'hora_inicio',
+            'hora inicio' => 'hora_inicio',
+            'inicio' => 'hora_inicio',
+            'hora de finalización' => 'hora_fin',
+            'hora de finalizacion' => 'hora_fin',
+            'hora finalizacion' => 'hora_fin',
+            'hora fin' => 'hora_fin',
+            'nombre responsable de ruta' => 'colaborador',
+            'responsable' => 'colaborador',
+            'nombre' => 'colaborador',
+            'placa' => 'placa',
+            'meta' => 'meta',
+        ];
+
+        $colMapping = [];
+        foreach ($headerMap as $h => $colLetter) {
+            foreach ($flexMap as $key => $field) {
+                if (str_contains(str_replace('ó', 'o', $h), $key)) {
+                    if (!isset($colMapping[$field])) {
+                        $colMapping[$field] = $colLetter;
+                    }
+                }
+            }
+        }
+
+        if (!isset($colMapping['fecha'], $colMapping['hora_inicio'], $colMapping['hora_fin'], $colMapping['placa'], $colMapping['colaborador'])) {
+            return back()->with('error', 'El archivo no tiene las columnas requeridas (Fecha, Hora de inicio, Hora de finalización, Placa, Responsable).');
+        }
+
+        $imported = 0;
+        $errors = 0;
+
+        DB::beginTransaction();
+        try {
+            foreach ($rows as $row) {
+                $fechaRaw = $row[$colMapping['fecha']] ?? null;
+                $horaInicioRaw = $row[$colMapping['hora_inicio']] ?? null;
+                $horaFinRaw = $row[$colMapping['hora_fin']] ?? null;
+                $placaRaw = $row[$colMapping['placa']] ?? null;
+                $colaboradorRaw = $row[$colMapping['colaborador']] ?? null;
+                $metaRaw = isset($colMapping['meta']) ? ($row[$colMapping['meta']] ?? null) : null;
+
+                if (!$fechaRaw || !$placaRaw || !$colaboradorRaw) {
+                    continue;
+                }
+
+                // Limpiar espacios
+                $placaRaw = strtoupper(trim($placaRaw));
+                $colaboradorRaw = trim($colaboradorRaw);
+
+                // Buscar vehiculo
+                $vehiculo = Vehiculo::where('placa', $placaRaw)->first();
+                if (!$vehiculo) continue;
+
+                // Buscar colaborador
+                $colaborador = Colaborador::where('nombres', 'like', "%{$colaboradorRaw}%")
+                    ->orWhere('apellidos', 'like', "%{$colaboradorRaw}%")
+                    ->orWhere(DB::raw("CONCAT(nombres, ' ', apellidos)"), 'like', "%{$colaboradorRaw}%")
+                    ->first();
+                if (!$colaborador) continue;
+
+                // Parsear fecha
+                $fecha = null;
+                if (is_numeric($fechaRaw)) {
+                    $fecha = ExcelDate::excelToDateTimeObject($fechaRaw)->format('Y-m-d');
+                } else {
+                    $fecha = \Carbon\Carbon::parse(str_replace('/', '-', $fechaRaw))->format('Y-m-d');
+                }
+
+                // Parsear horas
+                $horaInicio = null;
+                if (is_numeric($horaInicioRaw)) {
+                    $horaInicio = ExcelDate::excelToDateTimeObject($horaInicioRaw)->format('H:i');
+                } elseif ($horaInicioRaw) {
+                    $horaInicio = \Carbon\Carbon::parse($horaInicioRaw)->format('H:i');
+                }
+
+                $horaFin = null;
+                if (is_numeric($horaFinRaw)) {
+                    $horaFin = ExcelDate::excelToDateTimeObject($horaFinRaw)->format('H:i');
+                } elseif ($horaFinRaw) {
+                    $horaFin = \Carbon\Carbon::parse($horaFinRaw)->format('H:i');
+                }
+
+                $duracion = null;
+                if ($horaInicio && $horaFin) {
+                    $ini = \Carbon\Carbon::parse($horaInicio);
+                    $fin = \Carbon\Carbon::parse($horaFin);
+                    $duracion = (int) $ini->diffInMinutes($fin);
+                }
+
+                $meta = is_numeric($metaRaw) ? (int)$metaRaw : null;
+
+                MedicionTiempoInventario::create([
+                    'fecha_medicion' => $fecha,
+                    'hora_inicio' => $horaInicio,
+                    'hora_fin' => $horaFin,
+                    'duracion_minutos' => $duracion,
+                    'meta_minutos' => $meta,
+                    'tipo_inventario' => 'importado',
+                    'user_id' => $request->user()->id,
+                    'colaborador_id' => $colaborador->id,
+                    'vehiculo_id' => $vehiculo->id,
+                    'creado_por' => $request->user()->name,
+                ]);
+
+                $imported++;
+            }
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Error al importar datos: ' . $e->getMessage());
+        }
+
+        return back()->with('status', "Importación completada. Se importaron $imported registros.");
     }
 }

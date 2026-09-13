@@ -17,6 +17,7 @@ class MedicionTiempoInventario extends Model
         'hora_inicio',
         'hora_fin',
         'duracion_minutos',
+        'meta_minutos',
         'tipo_inventario',
         'user_id',
         'colaborador_id',
@@ -29,6 +30,7 @@ class MedicionTiempoInventario extends Model
         'hora_inicio' => 'datetime:H:i',
         'hora_fin' => 'datetime:H:i',
         'duracion_minutos' => 'integer',
+        'meta_minutos' => 'integer',
         'fecha_creacion' => 'datetime',
     ];
 

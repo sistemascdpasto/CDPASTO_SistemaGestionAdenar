@@ -143,6 +143,8 @@ Route::middleware(['auth', 'active'])
         Route::middleware('role:Administrador|Reparto')->group(function () {
             Route::get('/medicion-tiempos-inventario', [MedicionTiempoInventarioController::class, 'index'])
                 ->name('medicion-tiempos-inventario.index');
+            Route::post('/medicion-tiempos-inventario/importar', [MedicionTiempoInventarioController::class, 'importar'])
+                ->name('medicion-tiempos-inventario.importar');
             Route::get('/medicion-tiempos-inventario-exportar', [MedicionTiempoInventarioController::class, 'exportar'])
                 ->name('medicion-tiempos-inventario.exportar');
             Route::get('/medicion-tiempos-inventario/{medicionTiempoInventario}', [MedicionTiempoInventarioController::class, 'show'])

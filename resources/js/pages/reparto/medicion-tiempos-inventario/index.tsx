@@ -49,6 +49,7 @@ interface MedicionTiempo {
     hora_inicio: string | null;
     hora_fin: string | null;
     duracion_minutos: number | null;
+    meta_minutos: number | null;
     tipo_inventario: string | null;
     creado_por: string | null;
     fecha_creacion: string | null;
@@ -307,6 +308,41 @@ export default function MedicionTiemposInventarioIndex({ registros, filters, pue
                         </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
+                        <form
+                            className="hidden"
+                            id="importForm"
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                const fileInput = (e.target as HTMLFormElement).elements.namedItem('archivo') as HTMLInputElement;
+                                if (fileInput.files?.length) {
+                                    router.post(route('reparto.medicion-tiempos-inventario.importar'), new FormData(e.target as HTMLFormElement), {
+                                        onSuccess: () => fileInput.value = '',
+                                    });
+                                }
+                            }}
+                        >
+                            <input
+                                type="file"
+                                name="archivo"
+                                id="archivoInput"
+                                accept=".xlsx,.xls,.csv"
+                                onChange={(e) => {
+                                    if (e.target.files?.length) {
+                                        document.getElementById('importForm')?.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+                                    }
+                                }}
+                            />
+                        </form>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1.5"
+                            onClick={() => document.getElementById('archivoInput')?.click()}
+                        >
+                            <Download className="h-3.5 w-3.5 rotate-180" />
+                            <span className="hidden sm:inline">Importar Excel</span>
+                            <span className="sm:hidden">Importar</span>
+                        </Button>
                         <a href={exportUrl}>
                             <Button variant="outline" size="sm" className="gap-1.5">
                                 <Download className="h-3.5 w-3.5" />
@@ -436,6 +472,7 @@ export default function MedicionTiemposInventarioIndex({ registros, filters, pue
                                             <TableHead className="text-xs">Inicio</TableHead>
                                             <TableHead className="text-xs">Fin</TableHead>
                                             <TableHead className="text-xs">Duración</TableHead>
+                                            <TableHead className="text-xs">Meta</TableHead>
                                             <TableHead className="text-xs">Tipo</TableHead>
                                             <TableHead className="text-xs">Registrado por</TableHead>
                                             <TableHead className="text-right text-xs">Acciones</TableHead>
@@ -463,6 +500,9 @@ export default function MedicionTiemposInventarioIndex({ registros, filters, pue
                                                 </TableCell>
                                                 <TableCell>
                                                     <span className="text-sm font-semibold">{formatDuracion(registro.duracion_minutos)}</span>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <span className="text-sm text-muted-foreground">{registro.meta_minutos ? `${registro.meta_minutos}m` : '-'}</span>
                                                 </TableCell>
                                                 <TableCell>
                                                     <Badge variant="outline" className="text-xs capitalize">
@@ -532,7 +572,7 @@ export default function MedicionTiemposInventarioIndex({ registros, filters, pue
                                     </div>
 
                                     {/* Tiempos */}
-                                    <div className="mt-3 grid grid-cols-3 gap-2 rounded-lg bg-muted/40 p-3">
+                                    <div className="mt-3 grid grid-cols-4 gap-2 rounded-lg bg-muted/40 p-3">
                                         <div className="text-center">
                                             <p className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground">Inicio</p>
                                             <p className="mt-0.5 text-sm font-bold text-emerald-600 dark:text-emerald-400">
@@ -549,6 +589,12 @@ export default function MedicionTiemposInventarioIndex({ registros, filters, pue
                                             <p className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground">Duración</p>
                                             <p className="mt-0.5 text-sm font-bold text-foreground">
                                                 {formatDuracion(registro.duracion_minutos)}
+                                            </p>
+                                        </div>
+                                        <div className="text-center">
+                                            <p className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground">Meta</p>
+                                            <p className="mt-0.5 text-sm font-bold text-foreground">
+                                                {registro.meta_minutos ? `${registro.meta_minutos}m` : '-'}
                                             </p>
                                         </div>
                                     </div>
