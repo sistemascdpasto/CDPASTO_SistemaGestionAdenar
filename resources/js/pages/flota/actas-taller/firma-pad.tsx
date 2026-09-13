@@ -75,7 +75,7 @@ export const FirmaPad = forwardRef<FirmaPadHandle, FirmaPadProps>(function Firma
     return (
         <div className="grid gap-2">
             <div className="flex items-center justify-between">
-                <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">{label}</Label>
+                <Label className="text-xs font-medium text-foreground">{label}</Label>
                 {hasSignature && (
                     <Button type="button" variant="ghost" size="sm" onClick={limpiar}>
                         Limpiar

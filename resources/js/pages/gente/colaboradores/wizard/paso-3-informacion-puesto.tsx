@@ -263,7 +263,7 @@ export function Paso3InformacionPuesto({ colaborador, catalogos, historialCargos
                         />
                         <InputError message={errors.codigo_qr_skap} />
                     </div>
-                    <div className="flex flex-col items-center gap-2 rounded-xl border border-border bg-white p-3 dark:bg-neutral-900">
+                    <div className="flex flex-col items-center gap-2 rounded-xl border border-border bg-card p-3">
                         {data.codigo_qr_skap ? (
                             <QRCodeSVG value={data.codigo_qr_skap} size={100} />
                         ) : (

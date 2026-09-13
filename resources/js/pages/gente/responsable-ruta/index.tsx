@@ -8,7 +8,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
-import { Calendar, CheckCircle2, Clock, Loader2, Play, Route, StopCircle, UserCheck, Users } from 'lucide-react';
+import { Calendar, CheckCircle2, Circle, Clock, Loader2, Play, Route, StopCircle, UserCheck, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -203,8 +203,8 @@ export default function ResponsableRutaIndex({ fecha_actual, colaboradores = [],
                                     />
                                     <Calendar className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/60" />
                                 </div>
-                                <p className="text-[11px] font-medium text-blue-700 dark:text-blue-400">
-                                    📅 {formatFechaVisual(fecha)}
+                                <p className="flex items-center gap-1 text-[11px] font-medium text-blue-700 dark:text-blue-400">
+                                    <Calendar className="h-3 w-3" /> {formatFechaVisual(fecha)}
                                 </p>
                             </div>
 
@@ -230,7 +230,7 @@ export default function ResponsableRutaIndex({ fecha_actual, colaboradores = [],
                                                     ? est.esta_finalizado
                                                         ? { label: 'CERRADO', color: 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/50' }
                                                         : { label: 'EN PROGRESO', color: 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/50' }
-                                                    : { label: 'SIN INICIAR', color: 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800/60 dark:text-slate-400 dark:border-slate-700/50' };
+                                                    : { label: 'SIN INICIAR', color: 'bg-muted text-muted-foreground border-border' };
 
                                                 return (
                                                     <SelectItem key={c.id} value={String(c.id)} className="text-sm py-2">
@@ -276,8 +276,8 @@ export default function ResponsableRutaIndex({ fecha_actual, colaboradores = [],
                                             modo === 'inicio'
                                                 ? 'border-emerald-500 bg-emerald-50 text-emerald-800 ring-2 ring-emerald-500/30 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-600'
                                                 : inicioHabilitado
-                                                  ? 'border-slate-200 bg-white hover:bg-slate-50 hover:border-emerald-300 dark:bg-slate-900 dark:border-slate-700 dark:hover:border-emerald-700 dark:hover:bg-slate-800'
-                                                  : 'cursor-not-allowed opacity-40 bg-slate-50 border-slate-200 dark:bg-slate-800/40 dark:border-slate-700/50'
+                                                  ? 'border-border bg-card hover:bg-muted hover:border-emerald-300'
+                                                  : 'cursor-not-allowed opacity-40 bg-muted border-border'
                                         }`}
                                     >
                                         <Play
@@ -304,8 +304,8 @@ export default function ResponsableRutaIndex({ fecha_actual, colaboradores = [],
                                             modo === 'finalizacion'
                                                 ? 'border-rose-500 bg-rose-50 text-rose-800 ring-2 ring-rose-500/30 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-600'
                                                 : finalizacionHabilitada
-                                                  ? 'border-slate-200 bg-white hover:bg-slate-50 hover:border-rose-300 dark:bg-slate-900 dark:border-slate-700 dark:hover:border-rose-700 dark:hover:bg-slate-800'
-                                                  : 'cursor-not-allowed opacity-40 bg-slate-50 border-slate-200 dark:bg-slate-800/40 dark:border-slate-700/50'
+                                                  ? 'border-border bg-card hover:bg-muted hover:border-rose-300'
+                                                  : 'cursor-not-allowed opacity-40 bg-muted border-border'
                                         }`}
                                     >
                                         <StopCircle
@@ -325,14 +325,20 @@ export default function ResponsableRutaIndex({ fecha_actual, colaboradores = [],
                                         </div>
                                     </button>
                                 </div>
-                                <p className="text-[11px] text-muted-foreground">
-                                    {!selectedColaborador
-                                        ? 'Seleccione primero un responsable.'
-                                        : estaFinalizado
-                                          ? '✅ Proceso finalizado hoy. No se permiten más cambios.'
-                                          : tieneInicio
-                                            ? '✓ Inicio registrado. Ahora seleccione Finalización.'
-                                            : 'Primero registre el Inicio para poder finalizar.'}
+                                <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                                    {!selectedColaborador ? (
+                                        'Seleccione primero un responsable.'
+                                    ) : estaFinalizado ? (
+                                        <>
+                                            <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-600" /> Proceso finalizado hoy. No se permiten más cambios.
+                                        </>
+                                    ) : tieneInicio ? (
+                                        <>
+                                            <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-600" /> Inicio registrado. Ahora seleccione Finalización.
+                                        </>
+                                    ) : (
+                                        'Primero registre el Inicio para poder finalizar.'
+                                    )}
                                 </p>
                             </div>
 
@@ -393,19 +399,21 @@ export default function ResponsableRutaIndex({ fecha_actual, colaboradores = [],
                                                         </p>
                                                         <Badge
                                                             variant="outline"
-                                                            className={
+                                                            className={`flex items-center gap-1 ${
                                                                 estaFinalizado
                                                                     ? 'border-emerald-300 bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/50'
                                                                     : tieneInicio
                                                                       ? 'border-amber-300 bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/50'
-                                                                      : 'border-slate-300 bg-slate-100 text-slate-700 dark:bg-slate-800/60 dark:text-slate-400 dark:border-slate-700/50'
-                                                            }
+                                                                      : 'border-border bg-muted text-muted-foreground'
+                                                            }`}
                                                         >
-                                                            {estaFinalizado
-                                                                ? '✓ Cerrado'
-                                                                : tieneInicio
-                                                                  ? '⏳ En progreso'
-                                                                  : '○ Sin iniciar'}
+                                                            {estaFinalizado ? (
+                                                                <><CheckCircle2 className="size-3" /> Cerrado</>
+                                                            ) : tieneInicio ? (
+                                                                <><Clock className="size-3" /> En progreso</>
+                                                            ) : (
+                                                                <><Circle className="size-3" /> Sin iniciar</>
+                                                            )}
                                                         </Badge>
                                                     </div>
                                                     <p className="text-[11px] text-muted-foreground">
@@ -420,8 +428,8 @@ export default function ResponsableRutaIndex({ fecha_actual, colaboradores = [],
                                                 {/* Tiempos */}
                                                 <div className="flex flex-wrap items-center gap-4 text-xs">
                                                     {estadoActual?.inicio ? (
-                                                        <div className="flex flex-col rounded-md bg-white/70 dark:bg-slate-900/60 px-3 py-1.5 border border-slate-200 dark:border-slate-700/60">
-                                                            <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                                                        <div className="flex flex-col rounded-md bg-card/70 px-3 py-1.5 border border-border">
+                                                            <span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-400">
                                                                 Inicio
                                                             </span>
                                                             <span className="font-mono font-bold text-foreground text-sm">
@@ -429,11 +437,11 @@ export default function ResponsableRutaIndex({ fecha_actual, colaboradores = [],
                                                             </span>
                                                         </div>
                                                     ) : (
-                                                        <div className="flex flex-col rounded-md bg-white/50 dark:bg-slate-900/30 px-3 py-1.5 border border-dashed border-slate-300 dark:border-slate-700/50">
-                                                            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                                                        <div className="flex flex-col rounded-md bg-muted/50 px-3 py-1.5 border border-dashed border-border">
+                                                            <span className="text-[9px] font-bold text-muted-foreground">
                                                                 Inicio
                                                             </span>
-                                                            <span className="font-mono font-bold text-slate-400 text-sm">
+                                                            <span className="font-mono font-bold text-muted-foreground text-sm">
                                                                 --:--:--
                                                             </span>
                                                         </div>
@@ -442,8 +450,8 @@ export default function ResponsableRutaIndex({ fecha_actual, colaboradores = [],
                                                     <span className="text-foreground/30 font-bold">→</span>
 
                                                     {estadoActual?.fin ? (
-                                                        <div className="flex flex-col rounded-md bg-white/70 dark:bg-slate-900/60 px-3 py-1.5 border border-slate-200 dark:border-slate-700/60">
-                                                            <span className="text-[9px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-400">
+                                                        <div className="flex flex-col rounded-md bg-card/70 px-3 py-1.5 border border-border">
+                                                            <span className="text-[9px] font-bold text-rose-700 dark:text-rose-400">
                                                                 Fin
                                                             </span>
                                                             <span className="font-mono font-bold text-foreground text-sm">
@@ -451,11 +459,11 @@ export default function ResponsableRutaIndex({ fecha_actual, colaboradores = [],
                                                             </span>
                                                         </div>
                                                     ) : (
-                                                        <div className="flex flex-col rounded-md bg-white/50 dark:bg-slate-900/30 px-3 py-1.5 border border-dashed border-slate-300 dark:border-slate-700/50">
-                                                            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                                                        <div className="flex flex-col rounded-md bg-muted/50 px-3 py-1.5 border border-dashed border-border">
+                                                            <span className="text-[9px] font-bold text-muted-foreground">
                                                                 Fin
                                                             </span>
-                                                            <span className="font-mono font-bold text-slate-400 text-sm">
+                                                            <span className="font-mono font-bold text-muted-foreground text-sm">
                                                                 --:--:--
                                                             </span>
                                                         </div>
@@ -463,7 +471,7 @@ export default function ResponsableRutaIndex({ fecha_actual, colaboradores = [],
 
                                                     {estadoActual?.duracion_formateada ? (
                                                         <div className="flex flex-col rounded-md bg-indigo-100 dark:bg-indigo-950/40 px-3 py-1.5 border border-indigo-200 dark:border-indigo-900/50">
-                                                            <span className="text-[9px] font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">
+                                                            <span className="text-[9px] font-bold text-indigo-700 dark:text-indigo-300">
                                                                 Duración
                                                             </span>
                                                             <span className="font-mono font-extrabold text-indigo-800 dark:text-indigo-300 text-sm">
@@ -473,7 +481,7 @@ export default function ResponsableRutaIndex({ fecha_actual, colaboradores = [],
                                                     ) : (
                                                         estadoActual?.inicio && (
                                                             <div className="flex flex-col rounded-md bg-violet-50 dark:bg-violet-950/20 px-3 py-1.5 border border-violet-200 dark:border-violet-900/40">
-                                                                <span className="text-[9px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400">
+                                                                <span className="text-[9px] font-bold text-violet-600 dark:text-violet-400">
                                                                     En proceso
                                                                 </span>
                                                                 <span className="font-mono font-bold text-violet-700 dark:text-violet-300 text-sm">

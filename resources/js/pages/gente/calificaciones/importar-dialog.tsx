@@ -37,24 +37,24 @@ export function ImportarCalificacionesDialog({ trigger }: { trigger: React.React
                         <Upload className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                         Importar Calificaciones desde Excel
                     </DialogTitle>
-                    <DialogDescription className="text-xs text-slate-500">
+                    <DialogDescription className="text-xs text-muted-foreground">
                         Selecciona el archivo Excel (.xlsx, .xls) o CSV con las columnas:
                         <br />
-                        <span className="font-semibold text-slate-700 dark:text-slate-300">
+                        <span className="font-semibold text-foreground">
                             COLABORADOR, IDENTIFICACIÓN, MÓDULO, ID, CARGO, CENTRO DISTRIBUCIÓN, NOTA MÓDULO
                         </span>
                     </DialogDescription>
                 </DialogHeader>
 
                 <form className="space-y-4 pt-2" onSubmit={submit}>
-                    <div className="rounded-lg border border-dashed border-slate-300 p-4 text-center dark:border-slate-700">
+                    <div className="rounded-lg border border-dashed border-border p-4 text-center">
                         <FileSpreadsheet className="mx-auto h-8 w-8 text-amber-500" />
-                        <div className="mt-2 text-xs text-slate-500">Formato aceptado: .xlsx, .xls, .csv</div>
+                        <div className="mt-2 text-xs text-muted-foreground">Formato aceptado: .xlsx, .xls, .csv</div>
                         <input
                             id="archivo"
                             type="file"
                             accept=".xlsx,.xls,.csv"
-                            className="mt-3 block w-full text-xs text-slate-500 file:mr-4 file:rounded-md file:border-0 file:bg-amber-50 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-amber-700 hover:file:bg-amber-100 dark:file:bg-amber-950 dark:file:text-amber-300"
+                            className="mt-3 block w-full text-xs text-muted-foreground file:mr-4 file:rounded-md file:border-0 file:bg-amber-50 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-amber-700 hover:file:bg-amber-100 dark:file:bg-amber-950 dark:file:text-amber-300"
                             onChange={(e) => setData('archivo', e.target.files?.[0] ?? null)}
                         />
                         <InputError message={errors.archivo} className="mt-2" />

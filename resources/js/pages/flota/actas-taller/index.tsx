@@ -51,12 +51,12 @@ interface Props {
 const ESTADO_BADGE: Record<string, string> = {
     en_taller:  'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
     cerrada:    'bg-green-700 text-white',
-    cancelada:  'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400',
+    cancelada:  'bg-muted text-muted-foreground',
 };
 
 function BadgeEstado({ estado, label }: { estado: string; label: string }) {
     return (
-        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${ESTADO_BADGE[estado] ?? 'bg-gray-100 text-gray-500'}`}>
+        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${ESTADO_BADGE[estado] ?? 'bg-muted text-muted-foreground'}`}>
             {label}
         </span>
     );
@@ -118,10 +118,10 @@ export default function ActasTallerIndex({ actas, vehiculos, filters }: Props) {
                 {/* Título */}
                 <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 sm:text-3xl">
+                        <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
                             Actas de Entrega a Taller
                         </h1>
-                        <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+                        <p className="mt-0.5 text-sm text-muted-foreground">
                             Gestión de mantenimiento de vehículos · {actas.total} actas registradas
                         </p>
                     </div>
@@ -150,20 +150,20 @@ export default function ActasTallerIndex({ actas, vehiculos, filters }: Props) {
                 </div>
 
                 {/* Filtros */}
-                <div className="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900 p-4">
+                <div className="rounded-2xl border border-sidebar-border/70 bg-card shadow-sm dark:border-sidebar-border p-4">
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                         <div className="grid gap-1">
-                            <Label className="text-[10px] font-semibold uppercase text-gray-400">Placa</Label>
+                            <Label className="text-[10px] font-semibold text-muted-foreground">Placa</Label>
                             <select value={placa} onChange={e => { setPlaca(e.target.value); aplicar({ placa: e.target.value }); }}
-                                className="h-8 rounded-lg border border-gray-200 bg-white px-2 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-green-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                                className="h-8 rounded-lg border border-sidebar-border/70 dark:border-sidebar-border bg-card px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring">
                                 <option value="">Todas las placas</option>
                                 {vehiculos.map(v => <option key={v} value={v}>{v}</option>)}
                             </select>
                         </div>
                         <div className="grid gap-1">
-                            <Label className="text-[10px] font-semibold uppercase text-gray-400">Estado</Label>
+                            <Label className="text-[10px] font-semibold text-muted-foreground">Estado</Label>
                             <select value={estado} onChange={e => { setEstado(e.target.value); aplicar({ estado: e.target.value }); }}
-                                className="h-8 rounded-lg border border-gray-200 bg-white px-2 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-green-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                                className="h-8 rounded-lg border border-sidebar-border/70 dark:border-sidebar-border bg-card px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring">
                                 <option value="">Todos los estados</option>
                                 <option value="en_taller">En taller</option>
                                 <option value="cerrada">Cerrada</option>
@@ -171,19 +171,19 @@ export default function ActasTallerIndex({ actas, vehiculos, filters }: Props) {
                             </select>
                         </div>
                         <div className="grid gap-1">
-                            <Label className="text-[10px] font-semibold uppercase text-gray-400">Desde</Label>
+                            <Label className="text-[10px] font-semibold text-muted-foreground">Desde</Label>
                             <Input type="date" value={desde} className="h-8 text-xs"
                                 onChange={e => { setDesde(e.target.value); aplicar({ desde: e.target.value }); }} />
                         </div>
                         <div className="grid gap-1">
-                            <Label className="text-[10px] font-semibold uppercase text-gray-400">Hasta</Label>
+                            <Label className="text-[10px] font-semibold text-muted-foreground">Hasta</Label>
                             <Input type="date" value={hasta} className="h-8 text-xs"
                                 onChange={e => { setHasta(e.target.value); aplicar({ hasta: e.target.value }); }} />
                         </div>
                     </div>
                     {hayFiltros && (
                         <div className="mt-2 flex justify-end">
-                            <Button variant="ghost" size="sm" onClick={limpiar} className="h-7 text-xs text-gray-400 gap-1">
+                            <Button variant="ghost" size="sm" onClick={limpiar} className="h-7 text-xs text-muted-foreground gap-1">
                                 <X className="size-3" /> Limpiar filtros
                             </Button>
                         </div>
@@ -191,11 +191,11 @@ export default function ActasTallerIndex({ actas, vehiculos, filters }: Props) {
                 </div>
 
                 {/* Tabla */}
-                <div className="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900 overflow-hidden">
+                <div className="rounded-2xl border border-sidebar-border/70 bg-card shadow-sm dark:border-sidebar-border overflow-hidden">
                     <div className="overflow-x-auto">
                         <Table>
                             <TableHeader>
-                                <TableRow className="bg-gray-50 dark:bg-gray-800/50">
+                                <TableRow className="bg-muted dark:bg-muted">
                                     <TableHead className="text-[11px] font-semibold text-green-700 dark:text-green-400">Nº Acta</TableHead>
                                     <TableHead className="text-[11px] font-semibold text-green-700 dark:text-green-400">Placa</TableHead>
                                     <TableHead className="text-[11px] font-semibold text-green-700 dark:text-green-400">Taller</TableHead>
@@ -210,30 +210,30 @@ export default function ActasTallerIndex({ actas, vehiculos, filters }: Props) {
                             <TableBody>
                                 {actas.data.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={9} className="py-10 text-center text-sm text-gray-400">
-                                            <ClipboardList className="mx-auto mb-2 size-6 text-gray-300" />
+                                        <TableCell colSpan={9} className="py-10 text-center text-sm text-muted-foreground">
+                                            <ClipboardList className="mx-auto mb-2 size-6 text-muted-foreground/60" />
                                             No hay actas registradas
                                         </TableCell>
                                     </TableRow>
                                 )}
                                 {actas.data.map(acta => (
-                                    <TableRow key={acta.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
+                                    <TableRow key={acta.id} className="hover:bg-muted/50 transition-colors">
                                         <TableCell className="text-xs font-mono font-bold text-green-700 dark:text-green-400">
                                             {acta.numero_acta}
                                         </TableCell>
-                                        <TableCell className="text-xs font-mono font-semibold text-gray-700 dark:text-gray-300">
+                                        <TableCell className="text-xs font-mono font-semibold text-foreground">
                                             {acta.placa}
                                         </TableCell>
-                                        <TableCell className="text-xs text-gray-600 dark:text-gray-400 max-w-[120px] truncate">
+                                        <TableCell className="text-xs text-muted-foreground max-w-[120px] truncate">
                                             {acta.taller ?? '—'}
                                         </TableCell>
-                                        <TableCell className="text-xs text-gray-600 dark:text-gray-400 max-w-[150px] truncate">
+                                        <TableCell className="text-xs text-muted-foreground max-w-[150px] truncate">
                                             {acta.motivo_ingreso ?? '—'}
                                         </TableCell>
-                                        <TableCell className="text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                                             {acta.fecha_entrega ?? '—'}
                                         </TableCell>
-                                        <TableCell className="text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                                             {acta.fecha_cierre ?? '—'}
                                         </TableCell>
                                         <TableCell>
@@ -241,7 +241,7 @@ export default function ActasTallerIndex({ actas, vehiculos, filters }: Props) {
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-1.5">
-                                                <span className="text-xs tabular-nums text-gray-500">{acta.total_novedades}</span>
+                                                <span className="text-xs tabular-nums text-muted-foreground">{acta.total_novedades}</span>
                                                 {acta.novedades_solucionadas > 0 && (
                                                     <span className="inline-flex items-center gap-0.5 text-[10px] text-green-700 dark:text-green-400">
                                                         <CheckCircle2 className="size-3" />{acta.novedades_solucionadas}
@@ -258,7 +258,7 @@ export default function ActasTallerIndex({ actas, vehiculos, filters }: Props) {
                                             <div className="flex items-center justify-end gap-1">
                                                 <Button variant="ghost" size="sm" asChild className="h-7 w-7 p-0">
                                                     <Link href={route('flota.actas-taller.show', acta.id)}>
-                                                        <Eye className="size-4 text-gray-400 hover:text-green-700" />
+                                                        <Eye className="size-4 text-muted-foreground hover:text-green-700" />
                                                     </Link>
                                                 </Button>
                                                 {confirmId === acta.id ? (
@@ -272,14 +272,14 @@ export default function ActasTallerIndex({ actas, vehiculos, filters }: Props) {
                                                         <button
                                                             type="button"
                                                             onClick={() => setConfirmId(null)}
-                                                            className="text-gray-400 hover:text-gray-600 transition-colors">
+                                                            className="text-muted-foreground hover:text-foreground transition-colors">
                                                             <X className="size-3.5" />
                                                         </button>
                                                     </span>
                                                 ) : (
                                                     <Button variant="ghost" size="sm" className="h-7 w-7 p-0"
                                                         onClick={() => setConfirmId(acta.id)}>
-                                                        <Trash2 className="size-4 text-gray-300 hover:text-red-500 transition-colors" />
+                                                        <Trash2 className="size-4 text-muted-foreground/60 hover:text-red-500 transition-colors" />
                                                     </Button>
                                                 )}
                                             </div>
@@ -292,8 +292,8 @@ export default function ActasTallerIndex({ actas, vehiculos, filters }: Props) {
 
                     {/* Paginación */}
                     {actas.last_page > 1 && (
-                        <div className="flex items-center justify-between border-t border-gray-100 px-4 py-3 dark:border-gray-800">
-                            <p className="text-[11px] text-gray-400">
+                        <div className="flex items-center justify-between border-t border-sidebar-border/70 px-4 py-3 dark:border-sidebar-border">
+                            <p className="text-[11px] text-muted-foreground">
                                 Página {actas.current_page} de {actas.last_page} · {actas.total} actas
                             </p>
                             <div className="flex gap-1">
