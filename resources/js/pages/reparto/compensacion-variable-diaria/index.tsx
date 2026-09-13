@@ -801,7 +801,7 @@ export default function CompensacionVariableDiariaIndex() {
                             </div>
                             <div className="flex flex-col gap-0.5 min-w-0">
                                 <span className="font-bold text-sm" style={{ color: statusAlert.type === 'success' ? COLOR_SUCCESS : '#dc2626' }}>
-                                    {statusAlert.type === 'success' ? '✓ Cálculo completado' : 'Error en el cálculo'}
+                                    {statusAlert.type === 'success' ? 'Cálculo completado' : 'Error en el cálculo'}
                                 </span>
                                 <span className="text-xs font-normal opacity-90">{statusAlert.message}</span>
                             </div>
