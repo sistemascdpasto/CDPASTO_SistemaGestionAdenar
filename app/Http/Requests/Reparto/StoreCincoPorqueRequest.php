@@ -19,7 +19,7 @@ class StoreCincoPorqueRequest extends FormRequest
     {
         return [
             'fecha' => ['required', 'date'],
-            'vehiculo_id' => ['nullable', 'integer', Rule::exists('vehiculos', 'id')],
+            'vehiculo_id' => ['required', 'integer', Rule::exists('vehiculos', 'id')],
             'rutina' => ['required', 'string', Rule::in(config('cinco_porques.rutinas'))],
             'indicador' => ['required', 'string', Rule::in(config('cinco_porques.indicadores'))],
             'problema' => ['required', 'string', 'max:2000'],
@@ -40,6 +40,7 @@ class StoreCincoPorqueRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'vehiculo_id.required' => 'Selecciona la placa del vehículo.',
             'porque_1.required' => 'Completa el ¿Por qué? 1.',
             'porque_2.required' => 'Completa el ¿Por qué? 2.',
             'porque_3.required' => 'Completa el ¿Por qué? 3.',

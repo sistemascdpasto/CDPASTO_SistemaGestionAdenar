@@ -96,6 +96,15 @@ class CincoPorqueTest extends TestCase
             ->assertSessionHasErrors('rutina');
     }
 
+    public function test_no_se_puede_guardar_sin_seleccionar_una_placa(): void
+    {
+        $this->actingAs($this->usuario('Reparto'))
+            ->post(route('cinco-porques.store'), $this->datosValidos(['vehiculo_id' => null]))
+            ->assertSessionHasErrors('vehiculo_id');
+
+        $this->assertSame(0, CincoPorque::count());
+    }
+
     public function test_colaborador_solo_ve_su_propio_historial_y_reparto_ve_todo(): void
     {
         $colab = $this->usuario('Colaborador');

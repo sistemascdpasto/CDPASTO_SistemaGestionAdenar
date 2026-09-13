@@ -42,7 +42,7 @@ return new class extends Migration
             $table->timestamps();
             
             // Índices
-            $table->index(['fecha_medicion', 'placa_vehiculo'], 'idx_fecha_placa');
+            $table->index(['fecha_medicion', 'placa_vehiculo'], 'idx_medicion_fecha_placa');
             $table->index('user_id', 'idx_user_id');
             $table->index('colaborador_id', 'idx_colaborador_id');
         });
