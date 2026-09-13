@@ -142,10 +142,9 @@ function CarruselMedia({ items }: { items: MediaItem[] }) {
                     className="h-full w-full object-contain bg-black"
                     controls={role === 'current'}
                     autoPlay={role === 'current'}
-                    muted
                     onPlay={() => setPlaying(true)}
                     onPause={() => setPlaying(false)}
-                    onEnded={() => setPlaying(false)}
+                    onEnded={() => { setPlaying(false); setTimeout(() => goNext(), 300); }}
                 />
             );
         }
@@ -198,8 +197,8 @@ function CarruselMedia({ items }: { items: MediaItem[] }) {
             `}</style>
 
             <div
-                className="relative overflow-hidden rounded-2xl bg-black shadow-lg w-full"
-                style={{ aspectRatio: '16/9' }}
+                className="relative overflow-hidden rounded-2xl bg-black shadow-lg mx-auto"
+                style={{ width: 354, height: 301, maxWidth: '100%' }}
             >
                 {/* Slide que sale */}
                 {prev_ !== null && (
@@ -376,6 +375,27 @@ export default function CentroCapacitacionesIndex({
         return carpetas.filter((c) =>
             c.nombre.toLowerCase().includes(q) || c.descripcion?.toLowerCase().includes(q),
         );
+
+    // Items del carrusel: destacadas mapeadas a MediaItem, ordenadas: video primero, imag despues
+    const itemsCarrusel = useMemo((): MediaItem[] => {
+        const asMedia = (d: MaterialItem): MediaItem => ({
+            id: d.id,
+            titulo: d.titulo,
+            descripcion: d.descripcion ?? null,
+            tipo: d.tipo,
+            mime_type: d.mime_type ?? null,
+            archivo_url: d.archivo_url ?? null,
+            enlace_externo: d.enlace_externo ?? null,
+            carpeta: d.carpeta ?? null,
+        });
+        const esVid = (d: MaterialItem) => d.tipo === 'video' || !!d.mime_type?.startsWith('video/') || /youtube|youtu\.be/.test(d.enlace_externo ?? '');
+        const esImg = (d: MaterialItem) => d.tipo === 'imagen' || !!d.mime_type?.startsWith('image/');
+        return [
+            ...destacadas.filter(esVid).map(asMedia),
+            ...destacadas.filter(d => !esVid(d) && esImg(d)).map(asMedia),
+            ...destacadas.filter(d => !esVid(d) && !esImg(d)).map(asMedia),
+        ];
+    }, [destacadas]);
     }, [carpetas, busqueda, resultadosBusqueda]);
 
     // Stats dinámicas
@@ -546,53 +566,11 @@ export default function CentroCapacitacionesIndex({
                         </section>
                     )}
 
-                    {/* Destacadas */}
-                    {destacadas.length > 0 && (
-                        <section className="space-y-4">
-                            <h2 className="flex items-center gap-2 text-lg font-bold text-slate-800">
-                                <Star className="size-5 fill-amber-400 text-amber-400" />
-                                Capacitaciones Destacadas
-                            </h2>
-                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                                {destacadas.map((d) => {
-                                    const ci = getFileCategoryInfo(d.tipo);
-                                    return (
-                                        <div
-                                            key={d.id}
-                                            className="group relative overflow-hidden rounded-2xl border border-amber-200 bg-amber-50 p-5 transition-all hover:border-amber-300 hover:shadow-md"
-                                        >
-                                            <div className="mb-3 flex items-start justify-between">
-                                                <div className={`flex size-11 items-center justify-center rounded-xl ${ci.bgColor}`}>
-                                                    <FileIcon tipo={d.tipo} className="size-6" />
-                                                </div>
-                                                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">
-                                                    Destacada
-                                                </span>
-                                            </div>
-                                            <h3 className="line-clamp-1 font-bold text-slate-800 group-hover:text-amber-700 transition-colors">
-                                                {d.titulo}
-                                            </h3>
-                                            {d.descripcion && (
-                                                <p className="mt-1 line-clamp-2 text-xs text-slate-500">{d.descripcion}</p>
-                                            )}
-                                            {d.carpeta && (
-                                                <Link
-                                                    href={route('portal.capacitaciones.carpetas.show', d.carpeta.id)}
-                                                    className="mt-3 flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:underline"
-                                                >
-                                                    {d.carpeta.nombre} <ArrowRight className="size-3" />
-                                                </Link>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </section>
-                    )}
-
-                    {/* Carrusel de videos e imágenes */}
+                    {/* Carrusel de Capacitaciones Destacadas — 354×301 px = 9.35×7.96 cm */}
                     {mediaCarrusel.length > 0 && (
-                        <CarruselMedia items={mediaCarrusel} />
+                        <section className="space-y-3">
+                            <CarruselMedia items={mediaCarrusel} />
+                        </section>
                     )}
 
                     {/* ── Título + buscador + chips de carpetas ── */}

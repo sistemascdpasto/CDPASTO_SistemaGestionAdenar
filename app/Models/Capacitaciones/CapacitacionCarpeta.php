@@ -22,6 +22,7 @@ class CapacitacionCarpeta extends Model
         'color',
         'icono',
         'visible_colaborador',
+        'meses_visibles',
         'portada_path',
         'orden',
         'created_by',
@@ -29,6 +30,7 @@ class CapacitacionCarpeta extends Model
 
     protected $casts = [
         'visible_colaborador' => 'boolean',
+            'meses_visibles'      => 'array',
     ];
 
     protected $appends = [

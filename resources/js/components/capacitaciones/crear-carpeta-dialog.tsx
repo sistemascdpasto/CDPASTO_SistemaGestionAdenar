@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { router, useForm } from '@inertiajs/react';
 import {
+    CalendarClock,
     Eye,
     EyeOff,
     FolderPlus,
@@ -30,7 +31,23 @@ interface CarpetaData {
     color?: string | null;
     portada_url?: string | null;
     visible_colaborador?: boolean;
+    meses_visibles?: number[] | null;
 }
+
+const MESES = [
+    { num: 1,  label: 'Enero'      },
+    { num: 2,  label: 'Febrero'    },
+    { num: 3,  label: 'Marzo'      },
+    { num: 4,  label: 'Abril'      },
+    { num: 5,  label: 'Mayo'       },
+    { num: 6,  label: 'Junio'      },
+    { num: 7,  label: 'Julio'      },
+    { num: 8,  label: 'Agosto'     },
+    { num: 9,  label: 'Septiembre' },
+    { num: 10, label: 'Octubre'    },
+    { num: 11, label: 'Noviembre'  },
+    { num: 12, label: 'Diciembre'  },
+];
 
 const PRESET_COLORS = [
     '#0D9488', // Teal
@@ -64,6 +81,7 @@ export function CrearCarpetaDialog({
         color: string;
         visible_colaborador: boolean;
         portada: File | null;
+        meses_visibles: number[];
         _method?: string;
     }>({
         parent_id: parentId || null,
@@ -71,6 +89,7 @@ export function CrearCarpetaDialog({
         descripcion: carpetaEditar?.descripcion || '',
         color: carpetaEditar?.color || '#0D9488',
         visible_colaborador: carpetaEditar?.visible_colaborador ?? true,
+        meses_visibles: carpetaEditar?.meses_visibles ?? [],
         portada: null,
     });
 
@@ -82,6 +101,7 @@ export function CrearCarpetaDialog({
                 descripcion: carpetaEditar?.descripcion || '',
                 color: carpetaEditar?.color || '#0D9488',
                 visible_colaborador: carpetaEditar?.visible_colaborador ?? true,
+                meses_visibles: carpetaEditar?.meses_visibles ?? [],
                 portada: null,
             });
             setPreviewUrl(carpetaEditar?.portada_url || null);
@@ -276,6 +296,52 @@ export function CrearCarpetaDialog({
                                     </>
                                 )}
                             </p>
+                        </div>
+                    </div>
+
+                        {/* Visibilidad programada por meses */}
+                        <div className="grid gap-2 pt-2 border-t">
+                            <Label className="flex items-center gap-1.5 font-medium text-xs text-foreground">
+                                <CalendarClock className="size-4 text-teal-600 dark:text-teal-400" />
+                                Meses de visibilidad automática
+                                <span className="text-muted-foreground font-normal">(opcional)</span>
+                            </Label>
+                            <p className="text-[11px] text-muted-foreground leading-snug">
+                                En los meses seleccionados, la carpeta se mostrará automáticamente a los colaboradores sin modificar la configuración de visibilidad manual.
+                            </p>
+                            <div className="grid grid-cols-3 gap-1.5 mt-1">
+                                {MESES.map((mes) => {
+                                    const activo = data.meses_visibles.includes(mes.num);
+                                    return (
+                                        <button
+                                            key={mes.num}
+                                            type="button"
+                                            onClick={() => {
+                                                const next = activo
+                                                    ? data.meses_visibles.filter((m) => m !== mes.num)
+                                                    : [...data.meses_visibles, mes.num];
+                                                setData('meses_visibles', next);
+                                            }}
+                                            className={`rounded-lg border px-2 py-1.5 text-[11px] font-medium transition-all text-left ${
+                                                activo
+                                                    ? 'border-teal-500 bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-600'
+                                                    : 'border-border bg-background text-muted-foreground hover:border-teal-400 hover:text-teal-600'
+                                            }`}
+                                        >
+                                            {activo ? '✓ ' : ''}{mes.label}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                            {data.meses_visibles.length > 0 && (
+                                <button
+                                    type="button"
+                                    onClick={() => setData('meses_visibles', [])}
+                                    className="text-[11px] text-muted-foreground hover:text-destructive text-left mt-0.5"
+                                >
+                                    Quitar todos los meses seleccionados
+                                </button>
+                            )}
                         </div>
                     </div>
 

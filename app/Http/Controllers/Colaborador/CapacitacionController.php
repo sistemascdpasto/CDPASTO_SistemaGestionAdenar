@@ -22,10 +22,16 @@ class CapacitacionController extends Controller
         $userId = $user->id;
         $buscar = $request->query('buscar');
 
+        // Mes actual para visibilidad programada por meses
+        $mesActual = (int) now()->format('n');
+
         // 1. Carpetas dinámicas con cálculo eficiente de materiales y revisados (solo raíz, visibles y ordenadas de forma ascendente)
         $carpetas = CapacitacionCarpeta::query()
             ->whereNull('parent_id')
-            ->where('visible_colaborador', true)
+            ->where(function ($q) use ($mesActual) {
+                $q->where('visible_colaborador', true)
+                  ->orWhereJsonContains('meses_visibles', $mesActual);
+            })
             ->withCount([
                 'materiales as total_materiales' => fn ($q) => $q->where('estado', 'publicado'),
                 'materiales as revisados_count' => fn ($q) => $q->where('estado', 'publicado')
