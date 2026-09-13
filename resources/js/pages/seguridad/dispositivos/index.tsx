@@ -79,8 +79,8 @@ export default function DispositivosIndex({ dispositivos, filters }: { dispositi
                             <AlertTriangle className="size-4 text-white" />
                         </div>
                         <div>
-                            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Dispositivos</p>
-                            <p className="text-xs text-gray-400">Administra los alcoholímetros disponibles para las pruebas.</p>
+                            <p className="text-sm font-semibold text-foreground">Dispositivos</p>
+                            <p className="text-xs text-muted-foreground">Administra los alcoholímetros disponibles para las pruebas.</p>
                         </div>
                     </div>
                     <Button asChild>
@@ -98,7 +98,7 @@ export default function DispositivosIndex({ dispositivos, filters }: { dispositi
                     </Button>
                 </form>
 
-                <div className="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+                <div className="rounded-2xl border border-sidebar-border/70 bg-card shadow-sm dark:border-sidebar-border">
                     <Table>
                         <TableHeader>
                             <TableRow>
