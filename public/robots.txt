@@ -1,2 +1,9 @@
+# Sistema Integral de Gestión de ADENAR S.A.S.
+# Es una aplicación interna: todo lo que está detrás de /login requiere
+# autenticación y no tiene valor para un buscador. Solo se permite indexar
+# la portada pública ("/"); el resto queda bloqueado para no exponer la
+# estructura de módulos internos ni gastar presupuesto de rastreo en
+# páginas que un bot no autenticado no puede ver de todas formas.
 User-agent: *
-Disallow:
+Allow: /$
+Disallow: /

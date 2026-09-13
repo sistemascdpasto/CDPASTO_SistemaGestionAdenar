@@ -11,7 +11,7 @@ interface ChatMessage {
 }
 
 const STORAGE_KEY = 'adenar-chatbot-mensajes';
-const AVATAR_ASISTENTE = '/images/Dario caricatura.png';
+const AVATAR_ASISTENTE = '/images/dario-avatar.webp';
 
 function AvatarAsistente({ className }: { className?: string }) {
     return (
