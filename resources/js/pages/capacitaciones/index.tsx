@@ -1,4 +1,5 @@
 import { CrearCarpetaDialog } from '@/components/capacitaciones/crear-carpeta-dialog';
+import { SubirMaterialDialog } from '@/components/capacitaciones/subir-material-dialog';
 import { FileIcon, getFileCategoryInfo } from '@/components/capacitaciones/file-icon';
 import HeadingSmall from '@/components/heading-small';
 import {
@@ -65,6 +66,7 @@ import {
     Flame,
     Folder,
     FolderPlus,
+    Clapperboard,
     MoreVertical,
     Pencil,
     PieChart as PieIcon,
@@ -184,10 +186,12 @@ interface DistribucionItem {
     color: string;
 }
 
-interface BannerAdmin {
-    frase: string | null;
-    sub_frase: string | null;
-    imagen_url: string | null;
+interface PortalConfig {
+    id: number;
+    titulo_hero: string;
+    subtitulo_hero: string | null;
+    imagen_hero_path: string | null;
+    imagen_hero_url: string | null;
 }
 
 export default function CapacitacionesAdminIndex({
@@ -199,8 +203,9 @@ export default function CapacitacionesAdminIndex({
     rankingCapacitaciones = [],
     actividadReciente = [],
     graficaActividad = [],
+    portalConfig,
+    carpetaCarruselId,
     filters = {},
-    banner = null,
 }: {
     carpetas?: Carpeta[];
     recientes?: MaterialReciente[];
@@ -215,8 +220,9 @@ export default function CapacitacionesAdminIndex({
     rankingCapacitaciones?: CapacitacionRanking[];
     actividadReciente?: ActividadItem[];
     graficaActividad?: GraficaActividadItem[];
+    portalConfig?: PortalConfig;
+    carpetaCarruselId?: number;
     filters?: any;
-    banner?: BannerAdmin | null;
 }) {
     // Asignar colaboradores recibidos del backend a colaboradoresDetalle para uso interno
     const colaboradoresDetalle = colaboradores || [];
@@ -237,13 +243,36 @@ export default function CapacitacionesAdminIndex({
     const [carpetaEliminar, setCarpetaEliminar] = useState<Carpeta | null>(null);
     const [capacitacionDetalle, setCapacitacionDetalle] = useState<CapacitacionRanking | null>(null);
 
-    // Estado del formulario del banner
-    const [bannerForm, setBannerForm] = useState({
-        frase: banner?.frase ?? '',
-        sub_frase: banner?.sub_frase ?? '',
-        imagen: null as File | null,
-    });
-    const [bannerSeccionAbierta, setBannerSeccionAbierta] = useState(false);
+    // ── Dialog subir al carrusel ───────────────────────────────────────────
+    const [carruselOpen, setCarruselOpen] = useState(false);
+
+    // ── Estado del formulario de configuración del hero ────────────────────
+    const [heroOpen, setHeroOpen]             = useState(false);
+    const [heroTitulo, setHeroTitulo]         = useState(portalConfig?.titulo_hero ?? '');
+    const [heroSubtitulo, setHeroSubtitulo]   = useState(portalConfig?.subtitulo_hero ?? '');
+    const [heroImagen, setHeroImagen]         = useState<File | null>(null);
+    const [heroPreview, setHeroPreview]       = useState<string | null>(portalConfig?.imagen_hero_url ?? null);
+    const [heroGuardando, setHeroGuardando]   = useState(false);
+
+    const handleHeroImagenChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0] ?? null;
+        setHeroImagen(file);
+        if (file) setHeroPreview(URL.createObjectURL(file));
+    };
+
+    const submitHero = (e: React.FormEvent) => {
+        e.preventDefault();
+        setHeroGuardando(true);
+        const fd = new FormData();
+        fd.append('titulo_hero', heroTitulo);
+        fd.append('subtitulo_hero', heroSubtitulo);
+        if (heroImagen) fd.append('imagen_hero', heroImagen);
+        router.post(route('capacitaciones.portal-config.update'), fd as any, {
+            forceFormData: true,
+            onFinish: () => setHeroGuardando(false),
+            onSuccess: () => setHeroOpen(false),
+        });
+    };
 
     // Garantizar que el puntero nunca quede bloqueado por Radix UI
     useEffect(() => {
@@ -354,126 +383,37 @@ export default function CapacitacionesAdminIndex({
                         description="Analiza la interacción del personal, monitorea estados críticos y programa fechas en el calendario."
                     />
 
-                    <Button
-                        onClick={() => {
-                            setCarpetaEditar(null);
-                            setDialogoCrear(true);
-                        }}
-                        className="shadow-sm self-start sm:self-auto"
-                    >
-                        <FolderPlus className="mr-2 size-4" />
-                        Nueva carpeta
-                    </Button>
-                </div>
-
-                {/* 1.B BANNER DEL PORTAL COLABORADOR */}
-                <Card className="border-sidebar-border/70 bg-card shadow-sm">
-                    <CardHeader
-                        className="pb-2 cursor-pointer select-none"
-                        onClick={() => setBannerSeccionAbierta((p) => !p)}
-                    >
-                        <CardTitle className="text-base font-bold flex items-center justify-between">
-                            <span>🖼️ Banner del portal colaborador</span>
-                            <ChevronDown
-                                className={`size-4 text-muted-foreground transition-transform duration-200 ${bannerSeccionAbierta ? 'rotate-180' : ''}`}
-                            />
-                        </CardTitle>
-                        <p className="text-xs text-muted-foreground mt-1">
-                            Imagen y frase que ven los colaboradores al entrar al centro de capacitaciones.
-                        </p>
-                    </CardHeader>
-
-                    {bannerSeccionAbierta && (
-                        <CardContent className="pt-0 pb-5">
-                            <form
-                                onSubmit={(e) => {
-                                    e.preventDefault();
-                                    const formData = new FormData();
-                                    formData.append('frase', bannerForm.frase ?? '');
-                                    formData.append('sub_frase', bannerForm.sub_frase ?? '');
-                                    if (bannerForm.imagen) {
-                                        formData.append('imagen', bannerForm.imagen);
-                                    }
-                                    router.post(route('capacitaciones.banner.save'), formData, {
-                                        forceFormData: true,
-                                        preserveScroll: true,
-                                    });
-                                }}
-                                className="space-y-4"
+                    <div className="flex flex-wrap gap-2 self-start sm:self-auto">
+                        <Button
+                            variant="outline"
+                            onClick={() => setHeroOpen(true)}
+                            className="shadow-sm"
+                        >
+                            <Pencil className="mr-2 size-4" />
+                            Configurar Hero Portal
+                        </Button>
+                        {carpetaCarruselId && (
+                            <Button
+                                variant="outline"
+                                onClick={() => setCarruselOpen(true)}
+                                className="shadow-sm border-teal-300 text-teal-700 hover:bg-teal-50"
                             >
-                                {/* Preview de imagen actual */}
-                                {banner?.imagen_url && (
-                                    <div className="rounded-lg overflow-hidden border max-w-xs">
-                                        <img
-                                            src={banner.imagen_url}
-                                            alt="Banner actual"
-                                            className="w-full h-32 object-cover"
-                                        />
-                                        <p className="text-[11px] text-muted-foreground px-2 py-1">Imagen actual del banner</p>
-                                    </div>
-                                )}
-
-                                <div className="space-y-1">
-                                    <Label htmlFor="banner-imagen" className="text-xs font-semibold">
-                                        Nueva imagen (opcional)
-                                    </Label>
-                                    <Input
-                                        id="banner-imagen"
-                                        type="file"
-                                        accept="image/*"
-                                        className="text-xs h-9"
-                                        onChange={(e) =>
-                                            setBannerForm((prev) => ({
-                                                ...prev,
-                                                imagen: e.target.files?.[0] ?? null,
-                                            }))
-                                        }
-                                    />
-                                </div>
-
-                                <div className="space-y-1">
-                                    <Label htmlFor="banner-frase" className="text-xs font-semibold">
-                                        Frase principal (máx. 300 caracteres)
-                                    </Label>
-                                    <textarea
-                                        id="banner-frase"
-                                        maxLength={300}
-                                        rows={2}
-                                        value={bannerForm.frase}
-                                        onChange={(e) =>
-                                            setBannerForm((prev) => ({ ...prev, frase: e.target.value }))
-                                        }
-                                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none"
-                                        placeholder="Ej: Tu aprendizaje impulsa tu seguridad y la de tus compañeros."
-                                    />
-                                    <p className="text-[11px] text-muted-foreground text-right">{bannerForm.frase.length}/300</p>
-                                </div>
-
-                                <div className="space-y-1">
-                                    <Label htmlFor="banner-sub-frase" className="text-xs font-semibold">
-                                        Sub-frase (máx. 300 caracteres)
-                                    </Label>
-                                    <textarea
-                                        id="banner-sub-frase"
-                                        maxLength={300}
-                                        rows={2}
-                                        value={bannerForm.sub_frase}
-                                        onChange={(e) =>
-                                            setBannerForm((prev) => ({ ...prev, sub_frase: e.target.value }))
-                                        }
-                                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none"
-                                        placeholder="Ej: Explora los materiales disponibles y marca tu progreso."
-                                    />
-                                    <p className="text-[11px] text-muted-foreground text-right">{bannerForm.sub_frase.length}/300</p>
-                                </div>
-
-                                <Button type="submit" size="sm" className="mt-1">
-                                    Guardar banner
-                                </Button>
-                            </form>
-                        </CardContent>
-                    )}
-                </Card>
+                                <Clapperboard className="mr-2 size-4" />
+                                Subir al Carrusel
+                            </Button>
+                        )}
+                        <Button
+                            onClick={() => {
+                                setCarpetaEditar(null);
+                                setDialogoCrear(true);
+                            }}
+                            className="shadow-sm"
+                        >
+                            <FolderPlus className="mr-2 size-4" />
+                            Nueva carpeta
+                        </Button>
+                    </div>
+                </div>
 
                 {/* 2. BARRA DE FILTROS AVANZADOS */}
                 <Card className="border-sidebar-border/70 bg-card shadow-sm">
@@ -1283,6 +1223,91 @@ export default function CapacitacionesAdminIndex({
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* ── Dialog subir al carrusel ── */}
+            {carpetaCarruselId && (
+                <SubirMaterialDialog
+                    open={carruselOpen}
+                    onOpenChange={setCarruselOpen}
+                    carpetaId={carpetaCarruselId}
+                />
+            )}
+
+            {/* ── Dialog de configuración del Hero del portal ── */}
+            <Dialog open={heroOpen} onOpenChange={setHeroOpen}>
+                <DialogContent className="max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Pencil className="size-4 text-teal-600" />
+                            Configurar Hero del Portal
+                        </DialogTitle>
+                        <DialogDescription>
+                            Esta imagen y texto aparecen en la página principal del portal de capacitaciones que ven los colaboradores.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <form onSubmit={submitHero} className="space-y-4">
+                        {/* Vista previa de la imagen actual */}
+                        {heroPreview && (
+                            <div className="relative h-36 w-full overflow-hidden rounded-xl border border-border">
+                                <img src={heroPreview} alt="Hero preview" className="h-full w-full object-cover" />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                                <div className="absolute bottom-2 left-3 text-sm font-bold text-white drop-shadow">
+                                    {heroTitulo || 'Vista previa del título'}
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="space-y-2">
+                            <Label htmlFor="hero-titulo">Título del hero *</Label>
+                            <Input
+                                id="hero-titulo"
+                                value={heroTitulo}
+                                onChange={(e) => setHeroTitulo(e.target.value)}
+                                placeholder="Atraemos talento, desarrollamos potencial."
+                                required
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="hero-subtitulo">Subtítulo / descripción</Label>
+                            <textarea
+                                id="hero-subtitulo"
+                                value={heroSubtitulo}
+                                onChange={(e) => setHeroSubtitulo(e.target.value)}
+                                placeholder="Capacitaciones certificadas para el crecimiento profesional de tu equipo…"
+                                rows={3}
+                                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="hero-imagen">Imagen de fondo (JPG/PNG, máx. 10 MB)</Label>
+                            <input
+                                id="hero-imagen"
+                                type="file"
+                                accept="image/*"
+                                className="text-sm"
+                                onChange={handleHeroImagenChange}
+                            />
+                            {portalConfig?.imagen_hero_url && !heroImagen && (
+                                <p className="text-xs text-muted-foreground">
+                                    Ya hay una imagen guardada. Selecciona una nueva solo si quieres reemplazarla.
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="flex justify-end gap-2 pt-2">
+                            <Button type="button" variant="secondary" onClick={() => setHeroOpen(false)}>
+                                Cancelar
+                            </Button>
+                            <Button type="submit" disabled={heroGuardando}>
+                                {heroGuardando ? 'Guardando…' : 'Guardar configuración'}
+                            </Button>
+                        </div>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </AppLayout>
     );
 }

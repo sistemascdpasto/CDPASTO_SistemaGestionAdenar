@@ -19,6 +19,7 @@ class Vehiculo extends Model
         'capacidad_pallets',
         'imagen',
         'is_active',
+        'novedad_no_disponible',
         'fecha_vencimiento_soat',
         'fecha_vencimiento_tecnomecanica',
         'soat_alerta_enviada_para',
@@ -40,5 +41,10 @@ class Vehiculo extends Model
     public function documentos(): HasMany
     {
         return $this->hasMany(VehiculoDocumento::class);
+    }
+
+    public function disponibilidadHistorial(): HasMany
+    {
+        return $this->hasMany(VehiculoDisponibilidadHistorial::class);
     }
 }

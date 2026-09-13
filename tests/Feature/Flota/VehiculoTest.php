@@ -16,7 +16,16 @@ class VehiculoTest extends TestCase
 
     private function actingAsFlota(): User
     {
-        $role = Role::create(['name' => 'Flota', 'guard_name' => 'web']);
+        $role = Role::firstOrCreate(['name' => 'Flota', 'guard_name' => 'web']);
+        $user = User::factory()->create();
+        $user->assignRole($role);
+
+        return $user;
+    }
+
+    private function actingAsAdministrador(): User
+    {
+        $role = Role::firstOrCreate(['name' => 'Administrador', 'guard_name' => 'web']);
         $user = User::factory()->create();
         $user->assignRole($role);
 
@@ -47,7 +56,7 @@ class VehiculoTest extends TestCase
         Storage::disk('public')->assertExists($vehiculo->documentos->first()->path);
     }
 
-    public function test_it_can_view_edit_and_delete_a_vehiculo(): void
+    public function test_it_can_view_and_edit_a_vehiculo(): void
     {
         $user = $this->actingAsFlota();
 
@@ -71,10 +80,21 @@ class VehiculoTest extends TestCase
         ])->assertRedirect(route('flota.vehiculos.index'));
 
         $this->assertSame('Doble troque', $vehiculo->fresh()->truck_type);
+    }
 
-        $this->actingAs($user)->delete(route('flota.vehiculos.destroy', $vehiculo))
+    public function test_flota_no_puede_eliminar_un_vehiculo_pero_administrador_si(): void
+    {
+        $flota = $this->actingAsFlota();
+        $admin = $this->actingAsAdministrador();
+
+        $vehiculo = Vehiculo::create(['placa' => 'DEL123', 'is_active' => true]);
+
+        $this->actingAs($flota)->delete(route('flota.vehiculos.destroy', $vehiculo))
+            ->assertForbidden();
+        $this->assertNotSoftDeleted($vehiculo);
+
+        $this->actingAs($admin)->delete(route('flota.vehiculos.destroy', $vehiculo))
             ->assertRedirect(route('flota.vehiculos.index'));
-
         $this->assertSoftDeleted($vehiculo);
     }
 
@@ -106,19 +126,56 @@ class VehiculoTest extends TestCase
         $this->assertNull($vehiculo->fecha_vencimiento_tecnomecanica);
     }
 
-    public function test_it_can_toggle_vehiculo_availability(): void
+    public function test_marcar_no_disponible_exige_la_novedad(): void
     {
         $user = $this->actingAsFlota();
         $vehiculo = Vehiculo::create(['placa' => 'TOG123', 'is_active' => true]);
 
         $this->actingAs($user)->patch(route('flota.vehiculos.toggle-activo', $vehiculo))
+            ->assertSessionHasErrors('novedad');
+
+        $this->assertTrue($vehiculo->fresh()->is_active);
+    }
+
+    public function test_it_can_toggle_vehiculo_availability_con_novedad_y_registra_historial(): void
+    {
+        $user = $this->actingAsFlota();
+        $vehiculo = Vehiculo::create(['placa' => 'TOG123', 'is_active' => true]);
+
+        $this->actingAs($user)
+            ->patch(route('flota.vehiculos.toggle-activo', $vehiculo), [
+                'novedad' => 'Falla mecánica en el motor.',
+            ])
             ->assertRedirect();
 
-        $this->assertFalse($vehiculo->fresh()->is_active);
+        $vehiculo->refresh();
+        $this->assertFalse($vehiculo->is_active);
+        $this->assertSame('Falla mecánica en el motor.', $vehiculo->novedad_no_disponible);
+        $this->assertSame(1, $vehiculo->disponibilidadHistorial()->count());
+        $this->assertFalse($vehiculo->disponibilidadHistorial()->latest()->first()->disponible);
 
         $this->actingAs($user)->patch(route('flota.vehiculos.toggle-activo', $vehiculo))
             ->assertRedirect();
 
-        $this->assertTrue($vehiculo->fresh()->is_active);
+        $vehiculo->refresh();
+        $this->assertTrue($vehiculo->is_active);
+        $this->assertNull($vehiculo->novedad_no_disponible);
+        $this->assertSame(2, $vehiculo->disponibilidadHistorial()->count());
+        $this->assertTrue($vehiculo->disponibilidadHistorial()->latest()->first()->disponible);
+    }
+
+    public function test_el_dashboard_de_indicadores_de_disponibilidad_carga(): void
+    {
+        $user = $this->actingAsFlota();
+        Vehiculo::create(['placa' => 'IND123', 'is_active' => true]);
+
+        $this->actingAs($user)->get(route('flota.vehiculos.indicadores'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('flota/vehiculos/indicadores')
+                ->has('kpis')
+                ->has('cambios_por_mes')
+                ->has('ranking_incidentes')
+                ->has('novedades_recientes'));
     }
 }

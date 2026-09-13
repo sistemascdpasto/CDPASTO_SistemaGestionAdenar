@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Capacitaciones;
 
 use App\Http\Controllers\Controller;
-use App\Models\Capacitaciones\CapacitacionBanner;
 use App\Models\Capacitaciones\CapacitacionCarpeta;
 use App\Models\Capacitaciones\CapacitacionMaterial;
+use App\Models\Capacitaciones\CapacitacionPortalConfig;
 use App\Models\Capacitaciones\CapacitacionRevision;
 use App\Models\User;
 use Carbon\Carbon;
@@ -25,6 +25,19 @@ class CarpetaController extends Controller
         $fechaInicio = $request->query('fecha_inicio');
         $fechaFin = $request->query('fecha_fin');
         $estadoFiltro = $request->query('estado'); // completado, en_proceso, sin_actividad
+
+        // Carpeta especial para el carrusel del portal — se crea si no existe
+        $carpetaCarrusel = CapacitacionCarpeta::firstOrCreate(
+            ['nombre' => 'Carrusel Portal'],
+            [
+                'descripcion' => 'Videos e imágenes que aparecen en el carrusel del portal de colaboradores.',
+                'color' => '#0D9488',
+                'icono' => 'play',
+                'visible_colaborador' => false,
+                'orden' => 0,
+                'created_by' => null,
+            ]
+        );
 
         try {
             // 1. Carpetas disponibles (solo raíz, ordenadas de forma ascendente)
@@ -98,6 +111,7 @@ class CarpetaController extends Controller
                 return $col->where('estado_key', $st);
             })->when($buscar, function ($col, $b) {
                 $q = strtolower($b);
+
                 return $col->filter(function ($item) use ($q) {
                     return str_contains(strtolower($item['nombre_completo']), $q) ||
                            str_contains(strtolower($item['cedula']), $q) ||
@@ -134,14 +148,14 @@ class CarpetaController extends Controller
                 ->whereIn('id', $materialesIds)
                 ->withCount(['revisiones' => function ($q) use ($fechaInicio, $fechaFin) {
                     $q->when($fechaInicio, fn ($sub) => $sub->whereDate('revisada_at', '>=', $fechaInicio))
-                      ->when($fechaFin, fn ($sub) => $sub->whereDate('revisada_at', '<=', $fechaFin));
+                        ->when($fechaFin, fn ($sub) => $sub->whereDate('revisada_at', '<=', $fechaFin));
                 }])
                 ->with(['revisiones' => function ($q) use ($fechaInicio, $fechaFin) {
                     $q->when($fechaInicio, fn ($sub) => $sub->whereDate('revisada_at', '>=', $fechaInicio))
-                      ->when($fechaFin, fn ($sub) => $sub->whereDate('revisada_at', '<=', $fechaFin))
-                      ->with('user.colaborador:id,user_id,nombres,apellidos,cedula,area,cargo')
-                      ->latest('revisada_at')
-                      ->take(10); // Limitar a 10 revisiones más recientes por material
+                        ->when($fechaFin, fn ($sub) => $sub->whereDate('revisada_at', '<=', $fechaFin))
+                        ->with('user.colaborador:id,user_id,nombres,apellidos,cedula,area,cargo')
+                        ->latest('revisada_at')
+                        ->take(10); // Limitar a 10 revisiones más recientes por material
                 }])
                 ->orderByDesc('revisiones_count')
                 ->take(10)
@@ -155,6 +169,7 @@ class CarpetaController extends Controller
                         'revisiones_count' => $mat->revisiones_count,
                         'trabajadores' => $mat->revisiones->map(function ($r) {
                             $colab = $r->user?->colaborador;
+
                             return [
                                 'user_id' => $r->user_id,
                                 'nombre' => $colab ? "{$colab->nombres} {$colab->apellidos}" : ($r->user?->name ?? 'Usuario'),
@@ -226,7 +241,8 @@ class CarpetaController extends Controller
                 'rankingCapacitaciones' => $rankingCapacitaciones,
                 'actividadReciente' => $actividadReciente,
                 'graficaActividad' => $graficaActividad,
-                'banner' => CapacitacionBanner::actual()->only(['frase', 'sub_frase', 'imagen_url']),
+                'portalConfig' => CapacitacionPortalConfig::obtener(),
+                'carpetaCarruselId' => $carpetaCarrusel->id,
                 'filters' => [
                     'buscar' => $buscar ?? '',
                     'carpeta_id' => $carpetaId ?? '',
@@ -237,7 +253,7 @@ class CarpetaController extends Controller
             ]);
         } catch (\Exception $e) {
             // Si hay un error, log y retornar datos vacíos para evitar pantalla en blanco
-            \Log::error('Error en capacitaciones index: ' . $e->getMessage(), [
+            \Log::error('Error en capacitaciones index: '.$e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
             ]);
 
@@ -255,7 +271,8 @@ class CarpetaController extends Controller
                 'rankingCapacitaciones' => [],
                 'actividadReciente' => [],
                 'graficaActividad' => [],
-                'banner' => CapacitacionBanner::actual()->only(['frase', 'sub_frase', 'imagen_url']),
+                'portalConfig' => CapacitacionPortalConfig::obtener(),
+                'carpetaCarruselId' => $carpetaCarrusel->id,
                 'filters' => [
                     'buscar' => $buscar ?? '',
                     'carpeta_id' => $carpetaId ?? '',
@@ -283,7 +300,7 @@ class CarpetaController extends Controller
         $portadaPath = null;
         if ($request->hasFile('portada') && $request->file('portada')->isValid()) {
             $file = $request->file('portada');
-            $safeName = time() . '_portada_' . preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $file->getClientOriginalName());
+            $safeName = time().'_portada_'.preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $file->getClientOriginalName());
             $portadaPath = $file->storeAs('capacitaciones/portadas', $safeName, 'public');
         }
 
@@ -314,7 +331,7 @@ class CarpetaController extends Controller
         $materiales = $carpeta->materiales()
             ->when($buscar, function ($q, $texto) {
                 $q->where('titulo', 'like', "%{$texto}%")
-                  ->orWhere('descripcion', 'like', "%{$texto}%");
+                    ->orWhere('descripcion', 'like', "%{$texto}%");
             })
             ->orderBy('orden')
             ->latest('id')
@@ -362,7 +379,7 @@ class CarpetaController extends Controller
                 Storage::disk('public')->delete($portadaPath);
             }
             $file = $request->file('portada');
-            $safeName = time() . '_portada_' . preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $file->getClientOriginalName());
+            $safeName = time().'_portada_'.preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $file->getClientOriginalName());
             $portadaPath = $file->storeAs('capacitaciones/portadas', $safeName, 'public');
         }
 
@@ -393,35 +410,5 @@ class CarpetaController extends Controller
         $carpeta->delete();
 
         return to_route('capacitaciones.index')->with('status', 'Carpeta eliminada correctamente.');
-    }
-
-    /**
-     * Guardar o actualizar el banner de la vista de capacitaciones del colaborador.
-     * POST /modules/capacitaciones/banner
-     */
-    public function saveBanner(Request $request): RedirectResponse
-    {
-        $validated = $request->validate([
-            'frase'     => ['nullable', 'string', 'max:300'],
-            'sub_frase' => ['nullable', 'string', 'max:300'],
-            'imagen'    => ['nullable', 'image', 'max:4096'],
-        ]);
-
-        $banner = CapacitacionBanner::firstOrNew(['id' => 1]);
-
-        if ($request->hasFile('imagen')) {
-            // Eliminar imagen anterior si existe
-            if ($banner->imagen_path && Storage::disk('public')->exists($banner->imagen_path)) {
-                Storage::disk('public')->delete($banner->imagen_path);
-            }
-            $banner->imagen_path = $request->file('imagen')->store('capacitaciones/banner', 'public');
-        }
-
-        $banner->frase     = $validated['frase'] ?? $banner->frase;
-        $banner->sub_frase = $validated['sub_frase'] ?? $banner->sub_frase;
-        $banner->updated_by = $request->user()?->id;
-        $banner->save();
-
-        return back()->with('status', 'Banner actualizado correctamente.');
     }
 }
