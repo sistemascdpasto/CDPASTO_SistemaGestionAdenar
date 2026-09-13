@@ -4,7 +4,6 @@ use App\Http\Middleware\EnsureAccountIsActive;
 use App\Http\Middleware\EnsureGeovictoriaApiToken;
 use App\Http\Middleware\EnsureModuleAccess;
 use App\Http\Middleware\EnsureSimitApiToken;
-use App\Http\Middleware\ForceHttps;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\PreventSearchIndexing;
 use App\Http\Middleware\SecurityHeaders;
@@ -32,19 +31,20 @@ return Application::configure(basePath: dirname(__DIR__))
         // Al final del stack global: se aplica a toda respuesta, web y api.
         $middleware->append(SecurityHeaders::class);
 
-        // ForceHttps va al PRINCIPIO del grupo web/api, no del stack global:
-        // el stack global corre TrustProxies primero (interpreta el
-        // X-Forwarded-Proto que manda Railway), y solo después de eso
-        // $request->secure() refleja la conexión real del navegador. Si
-        // ForceHttps corriera antes de TrustProxies (vía prepend() global),
-        // siempre vería la conexión interna como HTTP y redirigiría en
-        // bucle infinito — eso fue exactamente lo que tumbó la página.
-        $middleware->web(prepend: [ForceHttps::class], append: [
+        // NOTA (2026-09-14): hubo un ForceHttps aquí que causó
+        // ERR_TOO_MANY_REDIRECTS en producción dos veces seguidas (una vez
+        // mal ordenado antes de TrustProxies, y ni corrigiendo el orden se
+        // resolvió — Railway no está devolviendo lo que se asumió sobre
+        // X-Forwarded-Proto). Se quita por completo hasta diagnosticar con
+        // datos reales de producción en vez de asumir cómo reenvía Railway
+        // las cabeceras. Railway ya sirve el dominio *.up.railway.app solo
+        // por HTTPS de cara al usuario, así que no había urgencia real de
+        // forzarlo desde la app.
+        $middleware->web(append: [
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
             PreventSearchIndexing::class,
         ]);
-        $middleware->api(prepend: [ForceHttps::class]);
 
         $middleware->alias([
             'active' => EnsureAccountIsActive::class,
