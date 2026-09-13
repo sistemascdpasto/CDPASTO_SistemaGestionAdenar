@@ -29,16 +29,22 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->trustProxies(at: '*');
 
-        // Antes que cualquier otra cosa (redirige antes de tocar sesión/CSRF).
-        $middleware->prepend(ForceHttps::class);
         // Al final del stack global: se aplica a toda respuesta, web y api.
         $middleware->append(SecurityHeaders::class);
 
-        $middleware->web(append: [
+        // ForceHttps va al PRINCIPIO del grupo web/api, no del stack global:
+        // el stack global corre TrustProxies primero (interpreta el
+        // X-Forwarded-Proto que manda Railway), y solo después de eso
+        // $request->secure() refleja la conexión real del navegador. Si
+        // ForceHttps corriera antes de TrustProxies (vía prepend() global),
+        // siempre vería la conexión interna como HTTP y redirigiría en
+        // bucle infinito — eso fue exactamente lo que tumbó la página.
+        $middleware->web(prepend: [ForceHttps::class], append: [
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
             PreventSearchIndexing::class,
         ]);
+        $middleware->api(prepend: [ForceHttps::class]);
 
         $middleware->alias([
             'active' => EnsureAccountIsActive::class,
