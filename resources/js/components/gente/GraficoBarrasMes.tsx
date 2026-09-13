@@ -49,11 +49,11 @@ function CustomTooltip({ active, payload, label }: any) {
     if (!active || !payload?.length) return null;
     const total = payload.reduce((acc: number, p: any) => acc + (p.value ?? 0), 0);
     return (
-        <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-lg dark:border-slate-700 dark:bg-slate-900 min-w-[200px]">
-            <p className="mb-2 text-xs font-bold text-slate-800 dark:text-slate-100 leading-tight">{label}</p>
+        <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-lg min-w-[200px]">
+            <p className="mb-2 text-xs font-bold text-foreground leading-tight">{label}</p>
             {payload.map((p: any) => (
                 <div key={p.dataKey} className="flex items-center justify-between gap-4 text-xs">
-                    <span className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
+                    <span className="flex items-center gap-1.5 text-muted-foreground">
                         <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: p.color }} />
                         {p.name}
                     </span>
@@ -62,8 +62,8 @@ function CustomTooltip({ active, payload, label }: any) {
                     </span>
                 </div>
             ))}
-            <div className="mt-1.5 border-t border-slate-200 dark:border-slate-700 pt-1.5 flex items-center justify-between text-xs">
-                <span className="text-slate-500 dark:text-slate-400">Total</span>
+            <div className="mt-1.5 border-t border-border pt-1.5 flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">Total</span>
                 <span className={`font-black tabular-nums ${
                     total >= 70 ? 'text-emerald-600 dark:text-emerald-400'
                     : total >= 50 ? 'text-amber-600 dark:text-amber-400'
@@ -131,12 +131,12 @@ export default function GraficoBarrasMes({ colaboradores, mes, anio }: Props) {
             <CardHeader className="pb-2">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="flex items-center gap-2">
-                        <BarChart2 className="h-5 w-5 text-slate-500" />
+                        <BarChart2 className="h-5 w-5 text-muted-foreground" />
                         <div>
                             <CardTitle className="text-base font-semibold">
                                 Resultados por Pilar — {MESES[mes]} {anio}
                             </CardTitle>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                            <p className="text-xs text-muted-foreground mt-0.5">
                                 {sorted.length} colaborador{sorted.length !== 1 ? 'es' : ''}{' '}
                                 · prom. global{' '}
                                 <span className="font-semibold text-purple-600 dark:text-purple-400">
@@ -144,7 +144,7 @@ export default function GraficoBarrasMes({ colaboradores, mes, anio }: Props) {
                                 </span>
                                 {totalPaginas > 1 && (
                                     <> · mostrando{' '}
-                                        <span className="font-medium text-slate-700 dark:text-slate-200">
+                                        <span className="font-medium text-foreground">
                                             {paginaSegura * PAGE_SIZE + 1}–{Math.min((paginaSegura + 1) * PAGE_SIZE, sorted.length)}
                                         </span>
                                         {' '}de {sorted.length}
@@ -156,12 +156,12 @@ export default function GraficoBarrasMes({ colaboradores, mes, anio }: Props) {
 
                     <div className="flex items-center gap-3 flex-wrap">
                         {/* Leyenda pilares */}
-                        <div className="flex flex-wrap gap-3 text-[11px] text-slate-500 dark:text-slate-400">
+                        <div className="flex flex-wrap gap-3 text-[11px] text-muted-foreground">
                             {PILARES.map(p => (
                                 <span key={p.key} className="flex items-center gap-1">
                                     <span className="inline-block h-2 w-2 rounded-sm" style={{ backgroundColor: p.color }} />
                                     {p.label}
-                                    <span className="text-slate-400">/{p.max}%</span>
+                                    <span className="text-muted-foreground">/{p.max}%</span>
                                 </span>
                             ))}
                         </div>
@@ -176,7 +176,7 @@ export default function GraficoBarrasMes({ colaboradores, mes, anio }: Props) {
                                 >
                                     <ChevronLeft className="h-3.5 w-3.5" />
                                 </Button>
-                                <span className="text-xs text-slate-500 tabular-nums px-1">
+                                <span className="text-xs text-muted-foreground tabular-nums px-1">
                                     {paginaSegura + 1} / {totalPaginas}
                                 </span>
                                 <Button
@@ -268,7 +268,7 @@ export default function GraficoBarrasMes({ colaboradores, mes, anio }: Props) {
                 </ResponsiveContainer>
 
                 {/* Mini resumen — promedios de la página visible */}
-                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 border-t border-slate-100 dark:border-slate-800 pt-3">
+                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 border-t border-border pt-3">
                     {PILARES.map((p) => {
                         const avg = data.reduce((acc, c) => {
                             const val =
@@ -282,7 +282,7 @@ export default function GraficoBarrasMes({ colaboradores, mes, anio }: Props) {
                         return (
                             <div key={p.key} className="flex flex-col gap-1">
                                 <div className="flex items-center justify-between text-[11px]">
-                                    <span className="font-medium text-slate-600 dark:text-slate-400 flex items-center gap-1">
+                                    <span className="font-medium text-muted-foreground flex items-center gap-1">
                                         <span className="inline-block h-2 w-2 rounded-sm" style={{ backgroundColor: p.color }} />
                                         {p.label}
                                     </span>
@@ -290,7 +290,7 @@ export default function GraficoBarrasMes({ colaboradores, mes, anio }: Props) {
                                         {avg.toFixed(1)}/{p.max}%
                                     </span>
                                 </div>
-                                <div className="h-1.5 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                                <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
                                     <div
                                         className="h-full rounded-full transition-all duration-500"
                                         style={{ width: `${Math.min(100, pct)}%`, backgroundColor: p.color }}

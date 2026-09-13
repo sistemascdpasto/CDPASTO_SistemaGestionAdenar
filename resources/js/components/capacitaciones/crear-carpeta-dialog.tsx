@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useForm } from '@inertiajs/react';
 import {
     CalendarClock,
+    Check,
     Eye,
     EyeOff,
     FolderPlus,
@@ -340,7 +341,7 @@ export function CrearCarpetaDialog({
                                                     : 'border-border bg-background text-muted-foreground hover:border-teal-400 hover:text-teal-600'
                                             }`}
                                         >
-                                            {activo ? '✓ ' : ''}{mes.label}
+                                            {activo && <Check className="inline size-3 mr-0.5" />}{mes.label}
                                         </button>
                                     );
                                 })}

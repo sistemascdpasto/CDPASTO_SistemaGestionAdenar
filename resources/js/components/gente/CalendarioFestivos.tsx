@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { CalendarDays, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, Loader2, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -203,7 +203,7 @@ export default function CalendarioFestivos({ mesInicial, anioInicial, puedeEdita
                 {/* Nombre para nuevos festivos custom */}
                 {puedeEditar && (
                     <div className="mb-4">
-                        <label className="mb-1 block text-xs font-medium text-slate-500">
+                        <label className="mb-1 block text-xs font-medium text-muted-foreground">
                             Nombre para festivos que agregues:
                         </label>
                         <Input
@@ -232,7 +232,7 @@ export default function CalendarioFestivos({ mesInicial, anioInicial, puedeEdita
                 <div className="grid grid-cols-7 mb-1">
                     {DIAS_SEMANA.map(d => (
                         <div key={d} className={`text-center text-[10px] font-bold py-1
-                            ${d === 'Dom' || d === 'Sáb' ? 'text-rose-400' : 'text-slate-400'}`}>
+                            ${d === 'Dom' || d === 'Sáb' ? 'text-rose-400' : 'text-muted-foreground'}`}>
                             {d}
                         </div>
                     ))}
@@ -240,7 +240,7 @@ export default function CalendarioFestivos({ mesInicial, anioInicial, puedeEdita
 
                 {/* Grid días del mes */}
                 {cargando ? (
-                    <div className="flex items-center justify-center py-10 text-slate-400">
+                    <div className="flex items-center justify-center py-10 text-muted-foreground">
                         <Loader2 className="h-5 w-5 animate-spin mr-2" />
                         Cargando...
                     </div>
@@ -261,7 +261,7 @@ export default function CalendarioFestivos({ mesInicial, anioInicial, puedeEdita
                             let clases = 'relative flex flex-col items-center justify-center rounded-md h-10 w-full text-xs font-medium transition-all select-none ';
 
                             if (procesando) {
-                                clases += 'bg-slate-200 animate-pulse cursor-wait ';
+                                clases += 'bg-muted animate-pulse cursor-wait ';
                             } else if (tipo === 'automatico') {
                                 clases += 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 cursor-default border border-amber-300 ';
                             } else if (tipo === 'custom') {
@@ -270,7 +270,7 @@ export default function CalendarioFestivos({ mesInicial, anioInicial, puedeEdita
                             } else if (esDOM(esDom) || esSab) {
                                 clases += 'text-rose-400 bg-rose-50 dark:bg-rose-950/10 cursor-default ';
                             } else {
-                                clases += 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 ';
+                                clases += 'text-foreground hover:bg-muted ';
                                 if (puedeEditar) clases += 'cursor-pointer ';
                                 else clases += 'cursor-default ';
                             }
@@ -305,9 +305,7 @@ export default function CalendarioFestivos({ mesInicial, anioInicial, puedeEdita
                                                 custom
                                             </span>
                                             {puedeEditar && (
-                                                <span className="absolute top-0.5 right-0.5 text-[9px] font-bold text-violet-400 leading-none">
-                                                    ✕
-                                                </span>
+                                                <X className="absolute top-0.5 right-0.5 size-2.5 text-violet-400" />
                                             )}
                                         </>
                                     )}
@@ -318,7 +316,7 @@ export default function CalendarioFestivos({ mesInicial, anioInicial, puedeEdita
                 )}
 
                 {/* Leyenda */}
-                <div className="mt-4 space-y-1 border-t pt-3 text-xs text-slate-500">
+                <div className="mt-4 space-y-1 border-t pt-3 text-xs text-muted-foreground">
                     <div className="flex items-center gap-2">
                         <span className="inline-block h-3 w-3 rounded bg-amber-100 border border-amber-300" />
                         Festivo automático Colombia / Nariño / Pasto
@@ -326,7 +324,7 @@ export default function CalendarioFestivos({ mesInicial, anioInicial, puedeEdita
                     {puedeEditar && (
                         <div className="flex items-center gap-2">
                             <span className="inline-block h-3 w-3 rounded bg-violet-100 border border-violet-400" />
-                            Festivo personalizado — clic para demarcar <span className="font-bold text-violet-500">✕</span>
+                            Festivo personalizado — clic para demarcar <X className="inline size-3 text-violet-500" />
                         </div>
                     )}
                     <div className="flex items-center gap-2">
@@ -340,19 +338,19 @@ export default function CalendarioFestivos({ mesInicial, anioInicial, puedeEdita
                 </div>
 
                 {/* Resumen festivos del mes */}
-                <div className="mt-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3 text-xs">
-                    <p className="font-semibold text-slate-700 dark:text-slate-200 mb-1">
+                <div className="mt-3 rounded-lg bg-muted p-3 text-xs">
+                    <p className="font-semibold text-foreground mb-1">
                         Festivos en {MESES_NOMBRES[mes - 1]} {anio}
                     </p>
-                    <p className="text-slate-500">Automáticos: <strong>{autoCount}</strong></p>
-                    <p className="text-slate-500">Personalizados: <strong>{customCount}</strong></p>
+                    <p className="text-muted-foreground">Automáticos: <strong>{autoCount}</strong></p>
+                    <p className="text-muted-foreground">Personalizados: <strong>{customCount}</strong></p>
                     {festivos.length === 0 && !cargando && (
-                        <p className="text-slate-400 italic mt-1">Sin festivos este mes.</p>
+                        <p className="text-muted-foreground italic mt-1">Sin festivos este mes.</p>
                     )}
                     {festivos.map(f => (
                         <div key={f.fecha} className="mt-1 flex items-center gap-1.5">
                             <span className={`h-2 w-2 rounded-full flex-shrink-0 ${f.tipo === 'automatico' ? 'bg-amber-400' : 'bg-violet-400'}`} />
-                            <span className="text-slate-600 dark:text-slate-300">
+                            <span className="text-muted-foreground">
                                 <strong>{f.fecha.slice(8)}</strong> — {f.nombre}
                             </span>
                         </div>
