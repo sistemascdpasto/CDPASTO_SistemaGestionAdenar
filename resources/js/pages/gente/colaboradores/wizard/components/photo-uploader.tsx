@@ -87,7 +87,7 @@ export function PhotoUploader({ file, existingPath, onChange, error, disabled }:
                         ¿Estás seguro de que deseas eliminar esta imagen? Esta acción no se puede deshacer.
                     </AlertDialogDescription>
                     <div className="flex justify-end gap-2 pt-4">
-                        <AlertDialogCancel className="bg-gray-200 text-gray-900 hover:bg-gray-300">Cancelar</AlertDialogCancel>
+                        <AlertDialogCancel className="bg-muted text-foreground hover:bg-muted/80">Cancelar</AlertDialogCancel>
                         <AlertDialogAction onClick={removeFoto} className="bg-red-500 text-white hover:bg-red-600">
                             Eliminar
                         </AlertDialogAction>
