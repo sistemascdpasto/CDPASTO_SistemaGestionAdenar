@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Colaborador;
 
 use App\Http\Controllers\Controller;
-use App\Models\Capacitaciones\CapacitacionBanner;
 use App\Models\Capacitaciones\CapacitacionCarpeta;
 use App\Models\Capacitaciones\CapacitacionMaterial;
+use App\Models\Capacitaciones\CapacitacionPortalConfig;
 use App\Models\Capacitaciones\CapacitacionRevision;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -62,14 +62,41 @@ class CapacitacionController extends Controller
             : 0;
 
         // 3. Capacitaciones destacadas (campo booleano en base de datos)
+        // Excluye la carpeta "Carrusel Portal" que es solo para el carrusel
         $destacadas = CapacitacionMaterial::query()
             ->with('carpeta:id,nombre,color')
             ->where('estado', 'publicado')
             ->where('destacada', true)
+            ->whereHas('carpeta', fn ($q) => $q->where('nombre', '!=', 'Carrusel Portal'))
             ->withExists(['revisiones as revisada' => fn ($r) => $r->where('user_id', $userId)])
             ->latest('id')
             ->take(6)
             ->get();
+
+        // 3b. Carrusel: solo materiales de la carpeta "Carrusel Portal"
+        $carpetaCarrusel = CapacitacionCarpeta::where('nombre', 'Carrusel Portal')->first();
+        $mediaCarrusel = $carpetaCarrusel
+            ? CapacitacionMaterial::query()
+                ->with('carpeta:id,nombre,color')
+                ->where('carpeta_id', $carpetaCarrusel->id)
+                ->where('estado', 'publicado')
+                ->whereIn('tipo', ['video', 'imagen', 'enlace'])
+                ->orderBy('orden')
+                ->latest('id')
+                ->take(20)
+                ->get()
+                ->map(fn ($mat) => [
+                    'id' => $mat->id,
+                    'titulo' => $mat->titulo,
+                    'descripcion' => $mat->descripcion,
+                    'tipo' => $mat->tipo,
+                    'mime_type' => $mat->mime_type,
+                    'archivo_url' => $mat->archivo_path ? Storage::url($mat->archivo_path) : null,
+                    'enlace_externo' => $mat->enlace_externo,
+                    'carpeta' => $mat->carpeta,
+                ])
+                ->values()
+            : collect();
 
         // 4. Capacitaciones recientes consultadas por el usuario actual
         $recientes = CapacitacionRevision::query()
@@ -111,8 +138,8 @@ class CapacitacionController extends Controller
                 ->where('estado', 'publicado')
                 ->where(function ($q) use ($buscar) {
                     $q->where('titulo', 'like', "%{$buscar}%")
-                      ->orWhere('descripcion', 'like', "%{$buscar}%")
-                      ->orWhereHas('carpeta', fn ($c) => $c->where('nombre', 'like', "%{$buscar}%"));
+                        ->orWhere('descripcion', 'like', "%{$buscar}%")
+                        ->orWhereHas('carpeta', fn ($c) => $c->where('nombre', 'like', "%{$buscar}%"));
                 })
                 ->withExists(['revisiones as revisada' => fn ($r) => $r->where('user_id', $userId)])
                 ->latest('id')
@@ -140,7 +167,8 @@ class CapacitacionController extends Controller
             'destacadas' => $destacadas,
             'recientes' => $recientes,
             'resultadosBusqueda' => $resultadosBusqueda,
-            'banner' => CapacitacionBanner::actual()->only(['frase', 'sub_frase', 'imagen_url']),
+            'mediaCarrusel' => $mediaCarrusel,
+            'portalConfig' => CapacitacionPortalConfig::obtener(),
             'filters' => [
                 'buscar' => $buscar ?? '',
             ],
@@ -186,7 +214,7 @@ class CapacitacionController extends Controller
             ->withExists(['revisiones as revisada' => fn ($r) => $r->where('user_id', $userId)])
             ->when($buscar, function ($q, $texto) {
                 $q->where('titulo', 'like', "%{$texto}%")
-                  ->orWhere('descripcion', 'like', "%{$texto}%");
+                    ->orWhere('descripcion', 'like', "%{$texto}%");
             })
             ->orderBy('orden')
             ->latest('id')
