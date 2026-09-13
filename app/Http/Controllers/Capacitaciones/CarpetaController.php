@@ -295,6 +295,7 @@ class CarpetaController extends Controller
             'icono' => ['nullable', 'string', 'max:50'],
             'visible_colaborador' => ['nullable', 'boolean'],
             'portada' => ['nullable', 'image', 'max:10240'],
+            'meses_visibles'      => ['nullable', 'array'],
         ]);
 
         $portadaPath = null;
@@ -312,6 +313,7 @@ class CarpetaController extends Controller
             'icono' => $data['icono'] ?? 'folder',
             'visible_colaborador' => $request->boolean('visible_colaborador', true),
             'portada_path' => $portadaPath,
+            'meses_visibles'      => array_map('intval', array_filter($request->input('meses_visibles', []), 'is_numeric')) ?: null,
             'created_by' => $request->user()?->id,
         ]);
 
@@ -390,6 +392,7 @@ class CarpetaController extends Controller
             'icono' => $data['icono'] ?? $carpeta->icono,
             'visible_colaborador' => $request->has('visible_colaborador') ? $request->boolean('visible_colaborador') : $carpeta->visible_colaborador,
             'portada_path' => $portadaPath,
+            'meses_visibles'      => $request->has('meses_visibles') ? (array_map('intval', array_filter($request->input('meses_visibles', []), 'is_numeric')) ?: null) : $carpeta->meses_visibles,
         ]);
 
         return back()->with('status', 'Carpeta actualizada correctamente.');

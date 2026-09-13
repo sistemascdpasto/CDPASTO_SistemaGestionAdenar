@@ -11,7 +11,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { router, useForm } from '@inertiajs/react';
+import { useForm } from '@inertiajs/react';
 import {
     CalendarClock,
     Eye,
@@ -22,7 +22,7 @@ import {
     Palette,
     X,
 } from 'lucide-react';
-import { FormEventHandler, useEffect, useState } from 'react';
+import { FormEventHandler, useEffect, useRef, useState } from 'react';
 
 interface CarpetaData {
     id?: number;
@@ -73,8 +73,10 @@ export function CrearCarpetaDialog({
 }) {
     const esEdicion = !!carpetaEditar?.id;
     const [previewUrl, setPreviewUrl] = useState<string | null>(carpetaEditar?.portada_url || null);
+    // Guarda referencia a las URLs de objeto creadas localmente para poder liberarlas
+    const objectUrlRef = useRef<string | null>(null);
 
-    const { data, setData, post, processing, errors, reset, clearErrors } = useForm<{
+    const { data, setData, post, transform, processing, errors, reset, clearErrors } = useForm<{
         parent_id?: number | null;
         nombre: string;
         descripcion: string;
@@ -93,6 +95,13 @@ export function CrearCarpetaDialog({
         portada: null,
     });
 
+    const liberarObjectUrl = () => {
+        if (objectUrlRef.current) {
+            URL.revokeObjectURL(objectUrlRef.current);
+            objectUrlRef.current = null;
+        }
+    };
+
     useEffect(() => {
         if (open) {
             setData({
@@ -104,18 +113,24 @@ export function CrearCarpetaDialog({
                 meses_visibles: carpetaEditar?.meses_visibles ?? [],
                 portada: null,
             });
+            liberarObjectUrl();
             setPreviewUrl(carpetaEditar?.portada_url || null);
             clearErrors();
         } else {
             reset();
+            liberarObjectUrl();
             setPreviewUrl(null);
         }
+        // Al desmontar el componente, libera cualquier URL de objeto pendiente
+        return () => liberarObjectUrl();
     }, [open, carpetaEditar, parentId]);
 
     const handleImageChange = (file: File | null) => {
         setData('portada', file);
+        liberarObjectUrl();
         if (file) {
             const url = URL.createObjectURL(file);
+            objectUrlRef.current = url;
             setPreviewUrl(url);
         } else {
             setPreviewUrl(carpetaEditar?.portada_url || null);
@@ -125,18 +140,15 @@ export function CrearCarpetaDialog({
     const handleSubmit: FormEventHandler = (e) => {
         e.preventDefault();
         if (esEdicion && carpetaEditar?.id) {
-            router.post(
-                route('capacitaciones.carpetas.update', carpetaEditar.id),
-                {
-                    ...data,
-                    _method: 'PUT',
-                },
-                {
-                    preserveScroll: true,
-                    forceFormData: true,
-                    onSuccess: () => onOpenChange(false),
-                }
-            );
+            transform((data) => ({
+                ...data,
+                _method: 'put',
+            }));
+            post(route('capacitaciones.carpetas.update', carpetaEditar.id), {
+                preserveScroll: true,
+                forceFormData: true,
+                onSuccess: () => onOpenChange(false),
+            });
         } else {
             post(route('capacitaciones.carpetas.store'), {
                 preserveScroll: true,
@@ -195,6 +207,7 @@ export function CrearCarpetaDialog({
                                             className="size-7"
                                             onClick={() => {
                                                 setData('portada', null);
+                                                liberarObjectUrl();
                                                 setPreviewUrl(null);
                                             }}
                                         >
@@ -297,7 +310,6 @@ export function CrearCarpetaDialog({
                                 )}
                             </p>
                         </div>
-                    </div>
 
                         {/* Visibilidad programada por meses */}
                         <div className="grid gap-2 pt-2 border-t">
