@@ -131,11 +131,11 @@ export default function CalificacionesIndex({ calificaciones, resumen, catalogos
                         <div className="space-y-1">
                             <div className="flex items-center gap-2">
                                 <GraduationCap className="h-6 w-6 text-amber-600 dark:text-amber-400" />
-                                <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+                                <h1 className="text-2xl font-bold tracking-tight text-foreground">
                                     Calificaciones de Módulos
                                 </h1>
                             </div>
-                            <p className="text-sm text-slate-600 dark:text-slate-400">
+                            <p className="text-sm text-muted-foreground">
                                 Registro, carga masiva desde Excel y consulta de notas obtenidas por colaboradores en cada módulo.
                             </p>
                         </div>
@@ -167,45 +167,45 @@ export default function CalificacionesIndex({ calificaciones, resumen, catalogos
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-xs font-medium text-slate-500 dark:text-slate-400">Total Registros</CardTitle>
-                            <BookOpen className="h-4 w-4 text-slate-500" />
+                            <CardTitle className="text-xs font-medium text-muted-foreground">Total Registros</CardTitle>
+                            <BookOpen className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold">{resumen.total_registros}</div>
-                            <p className="text-xs text-slate-500">Calificaciones registradas</p>
+                            <p className="text-xs text-muted-foreground">Calificaciones registradas</p>
                         </CardContent>
                     </Card>
 
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-xs font-medium text-slate-500 dark:text-slate-400">Colaboradores Evaluados</CardTitle>
+                            <CardTitle className="text-xs font-medium text-muted-foreground">Colaboradores Evaluados</CardTitle>
                             <Users className="h-4 w-4 text-blue-500" />
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{resumen.total_colaboradores}</div>
-                            <p className="text-xs text-slate-500">Colaboradores únicos</p>
+                            <p className="text-xs text-muted-foreground">Colaboradores únicos</p>
                         </CardContent>
                     </Card>
 
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-xs font-medium text-slate-500 dark:text-slate-400">Total Módulos</CardTitle>
+                            <CardTitle className="text-xs font-medium text-muted-foreground">Total Módulos</CardTitle>
                             <GraduationCap className="h-4 w-4 text-emerald-500" />
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{resumen.total_modulos}</div>
-                            <p className="text-xs text-slate-500">Módulos evaluados</p>
+                            <p className="text-xs text-muted-foreground">Módulos evaluados</p>
                         </CardContent>
                     </Card>
 
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-xs font-medium text-slate-500 dark:text-slate-400">Promedio General Nota</CardTitle>
+                            <CardTitle className="text-xs font-medium text-muted-foreground">Promedio General Nota</CardTitle>
                             <Percent className="h-4 w-4 text-amber-500" />
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">{resumen.promedio_nota}</div>
-                            <p className="text-xs text-slate-500">Promedio de nota acumulado</p>
+                            <p className="text-xs text-muted-foreground">Promedio de nota acumulado</p>
                         </CardContent>
                     </Card>
                 </div>
@@ -218,9 +218,9 @@ export default function CalificacionesIndex({ calificaciones, resumen, catalogos
                     <CardContent>
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                             <div>
-                                <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Buscar</label>
+                                <label className="mb-1 block text-xs font-medium text-muted-foreground">Buscar</label>
                                 <div className="relative">
-                                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+                                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                                     <Input
                                         type="text"
                                         placeholder="Nombre, cédula, módulo..."
@@ -232,7 +232,7 @@ export default function CalificacionesIndex({ calificaciones, resumen, catalogos
                             </div>
 
                             <div>
-                                <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Módulo</label>
+                                <label className="mb-1 block text-xs font-medium text-muted-foreground">Módulo</label>
                                 <Select value={modulo} onValueChange={handleModuloChange}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Todos los Módulos" />
@@ -249,7 +249,7 @@ export default function CalificacionesIndex({ calificaciones, resumen, catalogos
                             </div>
 
                             <div>
-                                <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Centro Distribución</label>
+                                <label className="mb-1 block text-xs font-medium text-muted-foreground">Centro Distribución</label>
                                 <Select value={centro} onValueChange={handleCentroChange}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Todos los Centros" />
@@ -266,7 +266,7 @@ export default function CalificacionesIndex({ calificaciones, resumen, catalogos
                             </div>
 
                             <div>
-                                <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Cargo</label>
+                                <label className="mb-1 block text-xs font-medium text-muted-foreground">Cargo</label>
                                 <Select value={cargo} onValueChange={handleCargoChange}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Todos los Cargos" />
@@ -308,7 +308,7 @@ export default function CalificacionesIndex({ calificaciones, resumen, catalogos
                                 <TableBody>
                                     {calificaciones.data.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={6} className="py-8 text-center text-slate-500">
+                                            <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
                                                 No se encontraron calificaciones con los filtros seleccionados.
                                             </TableCell>
                                         </TableRow>
@@ -319,26 +319,26 @@ export default function CalificacionesIndex({ calificaciones, resumen, catalogos
                                                 <TableRow key={row.id}>
                                                     <TableCell>
                                                         <div>
-                                                            <div className="font-semibold text-slate-900 dark:text-slate-100">
+                                                            <div className="font-semibold text-foreground">
                                                                 {row.colaborador ?? 'Sin nombre'}
                                                             </div>
-                                                            <div className="text-xs text-slate-500">C.C. {row.identificacion}</div>
+                                                            <div className="text-xs text-muted-foreground">C.C. {row.identificacion}</div>
                                                         </div>
                                                     </TableCell>
 
-                                                    <TableCell className="text-slate-700 dark:text-slate-300 text-xs font-medium">
+                                                    <TableCell className="text-foreground text-xs font-medium">
                                                         {row.cargo ?? '-'}
                                                     </TableCell>
 
-                                                    <TableCell className="text-slate-600 dark:text-slate-400 text-xs">
+                                                    <TableCell className="text-muted-foreground text-xs">
                                                         {row.centro_distribucion ?? '-'}
                                                     </TableCell>
 
-                                                    <TableCell className="font-mono text-xs text-slate-500">
+                                                    <TableCell className="font-mono text-xs text-muted-foreground">
                                                         {row.modulo_id_externo ?? '-'}
                                                     </TableCell>
 
-                                                    <TableCell className="font-medium text-slate-900 dark:text-slate-100 text-xs">
+                                                    <TableCell className="font-medium text-foreground text-xs">
                                                         {row.modulo}
                                                     </TableCell>
 
@@ -354,7 +354,7 @@ export default function CalificacionesIndex({ calificaciones, resumen, catalogos
                                                                 {row.nota_modulo}
                                                             </span>
                                                         ) : (
-                                                            <span className="text-slate-400 text-xs font-normal">S/N</span>
+                                                            <span className="text-muted-foreground text-xs font-normal">S/N</span>
                                                         )}
                                                     </TableCell>
                                                 </TableRow>
@@ -367,8 +367,8 @@ export default function CalificacionesIndex({ calificaciones, resumen, catalogos
 
                         {/* Paginación */}
                         {calificaciones.last_page > 1 && (
-                            <div className="flex items-center justify-between border-t border-slate-200/60 pt-4 mt-4 dark:border-slate-800">
-                                <span className="text-xs text-slate-500">
+                            <div className="flex items-center justify-between border-t border-border pt-4 mt-4">
+                                <span className="text-xs text-muted-foreground">
                                     Página {calificaciones.current_page} de {calificaciones.last_page}
                                 </span>
                                 <div className="flex items-center gap-2">
