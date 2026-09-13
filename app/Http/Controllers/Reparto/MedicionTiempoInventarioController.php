@@ -519,44 +519,31 @@ class MedicionTiempoInventarioController extends Controller
             return back()->with('error', 'El archivo no contiene datos.');
         }
 
-        // Obtener el encabezado y normalizar
         $header = array_shift($rows);
         $headerMap = [];
         foreach ($header as $col => $val) {
             if ($val) {
-                $headerMap[trim(mb_strtolower($val))] = $col;
-            }
-        }
-
-        $expectedColumns = ['hora de inicio', 'hora de finalización', 'fecha', 'nombre responsable de ruta', 'placa', 'meta'];
-        $missing = [];
-        foreach ($expectedColumns as $col) {
-            // Buscamos si existe alguna columna que contenga la palabra (ej: "hora de inicio", "hora inicio")
-            $found = false;
-            foreach ($headerMap as $h => $c) {
-                if (str_contains(str_replace('ó', 'o', $h), str_replace('ó', 'o', $col))) {
-                    $found = true;
-                    break;
-                }
-            }
-            if (!$found) {
-                $missing[] = $col;
+                // Remover tildes y pasar a minusculas
+                $limpio = strtolower(str_replace(
+                    ['á','é','í','ó','ú','Á','É','Í','Ó','Ú'],
+                    ['a','e','i','o','u','a','e','i','o','u'],
+                    trim($val)
+                ));
+                $headerMap[$limpio] = $col;
             }
         }
         
-        // Si no encuentra por coincidencia parcial, usar un mapa mÃ¡s flexible
         $flexMap = [
             'fecha' => 'fecha',
             'hora de inicio' => 'hora_inicio',
             'hora inicio' => 'hora_inicio',
             'inicio' => 'hora_inicio',
-            'hora de finalización' => 'hora_fin',
             'hora de finalizacion' => 'hora_fin',
             'hora finalizacion' => 'hora_fin',
             'hora fin' => 'hora_fin',
             'nombre responsable de ruta' => 'colaborador',
-            'responsable' => 'colaborador',
             'nombre' => 'colaborador',
+            'responsable' => 'colaborador',
             'placa' => 'placa',
             'meta' => 'meta',
         ];
@@ -564,7 +551,7 @@ class MedicionTiempoInventarioController extends Controller
         $colMapping = [];
         foreach ($headerMap as $h => $colLetter) {
             foreach ($flexMap as $key => $field) {
-                if (str_contains(str_replace('ó', 'o', $h), $key)) {
+                if (str_contains($h, $key)) {
                     if (!isset($colMapping[$field])) {
                         $colMapping[$field] = $colLetter;
                     }
@@ -573,15 +560,19 @@ class MedicionTiempoInventarioController extends Controller
         }
 
         if (!isset($colMapping['fecha'], $colMapping['hora_inicio'], $colMapping['hora_fin'], $colMapping['placa'], $colMapping['colaborador'])) {
-            return back()->with('error', 'El archivo no tiene las columnas requeridas (Fecha, Hora de inicio, Hora de finalización, Placa, Responsable).');
+            $encontradas = implode(', ', array_keys($headerMap));
+            $mapeadas = implode(', ', array_keys($colMapping));
+            return back()->with('error', "El archivo no tiene las columnas requeridas. Columnas en el excel: [$encontradas]. Columnas reconocidas: [$mapeadas]. Asegúrate de tener: Fecha, Hora de inicio, Hora de finalización, Placa, Nombre.");
         }
 
         $imported = 0;
-        $errors = 0;
+        $errors = [];
 
         DB::beginTransaction();
         try {
+            $rowNum = 1;
             foreach ($rows as $row) {
+                $rowNum++;
                 $fechaRaw = $row[$colMapping['fecha']] ?? null;
                 $horaInicioRaw = $row[$colMapping['hora_inicio']] ?? null;
                 $horaFinRaw = $row[$colMapping['hora_fin']] ?? null;
@@ -599,14 +590,21 @@ class MedicionTiempoInventarioController extends Controller
 
                 // Buscar vehiculo
                 $vehiculo = Vehiculo::where('placa', $placaRaw)->first();
-                if (!$vehiculo) continue;
+                if (!$vehiculo) {
+                    $errors[] = "Fila $rowNum: Vehículo no encontrado ($placaRaw)";
+                    continue;
+                }
 
                 // Buscar colaborador
                 $colaborador = Colaborador::where('nombres', 'like', "%{$colaboradorRaw}%")
                     ->orWhere('apellidos', 'like', "%{$colaboradorRaw}%")
+                    ->orWhere('cedula', 'like', "%{$colaboradorRaw}%")
                     ->orWhere(DB::raw("CONCAT(nombres, ' ', apellidos)"), 'like', "%{$colaboradorRaw}%")
                     ->first();
-                if (!$colaborador) continue;
+                if (!$colaborador) {
+                    $errors[] = "Fila $rowNum: Colaborador no encontrado ($colaboradorRaw)";
+                    continue;
+                }
 
                 // Parsear fecha
                 $fecha = null;
@@ -659,6 +657,10 @@ class MedicionTiempoInventarioController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', 'Error al importar datos: ' . $e->getMessage());
+        }
+
+        if (count($errors) > 0) {
+            return back()->with('status', "Importación completada. Se importaron $imported registros. Errores: " . implode(' | ', array_slice($errors, 0, 5)) . (count($errors) > 5 ? '...' : ''));
         }
 
         return back()->with('status', "Importación completada. Se importaron $imported registros.");
