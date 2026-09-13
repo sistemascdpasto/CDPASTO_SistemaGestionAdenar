@@ -574,25 +574,25 @@ export default function MedicionTiemposInventarioIndex({ registros, filters, pue
                                     {/* Tiempos */}
                                     <div className="mt-3 grid grid-cols-4 gap-2 rounded-lg bg-muted/40 p-3">
                                         <div className="text-center">
-                                            <p className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground">Inicio</p>
+                                            <p className="text-[9px] font-medium text-muted-foreground">Inicio</p>
                                             <p className="mt-0.5 text-sm font-bold text-emerald-600 dark:text-emerald-400">
                                                 {formatHora(registro.hora_inicio)}
                                             </p>
                                         </div>
                                         <div className="text-center">
-                                            <p className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground">Fin</p>
+                                            <p className="text-[9px] font-medium text-muted-foreground">Fin</p>
                                             <p className="mt-0.5 text-sm font-bold text-rose-600 dark:text-rose-400">
                                                 {formatHora(registro.hora_fin)}
                                             </p>
                                         </div>
                                         <div className="text-center">
-                                            <p className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground">Duración</p>
+                                            <p className="text-[9px] font-medium text-muted-foreground">Duración</p>
                                             <p className="mt-0.5 text-sm font-bold text-foreground">
                                                 {formatDuracion(registro.duracion_minutos)}
                                             </p>
                                         </div>
                                         <div className="text-center">
-                                            <p className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground">Meta</p>
+                                            <p className="text-[9px] font-medium text-muted-foreground">Meta</p>
                                             <p className="mt-0.5 text-sm font-bold text-foreground">
                                                 {registro.meta_minutos ? `${registro.meta_minutos}m` : '-'}
                                             </p>

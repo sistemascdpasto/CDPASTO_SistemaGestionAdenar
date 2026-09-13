@@ -107,7 +107,7 @@ export default function MedicionTiemposInventarioShow({ registro }: Props) {
                             ? 'bg-rose-50 dark:bg-rose-900/20'
                             : 'bg-emerald-50 dark:bg-emerald-900/20'
                     }`}>
-                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Estado</span>
+                        <span className="text-xs font-semibold text-muted-foreground">Estado</span>
                         <span className={`inline-flex items-center rounded-full px-3 py-0.5 text-xs font-bold ${
                             yaFinalizado
                                 ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300'
@@ -122,19 +122,19 @@ export default function MedicionTiemposInventarioShow({ registro }: Props) {
                         {/* Tiempos — destacados, apilan en móvil */}
                         <div className="grid grid-cols-3 gap-2 sm:gap-4 py-4 border-b border-sidebar-border/60 dark:border-sidebar-border">
                             <div className="text-center">
-                                <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Inicio</p>
+                                <p className="text-[9px] sm:text-[10px] text-muted-foreground mb-0.5">Inicio</p>
                                 <p className="text-lg sm:text-2xl font-black text-emerald-600 dark:text-emerald-400">
                                     {formatHora(registro.hora_inicio)}
                                 </p>
                             </div>
                             <div className="text-center">
-                                <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Fin</p>
+                                <p className="text-[9px] sm:text-[10px] text-muted-foreground mb-0.5">Fin</p>
                                 <p className={`text-lg sm:text-2xl font-black ${yaFinalizado ? 'text-rose-600 dark:text-rose-400' : 'text-muted-foreground'}`}>
                                     {formatHora(registro.hora_fin)}
                                 </p>
                             </div>
                             <div className="text-center">
-                                <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Duración</p>
+                                <p className="text-[9px] sm:text-[10px] text-muted-foreground mb-0.5">Duración</p>
                                 <p className="text-lg sm:text-2xl font-black text-foreground">
                                     {formatDuracion(registro.duracion_minutos)}
                                 </p>

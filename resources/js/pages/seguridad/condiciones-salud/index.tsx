@@ -293,7 +293,7 @@ function AccionesFila({ fila }: { fila: RegistroFila }) {
         <div className="flex flex-col gap-2">
             {fila.ingreso_id && (
                 <div className="flex items-center gap-1">
-                    <span className="text-[10px] uppercase text-muted-foreground w-14">Ingreso</span>
+                    <span className="text-[10px] text-muted-foreground w-14">Ingreso</span>
                     <EditarCondicionDialog
                         condicionId={fila.ingreso_id}
                         momento="ingreso"
@@ -312,7 +312,7 @@ function AccionesFila({ fila }: { fila: RegistroFila }) {
             )}
             {fila.salida_id && (
                 <div className="flex items-center gap-1">
-                    <span className="text-[10px] uppercase text-muted-foreground w-14">Salida</span>
+                    <span className="text-[10px] text-muted-foreground w-14">Salida</span>
                     <EditarCondicionDialog
                         condicionId={fila.salida_id}
                         momento="salida"
