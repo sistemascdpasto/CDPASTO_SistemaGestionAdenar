@@ -10,7 +10,16 @@ Route::middleware(['auth', 'active', 'role:Administrador|Flota'])
     ->prefix('modules/flota')
     ->name('flota.')
     ->group(function () {
-        Route::resource('vehiculos', VehiculoController::class)->parameters(['vehiculos' => 'vehiculo']);
+        // Antes del resource para que Laravel no la resuelva como
+        // vehiculos/{vehiculo} (comodín del "show").
+        Route::get('vehiculos/indicadores', [VehiculoController::class, 'indicadores'])
+            ->name('vehiculos.indicadores');
+
+        // "destroy" se registra aparte con role:Administrador (ver abajo):
+        // Flota puede ver/crear/editar/marcar disponibilidad, pero no eliminar.
+        Route::resource('vehiculos', VehiculoController::class)
+            ->parameters(['vehiculos' => 'vehiculo'])
+            ->except(['destroy']);
         Route::patch('vehiculos/{vehiculo}/toggle-activo', [VehiculoController::class, 'toggleActivo'])
             ->name('vehiculos.toggle-activo');
 
@@ -47,4 +56,14 @@ Route::middleware(['auth', 'active', 'role:Administrador|Flota'])
             ->name('actas-taller.update');
         Route::delete('actas-taller/{actasTaller}', [ActaTallerController::class, 'destroy'])
             ->name('actas-taller.destroy');
+    });
+
+// Eliminar vehículos es exclusivo de Administrador; Flota conserva el resto
+// de acciones sobre "Documentación" (ver grupo role:Administrador|Flota arriba).
+Route::middleware(['auth', 'active', 'role:Administrador'])
+    ->prefix('modules/flota')
+    ->name('flota.')
+    ->group(function () {
+        Route::delete('vehiculos/{vehiculo}', [VehiculoController::class, 'destroy'])
+            ->name('vehiculos.destroy');
     });

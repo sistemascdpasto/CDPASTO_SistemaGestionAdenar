@@ -4,12 +4,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
-import { type BreadcrumbItem } from '@/types';
-import { Head, Link, router } from '@inertiajs/react';
-import { Plus, Power, Search, Truck } from 'lucide-react';
+import { type BreadcrumbItem, type SharedData } from '@/types';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { BarChart3, Plus, Power, Search, Truck } from 'lucide-react';
 import { FormEventHandler, useEffect, useRef, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -26,6 +28,7 @@ interface VehiculoRow {
     capacidad_pallets: number | null;
     imagen: string | null;
     is_active: boolean;
+    novedad_no_disponible: string | null;
 }
 
 interface PaginationLink {
@@ -40,9 +43,19 @@ interface VehiculosPaginator {
 }
 
 export default function VehiculosIndex({ vehiculos, filters }: { vehiculos: VehiculosPaginator; filters: { search: string } }) {
+    const { auth } = usePage<SharedData>().props;
+    // Eliminar vehículos es exclusivo de Administrador; Flota conserva el
+    // resto de acciones (crear, editar, marcar disponibilidad).
+    const puedeEliminar = auth.isAdmin;
+
     const [search, setSearch] = useState(filters.search);
     const debouncedSearch = useDebouncedValue(search);
     const isFirstRender = useRef(true);
+
+    const [vehiculoNoDisponible, setVehiculoNoDisponible] = useState<VehiculoRow | null>(null);
+    const [novedad, setNovedad] = useState('');
+    const [novedadError, setNovedadError] = useState<string | null>(null);
+    const [enviandoNovedad, setEnviandoNovedad] = useState(false);
 
     useEffect(() => {
         if (isFirstRender.current) {
@@ -62,7 +75,35 @@ export default function VehiculosIndex({ vehiculos, filters }: { vehiculos: Vehi
     };
 
     const toggleActivo = (vehiculo: VehiculoRow) => {
+        if (vehiculo.is_active) {
+            // Va a quedar no disponible: primero se digita la novedad.
+            setVehiculoNoDisponible(vehiculo);
+            setNovedad('');
+            setNovedadError(null);
+            return;
+        }
+
         router.patch(route('flota.vehiculos.toggle-activo', vehiculo.id), {}, { preserveScroll: true });
+    };
+
+    const confirmarNoDisponible = () => {
+        if (!vehiculoNoDisponible) return;
+        if (novedad.trim() === '') {
+            setNovedadError('Escribe la novedad por la que el vehículo no está disponible.');
+            return;
+        }
+
+        setEnviandoNovedad(true);
+        router.patch(
+            route('flota.vehiculos.toggle-activo', vehiculoNoDisponible.id),
+            { novedad },
+            {
+                preserveScroll: true,
+                onError: (errs) => setNovedadError((errs as Record<string, string>).novedad ?? 'No se pudo guardar la novedad.'),
+                onSuccess: () => setVehiculoNoDisponible(null),
+                onFinish: () => setEnviandoNovedad(false),
+            },
+        );
     };
 
     return (
@@ -71,12 +112,20 @@ export default function VehiculosIndex({ vehiculos, filters }: { vehiculos: Vehi
             <div className="flex h-full flex-1 flex-col gap-6 rounded-xl p-4">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <HeadingSmall title="Documentación de Flota" description="Ficha documental de cada camión: foto, datos y documentos habilitantes." />
-                    <Button asChild>
-                        <Link href={route('flota.vehiculos.create')}>
-                            <Plus className="size-4" />
-                            Nuevo vehículo
-                        </Link>
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button variant="outline" asChild>
+                            <Link href={route('flota.vehiculos.indicadores')}>
+                                <BarChart3 className="size-4" />
+                                Indicadores
+                            </Link>
+                        </Button>
+                        <Button asChild>
+                            <Link href={route('flota.vehiculos.create')}>
+                                <Plus className="size-4" />
+                                Nuevo vehículo
+                            </Link>
+                        </Button>
+                    </div>
                 </div>
 
                 <form onSubmit={submitFilters} className="flex max-w-sm items-center gap-2">
@@ -134,6 +183,11 @@ export default function VehiculosIndex({ vehiculos, filters }: { vehiculos: Vehi
                                         <Badge variant={vehiculo.is_active ? 'default' : 'destructive'}>
                                             {vehiculo.is_active ? 'Disponible' : 'No disponible'}
                                         </Badge>
+                                        {!vehiculo.is_active && vehiculo.novedad_no_disponible && (
+                                            <p className="mt-1 max-w-[220px] truncate text-[11px] text-muted-foreground" title={vehiculo.novedad_no_disponible}>
+                                                {vehiculo.novedad_no_disponible}
+                                            </p>
+                                        )}
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex justify-end gap-2">
@@ -154,27 +208,29 @@ export default function VehiculosIndex({ vehiculos, filters }: { vehiculos: Vehi
                                             >
                                                 <Power className="size-4" />
                                             </Button>
-                                            <Dialog>
-                                                <DialogTrigger asChild>
-                                                    <Button variant="destructive" size="sm">
-                                                        Eliminar
-                                                    </Button>
-                                                </DialogTrigger>
-                                                <DialogContent>
-                                                    <DialogTitle>¿Eliminar el vehículo {vehiculo.placa}?</DialogTitle>
-                                                    <DialogDescription>
-                                                        Esta acción elimina el vehículo de forma lógica; sus documentos se conservan en el historial.
-                                                    </DialogDescription>
-                                                    <DialogFooter>
-                                                        <DialogClose asChild>
-                                                            <Button variant="secondary">Cancelar</Button>
-                                                        </DialogClose>
-                                                        <Button variant="destructive" onClick={() => destroyVehiculo(vehiculo)}>
+                                            {puedeEliminar && (
+                                                <Dialog>
+                                                    <DialogTrigger asChild>
+                                                        <Button variant="destructive" size="sm">
                                                             Eliminar
                                                         </Button>
-                                                    </DialogFooter>
-                                                </DialogContent>
-                                            </Dialog>
+                                                    </DialogTrigger>
+                                                    <DialogContent>
+                                                        <DialogTitle>¿Eliminar el vehículo {vehiculo.placa}?</DialogTitle>
+                                                        <DialogDescription>
+                                                            Esta acción elimina el vehículo de forma lógica; sus documentos se conservan en el historial.
+                                                        </DialogDescription>
+                                                        <DialogFooter>
+                                                            <DialogClose asChild>
+                                                                <Button variant="secondary">Cancelar</Button>
+                                                            </DialogClose>
+                                                            <Button variant="destructive" onClick={() => destroyVehiculo(vehiculo)}>
+                                                                Eliminar
+                                                            </Button>
+                                                        </DialogFooter>
+                                                    </DialogContent>
+                                                </Dialog>
+                                            )}
                                         </div>
                                     </TableCell>
                                 </TableRow>
@@ -197,6 +253,35 @@ export default function VehiculosIndex({ vehiculos, filters }: { vehiculos: Vehi
                     </div>
                 )}
             </div>
+
+            <Dialog open={vehiculoNoDisponible !== null} onOpenChange={(open) => !open && setVehiculoNoDisponible(null)}>
+                <DialogContent>
+                    <DialogTitle>Marcar {vehiculoNoDisponible?.placa} como no disponible</DialogTitle>
+                    <DialogDescription>Escribe la novedad por la que el vehículo queda fuera de servicio.</DialogDescription>
+                    <div className="grid gap-1.5 py-2">
+                        <Label htmlFor="novedad">Novedad</Label>
+                        <Textarea
+                            id="novedad"
+                            value={novedad}
+                            onChange={(e) => {
+                                setNovedad(e.target.value);
+                                setNovedadError(null);
+                            }}
+                            placeholder="Ej: Falla mecánica en el motor, pendiente de repuesto."
+                            className="min-h-24"
+                        />
+                        {novedadError && <p className="text-[11px] text-red-500">{novedadError}</p>}
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild>
+                            <Button variant="secondary">Cancelar</Button>
+                        </DialogClose>
+                        <Button onClick={confirmarNoDisponible} disabled={enviandoNovedad}>
+                            Marcar como no disponible
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </AppLayout>
     );
 }

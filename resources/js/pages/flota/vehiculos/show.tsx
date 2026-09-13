@@ -19,6 +19,7 @@ interface VehiculoDetalle {
     capacidad_pallets: number | null;
     imagen: string | null;
     is_active: boolean;
+    novedad_no_disponible: string | null;
 
     fecha_vencimiento_soat: string | null;
     fecha_vencimiento_tecnomecanica: string | null;
@@ -116,6 +117,12 @@ export default function VehiculoShow({ vehiculo }: { vehiculo: VehiculoDetalle }
                                     {vehiculo.is_active ? 'Disponible' : 'No disponible'}
                                 </Badge>
                             </div>
+                            {!vehiculo.is_active && vehiculo.novedad_no_disponible && (
+                                <p className="max-w-md text-sm text-muted-foreground">
+                                    <span className="font-medium text-foreground">Novedad: </span>
+                                    {vehiculo.novedad_no_disponible}
+                                </p>
+                            )}
                         </div>
                     </div>
                     <Button variant="outline" asChild>
