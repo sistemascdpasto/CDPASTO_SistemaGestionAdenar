@@ -343,7 +343,6 @@ export function CrearCarpetaDialog({
                                 </button>
                             )}
                         </div>
-                    </div>
 
                     <DialogFooter>
                         <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
