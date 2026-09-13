@@ -1,4 +1,4 @@
-﻿import { FileIcon, getFileCategoryInfo } from '@/components/capacitaciones/file-icon';
+import { FileIcon, getFileCategoryInfo } from '@/components/capacitaciones/file-icon';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,6 +9,8 @@ import { Head, Link, router } from '@inertiajs/react';
 import {
     ArrowRight,
     CheckCircle2,
+    ChevronLeft,
+    ChevronRight,
     Clock,
     Download,
     ExternalLink,
@@ -17,7 +19,7 @@ import {
     Search,
     Star,
 } from 'lucide-react';
-import { FormEventHandler, useMemo, useState } from 'react';
+import { FormEventHandler, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
@@ -42,6 +44,7 @@ interface MaterialItem {
     titulo: string;
     descripcion: string | null;
     tipo: string;
+    mime_type?: string | null;
     tamano_humano: string | null;
     archivo_url?: string | null;
     enlace_externo: string | null;
@@ -60,6 +63,231 @@ interface ProgresoGeneral {
     porcentaje_general: number;
 }
 
+// ─── Helper: detectar URL de embed de YouTube ────────────────────────────────
+function getYoutubeEmbedUrl(url: string | null): string | null {
+    if (!url) return null;
+    const m = url.match(/^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/);
+    return m && m[2].length === 11 ? `https://www.youtube-nocookie.com/embed/${m[2]}?autoplay=1&rel=0` : null;
+}
+
+// ─── Carrusel de Capacitaciones Destacadas ────────────────────────────────────
+// Lógica:
+//  · Si el primer slide es video/YouTube → reproduce automáticamente
+//  · Al terminar el video (onEnded) avanza al siguiente slide
+//  · Los slides de imagen rotan solos cada 3 s
+//  · Tamaño fijo ≈ 10.05 cm × 10.86 cm (380 × 411 px a 96 dpi)
+function CarruselDestacadas({ destacadas }: { destacadas: MaterialItem[] }) {
+    const [idx, setIdx]           = useState(0);
+    const [videoTermino, setVideoTermino] = useState(false);
+    const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const total = destacadas.length;
+    const item  = destacadas[idx];
+
+    const isVideo = (m: MaterialItem) =>
+        m.tipo === 'video' || (m.mime_type ?? '').includes('video');
+    const isImagen = (m: MaterialItem) =>
+        m.tipo === 'imagen' || (m.mime_type ?? '').includes('image');
+    const youtubeUrl = getYoutubeEmbedUrl(item?.enlace_externo ?? null);
+
+    const siguiente = useCallback(() => {
+        setIdx((p) => (p + 1) % total);
+        setVideoTermino(false);
+    }, [total]);
+
+    const anterior = () => {
+        if (timerRef.current) clearTimeout(timerRef.current);
+        setIdx((p) => (p - 1 + total) % total);
+        setVideoTermino(false);
+    };
+
+    const irA = (i: number) => {
+        if (timerRef.current) clearTimeout(timerRef.current);
+        setIdx(i);
+        setVideoTermino(false);
+    };
+
+    // Auto-avance para imágenes (3 s); no aplica mientras el video esté activo
+    useEffect(() => {
+        if (timerRef.current) clearTimeout(timerRef.current);
+        const esVideoActivo = !videoTermino && (isVideo(item) || !!youtubeUrl);
+        if (!esVideoActivo) {
+            timerRef.current = setTimeout(() => siguiente(), 3000);
+        }
+        return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+    }, [idx, videoTermino, siguiente]);
+
+    if (!item) return null;
+
+    // 354 × 301 px ≈ 9.35 cm × 7.96 cm a 96 dpi
+    const W = 354;
+    const H = 301;
+
+    return (
+        <div className="space-y-3">
+            <div className="flex items-center gap-2">
+                <Star className="size-5 text-amber-500 fill-amber-500" />
+                <h2 className="text-base font-bold uppercase tracking-wider text-foreground">
+                    Capacitaciones Destacadas
+                </h2>
+                <span className="text-xs text-muted-foreground ml-auto">
+                    {idx + 1} / {total}
+                </span>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-5 items-start">
+                {/* ── Visor principal ── */}
+                <div
+                    className="relative flex-shrink-0 overflow-hidden rounded-2xl border border-amber-500/30 bg-black shadow-lg"
+                    style={{ width: W, height: H, maxWidth: '100%' }}
+                >
+                    {/* Video YouTube */}
+                    {!videoTermino && youtubeUrl ? (
+                        <iframe
+                            key={`yt-${idx}`}
+                            src={youtubeUrl}
+                            className="w-full h-full"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                            title={item.titulo}
+                            onLoad={() => setVideoTermino(false)}
+                        />
+                    ) : !videoTermino && isVideo(item) && item.archivo_url ? (
+                        /* Video local */
+                        <video
+                            key={`vid-${idx}`}
+                            src={item.archivo_url}
+                            controls
+                            autoPlay
+                            className="w-full h-full object-contain bg-black"
+                            onEnded={() => { setVideoTermino(true); siguiente(); }}
+                        />
+                    ) : isImagen(item) && item.archivo_url ? (
+                        /* Imagen */
+                        <img
+                            key={`img-${idx}`}
+                            src={item.archivo_url}
+                            alt={item.titulo}
+                            className="w-full h-full object-cover"
+                        />
+                    ) : (
+                        /* Fallback — sin preview directo */
+                        <div className="w-full h-full flex flex-col items-center justify-center gap-3 p-6 text-center bg-gradient-to-b from-amber-500/10 to-card">
+                            <FileIcon tipo={item.tipo} className="size-14 text-amber-500" />
+                            <p className="text-sm font-bold text-foreground">{item.titulo}</p>
+                            {item.carpeta && (
+                                <Link
+                                    href={route('portal.capacitaciones.carpetas.show', item.carpeta.id)}
+                                    className="text-xs text-teal-600 dark:text-teal-400 hover:underline"
+                                >
+                                    Abrir carpeta →
+                                </Link>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Flechas de navegación */}
+                    {total > 1 && (
+                        <>
+                            <button
+                                type="button"
+                                onClick={anterior}
+                                className="absolute left-2 top-1/2 -translate-y-1/2 flex size-8 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/75 transition-colors z-10"
+                                aria-label="Anterior"
+                            >
+                                <ChevronLeft className="size-5" />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => { if (timerRef.current) clearTimeout(timerRef.current); siguiente(); }}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 flex size-8 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/75 transition-colors z-10"
+                                aria-label="Siguiente"
+                            >
+                                <ChevronRight className="size-5" />
+                            </button>
+                        </>
+                    )}
+
+                    {/* Puntos indicadores */}
+                    {total > 1 && (
+                        <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5 z-10">
+                            {destacadas.map((_, i) => (
+                                <button
+                                    key={i}
+                                    type="button"
+                                    onClick={() => irA(i)}
+                                    className={`rounded-full transition-all ${
+                                        i === idx
+                                            ? 'w-5 h-2 bg-white'
+                                            : 'size-2 bg-white/50 hover:bg-white/80'
+                                    }`}
+                                    aria-label={`Ir a slide ${i + 1}`}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                {/* ── Info lateral ── */}
+                <div className="flex flex-col gap-2 min-w-0 flex-1">
+                    <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 text-xs w-fit">
+                        Destacada
+                    </Badge>
+                    <h3 className="font-bold text-lg text-foreground leading-snug">
+                        {item.titulo}
+                    </h3>
+                    {item.descripcion && (
+                        <p className="text-sm text-muted-foreground line-clamp-4">
+                            {item.descripcion}
+                        </p>
+                    )}
+                    {item.carpeta && (
+                        <div className="mt-auto pt-3 border-t border-border/50">
+                            <p className="text-xs text-muted-foreground mb-1.5">Categoría</p>
+                            <Link
+                                href={route('portal.capacitaciones.carpetas.show', item.carpeta.id)}
+                                className="inline-flex items-center gap-1.5 text-sm font-semibold text-teal-600 dark:text-teal-400 hover:underline"
+                            >
+                                {item.carpeta.nombre} →
+                            </Link>
+                        </div>
+                    )}
+
+                    {/* Miniaturas de los demás slides */}
+                    {total > 1 && (
+                        <div className="flex flex-wrap gap-2 mt-2">
+                            {destacadas.map((d, i) => (
+                                <button
+                                    key={d.id}
+                                    type="button"
+                                    onClick={() => irA(i)}
+                                    className={`rounded-lg overflow-hidden border-2 transition-all ${
+                                        i === idx ? 'border-amber-500 scale-105' : 'border-transparent opacity-60 hover:opacity-100'
+                                    }`}
+                                    style={{ width: 48, height: 48 }}
+                                    title={d.titulo}
+                                >
+                                    {d.archivo_url && (isImagen(d) || isVideo(d)) ? (
+                                        <img
+                                            src={d.archivo_url}
+                                            alt={d.titulo}
+                                            className="w-full h-full object-cover"
+                                            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full bg-amber-100 dark:bg-amber-950/40 flex items-center justify-center">
+                                            <FileIcon tipo={d.tipo} className="size-5 text-amber-600" />
+                                        </div>
+                                    )}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
 export default function CentroCapacitacionesIndex({
     carpetas,
     progreso,
@@ -320,64 +548,9 @@ export default function CentroCapacitacionesIndex({
                     </CardContent>
                 </Card>
 
-                {/* 3. SECCIÓN: CAPACITACIONES DESTACADAS */}
+                {/* 3. SECCIÓN: CARRUSEL DE CAPACITACIONES DESTACADAS */}
                 {destacadas.length > 0 && (
-                    <div className="space-y-3">
-                        <div className="flex items-center gap-2">
-                            <Star className="size-5 text-amber-500 fill-amber-500" />
-                            <h2 className="text-base font-bold uppercase tracking-wider text-foreground">
-                                Capacitaciones Destacadas
-                            </h2>
-                        </div>
-
-                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                            {destacadas.map((destacada) => {
-                                const catInfo = getFileCategoryInfo(destacada.tipo);
-                                return (
-                                    <Card
-                                        key={destacada.id}
-                                        className="group relative overflow-hidden border-amber-500/30 bg-gradient-to-b from-card to-amber-500/5 transition-all duration-200 hover:-translate-y-1 hover:shadow-md"
-                                    >
-                                        <CardContent className="p-5 space-y-3">
-                                            <div className="flex items-start justify-between gap-2">
-                                                <div className={`flex size-11 items-center justify-center rounded-xl ${catInfo.bgColor}`}>
-                                                    <FileIcon tipo={destacada.tipo} className="size-6" />
-                                                </div>
-                                                <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 text-xs">
-                                                    Destacada
-                                                </Badge>
-                                            </div>
-
-                                            <div>
-                                                <h3 className="font-bold text-foreground line-clamp-1 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
-                                                    {destacada.titulo}
-                                                </h3>
-                                                {destacada.descripcion && (
-                                                    <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
-                                                        {destacada.descripcion}
-                                                    </p>
-                                                )}
-                                            </div>
-
-                                            <div className="flex items-center justify-between text-xs text-muted-foreground pt-3 border-t border-border/60">
-                                                <span className="font-medium text-foreground/80">
-                                                     {destacada.carpeta?.nombre}
-                                                </span>
-                                                {destacada.carpeta && (
-                                                    <Link
-                                                        href={route('portal.capacitaciones.carpetas.show', destacada.carpeta.id)}
-                                                        className="font-semibold text-teal-600 dark:text-teal-400 hover:underline flex items-center gap-1"
-                                                    >
-                                                        Ir a material ?
-                                                    </Link>
-                                                )}
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                );
-                            })}
-                        </div>
-                    </div>
+                    <CarruselDestacadas destacadas={destacadas} />
                 )}
 
                 {/* 4. SECCIÓN: PROGRESO INDIVIDUAL - EXPLORA POR CATEGORÍA CON FOTOS DE PORTADA */}

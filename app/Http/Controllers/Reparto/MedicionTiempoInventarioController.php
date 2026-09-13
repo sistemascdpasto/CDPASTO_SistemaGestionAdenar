@@ -120,6 +120,7 @@ class MedicionTiempoInventarioController extends Controller
 
         // ── Query base reutilizable para indicadores y gráficas ──────────────
         $baseQuery = MedicionTiempoInventario::query()
+            ->whereNotNull('colaborador_id')
             ->when($esColaborador, fn ($q) => $q->where('user_id', $request->user()->id))
             ->when($filtros['fecha_desde'], fn ($q) => $q->whereDate('fecha_medicion', '>=', $filtros['fecha_desde']))
             ->when($filtros['fecha_hasta'], fn ($q) => $q->whereDate('fecha_medicion', '<=', $filtros['fecha_hasta']))
