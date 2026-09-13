@@ -47,9 +47,9 @@ function SeccionCard({ seccion }: { seccion: Seccion }) {
     };
 
     return (
-        <div className="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900 overflow-hidden">
+        <div className="rounded-2xl border border-sidebar-border/70 bg-card shadow-sm dark:border-sidebar-border overflow-hidden">
             {/* Portada */}
-            <div className="relative h-40 w-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+            <div className="relative h-40 w-full bg-muted flex items-center justify-center">
                 {seccion.imagen_portada_url ? (
                     <img
                         src={seccion.imagen_portada_url}
@@ -57,7 +57,7 @@ function SeccionCard({ seccion }: { seccion: Seccion }) {
                         className="h-full w-full object-cover"
                     />
                 ) : (
-                    <div className="flex flex-col items-center gap-2 text-gray-400">
+                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
                         <ImageIcon className="size-10" />
                         <p className="text-xs">Sin portada</p>
                     </div>
@@ -71,10 +71,10 @@ function SeccionCard({ seccion }: { seccion: Seccion }) {
             {/* Info */}
             <div className="p-4 space-y-3">
                 <div>
-                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 leading-tight">
+                    <p className="text-sm font-semibold text-foreground leading-tight">
                         Sección {seccion.numero}
                     </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">
+                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
                         {seccion.titulo}
                     </p>
                 </div>
@@ -118,7 +118,7 @@ function SeccionCard({ seccion }: { seccion: Seccion }) {
                 </div>
 
                 {/* Mensaje de formato */}
-                <p className="text-[10px] text-gray-400">
+                <p className="text-[10px] text-muted-foreground">
                     JPG, PNG o WebP · Máx. 4 MB
                 </p>
             </div>
@@ -137,10 +137,10 @@ export default function EncuestaMorbilidadSecciones({ secciones }: { secciones: 
                 {/* Título */}
                 <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 sm:text-3xl">
+                        <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
                             Portadas de Secciones
                         </h1>
-                        <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+                        <p className="mt-0.5 text-sm text-muted-foreground">
                             Sube una imagen de portada para cada sección de la encuesta de morbilidad sentida.
                         </p>
                     </div>
@@ -160,8 +160,8 @@ export default function EncuestaMorbilidadSecciones({ secciones }: { secciones: 
 
                 {secciones.length === 0 && (
                     <div className="flex flex-col items-center gap-2 py-16 text-center">
-                        <ImageIcon className="size-10 text-gray-300" />
-                        <p className="text-sm text-gray-500">No hay secciones registradas.</p>
+                        <ImageIcon className="size-10 text-muted-foreground/50" />
+                        <p className="text-sm text-muted-foreground">No hay secciones registradas.</p>
                     </div>
                 )}
             </div>
