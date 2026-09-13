@@ -18,6 +18,8 @@ class MedicionTiempoInventario extends Model
         'hora_fin',
         'duracion_minutos',
         'meta_minutos',
+        'placa_vehiculo',
+        'nombre_colaborador',
         'tipo_inventario',
         'user_id',
         'colaborador_id',
