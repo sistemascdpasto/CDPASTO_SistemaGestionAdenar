@@ -85,6 +85,7 @@ export default function ColaboradorCarpetaShow({
 }) {
     const [busqueda, setBusqueda] = useState(filters.buscar || '');
     const [materialSeleccionado, setMaterialSeleccionado] = useState<Material | null>(null);
+    const [officeViewerFailed, setOfficeViewerFailed] = useState(false);
 
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Dashboard', href: '/dashboard' },
@@ -121,6 +122,7 @@ export default function ColaboradorCarpetaShow({
     };
 
     const abrirVistaPrevia = (material: Material) => {
+        setOfficeViewerFailed(false);
         setMaterialSeleccionado(material);
         if (!material.revisada) {
             marcarRevisada(material);
@@ -516,34 +518,34 @@ export default function ColaboradorCarpetaShow({
                                         className="max-w-full max-h-[550px] rounded-lg shadow-sm object-contain"
                                     />
                                 ) : materialSeleccionado.archivo_url ? (
-                                    /* 5. Otros documentos (PowerPoint, Excel, Word, etc.) */
-                                    <div className="flex flex-col items-center justify-center p-8 text-center space-y-4 max-w-md mx-auto">
-                                        <div className="size-20 rounded-xl bg-teal-500/10 text-teal-600 flex items-center justify-center border-2 border-teal-200 dark:border-teal-800">
-                                            <FileIcon tipo={materialSeleccionado.tipo} mime={materialSeleccionado.mime_type} className="size-10" />
-                                        </div>
-                                        <div>
-                                            <h4 className="font-bold text-lg text-foreground">{materialSeleccionado.titulo}</h4>
-                                            <p className="text-sm text-muted-foreground mt-2">
-                                                {materialSeleccionado.archivo_nombre_original || 'Material de capacitación'}
-                                            </p>
-                                            {materialSeleccionado.tamano_humano && (
-                                                <p className="text-xs text-muted-foreground mt-1">
-                                                    Tamaño: {materialSeleccionado.tamano_humano}
-                                                </p>
-                                            )}
-                                        </div>
-                                        <div className="space-y-2 w-full">
+                                    /* 5. Otros documentos — Office Online Viewer (igual que admin) */
+                                    officeViewerFailed ? (
+                                        <div className="flex flex-col items-center justify-center p-8 text-center space-y-4 max-w-md mx-auto">
+                                            <div className="size-20 rounded-xl bg-teal-500/10 text-teal-600 flex items-center justify-center border-2 border-teal-200 dark:border-teal-800">
+                                                <FileIcon tipo={materialSeleccionado.tipo} mime={materialSeleccionado.mime_type} className="size-10" />
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold text-lg text-foreground">{materialSeleccionado.titulo}</h4>
+                                                <p className="text-sm text-muted-foreground mt-2">La vista previa no se pudo cargar</p>
+                                                {materialSeleccionado.tamano_humano && (
+                                                    <p className="text-xs text-muted-foreground mt-1">Tamaño: {materialSeleccionado.tamano_humano}</p>
+                                                )}
+                                            </div>
                                             <Button asChild className="bg-teal-600 hover:bg-teal-700 text-white gap-2 w-full">
                                                 <a href={route('portal.capacitaciones.materiales.descargar', materialSeleccionado.id)}>
                                                     <Download className="size-4" />
                                                     Descargar para Ver
                                                 </a>
                                             </Button>
-                                            <p className="text-xs text-muted-foreground px-2">
-                                                Descarga el archivo para abrirlo con la aplicación correspondiente en tu equipo
-                                            </p>
                                         </div>
-                                    </div>
+                                    ) : (
+                                        <iframe
+                                            src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent('https://' + window.location.hostname + materialSeleccionado.archivo_url!)}`}
+                                            className="w-full h-[550px] rounded-lg shadow-sm border"
+                                            title={materialSeleccionado.titulo}
+                                            onError={() => setOfficeViewerFailed(true)}
+                                        />
+                                    )
                                 ) : materialSeleccionado.enlace_externo ? (
                                     /* 6. Enlace Externo */
                                     <div className="flex flex-col items-center justify-center p-8 text-center space-y-4 max-w-md mx-auto">
@@ -575,14 +577,12 @@ export default function ColaboradorCarpetaShow({
                                     {materialSeleccionado.revisada ? 'Completado en tu avance' : 'Visualizando material'}
                                 </span>
                                 <div className="flex gap-2">
-                                    {materialSeleccionado.archivo_path && (
-                                        <Button variant="outline" size="sm" asChild className="gap-1.5">
-                                            <a href={route('portal.capacitaciones.materiales.descargar', materialSeleccionado.id)}>
-                                                <Download className="size-4" />
-                                                Descargar
-                                            </a>
-                                        </Button>
-                                    )}
+                                    <Button variant="outline" size="sm" asChild className="gap-1.5">
+                                        <a href={route('portal.capacitaciones.materiales.descargar', materialSeleccionado.id)}>
+                                            <Download className="size-4" />
+                                            Descargar
+                                        </a>
+                                    </Button>
                                     <Button size="sm" onClick={() => setMaterialSeleccionado(null)}>
                                         Cerrar
                                     </Button>

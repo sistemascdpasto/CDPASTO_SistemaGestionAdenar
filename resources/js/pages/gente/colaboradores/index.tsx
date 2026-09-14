@@ -13,6 +13,7 @@ import AppLayout from '@/layouts/app-layout';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { calcularTiempoTrabajado } from '@/pages/seguridad/colaboradores/colaborador-form-fields';
 import { ImportarColaboradoresDialog } from '@/pages/gente/colaboradores/importar-dialog';
+import { CargoCombobox } from '@/pages/gente/colaboradores/wizard/components/cargo-combobox';
 import { type WizardCatalogos } from '@/pages/gente/colaboradores/wizard/catalogos';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
@@ -365,34 +366,14 @@ export default function ColaboradoresIndex({
                         </SelectContent>
                     </Select>
 
-                    <Select value={filters.cargo || TODOS} onValueChange={(value) => applyFilters({ cargo: value === TODOS ? '' : value })}>
-                        <SelectTrigger className="w-44">
-                            <SelectValue placeholder="Cargo" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value={TODOS}>Cargo: todos</SelectItem>
-                            {catalogos.cargos.map((cargo) => (
-                                <SelectItem key={cargo} value={cargo}>
-                                    {cargo}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
 
-                    <Select value={filters.centro || TODOS} onValueChange={(value) => applyFilters({ centro: value === TODOS ? '' : value })}>
-                        <SelectTrigger className="w-36">
-                            <SelectValue placeholder="Centro" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value={TODOS}>Centro: todos</SelectItem>
-                            {catalogos.centros.map((centro) => (
-                                <SelectItem key={centro} value={centro}>
-                                    {centro}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-
+                    <CargoCombobox
+                        value={filters.cargo || ''}
+                        onChange={(value) => applyFilters({ cargo: value })}
+                        cargos={catalogos.cargos}
+                        placeholder="Cargo: buscar..."
+                        className="w-52"
+                    />
                     <Select value={filters.tipo_contrato || TODOS} onValueChange={(value) => applyFilters({ tipo_contrato: value === TODOS ? '' : value })}>
                         <SelectTrigger className="w-56">
                             <SelectValue placeholder="Tipo de contrato" />

@@ -8,6 +8,7 @@ import { useForm } from '@inertiajs/react';
 import { ArrowLeft, ArrowRight, Briefcase, Building2, History, LoaderCircle, QrCode, Umbrella } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { FormEventHandler } from 'react';
+import { CargoCombobox } from './components/cargo-combobox';
 import { type WizardCatalogos } from './catalogos';
 import { type ColaboradorRecord, type Paso3FormData } from './types';
 
@@ -98,18 +99,13 @@ export function Paso3InformacionPuesto({ colaborador, catalogos, historialCargos
                     </div>
                     <div className="grid gap-2">
                         <Label htmlFor="cargo">Cargo</Label>
-                        <Select value={data.cargo} onValueChange={(value) => setData('cargo', value)} disabled={processing}>
-                            <SelectTrigger id="cargo">
-                                <SelectValue placeholder="Selecciona el cargo" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {catalogos.cargos.map((cargo) => (
-                                    <SelectItem key={cargo} value={cargo}>
-                                        {cargo}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        <CargoCombobox
+                            id="cargo"
+                            value={data.cargo}
+                            onChange={(value) => setData('cargo', value)}
+                            cargos={catalogos.cargos}
+                            disabled={processing}
+                        />
                         <InputError message={errors.cargo} />
                     </div>
                     {cambioDeCargo && (
