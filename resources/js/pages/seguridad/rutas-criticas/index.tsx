@@ -1,10 +1,12 @@
 import HeadingSmall from '@/components/heading-small';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
+import { MapPinned, SquareArrowOutUpRight } from 'lucide-react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
@@ -67,21 +69,23 @@ export default function RutasCriticasIndex({
                 />
 
                 <Card className="overflow-hidden border-sidebar-border/70 dark:border-sidebar-border">
-                    <CardContent className="p-0">
-                        <iframe
-                            src={`https://embed.waze.com/es/iframe?zoom=${WAZE_ZOOM}&lat=${WAZE_LAT}&lon=${WAZE_LON}&ct=livemap`}
-                            width="100%"
-                            height="600"
-                            allowFullScreen
-                            title="Mapa de Waze en vivo - Nariño"
-                        />
+                    <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
+                        <MapPinned className="size-10 text-muted-foreground" />
+                        <div>
+                            <p className="text-sm font-semibold text-foreground">El mapa incrustado de Waze ya no está disponible</p>
+                            <p className="mt-1 max-w-md text-sm text-muted-foreground">
+                                Waze restringió el acceso a su widget público de mapa en vivo (tráfico, accidentes, baches) desde sitios
+                                externos como este; ya no es algo que se pueda arreglar desde nuestro lado. Puedes seguir consultando esa
+                                información directamente en Waze.
+                            </p>
+                        </div>
+                        <Button asChild className="gap-1.5">
+                            <a href={`https://www.waze.com/live-map/?zoom=${WAZE_ZOOM}&lat=${WAZE_LAT}&lon=${WAZE_LON}`} target="_blank" rel="noreferrer">
+                                <SquareArrowOutUpRight className="size-4" /> Abrir mapa de Waze en vivo
+                            </a>
+                        </Button>
                     </CardContent>
                 </Card>
-
-                <p className="text-xs text-muted-foreground">
-                    El mapa se centra en el departamento de Nariño, pero Waze no permite restringir de forma estricta el área de navegación:
-                    dentro del propio mapa se puede hacer zoom o desplazar la vista más allá de ese límite.
-                </p>
 
                 <div className="space-y-3">
                     <div>
