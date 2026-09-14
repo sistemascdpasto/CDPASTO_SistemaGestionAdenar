@@ -159,7 +159,7 @@ export const modules: ModuleDef[] = [
             { title: 'Adherencia al Tiempo', slug: 'indicadores-tiempo', icon: Clock },
             { title: 'Entrega en Rango Ind.', slug: 'indicadores-entrega-rango', icon: Activity },
             { title: 'Resumen Ejecutivo', slug: 'indicadores-resumen', icon: BarChart3 },
-            { title: 'Compensación Variable', slug: 'compensacion-variable', icon: DollarSign, allowedRoles: ['Administrador', 'Colaborador'] },
+            { title: 'Compensación Variable', slug: 'compensacion-variable', icon: DollarSign, allowedRoles: ['Administrador', 'Colaborador', 'Reparto'] },
             { title: 'Compensación Variable Diaria', slug: 'compensacion-variable-diaria', icon: CalendarDays },
             { title: 'Medición de Tiempos en Inventario', slug: 'medicion-tiempos-inventario', href: '/modules/reparto/medicion-tiempos-inventario', icon: Clock, allowedRoles: ['Administrador', 'Colaborador', 'Reparto'] },
             { title: '5 Por Qué', slug: 'cinco-porques', href: '/cinco-porques', icon: ListChecks },
