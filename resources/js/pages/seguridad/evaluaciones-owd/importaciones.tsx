@@ -96,8 +96,8 @@ function CeldaSinQr({ importacion }: { importacion: Importacion }) {
                         <tbody>
                             {qrs.map((item, idx) => (
                                 <tr key={idx} className="border-b border-amber-100 last:border-0 dark:border-amber-900/20">
-                                    <td className="px-2 py-1 font-mono text-slate-700 dark:text-slate-300">{item.qr}</td>
-                                    <td className="px-2 py-1 text-slate-600 dark:text-slate-400">{item.evaluado ?? '—'}</td>
+                                    <td className="px-2 py-1 font-mono text-foreground">{item.qr}</td>
+                                    <td className="px-2 py-1 text-muted-foreground">{item.evaluado ?? '—'}</td>
                                 </tr>
                             ))}
                         </tbody>
@@ -203,7 +203,7 @@ export default function EvaluacionesOwdImportaciones({ importaciones, sin_coinci
                                             )}
                                             {filtrados.map((item) => (
                                                 <TableRow key={item.qr}>
-                                                    <TableCell className="font-mono text-sm font-semibold text-slate-700 dark:text-slate-300">
+                                                    <TableCell className="font-mono text-sm font-semibold text-foreground">
                                                         {item.qr}
                                                     </TableCell>
                                                     <TableCell>{item.evaluado ?? '—'}</TableCell>

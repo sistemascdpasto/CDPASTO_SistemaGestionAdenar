@@ -502,8 +502,8 @@ export default function MiCompensacionIndex() {
             formula: `Si tus rechazos son menores al ${registroDia.meta_2}%, ganas el 80% del día.`,
             explicacion: (
                 <ul className="space-y-0.5">
-                    <li>✅ Rechazos <strong>menores a {registroDia.meta_2}%</strong> → ganas el <strong>80%</strong></li>
-                    <li>❌ Rechazos <strong>{registroDia.meta_2}% o más</strong> → no ganas este porcentaje</li>
+                    <li className="flex items-start gap-1"><CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-emerald-600" /> Rechazos <strong>menores a {registroDia.meta_2}%</strong> → ganas el <strong>80%</strong></li>
+                    <li className="flex items-start gap-1"><XCircle className="mt-0.5 size-3.5 shrink-0 text-rose-600" /> Rechazos <strong>{registroDia.meta_2}% o más</strong> → no ganas este porcentaje</li>
                     <li className="font-medium text-green-600">{esUnDia ? 'Hoy' : 'En el período'} promedio: {rechPct.toFixed(2)}% rechazos</li>
                 </ul>
             ),
@@ -515,8 +515,8 @@ export default function MiCompensacionIndex() {
             formula: `Si tus rechazos son ${registroDia.meta_1}% o menos, ganas el 20% extra.`,
             explicacion: (
                 <ul className="space-y-0.5">
-                    <li>✅ Rechazos <strong>{registroDia.meta_1}% o menos</strong> → ganas el <strong>20% extra</strong></li>
-                    <li>❌ Rechazos <strong>mayores a {registroDia.meta_1}%</strong> → no aplica el extra</li>
+                    <li className="flex items-start gap-1"><CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-emerald-600" /> Rechazos <strong>{registroDia.meta_1}% o menos</strong> → ganas el <strong>20% extra</strong></li>
+                    <li className="flex items-start gap-1"><XCircle className="mt-0.5 size-3.5 shrink-0 text-rose-600" /> Rechazos <strong>mayores a {registroDia.meta_1}%</strong> → no aplica el extra</li>
                     <li className="font-medium text-green-600">{esUnDia ? 'Hoy' : 'Promedio período'}: {rechPct.toFixed(2)}% rechazos</li>
                 </ul>
             ),

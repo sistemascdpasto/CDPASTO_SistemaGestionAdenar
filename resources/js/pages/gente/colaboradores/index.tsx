@@ -184,15 +184,15 @@ export default function ColaboradoresIndex({
                 {/* KPI Cards — estilo plan de premiación */}
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
                     {/* Total */}
-                    <div className="col-span-2 sm:col-span-2 rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-4 shadow-sm dark:border-slate-800 dark:from-slate-900/60 dark:to-slate-900/30">
+                    <div className="col-span-2 sm:col-span-2 rounded-xl border border-border bg-gradient-to-br from-muted to-card p-4 shadow-sm">
                         <div className="flex items-center gap-2 mb-2">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800">
-                                <Users className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+                                <Users className="h-4 w-4 text-muted-foreground" />
                             </div>
-                            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Total colaboradores</span>
+                            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Total colaboradores</span>
                         </div>
-                        <p className="text-3xl font-black text-slate-900 dark:text-slate-100">{resumen.total}</p>
-                        <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">registros completos</p>
+                        <p className="text-3xl font-black text-foreground">{resumen.total}</p>
+                        <p className="mt-1 text-[11px] text-muted-foreground">registros completos</p>
                     </div>
 
                     {/* Activos */}
@@ -275,64 +275,64 @@ export default function ColaboradoresIndex({
                     <div className={`rounded-xl border p-4 shadow-sm bg-gradient-to-br to-white dark:to-transparent ${
                         resumen.contratos_proximos > 0
                             ? 'border-orange-200 from-orange-50 dark:border-orange-900/50 dark:from-orange-950/20'
-                            : 'border-slate-200 from-slate-50 dark:border-slate-800 dark:from-slate-900/30'
+                            : 'border-border from-muted'
                     }`}>
                         <div className="flex items-center gap-2 mb-2">
                             <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${
                                 resumen.contratos_proximos > 0
                                     ? 'bg-orange-100 dark:bg-orange-900/40'
-                                    : 'bg-slate-100 dark:bg-slate-800'
+                                    : 'bg-muted'
                             }`}>
                                 <AlertTriangle className={`h-4 w-4 ${
                                     resumen.contratos_proximos > 0
                                         ? 'text-orange-600 dark:text-orange-400'
-                                        : 'text-slate-400 dark:text-slate-500'
+                                        : 'text-muted-foreground'
                                 }`} />
                             </div>
                             <span className={`text-xs font-semibold uppercase tracking-wide ${
                                 resumen.contratos_proximos > 0
                                     ? 'text-orange-700 dark:text-orange-400'
-                                    : 'text-slate-500 dark:text-slate-400'
+                                    : 'text-muted-foreground'
                             }`}>Por vencer</span>
                         </div>
                         <p className={`text-3xl font-black ${
                             resumen.contratos_proximos > 0
                                 ? 'text-orange-600 dark:text-orange-400'
-                                : 'text-slate-400 dark:text-slate-500'
+                                : 'text-muted-foreground'
                         }`}>{resumen.contratos_proximos}</p>
-                        <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">contratos próximos</p>
+                        <p className="mt-1 text-[11px] text-muted-foreground">contratos próximos</p>
                     </div>
 
                     {/* Contratos vencidos */}
                     <div className={`rounded-xl border p-4 shadow-sm bg-gradient-to-br to-white dark:to-transparent ${
                         resumen.contratos_vencidos > 0
                             ? 'border-red-200 from-red-50 dark:border-red-900/50 dark:from-red-950/20'
-                            : 'border-slate-200 from-slate-50 dark:border-slate-800 dark:from-slate-900/30'
+                            : 'border-border from-muted'
                     }`}>
                         <div className="flex items-center gap-2 mb-2">
                             <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${
                                 resumen.contratos_vencidos > 0
                                     ? 'bg-red-100 dark:bg-red-900/40'
-                                    : 'bg-slate-100 dark:bg-slate-800'
+                                    : 'bg-muted'
                             }`}>
                                 <FileWarning className={`h-4 w-4 ${
                                     resumen.contratos_vencidos > 0
                                         ? 'text-red-600 dark:text-red-400'
-                                        : 'text-slate-400 dark:text-slate-500'
+                                        : 'text-muted-foreground'
                                 }`} />
                             </div>
                             <span className={`text-xs font-semibold uppercase tracking-wide ${
                                 resumen.contratos_vencidos > 0
                                     ? 'text-red-700 dark:text-red-400'
-                                    : 'text-slate-500 dark:text-slate-400'
+                                    : 'text-muted-foreground'
                             }`}>Vencidos</span>
                         </div>
                         <p className={`text-3xl font-black ${
                             resumen.contratos_vencidos > 0
                                 ? 'text-red-600 dark:text-red-400'
-                                : 'text-slate-400 dark:text-slate-500'
+                                : 'text-muted-foreground'
                         }`}>{resumen.contratos_vencidos}</p>
-                        <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">contratos vencidos</p>
+                        <p className="mt-1 text-[11px] text-muted-foreground">contratos vencidos</p>
                     </div>
                 </div>
 

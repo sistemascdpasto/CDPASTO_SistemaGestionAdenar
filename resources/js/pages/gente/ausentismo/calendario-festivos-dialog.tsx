@@ -122,11 +122,11 @@ export function CalendarioFestivosDialog({ trigger }: CalendarioFestivosDialogPr
             </DialogTrigger>
             <DialogContent className="max-w-3xl sm:max-w-4xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2 text-xl font-bold text-slate-900 dark:text-slate-100">
+                    <DialogTitle className="flex items-center gap-2 text-xl font-bold text-foreground">
                         <CalendarDays className="h-6 w-6 text-amber-600 dark:text-amber-400" />
                         Gestión de Días Festivos y Calendario Laboral
                     </DialogTitle>
-                    <DialogDescription className="text-sm text-slate-600 dark:text-slate-400">
+                    <DialogDescription className="text-sm text-muted-foreground">
                         Los domingos y festivos (nacionales o personalizados) se marcan automáticamente como no laborales al calificar el ausentismo (100%). Haz clic en cualquier día hábil para marcarlo o desmarcarlo como festivo manual.
                     </DialogDescription>
                 </DialogHeader>
@@ -138,7 +138,7 @@ export function CalendarioFestivosDialog({ trigger }: CalendarioFestivosDialogPr
                             <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleCambiarMes(-1)}>
                                 <ChevronLeft className="h-4 w-4" />
                             </Button>
-                            <span className="min-w-[140px] text-center font-bold text-slate-800 dark:text-slate-200 text-base">
+                            <span className="min-w-[140px] text-center font-bold text-foreground text-base">
                                 {MESES[mes - 1]} {anio}
                             </span>
                             <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleCambiarMes(1)}>
@@ -150,30 +150,30 @@ export function CalendarioFestivosDialog({ trigger }: CalendarioFestivosDialogPr
                         <div className="flex flex-wrap items-center gap-3 text-xs">
                             <div className="flex items-center gap-1">
                                 <span className="h-3 w-3 rounded-full bg-rose-200 border border-rose-400 dark:bg-rose-900" />
-                                <span className="text-slate-700 dark:text-slate-300">Domingos</span>
+                                <span className="text-muted-foreground">Domingos</span>
                             </div>
                             <div className="flex items-center gap-1">
                                 <span className="h-3 w-3 rounded-full bg-emerald-200 border border-emerald-400 dark:bg-emerald-900" />
-                                <span className="text-slate-700 dark:text-slate-300">Festivo Ley</span>
+                                <span className="text-muted-foreground">Festivo Ley</span>
                             </div>
                             <div className="flex items-center gap-1">
                                 <span className="h-3 w-3 rounded-full bg-amber-300 border border-amber-500 dark:bg-amber-800" />
-                                <span className="text-slate-700 dark:text-slate-300">Festivo Manual</span>
+                                <span className="text-muted-foreground">Festivo Manual</span>
                             </div>
                         </div>
                     </div>
 
                     {/* Rejilla del Calendario Mensual */}
-                    <div className="grid grid-cols-7 gap-1 rounded-lg border border-slate-200 bg-slate-100 p-1.5 dark:border-slate-800 dark:bg-slate-900">
+                    <div className="grid grid-cols-7 gap-1 rounded-lg border border-border bg-muted p-1.5">
                         {DIAS_SEMANA.map((dia) => (
-                            <div key={dia} className="py-1.5 text-center text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                            <div key={dia} className="py-1.5 text-center text-xs font-bold text-muted-foreground uppercase tracking-wider">
                                 {dia}
                             </div>
                         ))}
 
                         {celdas.map((dia, index) => {
                             if (!dia) {
-                                return <div key={`empty-${index}`} className="min-h-[70px] rounded-md bg-slate-50/50 dark:bg-slate-950/20" />;
+                                return <div key={`empty-${index}`} className="min-h-[70px] rounded-md bg-muted/30" />;
                             }
 
                             const fechaKey = getFechaKey(dia);
@@ -183,7 +183,7 @@ export function CalendarioFestivosDialog({ trigger }: CalendarioFestivosDialogPr
                             const esAuto = festivoInfo?.tipo === 'automatico';
                             const esCustom = festivoInfo?.tipo === 'custom';
 
-                            let bgClass = 'bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-800';
+                            let bgClass = 'bg-card hover:bg-muted border-border';
                             if (esAuto) {
                                 bgClass = 'bg-emerald-50 hover:bg-emerald-100 border-emerald-300 dark:bg-emerald-950/40 dark:border-emerald-800';
                             } else if (esCustom) {
@@ -209,7 +209,7 @@ export function CalendarioFestivosDialog({ trigger }: CalendarioFestivosDialogPr
                                     }
                                 >
                                     <div className="flex items-center justify-between w-full">
-                                        <span className={`text-sm font-bold ${esDomingo ? 'text-rose-600 dark:text-rose-400' : 'text-slate-800 dark:text-slate-200'}`}>
+                                        <span className={`text-sm font-bold ${esDomingo ? 'text-rose-600 dark:text-rose-400' : 'text-foreground'}`}>
                                             {dia}
                                         </span>
 
@@ -228,13 +228,13 @@ export function CalendarioFestivosDialog({ trigger }: CalendarioFestivosDialogPr
 
                                     <div className="mt-1 min-h-[24px] text-[10px] leading-tight">
                                         {festivoInfo ? (
-                                            <span className="font-semibold block truncate text-slate-800 dark:text-slate-200">
+                                            <span className="font-semibold block truncate text-foreground">
                                                 {festivoInfo.nombre}
                                             </span>
                                         ) : esDomingo ? (
                                             <span className="text-rose-500 font-medium">Domingo</span>
                                         ) : (
-                                            <span className="text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <span className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
                                                 + Marcar
                                             </span>
                                         )}
@@ -244,7 +244,7 @@ export function CalendarioFestivosDialog({ trigger }: CalendarioFestivosDialogPr
                         })}
                     </div>
 
-                    <div className="flex items-center gap-2 rounded-md bg-slate-100 p-3 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                    <div className="flex items-center gap-2 rounded-md bg-muted p-3 text-xs text-muted-foreground">
                         <Info className="h-4 w-4 shrink-0 text-amber-600" />
                         <span>
                             Cualquier día marcado en amarillo (festivo manual) o verde (ley) se computará como <strong>100% de asistencia (día no laboral)</strong> en el reporte de ausentismo y en la evaluación del Plan Premiación.

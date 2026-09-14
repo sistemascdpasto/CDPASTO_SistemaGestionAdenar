@@ -163,11 +163,11 @@ export default function AusentismoIndex({ registros, kpis, options, filters }: P
                         <div className="space-y-1">
                             <div className="flex items-center gap-2">
                                 <CalendarDays className="h-6 w-6 text-amber-600 dark:text-amber-400" />
-                                <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+                                <h1 className="text-2xl font-bold tracking-tight text-foreground">
                                     Ausentismo y Marcaciones
                                 </h1>
                             </div>
-                            <p className="text-sm text-slate-600 dark:text-slate-400">
+                            <p className="text-sm text-muted-foreground">
                                 Control, importación de reportes de marcaciones, turno, permisos y retardos por colaborador.
                             </p>
                         </div>
@@ -200,45 +200,45 @@ export default function AusentismoIndex({ registros, kpis, options, filters }: P
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-xs font-medium text-slate-500 dark:text-slate-400">Total Registros</CardTitle>
-                            <FileSpreadsheet className="h-4 w-4 text-slate-500" />
+                            <CardTitle className="text-xs font-medium text-muted-foreground">Total Registros</CardTitle>
+                            <FileSpreadsheet className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold">{safeKpis.total}</div>
-                            <p className="text-xs text-slate-500">Registros procesados</p>
+                            <p className="text-xs text-muted-foreground">Registros procesados</p>
                         </CardContent>
                     </Card>
 
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-xs font-medium text-slate-500 dark:text-slate-400">Colaboradores Evaluados</CardTitle>
+                            <CardTitle className="text-xs font-medium text-muted-foreground">Colaboradores Evaluados</CardTitle>
                             <Users className="h-4 w-4 text-blue-500" />
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{safeKpis.total_colaboradores}</div>
-                            <p className="text-xs text-slate-500">Colaboradores únicos</p>
+                            <p className="text-xs text-muted-foreground">Colaboradores únicos</p>
                         </CardContent>
                     </Card>
 
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-xs font-medium text-slate-500 dark:text-slate-400">Con Permiso / Ausencia</CardTitle>
+                            <CardTitle className="text-xs font-medium text-muted-foreground">Con Permiso / Ausencia</CardTitle>
                             <AlertCircle className="h-4 w-4 text-amber-500" />
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">{safeKpis.total_con_permiso}</div>
-                            <p className="text-xs text-slate-500">Novedades registradas</p>
+                            <p className="text-xs text-muted-foreground">Novedades registradas</p>
                         </CardContent>
                     </Card>
 
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-xs font-medium text-slate-500 dark:text-slate-400">Con Retardo / Atraso</CardTitle>
+                            <CardTitle className="text-xs font-medium text-muted-foreground">Con Retardo / Atraso</CardTitle>
                             <Clock className="h-4 w-4 text-rose-500" />
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold text-rose-600 dark:text-rose-400">{safeKpis.total_con_atraso}</div>
-                            <p className="text-xs text-slate-500">Registros con atraso</p>
+                            <p className="text-xs text-muted-foreground">Registros con atraso</p>
                         </CardContent>
                     </Card>
                 </div>
@@ -251,9 +251,9 @@ export default function AusentismoIndex({ registros, kpis, options, filters }: P
                     <CardContent>
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
                             <div>
-                                <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Buscar</label>
+                                <label className="mb-1 block text-xs font-medium text-muted-foreground">Buscar</label>
                                 <div className="relative">
-                                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+                                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                                     <Input
                                         type="text"
                                         placeholder="Nombre, cédula, turno..."
@@ -265,7 +265,7 @@ export default function AusentismoIndex({ registros, kpis, options, filters }: P
                             </div>
 
                             <div>
-                                <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Grupo</label>
+                                <label className="mb-1 block text-xs font-medium text-muted-foreground">Grupo</label>
                                 <Select value={grupo} onValueChange={handleGrupoChange}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Todos los Grupos" />
@@ -282,7 +282,7 @@ export default function AusentismoIndex({ registros, kpis, options, filters }: P
                             </div>
 
                             <div>
-                                <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Permiso</label>
+                                <label className="mb-1 block text-xs font-medium text-muted-foreground">Permiso</label>
                                 <Select value={permiso} onValueChange={handlePermisoChange}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Todos los Permisos" />
@@ -299,7 +299,7 @@ export default function AusentismoIndex({ registros, kpis, options, filters }: P
                             </div>
 
                             <div>
-                                <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Fecha Desde</label>
+                                <label className="mb-1 block text-xs font-medium text-muted-foreground">Fecha Desde</label>
                                 <Input
                                     type="date"
                                     value={fechaDesde}
@@ -308,7 +308,7 @@ export default function AusentismoIndex({ registros, kpis, options, filters }: P
                             </div>
 
                             <div>
-                                <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Fecha Hasta</label>
+                                <label className="mb-1 block text-xs font-medium text-muted-foreground">Fecha Hasta</label>
                                 <Input
                                     type="date"
                                     value={fechaHasta}
@@ -335,14 +335,14 @@ export default function AusentismoIndex({ registros, kpis, options, filters }: P
                                         <TableHead>Grupo / Turno</TableHead>
                                         <TableHead>Fecha</TableHead>
                                         <TableHead>Permiso</TableHead>
-                                        <TableHead className="text-center bg-slate-50 dark:bg-slate-900/50">Bloque 1 (Entró - Atraso - Salió - Adelanto)</TableHead>
-                                        <TableHead className="text-center bg-slate-100/70 dark:bg-slate-800/50">Bloque 2 (Entró - Atraso - Salió - Adelanto)</TableHead>
+                                        <TableHead className="text-center bg-muted">Bloque 1 (Entró - Atraso - Salió - Adelanto)</TableHead>
+                                        <TableHead className="text-center bg-muted/70">Bloque 2 (Entró - Atraso - Salió - Adelanto)</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {safeRegistros.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={6} className="py-8 text-center text-slate-500">
+                                            <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
                                                 No se encontraron registros de ausentismo con los filtros seleccionados.
                                             </TableCell>
                                         </TableRow>
@@ -356,19 +356,19 @@ export default function AusentismoIndex({ registros, kpis, options, filters }: P
                                                 <TableRow key={row.id}>
                                                     <TableCell>
                                                         <div>
-                                                            <div className="font-semibold text-slate-900 dark:text-slate-100 text-xs">
+                                                            <div className="font-semibold text-foreground text-xs">
                                                                 {nombreStr}
                                                             </div>
-                                                            <div className="text-xs font-mono text-slate-500">ID {row.identificador ?? '-'}</div>
+                                                            <div className="text-xs font-mono text-muted-foreground">ID {row.identificador ?? '-'}</div>
                                                         </div>
                                                     </TableCell>
 
                                                     <TableCell className="text-xs">
-                                                        <div className="font-medium text-slate-800 dark:text-slate-200">{row.grupo ?? '-'}</div>
-                                                        <div className="text-slate-500 text-[11px]">{row.turno ?? '-'}</div>
+                                                        <div className="font-medium text-foreground">{row.grupo ?? '-'}</div>
+                                                        <div className="text-muted-foreground text-[11px]">{row.turno ?? '-'}</div>
                                                     </TableCell>
 
-                                                    <TableCell className="text-xs font-mono text-slate-600 dark:text-slate-400">
+                                                    <TableCell className="text-xs font-mono text-muted-foreground">
                                                         {fechaStr}
                                                     </TableCell>
 
@@ -378,33 +378,33 @@ export default function AusentismoIndex({ registros, kpis, options, filters }: P
                                                                 {row.permiso}
                                                             </Badge>
                                                         ) : (
-                                                            <span className="text-slate-400">-</span>
+                                                            <span className="text-muted-foreground">-</span>
                                                         )}
                                                     </TableCell>
 
                                                     {/* Bloque 1 */}
-                                                    <TableCell className="text-center text-xs bg-slate-50/50 dark:bg-slate-900/30 font-mono">
+                                                    <TableCell className="text-center text-xs bg-muted/50 font-mono">
                                                         <div className="flex items-center justify-center gap-1.5 flex-wrap">
                                                             <span title="Entró" className="text-emerald-600 dark:text-emerald-400 font-semibold">{row.entro_1 || '--:--'}</span>
-                                                            <span className="text-slate-300">/</span>
-                                                            <span title="Atraso" className={row.atraso_1 && row.atraso_1 !== '00:00' && row.atraso_1 !== '00:00:00' ? 'text-rose-600 dark:text-rose-400 font-bold' : 'text-slate-400'}>{row.atraso_1 || '--:--'}</span>
-                                                            <span className="text-slate-300">/</span>
+                                                            <span className="text-muted-foreground/40">/</span>
+                                                            <span title="Atraso" className={row.atraso_1 && row.atraso_1 !== '00:00' && row.atraso_1 !== '00:00:00' ? 'text-rose-600 dark:text-rose-400 font-bold' : 'text-muted-foreground'}>{row.atraso_1 || '--:--'}</span>
+                                                            <span className="text-muted-foreground/40">/</span>
                                                             <span title="Salió" className="text-blue-600 dark:text-blue-400">{row.salio_1 || '--:--'}</span>
-                                                            <span className="text-slate-300">/</span>
-                                                            <span title="Adelanto" className="text-slate-500">{row.adelanto_1 || '--:--'}</span>
+                                                            <span className="text-muted-foreground/40">/</span>
+                                                            <span title="Adelanto" className="text-muted-foreground">{row.adelanto_1 || '--:--'}</span>
                                                         </div>
                                                     </TableCell>
 
                                                     {/* Bloque 2 */}
-                                                    <TableCell className="text-center text-xs bg-slate-100/40 dark:bg-slate-800/30 font-mono">
+                                                    <TableCell className="text-center text-xs bg-muted/40 font-mono">
                                                         <div className="flex items-center justify-center gap-1.5 flex-wrap">
                                                             <span title="Entró" className="text-emerald-600 dark:text-emerald-400 font-semibold">{row.entro_2 || '--:--'}</span>
-                                                            <span className="text-slate-300">/</span>
-                                                            <span title="Atraso" className={row.atraso_2 && row.atraso_2 !== '00:00' && row.atraso_2 !== '00:00:00' ? 'text-rose-600 dark:text-rose-400 font-bold' : 'text-slate-400'}>{row.atraso_2 || '--:--'}</span>
-                                                            <span className="text-slate-300">/</span>
+                                                            <span className="text-muted-foreground/40">/</span>
+                                                            <span title="Atraso" className={row.atraso_2 && row.atraso_2 !== '00:00' && row.atraso_2 !== '00:00:00' ? 'text-rose-600 dark:text-rose-400 font-bold' : 'text-muted-foreground'}>{row.atraso_2 || '--:--'}</span>
+                                                            <span className="text-muted-foreground/40">/</span>
                                                             <span title="Salió" className="text-blue-600 dark:text-blue-400">{row.salio_2 || '--:--'}</span>
-                                                            <span className="text-slate-300">/</span>
-                                                            <span title="Adelanto" className="text-slate-500">{row.adelanto_2 || '--:--'}</span>
+                                                            <span className="text-muted-foreground/40">/</span>
+                                                            <span title="Adelanto" className="text-muted-foreground">{row.adelanto_2 || '--:--'}</span>
                                                         </div>
                                                     </TableCell>
                                                 </TableRow>
@@ -417,8 +417,8 @@ export default function AusentismoIndex({ registros, kpis, options, filters }: P
 
                         {/* Paginación */}
                         {(registros?.last_page ?? 1) > 1 && (
-                            <div className="flex items-center justify-between border-t border-slate-200/60 pt-4 mt-4 dark:border-slate-800">
-                                <span className="text-xs text-slate-500">
+                            <div className="flex items-center justify-between border-t border-border pt-4 mt-4">
+                                <span className="text-xs text-muted-foreground">
                                     Página {registros?.current_page ?? 1} de {registros?.last_page ?? 1}
                                 </span>
                                 <div className="flex items-center gap-2">

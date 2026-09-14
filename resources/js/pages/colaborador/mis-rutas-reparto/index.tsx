@@ -65,7 +65,7 @@ export default function MisRutasReparto({ planeaciones }: Props) {
 
                 {planeaciones.length === 0 && (
                     <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
-                        <Route className="h-12 w-12 text-gray-300" />
+                        <Route className="h-12 w-12 text-muted-foreground/50" />
                         <p className="text-sm text-muted-foreground">
                             Todavía no tienes planeaciones de ruta registradas.
                         </p>
@@ -81,7 +81,7 @@ export default function MisRutasReparto({ planeaciones }: Props) {
                             {/* Encabezado de la Card */}
                             <CardHeader className="pb-3 border-b">
                                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                                    <CardTitle className="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-gray-100">
+                                    <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
                                         <Truck className="h-5 w-5 text-red-600 shrink-0" />
                                         <span className="font-mono text-red-600">{plan.placa}</span>
                                     </CardTitle>
@@ -107,12 +107,12 @@ export default function MisRutasReparto({ planeaciones }: Props) {
 
                                 {/* Fecha */}
                                 <div className="flex items-center gap-1.5 mt-1">
-                                    <CalendarDays className="h-3.5 w-3.5 text-gray-400" />
-                                    <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                                    <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
+                                    <span className="text-sm font-semibold text-foreground">
                                         {formatFecha(plan.fecha)}
                                     </span>
                                     {plan.fecha && (
-                                        <span className="text-xs text-gray-500 capitalize">
+                                        <span className="text-xs text-muted-foreground capitalize">
                                             — {getDiaSemana(plan.fecha)}
                                         </span>
                                     )}
@@ -124,20 +124,20 @@ export default function MisRutasReparto({ planeaciones }: Props) {
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                                     {plan.ud_programado_por && (
                                         <div>
-                                            <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
+                                            <p className="text-xs text-muted-foreground font-semibold">
                                                 Programado por
                                             </p>
-                                            <p className="font-medium text-gray-800 dark:text-gray-200 mt-0.5">
+                                            <p className="font-medium text-foreground mt-0.5">
                                                 {plan.ud_programado_por}
                                             </p>
                                         </div>
                                     )}
                                     {plan.despachado_por && (
                                         <div>
-                                            <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
+                                            <p className="text-xs text-muted-foreground font-semibold">
                                                 Despachado por
                                             </p>
-                                            <p className="font-medium text-gray-800 dark:text-gray-200 mt-0.5">
+                                            <p className="font-medium text-foreground mt-0.5">
                                                 {plan.despachado_por}
                                             </p>
                                         </div>
@@ -147,7 +147,7 @@ export default function MisRutasReparto({ planeaciones }: Props) {
                                 {/* Viajes */}
                                 {plan.viajes.length > 0 && (
                                     <div>
-                                        <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-2 flex items-center gap-1">
+                                        <p className="text-xs text-muted-foreground font-semibold mb-2 flex items-center gap-1">
                                             <MapPin className="h-3.5 w-3.5 text-red-500" />
                                             Viajes programados
                                         </p>
@@ -155,7 +155,7 @@ export default function MisRutasReparto({ planeaciones }: Props) {
                                             {plan.viajes.map((viaje, idx) => (
                                                 <div
                                                     key={idx}
-                                                    className="bg-gray-50 dark:bg-gray-800/50 rounded-md border p-2.5 text-xs space-y-1"
+                                                    className="bg-muted rounded-md border p-2.5 text-xs space-y-1"
                                                 >
                                                     <p className="font-bold text-red-600">Viaje {idx + 1}</p>
                                                     <div className="flex justify-between gap-2">
@@ -189,7 +189,7 @@ export default function MisRutasReparto({ planeaciones }: Props) {
                                 {/* Tripulación */}
                                 {plan.tripulacion.length > 0 && (
                                     <div>
-                                        <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-2 flex items-center gap-1">
+                                        <p className="text-xs text-muted-foreground font-semibold mb-2 flex items-center gap-1">
                                             <Users className="h-3.5 w-3.5 text-blue-500" />
                                             Tripulación completa
                                         </p>

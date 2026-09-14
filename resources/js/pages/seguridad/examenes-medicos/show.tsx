@@ -1595,7 +1595,7 @@ export default function EvaluacionShow({
                                                             <span>
                                                                 {realizados} de {totalExamenes} realizados
                                                                 {realizados === totalExamenes && totalExamenes > 0 && (
-                                                                    <span className="text-emerald-600 dark:text-emerald-400 ml-1.5 font-semibold">✓</span>
+                                                                    <CheckCircle2 className="inline size-3.5 text-emerald-600 dark:text-emerald-400 ml-1.5" />
                                                                 )}
                                                             </span>
                                                         )}
