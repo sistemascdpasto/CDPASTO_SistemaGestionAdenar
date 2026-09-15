@@ -72,6 +72,8 @@ class AlcoholimetroController extends Controller
         $dispositoData = $dispositivo->toArray();
         $dispositoData['imagenes_paths'] = $dispositivo->imagenes()->pluck('path')->map(fn($path) => '/storage/' . $path)->toArray();
         $dispositoData['documentos_paths'] = $this->documentPaths($dispositivo);
+        $dispositoData['fecha_calibracion'] = $dispositivo->fecha_calibracion?->toDateString();
+        $dispositoData['fecha_vencimiento_certificado'] = $dispositivo->fecha_vencimiento_certificado?->toDateString();
 
         return Inertia::render('seguridad/dispositivos/show', [
             'dispositivo' => [
@@ -87,6 +89,9 @@ class AlcoholimetroController extends Controller
         $dispositoData = $dispositivo->toArray();
         $dispositoData['imagenes_paths'] = $dispositivo->imagenes()->pluck('path')->map(fn($path) => '/storage/' . $path)->toArray();
         $dispositoData['documentos_paths'] = $this->documentPaths($dispositivo);
+        // Formatear fechas como yyyy-MM-dd para que funcionen en <input type="date">
+        $dispositoData['fecha_calibracion'] = $dispositivo->fecha_calibracion?->toDateString();
+        $dispositoData['fecha_vencimiento_certificado'] = $dispositivo->fecha_vencimiento_certificado?->toDateString();
 
         return Inertia::render('seguridad/dispositivos/edit', [
             'dispositivo' => $dispositoData,
@@ -145,8 +150,33 @@ class AlcoholimetroController extends Controller
 
     private function storeDocumentos(Request $request, Alcoholimetro $dispositivo): void
     {
-        foreach ($request->file('documentos', []) as $archivo) {
-            $dispositivo->documentos()->create(['path' => $archivo->store('dispositivos/documentos', 'public')]);
+        $archivos = [];
+
+        if ($request->hasFile('documento')) {
+            $doc = $request->file('documento');
+            if ($doc && $doc->isValid()) {
+                $archivos[] = $doc;
+            }
+        }
+
+        $docs = $request->file('documentos', []);
+        if (!is_array($docs)) {
+            $docs = [$docs];
+        }
+
+        foreach ($docs as $doc) {
+            if ($doc && $doc->isValid()) {
+                $archivos[] = $doc;
+            }
+        }
+
+        foreach ($archivos as $archivo) {
+            $path = $archivo->store('dispositivos/documentos', 'public');
+            $dispositivo->documentos()->create(['path' => $path]);
+
+            if (!$dispositivo->documento_path) {
+                $dispositivo->update(['documento_path' => $path]);
+            }
         }
     }
 

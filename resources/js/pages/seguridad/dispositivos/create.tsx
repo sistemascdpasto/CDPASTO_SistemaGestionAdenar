@@ -3,9 +3,9 @@ import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
 import { DispositivoFormData, DispositivoFormFields } from '@/pages/seguridad/dispositivos/dispositivo-form-fields';
 import { type BreadcrumbItem } from '@/types';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { LoaderCircle } from 'lucide-react';
-import { FormEventHandler } from 'react';
+import { FormEventHandler, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
@@ -14,33 +14,61 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Nuevo dispositivo', href: '/modules/seguridad/dispositivos/create' },
 ];
 
+const emptyForm = (): DispositivoFormData => ({
+    codigo: '',
+    marca: '',
+    modelo: '',
+    fecha_calibracion: '',
+    fecha_vencimiento_certificado: '',
+    documento: null,
+    valor_min: '0',
+    valor_max: '0.1',
+    estado: 'Disponible',
+    imagenes: [],
+    deleted_imagenes_indices: [],
+    documentos: [],
+    deleted_documentos_indices: [],
+});
+
 export default function CreateDispositivo() {
-    const { data, setData, post, processing, errors } = useForm<DispositivoFormData>({
-        codigo: '',
-        marca: '',
-        modelo: '',
-        fecha_calibracion: '',
-        fecha_vencimiento_certificado: '',
-        documento: null,
-        valor_min: '0',
-        valor_max: '0.1',
-        estado: 'Disponible',
-        imagenes: [],
-        deleted_imagenes_indices: [],
-        documentos: [],
-        deleted_documentos_indices: [],
-    });
+    const [data, setDataState] = useState<DispositivoFormData>(emptyForm());
+    const [errors, setErrors] = useState<Partial<Record<keyof DispositivoFormData, string>>>({});
+    const [processing, setProcessing] = useState(false);
+
+    const setData = <K extends keyof DispositivoFormData>(key: K, value: DispositivoFormData[K]) => {
+        setDataState((prev) => ({ ...prev, [key]: value }));
+    };
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        post(route('seguridad.dispositivos.store'));
+        setProcessing(true);
+        setErrors({});
+
+        const form = new FormData();
+        form.append('codigo', data.codigo);
+        form.append('marca', data.marca);
+        form.append('modelo', data.modelo);
+        form.append('fecha_calibracion', data.fecha_calibracion);
+        form.append('fecha_vencimiento_certificado', data.fecha_vencimiento_certificado);
+        form.append('valor_min', data.valor_min);
+        form.append('valor_max', data.valor_max);
+        form.append('estado', data.estado);
+        if (data.documento) form.append('documento', data.documento);
+        (data.imagenes as File[]).forEach((f) => form.append('imagenes[]', f));
+        (data.documentos as File[]).forEach((f) => form.append('documentos[]', f));
+
+        router.post(route('seguridad.dispositivos.store'), form, {
+            forceFormData: true,
+            onError: (errs) => { setErrors(errs as any); setProcessing(false); },
+            onFinish: () => setProcessing(false),
+        });
     };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Nuevo dispositivo" />
             <div className="flex h-full flex-1 flex-col gap-6 rounded-xl p-4">
-                <HeadingSmall title="Nuevo dispositivo" description="Registra un alcoholímetro y su información técnica." />
+                <HeadingSmall title="Nuevo dispositivo" description="Registra un alcoholimetro y su informacion tecnica." />
 
                 <form onSubmit={submit} className="grid gap-6">
                     <DispositivoFormFields data={data} setData={setData} errors={errors} processing={processing} />

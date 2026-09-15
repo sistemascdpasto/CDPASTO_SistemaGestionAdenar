@@ -64,7 +64,7 @@ export default function DispositivoShow({ dispositivo, mantenimientos }: { dispo
     const documentos: SavedDocumento[] = [
         ...(dispositivo.documento_path ? [{ path: `/storage/${dispositivo.documento_path}`, nombre: 'Documento original' }] : []),
         ...(dispositivo.documentos_paths ?? []),
-    ];
+    ].filter((doc, index, self) => index === self.findIndex((t) => t.path === doc.path));
 
     const submitMantenimiento: FormEventHandler = (e) => {
         e.preventDefault();

@@ -3,9 +3,9 @@ import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
 import { DispositivoFormData, DispositivoFormFields, type SavedDocumento } from '@/pages/seguridad/dispositivos/dispositivo-form-fields';
 import { type BreadcrumbItem } from '@/types';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { LoaderCircle } from 'lucide-react';
-import { FormEventHandler } from 'react';
+import { FormEventHandler, useState } from 'react';
 
 interface EditableDispositivo {
     id: number;
@@ -30,7 +30,7 @@ export default function EditDispositivo({ dispositivo }: { dispositivo: Editable
         { title: dispositivo.codigo, href: `/modules/seguridad/dispositivos/${dispositivo.id}/edit` },
     ];
 
-    const { data, setData, post, processing, errors, transform } = useForm<DispositivoFormData>({
+    const [data, setDataState] = useState<DispositivoFormData>({
         codigo: dispositivo.codigo,
         marca: dispositivo.marca ?? '',
         modelo: dispositivo.modelo ?? '',
@@ -45,19 +45,47 @@ export default function EditDispositivo({ dispositivo }: { dispositivo: Editable
         documentos: [],
         deleted_documentos_indices: [],
     });
+    const [errors, setErrors] = useState<Partial<Record<keyof DispositivoFormData, string>>>({});
+    const [processing, setProcessing] = useState(false);
+
+    const setData = <K extends keyof DispositivoFormData>(key: K, value: DispositivoFormData[K]) => {
+        setDataState((prev) => ({ ...prev, [key]: value }));
+    };
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        // Laravel no soporta multipart en PUT, así que se envía por POST con _method spoof.
-        transform((data) => ({ ...data, _method: 'put' }));
-        post(route('seguridad.dispositivos.update', dispositivo.id));
+        setProcessing(true);
+        setErrors({});
+
+        const form = new FormData();
+        // _method spoof para PUT (Laravel no soporta multipart PUT nativo)
+        form.append('_method', 'PUT');
+        form.append('codigo', data.codigo);
+        form.append('marca', data.marca);
+        form.append('modelo', data.modelo);
+        form.append('fecha_calibracion', data.fecha_calibracion);
+        form.append('fecha_vencimiento_certificado', data.fecha_vencimiento_certificado);
+        form.append('valor_min', data.valor_min);
+        form.append('valor_max', data.valor_max);
+        form.append('estado', data.estado);
+        if (data.documento) form.append('documento', data.documento);
+        (data.imagenes as File[]).forEach((f) => form.append('imagenes[]', f));
+        (data.documentos as File[]).forEach((f) => form.append('documentos[]', f));
+        (data.deleted_imagenes_indices as number[]).forEach((i) => form.append('deleted_imagenes_indices[]', String(i)));
+        (data.deleted_documentos_indices as number[]).forEach((i) => form.append('deleted_documentos_indices[]', String(i)));
+
+        router.post(route('seguridad.dispositivos.update', dispositivo.id), form, {
+            forceFormData: true,
+            onError: (errs) => { setErrors(errs as any); setProcessing(false); },
+            onFinish: () => setProcessing(false),
+        });
     };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Editar dispositivo" />
             <div className="flex h-full flex-1 flex-col gap-6 rounded-xl p-4">
-                <HeadingSmall title="Editar dispositivo" description="Actualiza la información técnica del alcoholímetro." />
+                <HeadingSmall title="Editar dispositivo" description="Actualiza la informacion tecnica del alcoholimetro." />
 
                 <form onSubmit={submit} className="grid gap-6">
                     <DispositivoFormFields
