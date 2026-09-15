@@ -4,7 +4,9 @@ namespace App\Support\Chatbot;
 
 /**
  * Base de conocimiento del chatbot: el contenido integro del "Folleto 2026 -
- * Entrevista Reparto" (CD Pasto), transcrito en preguntas y respuestas.
+ * Entrevista Reparto" (CD Pasto) mas el "Cuestionario para entrevistas en
+ * Check to Coach" (Almacen: metas de productividad, GOB/SCO/Tool Kit de
+ * Inventarios, picking), transcritos en preguntas y respuestas.
  *
  * En vez de inyectar el folleto completo en cada peticion al modelo (excede
  * el limite de tokens por minuto del plan gratuito de Groq), buscarRelevantes()
@@ -686,6 +688,108 @@ class DpoFaqKnowledgeBase
                 'seccion' => 'REPARTO: TR, TI Y RECHAZOS EN RUTA',
                 'pregunta' => '¿Tienes alguna forma de informar problemas de ruta?',
                 'respuesta' => 'Mediante los grupos de WhatsApp: para modulaciones, el grupo de modulación; para corrección de coordenadas, hay un grupo específico; para flota, hay otro. También Road Map para modular, y los buzones de sugerencia encontrados en el QR del vehículo.',
+            ],
+
+            // ── Cuestionario para entrevistas en Check to Coach (Almacén) ──
+            130 => [
+                'seccion' => 'ALMACÉN: METAS DE PRODUCTIVIDAD Y MONTACARGAS',
+                'pregunta' => '¿Cuál es el PI crítico de flota (montacargas)?',
+                'respuesta' => 'El PI crítico de flota es el checklist preoperacional que debe realizarse antes de operar la máquina, al iniciar el turno.',
+            ],
+            131 => [
+                'seccion' => 'ALMACÉN: METAS DE PRODUCTIVIDAD Y MONTACARGAS',
+                'pregunta' => '¿Cuál es la meta de rendimiento de combustible de los montacargas (GLP)?',
+                'respuesta' => 'Meta de consumo de GLP Pasto: 5.2 Litros/Hora.',
+            ],
+            132 => [
+                'seccion' => 'ALMACÉN: METAS DE PRODUCTIVIDAD Y MONTACARGAS',
+                'pregunta' => '¿Qué es Copla?',
+                'respuesta' => 'Copla es una entidad que ofrece control de plagas en el centro de distribución. Cuentan con un sistema de trampas distribuidas en todas las áreas del CD, con controles semanales.',
+            ],
+            133 => [
+                'seccion' => 'ALMACÉN: METAS DE PRODUCTIVIDAD Y MONTACARGAS',
+                'pregunta' => '¿Qué es el FNP y cómo se calcula?',
+                'respuesta' => 'El FNP se calcula como Hecto litros / Horas montacargas.',
+            ],
+            134 => [
+                'seccion' => 'ALMACÉN: METAS DE PRODUCTIVIDAD Y MONTACARGAS',
+                'pregunta' => '¿Cuáles son las metas de productividad de picking, sorting y vertimiento en Pasto?',
+                'respuesta' => 'Picking: 340 cajas/hora. Picking MKTP: 370 cajas/hora. Sorting: 360 cajas/hora. Vertimiento lata: 40 cajas/hora. Vertimiento retornable: 70 cajas/hora. Vertimiento PET: 25 cajas/hora.',
+            ],
+            135 => [
+                'seccion' => 'ALMACÉN: METAS DE PRODUCTIVIDAD Y MONTACARGAS',
+                'pregunta' => '¿Cuáles son las metas de productividad de reempaque y termoencogido en Pasto?',
+                'respuesta' => 'Reempaque: 30 cajas/hora. Termoencogido: 120 cajas/hora.',
+            ],
+            136 => [
+                'seccion' => 'ALMACÉN: METAS DE PRODUCTIVIDAD Y MONTACARGAS',
+                'pregunta' => '¿Cuál es la meta de errores de armado?',
+                'respuesta' => '48 errores semanales.',
+            ],
+            137 => [
+                'seccion' => 'ALMACÉN: METAS DE PRODUCTIVIDAD Y MONTACARGAS',
+                'pregunta' => '¿Cuál es la meta de TAT SIDER?',
+                'respuesta' => '75 minutos.',
+            ],
+            138 => [
+                'seccion' => 'ALMACÉN: METAS DE PRODUCTIVIDAD Y MONTACARGAS',
+                'pregunta' => '¿Cuál es la meta de segundos viajes?',
+                'respuesta' => '30 minutos.',
+            ],
+            139 => [
+                'seccion' => 'ALMACÉN: GOB, SCO Y TOOL KIT DE INVENTARIOS',
+                'pregunta' => '¿Qué es un PI dinámico?',
+                'respuesta' => 'Es aquel PI que ayuda a apalancar un KPI que viene perforando (fallando) mal. Por ejemplo: si el KPI WNP terminó mal en agosto, se apalanca con un PI como la productividad de picking.',
+            ],
+            140 => [
+                'seccion' => 'ALMACÉN: GOB, SCO Y TOOL KIT DE INVENTARIOS',
+                'pregunta' => '¿Qué es una GOB y qué procesos evalúa?',
+                'respuesta' => 'La GOB es una evaluación mensual de procesos que realiza el CD. Evalúa: Total Productivity Warehouse, SCO y Tool Kit de Inventarios.',
+            ],
+            141 => [
+                'seccion' => 'ALMACÉN: GOB, SCO Y TOOL KIT DE INVENTARIOS',
+                'pregunta' => '¿Qué preguntas evalúa la GOB de Total Productivity Warehouse?',
+                'respuesta' => 'De monitoreo: si el DC revisa el menor rendimiento por actividad/tarea de almacén con análisis de causa raíz, y si sigue los KPIs de complejidad de carga entrante (tipo de transporte, SKUs por carga) definiendo acciones para reducirla. De ejecución: seguimiento a esos mismos KPIs de complejidad de carga entrante, y si el DC rastrea los errores de carga que causan reestructuraciones con análisis de causa raíz. De preparación: si se ha formado a los empleados de almacén en múltiples habilidades/tareas para mejorar la flexibilidad laboral, y si se ha usado la Herramienta de Optimización de Diseño para analizar la distribución del almacén y probar escenarios de mejora.',
+            ],
+            142 => [
+                'seccion' => 'ALMACÉN: GOB, SCO Y TOOL KIT DE INVENTARIOS',
+                'pregunta' => '¿Qué procesos evalúa la GOB de SCO?',
+                'respuesta' => 'Evalúa: que las áreas de almacenamiento se mantengan entre 3°C y 25°C (los barriles de cerveza de barril en cámara fría según política de zona); que se minimice la exposición de productos a la luz solar; que los palés de madera con clavos sobresalientes u otros daños se retiren y separen de inmediato para reparación; y que la rotura de producto se registre y monitoree por empleado, tarea y razón, con análisis de causa raíz para los grupos de fallo más altos.',
+            ],
+            143 => [
+                'seccion' => 'ALMACÉN: GOB, SCO Y TOOL KIT DE INVENTARIOS',
+                'pregunta' => '¿Qué aspectos evalúa el Tool Kit de Inventarios?',
+                'respuesta' => 'Evalúa: que exista un SOP bien documentado para el proceso de entrada de materiales (área receptora y de producción); un SOP para el proceso de transferencia de mercancías a otros almacenes o instalaciones de producción; un SOP para el proceso de inventario mientras las operaciones no se detienen completamente; y que los recuentos de inventario de productos terminados se realicen según la política (1 vez al mes).',
+            ],
+            144 => [
+                'seccion' => 'ALMACÉN: PICKING Y CONTROL DE PRODUCTO',
+                'pregunta' => '¿Qué es el ABC en picking?',
+                'respuesta' => 'Es un sistema de colores que permite determinar la rotación del producto: letra A color verde (80%), letra B color amarillo (15%), letra C color naranja (5%). En la bodega de almacenamiento estos colores se identifican en el piso.',
+            ],
+            145 => [
+                'seccion' => 'ALMACÉN: PICKING Y CONTROL DE PRODUCTO',
+                'pregunta' => '¿Qué es una SOP en el centro de distribución?',
+                'respuesta' => 'Es la descripción detallada de un proceso del centro de distribución, como reempaque, picking, sorting o vertimiento.',
+            ],
+            146 => [
+                'seccion' => 'ALMACÉN: PICKING Y CONTROL DE PRODUCTO',
+                'pregunta' => '¿Qué es WIP en el centro de distribución?',
+                'respuesta' => 'Es una herramienta que permite medir las productividades del centro de distribución, como picking y errores de armado.',
+            ],
+            147 => [
+                'seccion' => 'ALMACÉN: PICKING Y CONTROL DE PRODUCTO',
+                'pregunta' => '¿Qué es SmartLift y qué mide la telemetría de los montacargas?',
+                'respuesta' => 'La herramienta de telemetría de los montacargas se llama SmartLift. Con ella se pueden medir impactos, movimientos, ralentí, etc., y su impacto en la productividad del almacén. Los operadores de montacargas deben conocerla.',
+            ],
+            148 => [
+                'seccion' => 'ALMACÉN: PICKING Y CONTROL DE PRODUCTO',
+                'pregunta' => '¿Qué es la política de bloqueo?',
+                'respuesta' => 'Es un control que permite identificar el producto vendible y no vendible. Se compone de 4 pasos: bloqueo en el sistema SAP, bloqueo mecánico, candados y tarjeta roja.',
+            ],
+            149 => [
+                'seccion' => 'ALMACÉN: PICKING Y CONTROL DE PRODUCTO',
+                'pregunta' => '¿Cuáles son los colores de las tarjetas de marcación y qué significan?',
+                'respuesta' => 'Verde: despacho. Naranja: en espera. Rojo: producto bloqueado.',
             ],
         ];
 
