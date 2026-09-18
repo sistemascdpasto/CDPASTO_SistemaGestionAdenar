@@ -144,18 +144,20 @@ class CompensacionColaboradorController extends Controller
 
         // ── Historial anual enero–diciembre ───────────────────────────────────
 
+        $monthExpr = DB::connection()->getDriverName() === 'sqlite' ? "cast(strftime('%m', fecha) as integer)" : "MONTH(fecha)";
+
         // Estadísticas mensuales agrupadas desde compensaciones_variables_diarias
         $historialRaw = CompensacionVariableDiaria::where('cedula', $colaborador->cedula)
             ->where('anio', $anioActual)
-            ->selectRaw('
-                MONTH(fecha) as mes_num,
+            ->selectRaw("
+                {$monthExpr} as mes_num,
                 COUNT(*) as dias_trabajados,
                 SUM(valor_var) as total_ganado,
                 SUM(valor_perdido) as total_perdido,
                 AVG(rechazos) as promedio_rechazos,
                 SUM(CASE WHEN rechazos <= 0.021 THEN 1 ELSE 0 END) as dias_meta_1,
                 SUM(CASE WHEN rechazos <= 0.026 THEN 1 ELSE 0 END) as dias_meta_2
-            ')
+            ")
             ->groupBy('mes_num')
             ->orderBy('mes_num')
             ->get()

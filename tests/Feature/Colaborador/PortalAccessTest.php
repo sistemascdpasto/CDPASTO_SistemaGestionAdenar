@@ -19,7 +19,7 @@ class PortalAccessTest extends TestCase
 
     public function test_user_without_colaborador_role_is_forbidden(): void
     {
-        $role = Role::create(['name' => 'Seguridad', 'guard_name' => 'web']);
+        $role = Role::create(['name' => 'Flota', 'guard_name' => 'web']);
         $user = User::factory()->create();
         $user->assignRole($role);
 

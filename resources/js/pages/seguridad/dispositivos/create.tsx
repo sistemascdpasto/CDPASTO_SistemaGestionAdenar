@@ -20,14 +20,11 @@ const emptyForm = (): DispositivoFormData => ({
     modelo: '',
     fecha_calibracion: '',
     fecha_vencimiento_certificado: '',
-    documento: null,
     valor_min: '0',
     valor_max: '0.1',
     estado: 'Disponible',
     imagenes: [],
     deleted_imagenes_indices: [],
-    documentos: [],
-    deleted_documentos_indices: [],
 });
 
 export default function CreateDispositivo() {
@@ -45,21 +42,24 @@ export default function CreateDispositivo() {
         setErrors({});
 
         const form = new FormData();
-        form.append('codigo', data.codigo);
-        form.append('marca', data.marca);
-        form.append('modelo', data.modelo);
-        form.append('fecha_calibracion', data.fecha_calibracion);
-        form.append('fecha_vencimiento_certificado', data.fecha_vencimiento_certificado);
-        form.append('valor_min', data.valor_min);
-        form.append('valor_max', data.valor_max);
-        form.append('estado', data.estado);
-        if (data.documento) form.append('documento', data.documento);
-        (data.imagenes as File[]).forEach((f) => form.append('imagenes[]', f));
-        (data.documentos as File[]).forEach((f) => form.append('documentos[]', f));
+        form.append('codigo', data.codigo ?? '');
+        form.append('marca', data.marca ?? '');
+        form.append('modelo', data.modelo ?? '');
+        form.append('fecha_calibracion', data.fecha_calibracion ?? '');
+        form.append('fecha_vencimiento_certificado', data.fecha_vencimiento_certificado ?? '');
+        form.append('valor_min', data.valor_min ?? '0');
+        form.append('valor_max', data.valor_max ?? '0.1');
+        form.append('estado', data.estado ?? 'Disponible');
 
-        router.post(route('seguridad.dispositivos.store'), form, {
-            forceFormData: true,
-            onError: (errs) => { setErrors(errs as any); setProcessing(false); },
+        (data.imagenes as File[]).forEach((file) => {
+            form.append('imagenes[]', file);
+        });
+
+        router.post(route('seguridad.dispositivos.store'), form as any, {
+            onError: (errs) => {
+                setErrors(errs as any);
+                setProcessing(false);
+            },
             onFinish: () => setProcessing(false),
         });
     };

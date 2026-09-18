@@ -19,7 +19,6 @@ class Alcoholimetro extends Model
         'modelo',
         'fecha_calibracion',
         'fecha_vencimiento_certificado',
-        'documento_path',
         'valor_min',
         'valor_max',
         'estado',
@@ -43,11 +42,6 @@ class Alcoholimetro extends Model
     public function imagenes(): HasMany
     {
         return $this->hasMany(AlcoholimetroImagen::class);
-    }
-
-    public function documentos(): HasMany
-    {
-        return $this->hasMany(AlcoholimetroDocumento::class);
     }
 
     public function pruebasAlcoholemia(): HasMany

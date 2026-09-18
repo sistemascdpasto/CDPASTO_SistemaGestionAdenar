@@ -23,11 +23,9 @@ class AlcoholimetroTest extends TestCase
         return $user;
     }
 
-    public function test_can_create_alcoholimetro_with_pdf_document(): void
+    public function test_can_create_alcoholimetro(): void
     {
-        Storage::fake('public');
         $user = $this->seguridadUser();
-        $pdf = UploadedFile::fake()->create('certificado.pdf', 100, 'application/pdf');
 
         $response = $this->actingAs($user)->post(route('seguridad.dispositivos.store'), [
             'codigo' => 'ALC-TEST-01',
@@ -36,37 +34,10 @@ class AlcoholimetroTest extends TestCase
             'valor_min' => '0',
             'valor_max' => '0.1',
             'estado' => 'Disponible',
-            'documentos' => [$pdf],
         ]);
 
         $dispositivo = Alcoholimetro::where('codigo', 'ALC-TEST-01')->firstOrFail();
         $response->assertRedirect(route('seguridad.dispositivos.show', $dispositivo));
-
-        $this->assertCount(1, $dispositivo->documentos);
-        $this->assertNotNull($dispositivo->documento_path);
-        Storage::disk('public')->assertExists($dispositivo->documentos->first()->path);
-    }
-
-    public function test_show_page_exposes_document_paths(): void
-    {
-        Storage::fake('public');
-        $user = $this->seguridadUser();
-        $pdf = UploadedFile::fake()->create('manual.pdf', 100, 'application/pdf');
-
-        $this->actingAs($user)->post(route('seguridad.dispositivos.store'), [
-            'codigo' => 'ALC-TEST-02',
-            'valor_min' => '0',
-            'valor_max' => '0.1',
-            'estado' => 'Disponible',
-            'documentos' => [$pdf],
-        ]);
-
-        $dispositivo = Alcoholimetro::where('codigo', 'ALC-TEST-02')->firstOrFail();
-
-        $response = $this->actingAs($user)->get(route('seguridad.dispositivos.show', $dispositivo));
-
-        $response->assertInertia(fn ($page) => $page
-            ->has('dispositivo.documentos_paths', 1)
-        );
+        $this->assertEquals('Dräger', $dispositivo->marca);
     }
 }

@@ -4,15 +4,13 @@ import { SafeImage } from '@/components/safe-image';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
-import { type SavedDocumento } from '@/pages/seguridad/dispositivos/dispositivo-form-fields';
 import { type BreadcrumbItem } from '@/types';
 import { Head, useForm } from '@inertiajs/react';
-import { AlertTriangle, Download, FileSpreadsheet, FileText, ImageIcon, LoaderCircle } from 'lucide-react';
+import { AlertTriangle, ImageIcon, LoaderCircle } from 'lucide-react';
 import { FormEventHandler, useState } from 'react';
 
 interface DispositivoDetalle {
@@ -27,12 +25,6 @@ interface DispositivoDetalle {
     valor_max: string;
     calibracion_proxima: boolean;
     imagenes_paths?: string[];
-    documentos_paths?: SavedDocumento[];
-    documento_path: string | null;
-}
-
-function esPdf(path: string): boolean {
-    return path.toLowerCase().endsWith('.pdf');
 }
 
 interface MantenimientoRow {
@@ -59,12 +51,6 @@ export default function DispositivoShow({ dispositivo, mantenimientos }: { dispo
 
     const { data, setData, post, processing, errors, reset } = useForm({ fecha: '', descripcion: '' });
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
-    const [preview, setPreview] = useState<{ url: string; label: string; esPdf: boolean } | null>(null);
-
-    const documentos: SavedDocumento[] = [
-        ...(dispositivo.documento_path ? [{ path: `/storage/${dispositivo.documento_path}`, nombre: 'Documento original' }] : []),
-        ...(dispositivo.documentos_paths ?? []),
-    ].filter((doc, index, self) => index === self.findIndex((t) => t.path === doc.path));
 
     const submitMantenimiento: FormEventHandler = (e) => {
         e.preventDefault();
@@ -125,38 +111,6 @@ export default function DispositivoShow({ dispositivo, mantenimientos }: { dispo
                             </div>
                         ) : (
                             <p className="text-sm text-muted-foreground">No se han cargado imágenes.</p>
-                        )}
-                    </CardContent>
-                </Card>
-
-                <Card className="border-sidebar-border/70 dark:border-sidebar-border">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                            <FileText className="size-4" />
-                            Documentos
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        {documentos.length > 0 ? (
-                            <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3">
-                                {documentos.map((documento, index) => (
-                                    <button
-                                        key={index}
-                                        type="button"
-                                        onClick={() => setPreview({ url: documento.path, label: documento.nombre, esPdf: esPdf(documento.path) })}
-                                        className="flex items-center gap-2 rounded-lg border border-border p-2 text-left text-sm hover:bg-accent"
-                                    >
-                                        {esPdf(documento.path) ? (
-                                            <FileText className="size-4 shrink-0 text-muted-foreground" />
-                                        ) : (
-                                            <FileSpreadsheet className="size-4 shrink-0 text-muted-foreground" />
-                                        )}
-                                        <span className="truncate">{documento.nombre}</span>
-                                    </button>
-                                ))}
-                            </div>
-                        ) : (
-                            <p className="text-sm text-muted-foreground">No se han cargado documentos.</p>
                         )}
                     </CardContent>
                 </Card>
@@ -231,34 +185,6 @@ export default function DispositivoShow({ dispositivo, mantenimientos }: { dispo
                     />
                 </div>
             )}
-
-            <Dialog open={preview !== null} onOpenChange={(open) => !open && setPreview(null)}>
-                <DialogContent className="max-h-[90vh] max-w-3xl">
-                    <DialogTitle className="flex items-center justify-between gap-4 pr-6">
-                        <span className="truncate">{preview?.label}</span>
-                        {preview && (
-                            <a
-                                href={preview.url}
-                                target="_blank"
-                                rel="noreferrer"
-                                download
-                                className="inline-flex items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-sm hover:bg-accent"
-                            >
-                                <Download className="size-4" />
-                                Descargar
-                            </a>
-                        )}
-                    </DialogTitle>
-                    {preview?.esPdf ? (
-                        <iframe src={preview.url} title={preview.label} className="h-[75vh] w-full rounded-md border border-border" />
-                    ) : (
-                        <div className="flex h-40 flex-col items-center justify-center gap-2 rounded-md border border-dashed border-border text-sm text-muted-foreground">
-                            <FileSpreadsheet className="size-8" />
-                            Este tipo de archivo no se puede previsualizar. Descárgalo para abrirlo.
-                        </div>
-                    )}
-                </DialogContent>
-            </Dialog>
         </AppLayout>
     );
 }

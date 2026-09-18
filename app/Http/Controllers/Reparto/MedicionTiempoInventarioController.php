@@ -215,19 +215,23 @@ class MedicionTiempoInventarioController extends Controller
             7=>'Jul',8=>'Ago',9=>'Sep',10=>'Oct',11=>'Nov',12=>'Dic',
         ];
 
+        $isSqlite = DB::connection()->getDriverName() === 'sqlite';
+        $yearExpr = $isSqlite ? "cast(strftime('%Y', fecha_medicion) as integer)" : "YEAR(fecha_medicion)";
+        $monthExpr = $isSqlite ? "cast(strftime('%m', fecha_medicion) as integer)" : "MONTH(fecha_medicion)";
+
         $porMesRaw = (clone $baseQuery)
             ->whereNotNull('duracion_minutos')
             ->whereNotNull('fecha_medicion')
             ->selectRaw("
-                YEAR(fecha_medicion) as anio,
-                MONTH(fecha_medicion) as mes_num,
+                {$yearExpr} as anio,
+                {$monthExpr} as mes_num,
                 COUNT(*) as cantidad,
                 ROUND(AVG(duracion_minutos), 1) as promedio,
                 MIN(duracion_minutos) as minimo,
                 MAX(duracion_minutos) as maximo
             ")
-            ->groupByRaw('YEAR(fecha_medicion), MONTH(fecha_medicion)')
-            ->orderByRaw('YEAR(fecha_medicion), MONTH(fecha_medicion)')
+            ->groupByRaw("{$yearExpr}, {$monthExpr}")
+            ->orderByRaw("{$yearExpr}, {$monthExpr}")
             ->limit(24)
             ->get();
 

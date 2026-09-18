@@ -584,8 +584,8 @@ class PlanPremiacionTest extends TestCase
                 // Resultado Seguridad: 8.75 + 0.0 + 10.0 = 18.75 -> 18.8%
                 return (float) $item['resultado'] === 18.8
                     && $item['resultado_label'] === '18.8%'
-                    && (float) $item['resultado_asistencia'] === 10.0
-                    && $item['resultado_asistencia_label'] === '10%';
+                    && (float) $item['resultado_asistencia'] === 15.0
+                    && $item['resultado_asistencia_label'] === '15%';
             })
         );
     }
@@ -608,8 +608,8 @@ class PlanPremiacionTest extends TestCase
         ]));
 
         $response->assertOk();
-        $response->assertHeader('content-type', 'text/csv; charset=UTF-8');
-        $this->assertStringContainsString('plan_premiacion_2026_9.csv', $response->headers->get('content-disposition'));
+        $response->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        $this->assertStringContainsString('plan_premiacion_2026_9.xlsx', $response->headers->get('content-disposition'));
     }
 
     public function test_plan_premiacion_filtra_por_cargo(): void

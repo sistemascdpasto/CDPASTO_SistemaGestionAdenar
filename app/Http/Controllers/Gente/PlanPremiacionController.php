@@ -81,8 +81,11 @@ class PlanPremiacionController extends Controller
 
         $colaboradores = $queryColaboradores->get();
 
+        $isSqlite = DB::connection()->getDriverName() === 'sqlite';
+        $monthExpr = fn (string $col) => $isSqlite ? DB::raw("cast(strftime('%m', {$col}) as integer)") : DB::raw("MONTH({$col})");
+
         // 2. Conteo de ACI por colaborador en los meses seleccionados
-        $conteosPorColaborador = Aci::whereIn(DB::raw('MONTH(fecha_incidente)'), $mesesSeleccionados)
+        $conteosPorColaborador = Aci::whereIn($monthExpr('fecha_incidente'), $mesesSeleccionados)
             ->whereYear('fecha_incidente', $anio)
             ->whereNotNull('colaborador_id')
             ->select('colaborador_id', DB::raw('count(*) as total'))
@@ -92,7 +95,7 @@ class PlanPremiacionController extends Controller
         // 3. Evaluaciones OWD - Preguntas con actividad exactamente "Ruta"
         $preguntasRutaRaw = DB::table('evaluacion_owd_preguntas')
             ->join('evaluaciones_owd', 'evaluacion_owd_preguntas.evaluacion_owd_id', '=', 'evaluaciones_owd.id')
-            ->whereIn(DB::raw('MONTH(evaluaciones_owd.fecha_evaluacion)'), $mesesSeleccionados)
+            ->whereIn($monthExpr('evaluaciones_owd.fecha_evaluacion'), $mesesSeleccionados)
             ->whereYear('evaluaciones_owd.fecha_evaluacion', $anio)
             ->where(function ($q) {
                 // Coincide con: Ruta / "Ruta" / ["Ruta"] — nunca Pre Ruta ni Post Ruta
@@ -151,7 +154,7 @@ class PlanPremiacionController extends Controller
 
         // 6. Registros Ausentismo de los meses seleccionados
         $ausentismosRaw = DB::table('ausentismos')
-            ->whereIn(DB::raw('MONTH(fecha)'), $mesesSeleccionados)
+            ->whereIn($monthExpr('fecha'), $mesesSeleccionados)
             ->whereYear('fecha', $anio)
             ->get();
 
@@ -180,7 +183,14 @@ class PlanPremiacionController extends Controller
                 return 100.0;
             }
 
-            // 2. Entrada vacía → verificar si es día no laboral
+            // 2. Si el turno es de descanso, no planificado u horario libre → no laboral (100%)
+            $turno = $normStr((string) ($row->turno ?? ''));
+            $turnosNoLaborales = ['DESCANSO', 'NOPLANIFICADO', 'HORARIOLIBRE'];
+            if (in_array($turno, $turnosNoLaborales, true)) {
+                return 100.0;
+            }
+
+            // 3. Entrada vacía → verificar si es día no laboral (domingo o festivo)
             $fechaStr = trim((string) ($row->fecha ?? ''));
             if ($fechaStr !== '') {
                 try {
@@ -193,18 +203,17 @@ class PlanPremiacionController extends Controller
                 }
             }
 
-            // 3. Es día hábil sin entrada → revisar permiso
-            // Ausentismo penalizado: incapacidad, permiso remunerado o no remunerado
+            // 4. Es día hábil con turno de trabajo y sin entrada → revisar permiso
             $permiso = $normStr((string) ($row->permiso ?? ''));
-            $permisosPenalizados = ['INCAPACIDAD', 'REMUNERADA', 'NOREMUNERADA'];
-            foreach ($permisosPenalizados as $tipo) {
-                if (str_contains($permiso, $tipo)) {
-                    return 0.0;
+            $permisosJustificados = ['VACACIONES', 'LICENCIA', 'CALAMIDAD', 'PATERNIDAD', 'MATERNIDAD'];
+            foreach ($permisosJustificados as $just) {
+                if (str_contains($permiso, $just)) {
+                    return 100.0;
                 }
             }
 
-            // Cualquier otro permiso (vacaciones, licencia, calamidad, etc.) o vacío → no penaliza
-            return 100.0;
+            // Sin permiso justificado (o incapacidad / permiso / falta) → 0%
+            return 0.0;
         };
 
         // Agrupar ausentismos por colaborador (por id, identificador/cédula o nombre)
@@ -223,7 +232,7 @@ class PlanPremiacionController extends Controller
 
         // 7. Registros Malas Marcaciones (Correcciones Marcaciones)
         $correccionesQuery = DB::table('correcciones_marcaciones')
-            ->whereIn(DB::raw('MONTH(fecha)'), $mesesSeleccionados)
+            ->whereIn($monthExpr('fecha'), $mesesSeleccionados)
             ->whereYear('fecha', $anio)
             ->get(['identificacion', 'nombre_completo']);
 
@@ -248,7 +257,7 @@ class PlanPremiacionController extends Controller
         $eventosTripulacionRaw = DB::table('eventos_tripulacion')
             ->when(
                 !empty($mesesChecklist),
-                fn ($q) => $q->whereIn(DB::raw('MONTH(fecha)'), $mesesChecklist)->whereYear('fecha', $anio),
+                fn ($q) => $q->whereIn($monthExpr('fecha'), $mesesChecklist)->whereYear('fecha', $anio),
                 fn ($q) => $q->whereYear('fecha', $anio)
             )
             ->get([
@@ -322,7 +331,7 @@ class PlanPremiacionController extends Controller
 
         // 9. Registros SAC (Servicio al Cliente)
         $sacRaw = DB::table('sac')
-            ->whereIn(DB::raw('MONTH(fecha)'), $mesesSeleccionados)
+            ->whereIn($monthExpr('fecha'), $mesesSeleccionados)
             ->whereYear('fecha', $anio)
             ->get(['colaborador_id', 'responsable', 'cumplimiento_cierre', 'aplica']);
 
@@ -416,11 +425,20 @@ class PlanPremiacionController extends Controller
             $porcentajeDpo = $estaEnDpo ? 0.0 : 100.0;
             $porcentajeDpoLabel = $estaEnDpo ? '0%' : '100%';
 
-            // Cálculo % Ausentismo — manual: default 100%, se pone 0% manualmente
-            $manualAusentismo = $checklistsManuales->get($colaborador->id);
-            $ausentismoAprobado = $manualAusentismo ? (bool) $manualAusentismo->ausentismo_ok : true;
-            $porcentajeAusentismo = $ausentismoAprobado ? 100.0 : 0.0;
-            $porcentajeAusentismoLabel = $ausentismoAprobado ? '100%' : '0%';
+            // Cálculo % Ausentismo: usa registros de ausentismo si existen; si no, toggle manual
+            $valsAusentismo = $ausentismosPorColaboradorId[$colaborador->id]
+                ?? (!empty($colaborador->cedula) ? ($ausentismosPorIdentificador[$normStr($colaborador->cedula)] ?? null) : null)
+                ?? (!empty($colaborador->nombre_completo) ? ($ausentismosPorIdentificador[$normStr($colaborador->nombre_completo)] ?? null) : null);
+
+            if (!empty($valsAusentismo)) {
+                $porcentajeAusentismo = round(array_sum($valsAusentismo) / count($valsAusentismo), 1);
+                $porcentajeAusentismoLabel = "{$porcentajeAusentismo}%";
+            } else {
+                $manualAusentismo = $checklistsManuales->get($colaborador->id);
+                $ausentismoAprobado = $manualAusentismo ? (bool) $manualAusentismo->ausentismo_ok : true;
+                $porcentajeAusentismo = $ausentismoAprobado ? 100.0 : 0.0;
+                $porcentajeAusentismoLabel = $ausentismoAprobado ? '100%' : '0%';
+            }
 
             // Cálculo % Malas Marcaciones: Si está en el listado de correcciones_marcaciones -> 0%, si no -> 100%
             $estaEnMalasMarcaciones = false;
@@ -452,12 +470,9 @@ class PlanPremiacionController extends Controller
             // % Rechazos
             $valsRechazos = $getMetricVals($rechazosPorDocumento, $rechazosPorNombre);
             if (!empty($valsRechazos)) {
-                $promedioRechazosRaw = array_sum($valsRechazos) / count($valsRechazos);
-                // < 2.4% → rechazos bajos → 100%, >= 2.4% → 0%
-                $porcentajeRechazos = $promedioRechazosRaw >= 2.4 ? 0.0 : 100.0;
+                $porcentajeRechazos = round(array_sum($valsRechazos) / count($valsRechazos), 1);
                 $porcentajeRechazosLabel = "{$porcentajeRechazos}%";
             } else {
-                $promedioRechazosRaw = null;
                 $porcentajeRechazos = null;
                 $porcentajeRechazosLabel = 'N/A';
             }
@@ -465,12 +480,9 @@ class PlanPremiacionController extends Controller
             // % Adherencia Tiempo
             $valsAdherenciaTiempo = $getMetricVals($adherenciaTiempoPorDocumento, $adherenciaTiempoPorNombre);
             if (!empty($valsAdherenciaTiempo)) {
-                $promedioAdherenciaTiempoRaw = array_sum($valsAdherenciaTiempo) / count($valsAdherenciaTiempo);
-                // >= 83% → cumple → 100%, < 83% → 0%
-                $porcentajeAdherenciaTiempo = $promedioAdherenciaTiempoRaw >= 83 ? 100.0 : 0.0;
+                $porcentajeAdherenciaTiempo = round(array_sum($valsAdherenciaTiempo) / count($valsAdherenciaTiempo), 1);
                 $porcentajeAdherenciaTiempoLabel = "{$porcentajeAdherenciaTiempo}%";
             } else {
-                $promedioAdherenciaTiempoRaw = null;
                 $porcentajeAdherenciaTiempo = null;
                 $porcentajeAdherenciaTiempoLabel = 'N/A';
             }
@@ -478,12 +490,9 @@ class PlanPremiacionController extends Controller
             // RMD
             $valsRmd = $getMetricVals($rmdPorDocumento, $rmdPorNombre);
             if (!empty($valsRmd)) {
-                $promedioRmdRaw = array_sum($valsRmd) / count($valsRmd);
-                // >= 4 → cumple → 100%, < 4 → 0%
-                $promedioRmd = $promedioRmdRaw >= 4 ? 100.0 : 0.0;
-                $promedioRmdLabel = "{$promedioRmd}%";
+                $promedioRmd = round(array_sum($valsRmd) / count($valsRmd), 1);
+                $promedioRmdLabel = "{$promedioRmd}";
             } else {
-                $promedioRmdRaw = null;
                 $promedioRmd = null;
                 $promedioRmdLabel = 'N/A';
             }
@@ -556,15 +565,15 @@ class PlanPremiacionController extends Controller
                 $porcentajeSacLabel = '100%';
             }
 
-            // Calificación binaria REPARTO — los valores ya son 100 o 0
-            $calRechazos = $porcentajeRechazos !== null ? (int)($porcentajeRechazos >= 100) : 0;
+            // Calificación REPARTO
+            $calRechazos = $porcentajeRechazos !== null ? (int)($porcentajeRechazos <= 2.4) : 0;
 
             // SAC: 0 casos = 100% (calSac=1), 1+ casos = 0% (calSac=0) (peso 8%)
             $calSac = $tieneCasosSac ? 0 : 1;
 
-            $calAdherenciaTiempo = $porcentajeAdherenciaTiempo !== null ? (int)($porcentajeAdherenciaTiempo >= 100) : 0;
+            $calAdherenciaTiempo = $porcentajeAdherenciaTiempo !== null ? (int)($porcentajeAdherenciaTiempo >= 83) : 0;
 
-            $calRmd = $promedioRmd !== null ? (int)($promedioRmd >= 100) : 0;
+            $calRmd = $promedioRmd !== null ? (int)($promedioRmd >= 4) : 0;
 
             $resultadoRepartoVal = round(($calRechazos * 11) + ($calSac * 8) + ($calAdherenciaTiempo * 8) + ($calRmd * 8), 1);
             $resultadoRepartoLabel = "{$resultadoRepartoVal}%";

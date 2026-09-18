@@ -1,7 +1,7 @@
 import HeadingSmall from '@/components/heading-small';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
-import { DispositivoFormData, DispositivoFormFields, type SavedDocumento } from '@/pages/seguridad/dispositivos/dispositivo-form-fields';
+import { DispositivoFormData, DispositivoFormFields } from '@/pages/seguridad/dispositivos/dispositivo-form-fields';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/react';
 import { LoaderCircle } from 'lucide-react';
@@ -18,8 +18,6 @@ interface EditableDispositivo {
     valor_max: string;
     estado: string;
     imagenes_paths?: string[];
-    documentos_paths?: SavedDocumento[];
-    documento_path: string | null;
 }
 
 export default function EditDispositivo({ dispositivo }: { dispositivo: EditableDispositivo }) {
@@ -36,15 +34,13 @@ export default function EditDispositivo({ dispositivo }: { dispositivo: Editable
         modelo: dispositivo.modelo ?? '',
         fecha_calibracion: dispositivo.fecha_calibracion ?? '',
         fecha_vencimiento_certificado: dispositivo.fecha_vencimiento_certificado ?? '',
-        documento: null,
         valor_min: dispositivo.valor_min,
         valor_max: dispositivo.valor_max,
         estado: dispositivo.estado,
         imagenes: [],
         deleted_imagenes_indices: [],
-        documentos: [],
-        deleted_documentos_indices: [],
     });
+
     const [errors, setErrors] = useState<Partial<Record<keyof DispositivoFormData, string>>>({});
     const [processing, setProcessing] = useState(false);
 
@@ -58,25 +54,29 @@ export default function EditDispositivo({ dispositivo }: { dispositivo: Editable
         setErrors({});
 
         const form = new FormData();
-        // _method spoof para PUT (Laravel no soporta multipart PUT nativo)
         form.append('_method', 'PUT');
-        form.append('codigo', data.codigo);
-        form.append('marca', data.marca);
-        form.append('modelo', data.modelo);
-        form.append('fecha_calibracion', data.fecha_calibracion);
-        form.append('fecha_vencimiento_certificado', data.fecha_vencimiento_certificado);
-        form.append('valor_min', data.valor_min);
-        form.append('valor_max', data.valor_max);
-        form.append('estado', data.estado);
-        if (data.documento) form.append('documento', data.documento);
-        (data.imagenes as File[]).forEach((f) => form.append('imagenes[]', f));
-        (data.documentos as File[]).forEach((f) => form.append('documentos[]', f));
-        (data.deleted_imagenes_indices as number[]).forEach((i) => form.append('deleted_imagenes_indices[]', String(i)));
-        (data.deleted_documentos_indices as number[]).forEach((i) => form.append('deleted_documentos_indices[]', String(i)));
+        form.append('codigo', data.codigo ?? '');
+        form.append('marca', data.marca ?? '');
+        form.append('modelo', data.modelo ?? '');
+        form.append('fecha_calibracion', data.fecha_calibracion ?? '');
+        form.append('fecha_vencimiento_certificado', data.fecha_vencimiento_certificado ?? '');
+        form.append('valor_min', data.valor_min ?? '0');
+        form.append('valor_max', data.valor_max ?? '0.1');
+        form.append('estado', data.estado ?? 'Disponible');
 
-        router.post(route('seguridad.dispositivos.update', dispositivo.id), form, {
-            forceFormData: true,
-            onError: (errs) => { setErrors(errs as any); setProcessing(false); },
+        (data.imagenes as File[]).forEach((file) => {
+            form.append('imagenes[]', file);
+        });
+
+        (data.deleted_imagenes_indices as number[]).forEach((index) => {
+            form.append('deleted_imagenes_indices[]', String(index));
+        });
+
+        router.post(route('seguridad.dispositivos.update', dispositivo.id), form as any, {
+            onError: (errs) => {
+                setErrors(errs as any);
+                setProcessing(false);
+            },
             onFinish: () => setProcessing(false),
         });
     };
@@ -94,8 +94,6 @@ export default function EditDispositivo({ dispositivo }: { dispositivo: Editable
                         errors={errors}
                         processing={processing}
                         savedImagenes={dispositivo.imagenes_paths ?? []}
-                        savedDocumentos={dispositivo.documentos_paths ?? []}
-                        documentoLegado={dispositivo.documento_path ? `/storage/${dispositivo.documento_path}` : null}
                     />
 
                     <div className="flex justify-end">

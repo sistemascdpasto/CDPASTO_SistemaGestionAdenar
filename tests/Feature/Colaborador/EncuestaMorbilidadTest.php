@@ -33,6 +33,33 @@ class EncuestaMorbilidadTest extends TestCase
         return [$user, $colaborador];
     }
 
+    private function paso1Valido(): array
+    {
+        return [
+            'empresa' => 'ADENAR',
+            'correo_electronico' => 'colaborador@test.com',
+            'edad' => 30,
+            'estado_civil' => 'Soltero(a)',
+            'tiene_hijos' => 'No',
+            'hijos' => [],
+            'personas_a_cargo' => 'No',
+            'personas_cargo_detalle' => [],
+            'nivel_escolaridad' => 'Profesional',
+            'estrato_socioeconomico' => 'Estrato 3',
+            'tenencia_vivienda' => 'Propia',
+            'ciudad_residencia' => 'Pasto',
+            'direccion_residencia' => 'Calle 10 # 20-30',
+            'tipo_contratacion' => 'Término Indefinido',
+            'cargo_paso1' => 'Conductor',
+            'area_paso1' => 'Logística',
+            'antiguedad_empresa' => '1 a 3 años',
+            'antiguedad_cargo' => '1 a 3 años',
+            'duracion_contrato' => 'Indefinido',
+            'turno' => 'Día',
+            'promedio_ingresos' => '2 a 3 SMMLV',
+        ];
+    }
+
     /**
      * Genera un payload de respuestas válido para todas las preguntas
      * obligatorias del catálogo, usando el valor "no aplica" de cada tipo
@@ -49,7 +76,9 @@ class EncuestaMorbilidadTest extends TestCase
             $valor = match ($pregunta['tipo']) {
                 'si_no', 'si_no_detalle' => 'No',
                 'aplica_detalle' => 'No aplica',
-                'texto_libre' => null,
+                'mano_dominante' => 'Derecha',
+                'opcion_unica' => $pregunta['opciones'][0] ?? 'No',
+                default => '1',
             };
 
             return ['numero' => $numero, 'valor' => $valor, 'detalle' => null];
@@ -119,6 +148,7 @@ class EncuestaMorbilidadTest extends TestCase
         $encuesta = $colaborador->encuestasMorbilidad()->firstOrFail();
 
         $this->actingAs($user)->post(route('portal.encuesta-morbilidad.enviar', $encuesta), [
+            'paso1' => $this->paso1Valido(),
             'respuestas' => $this->respuestasCompletasMinimas(),
         ])->assertRedirect(route('portal.encuesta-morbilidad.historial'));
 
@@ -135,6 +165,7 @@ class EncuestaMorbilidadTest extends TestCase
         $encuesta = $colaborador->encuestasMorbilidad()->firstOrFail();
 
         $this->actingAs($user)->post(route('portal.encuesta-morbilidad.enviar', $encuesta), [
+            'paso1' => $this->paso1Valido(),
             'respuestas' => $this->respuestasCompletasMinimas(),
         ]);
 
@@ -143,6 +174,7 @@ class EncuestaMorbilidadTest extends TestCase
         ])->assertForbidden();
 
         $this->actingAs($user)->post(route('portal.encuesta-morbilidad.enviar', $encuesta), [
+            'paso1' => $this->paso1Valido(),
             'respuestas' => $this->respuestasCompletasMinimas(),
         ])->assertForbidden();
 
@@ -171,12 +203,14 @@ class EncuestaMorbilidadTest extends TestCase
         $respuestas[array_search(7, array_column($respuestas, 'numero'), true)] = ['numero' => 7, 'valor' => 'Si', 'detalle' => null];
 
         $this->actingAs($user)->post(route('portal.encuesta-morbilidad.enviar', $encuesta), [
+            'paso1' => $this->paso1Valido(),
             'respuestas' => $respuestas,
         ])->assertSessionHasErrors('respuestas.7.detalle');
 
         $respuestas[array_search(7, array_column($respuestas, 'numero'), true)] = ['numero' => 7, 'valor' => 'Si', 'detalle' => 'Migraña'];
 
         $this->actingAs($user)->post(route('portal.encuesta-morbilidad.enviar', $encuesta), [
+            'paso1' => $this->paso1Valido(),
             'respuestas' => $respuestas,
         ])->assertSessionDoesntHaveErrors();
     }
@@ -192,6 +226,7 @@ class EncuestaMorbilidadTest extends TestCase
         $respuestas[array_search(29, array_column($respuestas, 'numero'), true)] = ['numero' => 29, 'valor' => 'Aplica', 'detalle' => null];
 
         $this->actingAs($user)->post(route('portal.encuesta-morbilidad.enviar', $encuesta), [
+            'paso1' => $this->paso1Valido(),
             'respuestas' => $respuestas,
         ])->assertSessionHasErrors('respuestas.29.detalle');
     }

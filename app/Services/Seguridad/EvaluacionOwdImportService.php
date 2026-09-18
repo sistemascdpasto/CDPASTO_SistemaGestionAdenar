@@ -187,7 +187,7 @@ class EvaluacionOwdImportService
             // Lookup por QR Safety exacto (en memoria, sin queries)
             $colaborador = $colaboradoresPorQr->get($qrSafety);
 
-            // Si el QR del evaluado no existe en BD, se descarta la fila
+            // Si el QR del evaluado no existe en BD, se contabiliza pero se crea la evaluación con colaborador_id = null
             if (! $colaborador) {
                 $registro['sin_coincidencia_qr']++;
                 // Guardar qr + nombre del evaluado para reportarlo
@@ -196,7 +196,6 @@ class EvaluacionOwdImportService
                     'qr'      => $qrSafety,
                     'evaluado' => $evaluadoNombre !== '' ? $evaluadoNombre : null,
                 ];
-                return;
             }
 
             // Evaluador: también solo por QR (puede ser null si no está en BD)
