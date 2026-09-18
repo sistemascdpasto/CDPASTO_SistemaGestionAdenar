@@ -9,7 +9,6 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/react';
 import { AlertCircle, CalendarDays, Clock, Download, FileSpreadsheet, Search, Trash2, Upload, Users } from 'lucide-react';
 import { useState } from 'react';
-import { CalendarioFestivosDialog } from './calendario-festivos-dialog';
 import { ImportarAusentismoDialog } from './importar-dialog';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -172,7 +171,6 @@ export default function AusentismoIndex({ registros, kpis, options, filters }: P
                             </p>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
-                            <CalendarioFestivosDialog />
                             <ImportarAusentismoDialog
                                 trigger={
                                     <Button className="bg-amber-600 hover:bg-amber-700 text-white">

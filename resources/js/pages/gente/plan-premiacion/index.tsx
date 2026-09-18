@@ -1,5 +1,4 @@
 import HeadingSmall from '@/components/heading-small';
-import CalendarioFestivos from '@/components/gente/CalendarioFestivos';
 import GraficoBarrasMes from '@/components/gente/GraficoBarrasMes';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -492,12 +491,6 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
                             </div>
 
                             <div className="flex flex-wrap items-center gap-2 md:self-end">
-                                <CalendarioFestivos
-                                    mesInicial={mes}
-                                    anioInicial={anio}
-                                    puedeEditar={puede_editar}
-                                />
-
                                 {/* Selector de columnas visibles */}
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>

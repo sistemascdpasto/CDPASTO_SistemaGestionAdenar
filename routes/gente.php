@@ -7,7 +7,6 @@ use App\Http\Controllers\Gente\ColaboradorEntrenamientoController;
 use App\Http\Controllers\Gente\ColaboradorImportController;
 use App\Http\Controllers\Gente\CorreccionMarcacionController;
 use App\Http\Controllers\Gente\DpoAcademyController;
-use App\Http\Controllers\Gente\FestivoCustomController;
 use App\Http\Controllers\Gente\GeovictoriaAsistenciaController;
 use App\Http\Controllers\Gente\LlamadoAtencionController;
 use App\Http\Controllers\Gente\PlanPremiacionController;
@@ -111,10 +110,6 @@ Route::middleware(['auth', 'active', 'role:Administrador|Gente'])
         Route::post('sac/limpiar', [SacController::class, 'limpiar'])
             ->name('sac.limpiar');
 
-        // Festivos custom — toggle (agregar/eliminar un día como festivo)
-        Route::post('festivos-custom/toggle', [FestivoCustomController::class, 'toggle'])
-            ->name('festivos-custom.toggle');
-
         // Responsable de Ruta - Inicio / Finalización de la verificación de carga
         Route::post('responsable-ruta/inicio', [ResponsableRutaController::class, 'storeInicio'])
             ->name('responsable-ruta.inicio');
@@ -147,10 +142,6 @@ Route::middleware(['auth', 'active', 'role:Administrador|Seguridad|Reparto|Flota
         // Formulario Responsables de Ruta (lectura)
         Route::get('responsable-ruta', [ResponsableRutaController::class, 'index'])
             ->name('responsable-ruta.index');
-
-        // Festivos custom — lectura (disponible para todos los roles que ven plan premiación)
-        Route::get('festivos-custom', [FestivoCustomController::class, 'index'])
-            ->name('festivos-custom.index');
 
         // Calificaciones (Lectura & Exportar)
         Route::get('calificaciones', [ColaboradorCalificacionController::class, 'index'])

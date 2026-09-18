@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Gente\ChecklistPlanPremiacion;
 use App\Models\Seguridad\Aci;
 use App\Models\Seguridad\Colaborador;
-use App\Services\FestivosColombiaService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -152,85 +151,7 @@ class PlanPremiacionController extends Controller
             }
         }
 
-        // 6. Registros Ausentismo de los meses seleccionados
-        $ausentismosRaw = DB::table('ausentismos')
-            ->whereIn($monthExpr('fecha'), $mesesSeleccionados)
-            ->whereYear('fecha', $anio)
-            ->get();
-
-        $festivosService = new FestivosColombiaService();
-
-        /**
-         * Nueva lógica de calificación por día:
-         *
-         *  1. ¿Tiene entro_1 o entro_2 con valor válido? → 100% (asistió)
-         *  2. Si entro está vacío → revisar la fecha:
-         *     a. ¿Es domingo o festivo Colombia/Nariño/Pasto? → 100% (día no laboral)
-         *     b. Si es día hábil → revisar columna "permiso":
-         *        - Contiene "INCAPACIDAD" → 0% (ausentismo por incapacidad)
-         *        - Cualquier otro valor o vacío → 100% (permiso/justificado)
-         */
-        $calcularCalificacionDiaAusentismo = function ($row) use ($festivosService, $normStr) {
-            $entro1 = trim((string) ($row->entro_1 ?? ''));
-            $entro2 = trim((string) ($row->entro_2 ?? ''));
-
-            $valoresVacios = ['', '00:00', '00:00:00', '0', '--:--'];
-            $tieneEntrada1 = !in_array($entro1, $valoresVacios, true);
-            $tieneEntrada2 = !in_array($entro2, $valoresVacios, true);
-
-            // 1. Si tiene entrada registrada → asistió
-            if ($tieneEntrada1 || $tieneEntrada2) {
-                return 100.0;
-            }
-
-            // 2. Si el turno es de descanso, no planificado u horario libre → no laboral (100%)
-            $turno = $normStr((string) ($row->turno ?? ''));
-            $turnosNoLaborales = ['DESCANSO', 'NOPLANIFICADO', 'HORARIOLIBRE'];
-            if (in_array($turno, $turnosNoLaborales, true)) {
-                return 100.0;
-            }
-
-            // 3. Entrada vacía → verificar si es día no laboral (domingo o festivo)
-            $fechaStr = trim((string) ($row->fecha ?? ''));
-            if ($fechaStr !== '') {
-                try {
-                    $fecha = Carbon::parse($fechaStr);
-                    if ($festivosService->esDomingoOFestivo($fecha)) {
-                        return 100.0; // domingo o festivo → no se penaliza
-                    }
-                } catch (\Throwable) {
-                    // Si la fecha no se puede parsear continuamos con la lógica de permiso
-                }
-            }
-
-            // 4. Es día hábil con turno de trabajo y sin entrada → revisar permiso
-            $permiso = $normStr((string) ($row->permiso ?? ''));
-            $permisosJustificados = ['VACACIONES', 'LICENCIA', 'CALAMIDAD', 'PATERNIDAD', 'MATERNIDAD'];
-            foreach ($permisosJustificados as $just) {
-                if (str_contains($permiso, $just)) {
-                    return 100.0;
-                }
-            }
-
-            // Sin permiso justificado (o incapacidad / permiso / falta) → 0%
-            return 0.0;
-        };
-
-        // Agrupar ausentismos por colaborador (por id, identificador/cédula o nombre)
-        $ausentismosPorColaboradorId = [];
-        $ausentismosPorIdentificador = [];
-
-        foreach ($ausentismosRaw as $row) {
-            $score = $calcularCalificacionDiaAusentismo($row);
-            if (!empty($row->colaborador_id)) {
-                $ausentismosPorColaboradorId[$row->colaborador_id][] = $score;
-            }
-            if (!empty($row->identificador)) {
-                $ausentismosPorIdentificador[$normStr($row->identificador)][] = $score;
-            }
-        }
-
-        // 7. Registros Malas Marcaciones (Correcciones Marcaciones)
+        // 6. Registros Malas Marcaciones (Correcciones Marcaciones)
         $correccionesQuery = DB::table('correcciones_marcaciones')
             ->whereIn($monthExpr('fecha'), $mesesSeleccionados)
             ->whereYear('fecha', $anio)
@@ -373,7 +294,7 @@ class PlanPremiacionController extends Controller
             ->keyBy('colaborador_id');
 
         // 11. Procesar datos por colaborador
-        $todosCalculados = $colaboradores->map(function ($colaborador) use ($conteosPorColaborador, $preguntasRutaPorColaborador, $promediosCalificaciones, $dpoColaboradorIds, $dpoQrSafetySet, $dpoNombresSet, $ausentismosPorColaboradorId, $ausentismosPorIdentificador, $malasMarcacionesIdentificacionesSet, $malasMarcacionesNombresSet, $rechazosPorDocumento, $rechazosPorNombre, $adherenciaTiempoPorDocumento, $adherenciaTiempoPorNombre, $rmdPorDocumento, $rmdPorNombre, $checklistPrePorDocumento, $checklistPrePorNombre, $checklistPostPorDocumento, $checklistPostPorNombre, $sacPorColaboradorId, $sacPorResponsable, $checklistsManuales, $normStr) {
+        $todosCalculados = $colaboradores->map(function ($colaborador) use ($conteosPorColaborador, $preguntasRutaPorColaborador, $promediosCalificaciones, $dpoColaboradorIds, $dpoQrSafetySet, $dpoNombresSet, $malasMarcacionesIdentificacionesSet, $malasMarcacionesNombresSet, $rechazosPorDocumento, $rechazosPorNombre, $adherenciaTiempoPorDocumento, $adherenciaTiempoPorNombre, $rmdPorDocumento, $rmdPorNombre, $checklistPrePorDocumento, $checklistPrePorNombre, $checklistPostPorDocumento, $checklistPostPorNombre, $sacPorColaboradorId, $sacPorResponsable, $checklistsManuales, $normStr) {
             $aciRealizadas = (int) ($conteosPorColaborador[$colaborador->id] ?? 0);
             $porcentaje = round(($aciRealizadas / self::META_BASE) * 100, 1);
             $faltantes = max(0, self::META_BASE - $aciRealizadas);
@@ -425,20 +346,11 @@ class PlanPremiacionController extends Controller
             $porcentajeDpo = $estaEnDpo ? 0.0 : 100.0;
             $porcentajeDpoLabel = $estaEnDpo ? '0%' : '100%';
 
-            // Cálculo % Ausentismo: usa registros de ausentismo si existen; si no, toggle manual
-            $valsAusentismo = $ausentismosPorColaboradorId[$colaborador->id]
-                ?? (!empty($colaborador->cedula) ? ($ausentismosPorIdentificador[$normStr($colaborador->cedula)] ?? null) : null)
-                ?? (!empty($colaborador->nombre_completo) ? ($ausentismosPorIdentificador[$normStr($colaborador->nombre_completo)] ?? null) : null);
-
-            if (!empty($valsAusentismo)) {
-                $porcentajeAusentismo = round(array_sum($valsAusentismo) / count($valsAusentismo), 1);
-                $porcentajeAusentismoLabel = "{$porcentajeAusentismo}%";
-            } else {
-                $manualAusentismo = $checklistsManuales->get($colaborador->id);
-                $ausentismoAprobado = $manualAusentismo ? (bool) $manualAusentismo->ausentismo_ok : true;
-                $porcentajeAusentismo = $ausentismoAprobado ? 100.0 : 0.0;
-                $porcentajeAusentismoLabel = $ausentismoAprobado ? '100%' : '0%';
-            }
+            // % Ausentismo: toggle manual (ausentismo_ok en checklist_plan_premiacion, default 100%)
+            $manualAusentismo = $checklistsManuales->get($colaborador->id);
+            $ausentismoAprobado = $manualAusentismo ? (bool) $manualAusentismo->ausentismo_ok : true;
+            $porcentajeAusentismo = $ausentismoAprobado ? 100.0 : 0.0;
+            $porcentajeAusentismoLabel = $ausentismoAprobado ? '100%' : '0%';
 
             // Cálculo % Malas Marcaciones: Si está en el listado de correcciones_marcaciones -> 0%, si no -> 100%
             $estaEnMalasMarcaciones = false;
@@ -784,31 +696,6 @@ class PlanPremiacionController extends Controller
             if ($r->nombre)    $dpoNombresSet[$normStr($r->nombre)] = true;
         }
 
-        $ausentismosRaw = DB::table('ausentismos')
-            ->whereMonth('fecha', $mes)->whereYear('fecha', $anio)->get();
-
-        $festivosService = new FestivosColombiaService();
-        $calcAusentismo = function ($row) use ($festivosService, $normStr): float {
-            $vacios = ['','00:00','00:00:00','0','--:--'];
-            if (!in_array(trim((string)($row->entro_1??'')), $vacios, true)) return 100.0;
-            if (!in_array(trim((string)($row->entro_2??'')), $vacios, true)) return 100.0;
-            $fechaStr = trim((string)($row->fecha??''));
-            if ($fechaStr !== '') {
-                try { if ($festivosService->esDomingoOFestivo(\Carbon\Carbon::parse($fechaStr))) return 100.0; } catch (\Throwable) {}
-            }
-            $p = $normStr((string)($row->permiso??''));
-            foreach (['INCAPACIDAD','REMUNERADA','NOREMUNERADA'] as $t) {
-                if (str_contains($p, $t)) return 0.0;
-            }
-            return 100.0;
-        };
-
-        $ausentismosPorColaboradorId = []; $ausentismosPorIdentificador = [];
-        foreach ($ausentismosRaw as $row) {
-            $score = $calcAusentismo($row);
-            if (!empty($row->colaborador_id)) $ausentismosPorColaboradorId[$row->colaborador_id][] = $score;
-            if (!empty($row->identificador))  $ausentismosPorIdentificador[$normStr($row->identificador)][] = $score;
-        }
 
         $correcciones = DB::table('correcciones_marcaciones')
             ->whereMonth('fecha',$mes)->whereYear('fecha',$anio)

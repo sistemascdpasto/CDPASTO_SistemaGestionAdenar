@@ -419,17 +419,9 @@ class PortalController extends Controller
                     ->orWhereRaw('UPPER(REGEXP_REPLACE(nombre,"[^A-Z0-9]","")) = ?', [$normStr($colaborador->nombre_completo ?? '')]);
             })->exists();
 
-        // ── Ausentismo ────────────────────────────────────────────────────
-        $ausentismo = DB::table('ausentismos')
-            ->whereMonth('fecha', $mes)->whereYear('fecha', $anio)
-            ->where(function ($q) use ($colaborador) {
-                $q->where('colaborador_id', $colaborador->id)
-                    ->orWhere('identificador', $colaborador->cedula);
-            })->get();
-        $tieneIncapacidad = $ausentismo->contains(fn ($r) => in_array(trim((string) ($r->entro_1 ?? '')), ['', '00:00', '00:00:00', '0', '--:--'], true) &&
-            in_array(trim((string) ($r->entro_2 ?? '')), ['', '00:00', '00:00:00', '0', '--:--'], true)
-        );
-        $porcentajeAusentismo = $ausentismo->isEmpty() ? null : ($tieneIncapacidad ? 0.0 : 100.0);
+        // ── Ausentismo — manual: default 100% (toggle ausentismo_ok) ─────
+        $ausentismoAprobado   = $manualCheck ? (bool) $manualCheck->ausentismo_ok : true;
+        $porcentajeAusentismo = $ausentismoAprobado ? 100.0 : 0.0;
 
         // ── Malas Marcaciones ─────────────────────────────────────────────
         $tieneMalasMarcaciones = DB::table('correcciones_marcaciones')
@@ -476,7 +468,7 @@ class PortalController extends Controller
             'owd' => ['valor' => $owdRuta,              'label' => $owdRuta !== null ? "{$owdRuta}%" : 'N/A',        'pilar' => 'Seguridad', 'peso' => 15,  'emoji' => '✅', 'titulo' => 'OWD Ruta',           'meta_desc' => 'Sin NO OK = 100% | Con NO OK = 0%'],
             'calificaciones' => ['valor' => $promedioCalif,        'label' => $promedioCalif !== null ? "{$promedioCalif}%" : 'N/A', 'pilar' => 'Seguridad', 'peso' => 10, 'emoji' => '🎓', 'titulo' => 'Calificaciones',     'meta_desc' => 'Promedio de notas por módulo'],
             'dpo' => ['valor' => $estaEnDpo ? 0.0 : 100.0, 'label' => $estaEnDpo ? '0%' : '100%',                        'pilar' => 'Gente',     'peso' => 5,   'emoji' => '📚', 'titulo' => 'DPO Academy',        'meta_desc' => 'Sin registro = 100% | En listado = 0%'],
-            'ausentismo' => ['valor' => $porcentajeAusentismo, 'label' => $porcentajeAusentismo !== null ? "{$porcentajeAusentismo}%" : 'N/A', 'pilar' => 'Gente', 'peso' => 5, 'emoji' => '📅', 'titulo' => 'Ausentismo', 'meta_desc' => 'Sin incapacidad = 100%'],
+            'ausentismo' => ['valor' => $porcentajeAusentismo, 'label' => $ausentismoAprobado ? '100%' : '0%', 'pilar' => 'Gente', 'peso' => 5, 'emoji' => '📅', 'titulo' => 'Ausentismo', 'meta_desc' => 'Default 100% · Manual'],
             'marcaciones' => ['valor' => $tieneMalasMarcaciones ? 0.0 : 100.0, 'label' => $tieneMalasMarcaciones ? '0%' : '100%', 'pilar' => 'Gente', 'peso' => 5, 'emoji' => '🕐', 'titulo' => 'Malas Marcaciones', 'meta_desc' => 'Sin corrección = 100%'],
             'rechazos' => ['valor' => $evento?->rechazos !== null ? ((float) $evento->rechazos >= 2.4 ? 0.0 : 100.0) : null, 'label' => $evento?->rechazos !== null ? ((float) $evento->rechazos >= 2.4 ? '0%' : '100%') : 'N/A', 'pilar' => 'Reparto', 'peso' => 11, 'emoji' => '🔄', 'titulo' => 'Rechazos', 'meta_desc' => '< 2.4% rechazos = 100%'],
             'sac' => ['valor' => $casosSac === 0 ? 100.0 : 0.0, 'label' => $casosSac === 0 ? '100%' : '0%', 'pilar' => 'Reparto', 'peso' => 8, 'emoji' => '🎧', 'titulo' => 'SAC', 'meta_desc' => 'Sin casos = 100%'],
