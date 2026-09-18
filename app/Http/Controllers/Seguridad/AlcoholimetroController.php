@@ -7,6 +7,7 @@ use App\Http\Requests\Seguridad\StoreAlcoholimetroRequest;
 use App\Http\Requests\Seguridad\StoreMantenimientoRequest;
 use App\Http\Requests\Seguridad\UpdateAlcoholimetroRequest;
 use App\Models\Seguridad\Alcoholimetro;
+use App\Models\Seguridad\AlcoholimetroDocumento;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -61,6 +62,23 @@ class AlcoholimetroController extends Controller
             $dispositivo->imagenes()->create(['path' => $archivo->store('alcoholimetros', 'public')]);
         }
 
+        // Guardar documentos (PDF / Excel)
+        foreach ($request->file('documentos', []) as $archivo) {
+            $dispositivo->documentos()->create([
+                'path'          => $archivo->store('alcoholimetros/documentos', 'public'),
+                'nombre_original' => $archivo->getClientOriginalName(),
+            ]);
+        }
+
+        // Guardar mantenimientos enviados con el formulario
+        foreach ($request->input('mantenimientos', []) as $m) {
+            $dispositivo->mantenimientos()->create([
+                'fecha'       => $m['fecha'],
+                'descripcion' => $m['descripcion'],
+                'realizado_por' => $request->user()->id,
+            ]);
+        }
+
         return to_route('seguridad.dispositivos.show', $dispositivo)->with('status', 'Dispositivo registrado correctamente.');
     }
 
@@ -68,6 +86,11 @@ class AlcoholimetroController extends Controller
     {
         $dispositoData = $dispositivo->toArray();
         $dispositoData['imagenes_paths'] = $dispositivo->imagenes()->pluck('path')->map(fn($path) => '/storage/' . $path)->toArray();
+        $dispositoData['documentos_paths'] = $dispositivo->documentos()->get()->map(fn($d) => [
+            'id'              => $d->id,
+            'url'             => '/storage/' . $d->path,
+            'nombre_original' => $d->nombre_original ?? basename($d->path),
+        ])->toArray();
         $dispositoData['fecha_calibracion'] = $dispositivo->fecha_calibracion?->toDateString();
         $dispositoData['fecha_vencimiento_certificado'] = $dispositivo->fecha_vencimiento_certificado?->toDateString();
 
@@ -84,19 +107,31 @@ class AlcoholimetroController extends Controller
     {
         $dispositoData = $dispositivo->toArray();
         $dispositoData['imagenes_paths'] = $dispositivo->imagenes()->pluck('path')->map(fn($path) => '/storage/' . $path)->toArray();
+        $dispositoData['documentos_paths'] = $dispositivo->documentos()->get()->map(fn($d) => [
+            'id'              => $d->id,
+            'url'             => '/storage/' . $d->path,
+            'nombre_original' => $d->nombre_original ?? basename($d->path),
+        ])->toArray();
         // Formatear fechas como yyyy-MM-dd para que funcionen en <input type="date">
         $dispositoData['fecha_calibracion'] = $dispositivo->fecha_calibracion?->toDateString();
         $dispositoData['fecha_vencimiento_certificado'] = $dispositivo->fecha_vencimiento_certificado?->toDateString();
 
         return Inertia::render('seguridad/dispositivos/edit', [
             'dispositivo' => $dispositoData,
+            'mantenimientos' => $dispositivo->mantenimientos()->with('realizadoPor:id,name')->get()
+                ->map(fn ($m) => [
+                    'id'          => $m->id,
+                    'fecha'       => $m->fecha?->toDateString(),
+                    'descripcion' => $m->descripcion,
+                    'realizado_por' => $m->realizadoPor?->name,
+                ]),
         ]);
     }
 
     public function update(UpdateAlcoholimetroRequest $request, Alcoholimetro $dispositivo): RedirectResponse
     {
         $dispositivo->update([
-            ...$request->safe()->except('imagenes', 'deleted_imagenes_indices'),
+            ...$request->safe()->except('imagenes', 'deleted_imagenes_indices', 'documentos', 'deleted_documentos_indices'),
         ]);
 
         // Eliminar imágenes marcadas para eliminación
@@ -115,6 +150,36 @@ class AlcoholimetroController extends Controller
         // Agregar nuevas imágenes
         foreach ($request->file('imagenes', []) as $archivo) {
             $dispositivo->imagenes()->create(['path' => $archivo->store('alcoholimetros', 'public')]);
+        }
+
+        // Eliminar documentos marcados para eliminación
+        $deletedDocIndices = $request->input('deleted_documentos_indices', []);
+        if (!empty($deletedDocIndices)) {
+            $documentos = $dispositivo->documentos()->get();
+            foreach ($deletedDocIndices as $index) {
+                if (isset($documentos[$index])) {
+                    $doc = $documentos[$index];
+                    Storage::disk('public')->delete($doc->path);
+                    $doc->delete();
+                }
+            }
+        }
+
+        // Agregar nuevos documentos
+        foreach ($request->file('documentos', []) as $archivo) {
+            $dispositivo->documentos()->create([
+                'path'            => $archivo->store('alcoholimetros/documentos', 'public'),
+                'nombre_original' => $archivo->getClientOriginalName(),
+            ]);
+        }
+
+        // Guardar mantenimientos nuevos enviados con el formulario
+        foreach ($request->input('mantenimientos', []) as $m) {
+            $dispositivo->mantenimientos()->create([
+                'fecha'        => $m['fecha'],
+                'descripcion'  => $m['descripcion'],
+                'realizado_por' => $request->user()->id,
+            ]);
         }
 
         return to_route('seguridad.dispositivos.index')->with('status', 'Dispositivo actualizado correctamente.');

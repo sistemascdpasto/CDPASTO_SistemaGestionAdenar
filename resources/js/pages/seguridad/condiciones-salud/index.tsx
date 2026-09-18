@@ -14,15 +14,13 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
 import { FirmaPad, type FirmaPadHandle } from '@/pages/seguridad/pruebas/firma-pad';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { FileSpreadsheet, FileText, LoaderCircle, Pencil, PenLine, Search, Trash2 } from 'lucide-react';
-import { FormEventHandler, useEffect, useRef, useState } from 'react';
+import { FormEventHandler, useRef, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
@@ -46,6 +44,7 @@ const TURNO_LABELS: Record<string, string> = { manana: 'Mañana', tarde: 'Tarde'
 interface RegistroFila {
     fecha: string;
     colaborador: {
+        id: number;
         nombres: string;
         apellidos: string;
         cedula: string;
@@ -138,108 +137,6 @@ function FirmarSupervisorDialog({ salidaId }: { salidaId: number }) {
     );
 }
 
-interface EditarCondicionDialogProps {
-    condicionId: number;
-    momento: 'ingreso' | 'salida';
-    estadoActual: string | null;
-    observacionActual: string | null;
-    colaboradorNombre: string;
-    fecha: string;
-}
-
-function EditarCondicionDialog({
-    condicionId,
-    momento,
-    estadoActual,
-    observacionActual,
-    colaboradorNombre,
-    fecha,
-}: EditarCondicionDialogProps) {
-    const [open, setOpen] = useState(false);
-    const { data, setData, patch, processing, errors, reset } = useForm<{ estado: string; observacion: string }>({
-        estado: estadoActual ?? 'Bueno',
-        observacion: observacionActual ?? '',
-    });
-
-    useEffect(() => {
-        if (open) {
-            setData({ estado: estadoActual ?? 'Bueno', observacion: observacionActual ?? '' });
-        }
-    }, [open, estadoActual, observacionActual, setData]);
-
-    const submit: FormEventHandler = (e) => {
-        e.preventDefault();
-        patch(route('seguridad.condiciones-salud.update', condicionId), {
-            preserveScroll: true,
-            onSuccess: () => {
-                setOpen(false);
-                reset();
-            },
-        });
-    };
-
-    const momentoLabel = momento === 'ingreso' ? 'Ingreso' : 'Salida';
-    const requiereObservacion = data.estado === 'Regular' || data.estado === 'Malo';
-
-    return (
-        <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-                <IconActionButton icon={Pencil} label={`Editar ${momentoLabel}`} />
-            </DialogTrigger>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>
-                        Editar condición de salud — {momentoLabel}
-                    </DialogTitle>
-                    <DialogDescription>
-                        {colaboradorNombre} · {fecha}
-                    </DialogDescription>
-                </DialogHeader>
-                <form onSubmit={submit} className="space-y-4">
-                    <div className="grid gap-2">
-                        <Label htmlFor={`estado-${condicionId}-${momento}`}>Estado</Label>
-                        <Select value={data.estado} onValueChange={(value) => setData('estado', value)}>
-                            <SelectTrigger id={`estado-${condicionId}-${momento}`}>
-                                <SelectValue placeholder="Seleccione el estado" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="Bueno">Bueno</SelectItem>
-                                <SelectItem value="Regular">Regular</SelectItem>
-                                <SelectItem value="Malo">Malo</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        {errors.estado && <p className="text-xs text-destructive">{errors.estado}</p>}
-                    </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor={`observacion-${condicionId}-${momento}`}>
-                            Observación {requiereObservacion && <span className="text-destructive">*</span>}
-                        </Label>
-                        <Textarea
-                            id={`observacion-${condicionId}-${momento}`}
-                            value={data.observacion}
-                            onChange={(e) => setData('observacion', e.target.value)}
-                            placeholder={requiereObservacion ? 'Describa la condición del colaborador' : 'Observaciones adicionales (opcional)'}
-                            rows={3}
-                        />
-                        {errors.observacion && <p className="text-xs text-destructive">{errors.observacion}</p>}
-                    </div>
-                    <DialogFooter>
-                        <DialogClose asChild>
-                            <Button type="button" variant="secondary">
-                                Cancelar
-                            </Button>
-                        </DialogClose>
-                        <Button type="submit" disabled={processing}>
-                            {processing && <LoaderCircle className="size-4 animate-spin" />}
-                            Guardar cambios
-                        </Button>
-                    </DialogFooter>
-                </form>
-            </DialogContent>
-        </Dialog>
-    );
-}
-
 interface EliminarCondicionDialogProps {
     condicionId: number;
     momento: 'ingreso' | 'salida';
@@ -288,46 +185,37 @@ function EliminarCondicionDialog({ condicionId, momento, colaboradorNombre, fech
 
 function AccionesFila({ fila }: { fila: RegistroFila }) {
     const nombreCompleto = `${fila.colaborador.nombres} ${fila.colaborador.apellidos}`;
+    const tieneAlguno = fila.ingreso_id || fila.salida_id;
 
     return (
         <div className="flex flex-col gap-2">
+            {tieneAlguno && (
+                <Link
+                    href={route('seguridad.condiciones-salud.editar-fila', {
+                        colaboradorId: fila.colaborador.id,
+                        fecha: fila.fecha,
+                    })}
+                    className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+                >
+                    <Pencil className="size-3.5" />
+                    Editar
+                </Link>
+            )}
             {fila.ingreso_id && (
-                <div className="flex items-center gap-1">
-                    <span className="text-[10px] text-muted-foreground w-14">Ingreso</span>
-                    <EditarCondicionDialog
-                        condicionId={fila.ingreso_id}
-                        momento="ingreso"
-                        estadoActual={fila.estado_ingreso}
-                        observacionActual={fila.observacion_ingreso}
-                        colaboradorNombre={nombreCompleto}
-                        fecha={fila.fecha}
-                    />
-                    <EliminarCondicionDialog
-                        condicionId={fila.ingreso_id}
-                        momento="ingreso"
-                        colaboradorNombre={nombreCompleto}
-                        fecha={fila.fecha}
-                    />
-                </div>
+                <EliminarCondicionDialog
+                    condicionId={fila.ingreso_id}
+                    momento="ingreso"
+                    colaboradorNombre={nombreCompleto}
+                    fecha={fila.fecha}
+                />
             )}
             {fila.salida_id && (
-                <div className="flex items-center gap-1">
-                    <span className="text-[10px] text-muted-foreground w-14">Salida</span>
-                    <EditarCondicionDialog
-                        condicionId={fila.salida_id}
-                        momento="salida"
-                        estadoActual={fila.estado_salida}
-                        observacionActual={fila.observacion_salida}
-                        colaboradorNombre={nombreCompleto}
-                        fecha={fila.fecha}
-                    />
-                    <EliminarCondicionDialog
-                        condicionId={fila.salida_id}
-                        momento="salida"
-                        colaboradorNombre={nombreCompleto}
-                        fecha={fila.fecha}
-                    />
-                </div>
+                <EliminarCondicionDialog
+                    condicionId={fila.salida_id}
+                    momento="salida"
+                    colaboradorNombre={nombreCompleto}
+                    fecha={fila.fecha}
+                />
             )}
         </div>
     );

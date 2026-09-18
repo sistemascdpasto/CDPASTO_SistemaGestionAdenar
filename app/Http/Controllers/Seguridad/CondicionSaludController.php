@@ -102,6 +102,7 @@ class CondicionSaludController extends Controller
                 return [
                     'fecha' => $grupo->first()->fecha_hora->toDateString(),
                     'colaborador' => [
+                        'id'       => $colaborador->id,
                         'nombres' => $colaborador->nombres,
                         'apellidos' => $colaborador->apellidos,
                         'cedula' => $colaborador->cedula,
@@ -135,13 +136,81 @@ class CondicionSaludController extends Controller
         return [$filtros, $filas];
     }
 
+    /**
+     * Página de edición de una fila (colaborador + día): muestra ingreso y
+     * salida del día y permite editar el estado y observación de cada uno.
+     */
+    public function editarFila(Request $request, int $colaboradorId, string $fecha): Response
+    {
+        $registros = CondicionSalud::query()
+            ->with('colaborador:id,nombres,apellidos,cedula,cargo,area')
+            ->where('colaborador_id', $colaboradorId)
+            ->whereDate('fecha_hora', $fecha)
+            ->get();
+
+        abort_if($registros->isEmpty(), 404, 'No se encontraron registros para este colaborador y fecha.');
+
+        $colaborador = $registros->first()->colaborador;
+        $ingreso     = $registros->firstWhere('momento', 'ingreso');
+        $salida      = $registros->firstWhere('momento', 'salida');
+
+        return Inertia::render('seguridad/condiciones-salud/edit', [
+            'colaborador' => [
+                'id'              => $colaborador->id,
+                'nombre_completo' => $colaborador->nombre_completo,
+                'cedula'          => $colaborador->cedula,
+                'cargo'           => $colaborador->cargo,
+                'area'            => $colaborador->area,
+            ],
+            'fecha' => $fecha,
+            'ingreso' => $ingreso ? [
+                'id'          => $ingreso->id,
+                'hora'        => $ingreso->fecha_hora->format('H:i'),
+                'fecha_hora'  => $ingreso->fecha_hora->format('Y-m-d\TH:i'),
+                'estado'      => $ingreso->estado,
+                'observacion' => $ingreso->observacion ?? '',
+            ] : null,
+            'salida' => $salida ? [
+                'id'          => $salida->id,
+                'hora'        => $salida->fecha_hora->format('H:i'),
+                'fecha_hora'  => $salida->fecha_hora->format('Y-m-d\TH:i'),
+                'estado'      => $salida->estado,
+                'observacion' => $salida->observacion ?? '',
+            ] : null,
+        ]);
+    }
+
     public function store(StoreCondicionSaludRequest $request): RedirectResponse
     {
+        $fechaHora = $request->filled('fecha_hora') ? Carbon::parse($request->input('fecha_hora')) : Carbon::now();
+        $fechaDestino = $fechaHora->toDateString();
+
+        $existe = CondicionSalud::query()
+            ->where('colaborador_id', $request->input('colaborador_id'))
+            ->where('momento', $request->input('momento'))
+            ->whereDate('fecha_hora', $fechaDestino)
+            ->exists();
+
+        if ($existe) {
+            $momentoTexto = $request->input('momento') === 'ingreso' ? 'un ingreso' : 'una salida';
+            return back()->withErrors([
+                'momento' => "Ya existe {$momentoTexto} registrado para este colaborador en la fecha ({$fechaDestino}).",
+            ]);
+        }
+
         CondicionSalud::create([
             ...$request->validated(),
             'responsable_id' => $request->user()->id,
-            'fecha_hora' => Carbon::now(),
+            'fecha_hora' => $fechaHora,
         ]);
+
+        // Si viene del formulario de edición, redirigir allí para ver el resultado.
+        if ($request->filled('_redirect_editar')) {
+            return to_route('seguridad.condiciones-salud.editar-fila', [
+                'colaboradorId' => $request->input('colaborador_id'),
+                'fecha' => $fechaDestino,
+            ])->with('status', 'Condición de salud registrada correctamente.');
+        }
 
         return back()->with('status', 'Condición de salud registrada correctamente.');
     }
@@ -177,12 +246,13 @@ class CondicionSaludController extends Controller
     }
 
     /**
-     * Actualiza el estado y observación de un registro individual de
+     * Actualiza la fecha/hora, estado y observación de un registro individual de
      * condición de salud (ingreso o salida).
      */
     public function update(Request $request, CondicionSalud $condicion): RedirectResponse
     {
         $validated = $request->validate([
+            'fecha_hora' => ['required', 'date'],
             'estado' => ['required', Rule::in(['Bueno', 'Regular', 'Malo'])],
             'observacion' => [
                 Rule::requiredIf(static fn () => in_array($request->input('estado'), ['Regular', 'Malo'], true)),
@@ -192,9 +262,28 @@ class CondicionSaludController extends Controller
             ],
         ]);
 
+        $fechaDestino = Carbon::parse($validated['fecha_hora'])->toDateString();
+
+        $existe = CondicionSalud::query()
+            ->where('colaborador_id', $condicion->colaborador_id)
+            ->where('momento', $condicion->momento)
+            ->whereDate('fecha_hora', $fechaDestino)
+            ->where('id', '!=', $condicion->id)
+            ->exists();
+
+        if ($existe) {
+            $momentoTexto = $condicion->momento === 'ingreso' ? 'un ingreso' : 'una salida';
+            return back()->withErrors([
+                'fecha_hora' => "Ya existe {$momentoTexto} registrado para este colaborador en la fecha ({$fechaDestino}).",
+            ]);
+        }
+
         $condicion->update($validated);
 
-        return back()->with('status', 'Registro de condición de salud actualizado correctamente.');
+        return to_route('seguridad.condiciones-salud.editar-fila', [
+            'colaboradorId' => $condicion->colaborador_id,
+            'fecha' => $condicion->fecha_hora->toDateString(),
+        ])->with('status', 'Registro de condición de salud actualizado correctamente.');
     }
 
     /**

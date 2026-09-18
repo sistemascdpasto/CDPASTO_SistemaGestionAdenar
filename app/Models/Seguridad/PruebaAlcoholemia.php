@@ -116,6 +116,8 @@ class PruebaAlcoholemia extends Model
             'post_ruta' => 'Post Ruta',
             'jl' => 'JL',
             'segundo_viaje' => 'Segundo viaje',
+            'movilizador' => 'Movilizador',
+            'administrativo' => 'Administrativo',
             default => ucfirst($this->tipo),
         };
     }

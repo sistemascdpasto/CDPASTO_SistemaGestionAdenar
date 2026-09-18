@@ -13,6 +13,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
@@ -39,16 +40,33 @@ class PruebaAlcoholemiaController extends Controller
 
     public function create(): Response
     {
+        $dispositivosDisponibles = Alcoholimetro::query()
+            ->where('estado', 'Disponible')
+            ->orderBy('codigo')
+            ->get(['id', 'codigo', 'valor_min', 'valor_max']);
+
+        // Precarga el dispositivo más frecuentemente usado en pruebas realizadas
+        $dispositivoDefaultId = PruebaAlcoholemia::query()
+            ->whereNotNull('alcoholimetro_id')
+            ->where('estado', 'realizada')
+            ->select('alcoholimetro_id', DB::raw('COUNT(*) as total'))
+            ->groupBy('alcoholimetro_id')
+            ->orderByDesc('total')
+            ->value('alcoholimetro_id');
+
+        // Si el más usado no está disponible actualmente, elegir el primero disponible
+        if ($dispositivoDefaultId && !$dispositivosDisponibles->contains('id', $dispositivoDefaultId)) {
+            $dispositivoDefaultId = $dispositivosDisponibles->first()?->id;
+        }
+
         return Inertia::render('seguridad/pruebas/create', [
             'colaboradores' => Colaborador::query()
                 ->completos()
                 ->where('is_active', true)
                 ->orderBy('nombres')
                 ->get(['id', 'nombres', 'apellidos', 'cedula', 'turno', 'cargo']),
-            'dispositivosDisponibles' => Alcoholimetro::query()
-                ->where('estado', 'Disponible')
-                ->orderBy('codigo')
-                ->get(['id', 'codigo', 'valor_min', 'valor_max']),
+            'dispositivosDisponibles' => $dispositivosDisponibles,
+            'dispositivoDefaultId'    => $dispositivoDefaultId,
         ]);
     }
 
@@ -67,7 +85,7 @@ class PruebaAlcoholemiaController extends Controller
             'firma_path' => $request->file('firma')?->store('firmas', 'public'),
             'observaciones' => $request->input('observaciones'),
             'responsable_id' => $request->user()->id,
-            'fecha_hora' => $esProgramacion ? $request->date('programada_en') : Carbon::now(),
+            'fecha_hora' => $esProgramacion ? $request->date('programada_en') : ($request->filled('fecha_hora') ? Carbon::parse($request->input('fecha_hora')) : Carbon::now()),
             'programada_en' => $esProgramacion ? $request->date('programada_en') : null,
             'estado' => $esProgramacion ? 'programada' : 'realizada',
         ]);
@@ -103,6 +121,11 @@ class PruebaAlcoholemiaController extends Controller
 
         $pruebaData = $prueba->load(['colaborador', 'alcoholimetro', 'responsable'])->toArray();
 
+        // Formatear fecha_hora para input datetime-local
+        if ($prueba->fecha_hora) {
+            $pruebaData['fecha_hora'] = $prueba->fecha_hora->format('Y-m-d\TH:i');
+        }
+
         // Agregar rutas de evidencias con /storage/
         if ($prueba->evidencia_path) {
             $pruebaData['evidencia_path'] = '/storage/'.$prueba->evidencia_path;
@@ -132,7 +155,7 @@ class PruebaAlcoholemiaController extends Controller
             'consentimiento_aceptado' => ! $esProgramacion && $request->boolean('consentimiento_aceptado'),
             'consentimiento_en' => $esProgramacion ? null : ($prueba->consentimiento_en ?? Carbon::now()),
             'observaciones' => $request->input('observaciones'),
-            'fecha_hora' => $esProgramacion ? $request->date('programada_en') : ($prueba->fecha_hora ?? Carbon::now()),
+            'fecha_hora' => $esProgramacion ? $request->date('programada_en') : ($request->filled('fecha_hora') ? Carbon::parse($request->input('fecha_hora')) : ($prueba->fecha_hora ?? Carbon::now())),
             'programada_en' => $esProgramacion ? $request->date('programada_en') : null,
             'estado' => $esProgramacion ? 'programada' : 'realizada',
         ]);
@@ -192,6 +215,7 @@ class PruebaAlcoholemiaController extends Controller
                 'evaluacion' => $prueba->evaluacion(),
             ],
             'qrSvg' => $qrSvg,
+            'ubicacion' => config('app.ubicacion_pruebas', 'Pasto, Nariño · Colombia'),
         ]);
     }
 

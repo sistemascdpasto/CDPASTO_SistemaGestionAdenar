@@ -22,6 +22,7 @@ class StoreCondicionSaludRequest extends FormRequest
             'momento' => ['required', Rule::in(['ingreso', 'salida'])],
             'estado' => ['required', Rule::in(['Bueno', 'Regular', 'Malo'])],
             'observacion' => ['required_if:estado,Regular', 'required_if:estado,Malo', 'nullable', 'string', 'max:2000'],
+            'fecha_hora' => ['nullable', 'date'],
         ];
     }
 }

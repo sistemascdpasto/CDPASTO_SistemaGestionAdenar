@@ -7,6 +7,7 @@ use App\Models\Seguridad\CondicionSalud;
 use App\Models\Seguridad\PruebaAlcoholemia;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -34,6 +35,21 @@ class CondicionSaludPortalTest extends TestCase
         return [$user, $colaborador];
     }
 
+    private function crearPruebaConFirma(Colaborador $colaborador, User $user): PruebaAlcoholemia
+    {
+        return PruebaAlcoholemia::create([
+            'colaborador_id' => $colaborador->id,
+            'tipo' => 'entrada',
+            'resultado' => 0,
+            'consentimiento_aceptado' => true,
+            'consentimiento_en' => now(),
+            'firma_path' => 'firmas/test.png',
+            'responsable_id' => $user->id,
+            'fecha_hora' => now(),
+            'estado' => 'realizada',
+        ]);
+    }
+
     public function test_form_is_blocked_without_a_signed_test(): void
     {
         [$user] = $this->colaboradorUser();
@@ -47,18 +63,7 @@ class CondicionSaludPortalTest extends TestCase
     public function test_it_rejects_submission_without_consent(): void
     {
         [$user, $colaborador] = $this->colaboradorUser();
-
-        PruebaAlcoholemia::create([
-            'colaborador_id' => $colaborador->id,
-            'tipo' => 'entrada',
-            'resultado' => 0,
-            'consentimiento_aceptado' => true,
-            'consentimiento_en' => now(),
-            'firma_path' => 'firmas/test.png',
-            'responsable_id' => $user->id,
-            'fecha_hora' => now(),
-            'estado' => 'realizada',
-        ]);
+        $this->crearPruebaConFirma($colaborador, $user);
 
         $this->actingAs($user)->post(route('portal.condicion-salud.store'), [
             'momento' => 'ingreso',
@@ -69,18 +74,7 @@ class CondicionSaludPortalTest extends TestCase
     public function test_it_stores_condicion_salud_with_signed_test_and_consent_audit_trail(): void
     {
         [$user, $colaborador] = $this->colaboradorUser();
-
-        $prueba = PruebaAlcoholemia::create([
-            'colaborador_id' => $colaborador->id,
-            'tipo' => 'entrada',
-            'resultado' => 0,
-            'consentimiento_aceptado' => true,
-            'consentimiento_en' => now(),
-            'firma_path' => 'firmas/test.png',
-            'responsable_id' => $user->id,
-            'fecha_hora' => now(),
-            'estado' => 'realizada',
-        ]);
+        $prueba = $this->crearPruebaConFirma($colaborador, $user);
 
         $this->actingAs($user)->post(route('portal.condicion-salud.store'), [
             'momento' => 'ingreso',
@@ -88,7 +82,6 @@ class CondicionSaludPortalTest extends TestCase
             'consentimiento_aceptado' => true,
         ])->assertRedirect(route('portal.condicion-salud.historial'));
 
-        $colaborador->refresh();
         $condicion = $colaborador->condicionesSalud()->first();
 
         $this->assertNotNull($condicion);
@@ -101,7 +94,7 @@ class CondicionSaludPortalTest extends TestCase
         $this->assertSame($prueba->id, $condicion->prueba_alcoholemia_id);
         $this->assertSame($user->id, $condicion->responsable_id);
 
-        // Enviar de nuevo el mismo momento el mismo día se rechaza: no se puede modificar.
+        // Enviar de nuevo ingreso el mismo día se rechaza: hay entrada abierta.
         $this->actingAs($user)->post(route('portal.condicion-salud.store'), [
             'momento' => 'ingreso',
             'estado' => 'Regular',
@@ -116,18 +109,7 @@ class CondicionSaludPortalTest extends TestCase
     public function test_it_blocks_a_new_ingreso_when_there_is_an_open_jornada(): void
     {
         [$user, $colaborador] = $this->colaboradorUser();
-
-        PruebaAlcoholemia::create([
-            'colaborador_id' => $colaborador->id,
-            'tipo' => 'entrada',
-            'resultado' => 0,
-            'consentimiento_aceptado' => true,
-            'consentimiento_en' => now(),
-            'firma_path' => 'firmas/test.png',
-            'responsable_id' => $user->id,
-            'fecha_hora' => now(),
-            'estado' => 'realizada',
-        ]);
+        $this->crearPruebaConFirma($colaborador, $user);
 
         // Ingreso de ayer, sin salida.
         CondicionSalud::create([
@@ -143,6 +125,7 @@ class CondicionSaludPortalTest extends TestCase
         $this->actingAs($user)->get(route('portal.condicion-salud'))
             ->assertInertia(fn ($page) => $page->where('jornadaAbierta', true));
 
+        // No se puede registrar un ingreso con una entrada abierta.
         $this->actingAs($user)->post(route('portal.condicion-salud.store'), [
             'momento' => 'ingreso',
             'estado' => 'Bueno',
@@ -151,7 +134,7 @@ class CondicionSaludPortalTest extends TestCase
 
         $this->assertSame(1, $colaborador->condicionesSalud()->count());
 
-        // Registrar la salida cierra la jornada.
+        // Registrar la salida cierra la jornada (ya pasó más de 1 hora).
         $this->actingAs($user)->post(route('portal.condicion-salud.store'), [
             'momento' => 'salida',
             'estado' => 'Bueno',
@@ -171,37 +154,101 @@ class CondicionSaludPortalTest extends TestCase
         $this->assertSame(3, $colaborador->condicionesSalud()->count());
     }
 
-    public function test_salida_cannot_be_resubmitted_the_same_day(): void
+    public function test_salida_is_rejected_without_open_entry(): void
     {
         [$user, $colaborador] = $this->colaboradorUser();
+        $this->crearPruebaConFirma($colaborador, $user);
 
-        PruebaAlcoholemia::create([
-            'colaborador_id' => $colaborador->id,
-            'tipo' => 'entrada',
-            'resultado' => 0,
+        // Intentar registrar salida sin tener ninguna entrada
+        $this->actingAs($user)->post(route('portal.condicion-salud.store'), [
+            'momento' => 'salida',
+            'estado' => 'Bueno',
             'consentimiento_aceptado' => true,
-            'consentimiento_en' => now(),
-            'firma_path' => 'firmas/test.png',
-            'responsable_id' => $user->id,
-            'fecha_hora' => now(),
-            'estado' => 'realizada',
-        ]);
+        ])->assertSessionHasErrors('momento');
+
+        $this->assertSame(0, $colaborador->condicionesSalud()->count());
+    }
+
+    public function test_salida_is_rejected_when_entry_was_less_than_one_hour_ago(): void
+    {
+        [$user, $colaborador] = $this->colaboradorUser();
+        $this->crearPruebaConFirma($colaborador, $user);
+
+        // Registrar ingreso hace 30 minutos
+        Carbon::setTestNow(now()->subMinutes(30));
+        $this->actingAs($user)->post(route('portal.condicion-salud.store'), [
+            'momento' => 'ingreso',
+            'estado' => 'Bueno',
+            'consentimiento_aceptado' => true,
+        ])->assertRedirect();
+
+        // Volver al "ahora" real — solo 30 minutos después
+        Carbon::setTestNow();
 
         $this->actingAs($user)->post(route('portal.condicion-salud.store'), [
             'momento' => 'salida',
             'estado' => 'Bueno',
             'consentimiento_aceptado' => true,
-        ])->assertRedirect();
-
-        $this->actingAs($user)->post(route('portal.condicion-salud.store'), [
-            'momento' => 'salida',
-            'estado' => 'Malo',
-            'observacion' => 'Cambié de opinión',
-            'consentimiento_aceptado' => true,
         ])->assertSessionHasErrors('momento');
 
         $this->assertSame(1, $colaborador->condicionesSalud()->count());
-        $this->assertSame('Bueno', $colaborador->condicionesSalud()->first()->estado);
+    }
+
+    public function test_salida_is_allowed_after_one_hour(): void
+    {
+        [$user, $colaborador] = $this->colaboradorUser();
+        $this->crearPruebaConFirma($colaborador, $user);
+
+        // Registrar ingreso hace 2 horas
+        Carbon::setTestNow(now()->subHours(2));
+        $this->actingAs($user)->post(route('portal.condicion-salud.store'), [
+            'momento' => 'ingreso',
+            'estado' => 'Bueno',
+            'consentimiento_aceptado' => true,
+        ])->assertRedirect();
+
+        Carbon::setTestNow();
+
+        $this->actingAs($user)->post(route('portal.condicion-salud.store'), [
+            'momento' => 'salida',
+            'estado' => 'Bueno',
+            'consentimiento_aceptado' => true,
+        ])->assertRedirect()->assertSessionDoesntHaveErrors();
+
+        $this->assertSame(2, $colaborador->condicionesSalud()->count());
+    }
+
+    public function test_double_salida_for_same_entry_is_rejected(): void
+    {
+        [$user, $colaborador] = $this->colaboradorUser();
+        $this->crearPruebaConFirma($colaborador, $user);
+
+        // Ingreso ayer y salida ayer (jornada cerrada)
+        CondicionSalud::create([
+            'colaborador_id' => $colaborador->id,
+            'momento' => 'ingreso',
+            'estado' => 'Bueno',
+            'responsable_id' => $user->id,
+            'fecha_hora' => now()->subDay()->setTime(7, 0),
+            'consentimiento_aceptado' => true,
+        ]);
+        CondicionSalud::create([
+            'colaborador_id' => $colaborador->id,
+            'momento' => 'salida',
+            'estado' => 'Bueno',
+            'responsable_id' => $user->id,
+            'fecha_hora' => now()->subDay()->setTime(16, 0),
+            'consentimiento_aceptado' => true,
+        ]);
+
+        // Sin entrada abierta, no se puede registrar salida
+        $this->actingAs($user)->post(route('portal.condicion-salud.store'), [
+            'momento' => 'salida',
+            'estado' => 'Bueno',
+            'consentimiento_aceptado' => true,
+        ])->assertSessionHasErrors('momento');
+
+        $this->assertSame(2, $colaborador->condicionesSalud()->count());
     }
 
     public function test_historial_lists_records_and_exposes_jornada_abierta(): void

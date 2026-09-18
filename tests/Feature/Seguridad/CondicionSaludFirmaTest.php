@@ -121,4 +121,128 @@ class CondicionSaludFirmaTest extends TestCase
         $this->assertNotNull($salida->firmado_en);
         Storage::disk('public')->assertExists($salida->firma_supervisor_path);
     }
+
+    public function test_it_can_update_fecha_hora_estado_and_observacion(): void
+    {
+        $user = $this->seguridadUser();
+
+        $colaborador = Colaborador::create([
+            'cedula' => '1002003004',
+            'nombres' => 'Laura',
+            'apellidos' => 'Portal',
+            'is_active' => true,
+        ]);
+
+        $ingreso = CondicionSalud::create([
+            'colaborador_id' => $colaborador->id,
+            'momento' => 'ingreso',
+            'estado' => 'Bueno',
+            'responsable_id' => $user->id,
+            'fecha_hora' => '2026-09-18 08:00:00',
+            'consentimiento_aceptado' => true,
+        ]);
+
+        $nuevaFechaHora = '2026-09-18T08:30';
+
+        $response = $this->actingAs($user)->patch(route('seguridad.condiciones-salud.update', $ingreso), [
+            'fecha_hora' => $nuevaFechaHora,
+            'estado' => 'Regular',
+            'observacion' => 'Llegó con dolor de cabeza',
+        ]);
+
+        $response->assertRedirect(route('seguridad.condiciones-salud.editar-fila', [
+            'colaboradorId' => $colaborador->id,
+            'fecha' => '2026-09-18',
+        ]));
+
+        $ingreso->refresh();
+
+        $this->assertSame('2026-09-18 08:30:00', $ingreso->fecha_hora->format('Y-m-d H:i:s'));
+        $this->assertSame('Regular', $ingreso->estado);
+        $this->assertSame('Llegó con dolor de cabeza', $ingreso->observacion);
+    }
+
+    public function test_it_rejects_updating_to_a_date_that_already_has_a_record_for_same_momento(): void
+    {
+        $user = $this->seguridadUser();
+
+        $colaborador = Colaborador::create([
+            'cedula' => '1002003004',
+            'nombres' => 'Laura',
+            'apellidos' => 'Portal',
+            'is_active' => true,
+        ]);
+
+        // Ingreso el día 18
+        CondicionSalud::create([
+            'colaborador_id' => $colaborador->id,
+            'momento' => 'ingreso',
+            'estado' => 'Bueno',
+            'responsable_id' => $user->id,
+            'fecha_hora' => '2026-09-18 08:00:00',
+            'consentimiento_aceptado' => true,
+        ]);
+
+        // Ingreso el día 19
+        $ingresoDia19 = CondicionSalud::create([
+            'colaborador_id' => $colaborador->id,
+            'momento' => 'ingreso',
+            'estado' => 'Bueno',
+            'responsable_id' => $user->id,
+            'fecha_hora' => '2026-09-19 08:00:00',
+            'consentimiento_aceptado' => true,
+        ]);
+
+        // Intentar cambiar la fecha del ingreso del día 19 al día 18 (donde ya existe ingreso)
+        $response = $this->actingAs($user)->patch(route('seguridad.condiciones-salud.update', $ingresoDia19), [
+            'fecha_hora' => '2026-09-18T09:00',
+            'estado' => 'Bueno',
+        ]);
+
+        $response->assertSessionHasErrors('fecha_hora');
+
+        $ingresoDia19->refresh();
+        $this->assertSame('2026-09-19 08:00:00', $ingresoDia19->fecha_hora->format('Y-m-d H:i:s'));
+    }
+
+    public function test_it_can_create_missing_momento_from_edit_page(): void
+    {
+        $user = $this->seguridadUser();
+
+        $colaborador = Colaborador::create([
+            'cedula' => '1002003004',
+            'nombres' => 'Laura',
+            'apellidos' => 'Portal',
+            'is_active' => true,
+        ]);
+
+        // Solo existe ingreso el día 18
+        CondicionSalud::create([
+            'colaborador_id' => $colaborador->id,
+            'momento' => 'ingreso',
+            'estado' => 'Bueno',
+            'responsable_id' => $user->id,
+            'fecha_hora' => '2026-09-18 08:00:00',
+            'consentimiento_aceptado' => true,
+        ]);
+
+        // Crear la salida faltante desde el formulario de edición
+        $response = $this->actingAs($user)->post(route('seguridad.condiciones-salud.store'), [
+            'colaborador_id' => $colaborador->id,
+            'momento' => 'salida',
+            'estado' => 'Bueno',
+            'fecha_hora' => '2026-09-18T17:00',
+            '_redirect_editar' => true,
+        ]);
+
+        $response->assertRedirect(route('seguridad.condiciones-salud.editar-fila', [
+            'colaboradorId' => $colaborador->id,
+            'fecha' => '2026-09-18',
+        ]));
+
+        $this->assertSame(2, CondicionSalud::query()->where('colaborador_id', $colaborador->id)->count());
+        $salida = CondicionSalud::query()->where('colaborador_id', $colaborador->id)->where('momento', 'salida')->first();
+        $this->assertNotNull($salida);
+        $this->assertSame('2026-09-18 17:00:00', $salida->fecha_hora->format('Y-m-d H:i:s'));
+    }
 }

@@ -270,4 +270,45 @@ class PruebaAlcoholemiaTest extends TestCase
         $this->assertCount(11, $fila);
         $this->assertSame('', end($fila));
     }
+
+    public function test_it_can_create_and_update_fecha_hora_of_a_prueba_and_photo(): void
+    {
+        Storage::fake('public');
+        $user = $this->seguridadUser();
+        $colaborador = $this->colaborador();
+        $dispositivo = $this->alcoholimetro();
+
+        $fechaPersonalizada = '2026-09-18T10:30';
+
+        $response = $this->actingAs($user)->post(route('seguridad.pruebas.store'), [
+            'colaborador_id' => $colaborador->id,
+            'tipo' => 'pre_ruta',
+            'alcoholimetro_id' => $dispositivo->id,
+            'resultado' => '0.000',
+            'consentimiento_aceptado' => true,
+            'fecha_hora' => $fechaPersonalizada,
+        ]);
+
+        $response->assertRedirect(route('seguridad.pruebas.index'));
+
+        $prueba = PruebaAlcoholemia::where('colaborador_id', $colaborador->id)->firstOrFail();
+        $this->assertSame('2026-09-18 10:30:00', $prueba->fecha_hora->format('Y-m-d H:i:s'));
+
+        // Editar fecha y hora
+        $nuevaFechaHora = '2026-09-18T14:45';
+
+        $updateResponse = $this->actingAs($user)->put(route('seguridad.pruebas.update', $prueba), [
+            'colaborador_id' => $colaborador->id,
+            'tipo' => 'pre_ruta',
+            'alcoholimetro_id' => $dispositivo->id,
+            'resultado' => '0.000',
+            'consentimiento_aceptado' => true,
+            'fecha_hora' => $nuevaFechaHora,
+        ]);
+
+        $updateResponse->assertRedirect(route('seguridad.pruebas.index'));
+
+        $prueba->refresh();
+        $this->assertSame('2026-09-18 14:45:00', $prueba->fecha_hora->format('Y-m-d H:i:s'));
+    }
 }

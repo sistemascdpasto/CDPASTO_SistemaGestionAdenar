@@ -25,6 +25,9 @@ const emptyForm = (): DispositivoFormData => ({
     estado: 'Disponible',
     imagenes: [],
     deleted_imagenes_indices: [],
+    documentos: [],
+    deleted_documentos_indices: [],
+    mantenimientos: [],
 });
 
 export default function CreateDispositivo() {
@@ -53,6 +56,15 @@ export default function CreateDispositivo() {
 
         (data.imagenes as File[]).forEach((file) => {
             form.append('imagenes[]', file);
+        });
+
+        (data.documentos as File[]).forEach((file) => {
+            form.append('documentos[]', file);
+        });
+
+        (data.mantenimientos as { fecha: string; descripcion: string }[]).forEach((m, i) => {
+            form.append(`mantenimientos[${i}][fecha]`, m.fecha);
+            form.append(`mantenimientos[${i}][descripcion]`, m.descripcion);
         });
 
         router.post(route('seguridad.dispositivos.store'), form as any, {

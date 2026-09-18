@@ -20,7 +20,7 @@ import { ColaboradorSearchSelect, type ColaboradorOption } from '@/pages/segurid
 import { FirmaPad, type FirmaPadHandle } from '@/pages/seguridad/pruebas/firma-pad';
 import { type BreadcrumbItem } from '@/types';
 import { Head, useForm } from '@inertiajs/react';
-import { CalendarClock, Camera, ClipboardList, Gauge, LoaderCircle, Paperclip, PenTool, ShieldCheck, Users, X } from 'lucide-react';
+import { CalendarClock, Camera, ChevronDown, Gauge, LoaderCircle, Paperclip, PenTool, ShieldCheck, Users, X } from 'lucide-react';
 import { FormEventHandler, useEffect, useRef, useState } from 'react';
 
 const breadcrumbsBase: BreadcrumbItem[] = [
@@ -42,6 +42,7 @@ interface PruebaData {
     tipo: string;
     es_programacion: boolean;
     programada_en: string | null;
+    fecha_hora?: string | null;
     alcoholimetro_id: number | null;
     resultado: string | null;
     consentimiento_aceptado: boolean;
@@ -59,6 +60,7 @@ interface PruebaForm {
     tipo: string;
     es_programacion: boolean;
     programada_en: string;
+    fecha_hora: string;
     alcoholimetro_id: string;
     resultado: string;
     consentimiento_aceptado: boolean;
@@ -107,7 +109,7 @@ function EvidenciaUploader({
     onToggleSaved: (index: number) => void;
     newFiles: PickedFile[];
     onRemoveNew: (index: number) => void;
-    onPreview: (path: string) => void;
+    onPreview: (path: string, index: number) => void;
     error?: string;
 }) {
     const [camaraAbierta, setCamaraAbierta] = useState(false);
@@ -122,7 +124,7 @@ function EvidenciaUploader({
                     <div
                         key={`saved-${index}`}
                         className={`group relative cursor-pointer ${deletedIndices.includes(index) ? 'opacity-50' : ''}`}
-                        onClick={() => !deletedIndices.includes(index) && onPreview(path)}
+                        onClick={() => !deletedIndices.includes(index) && onPreview(path, index)}
                     >
                         <img
                             src={path}
@@ -153,7 +155,7 @@ function EvidenciaUploader({
                         <img
                             src={item.preview}
                             alt={`Nueva ${index + 1}`}
-                            onClick={() => onPreview(item.preview)}
+                            onClick={() => onPreview(item.preview, savedPaths.length + index)}
                             className="h-24 w-full rounded-lg border border-sky-300 object-cover transition-transform group-hover:scale-105 dark:border-sky-500/40"
                         />
                         <button
@@ -283,23 +285,125 @@ function PdfUploader({
     );
 }
 
+/** Sección colapsable de evidencia adicional PDF — cerrada por defecto */
+function EvidenciaAdicionalPlegada({
+    evidenciasInputRef,
+    savedPdfs,
+    deletedEvidenciasAdicionalesIndices,
+    prueba,
+    removeSavedEvidencias,
+    filesEvidencias,
+    removeEvidencias,
+    addEvidencias,
+    error,
+    observaciones,
+    onObservacionesChange,
+    errorObservaciones,
+}: {
+    evidenciasInputRef: React.RefObject<HTMLInputElement | null>;
+    savedPdfs: { path: string; index: number }[];
+    deletedEvidenciasAdicionalesIndices: number[];
+    prueba?: PruebaData;
+    removeSavedEvidencias: (index: number) => void;
+    filesEvidencias: PickedFile[];
+    removeEvidencias: (index: number) => void;
+    addEvidencias: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    error?: string;
+    observaciones: string;
+    onObservacionesChange: (value: string) => void;
+    errorObservaciones?: string;
+}) {
+    const [abierta, setAbierta] = useState(false);
+    const totalArchivos = savedPdfs.length + filesEvidencias.length;
+
+    return (
+        <div className="rounded-2xl border border-border bg-card">
+            <button
+                type="button"
+                onClick={() => setAbierta((v) => !v)}
+                className="flex w-full items-center justify-between gap-3 p-4 sm:p-6 text-left"
+            >
+                <div className="flex items-center gap-3">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-500/10">
+                        <Paperclip className="size-5 text-emerald-600 dark:text-emerald-400" />
+                    </div>
+                    <div>
+                        <p className="text-sm font-semibold text-foreground">
+                            Evidencia adicional (PDF)
+                            {totalArchivos > 0 && (
+                                <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
+                                    {totalArchivos}
+                                </span>
+                            )}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Opcional</p>
+                    </div>
+                </div>
+                <ChevronDown
+                    className={`size-4 shrink-0 text-muted-foreground transition-transform duration-200 ${abierta ? 'rotate-180' : ''}`}
+                />
+            </button>
+
+            {abierta && (
+                <div className="border-t border-border px-4 pb-4 pt-4 sm:px-6 sm:pb-6 flex flex-col gap-4">
+                    <PdfUploader
+                        label="Documentos PDF"
+                        inputId="evidencias"
+                        inputRef={evidenciasInputRef}
+                        onAdd={addEvidencias}
+                        savedPaths={savedPdfs}
+                        deletedIndices={deletedEvidenciasAdicionalesIndices}
+                        canDeleteSaved={Boolean(prueba)}
+                        onToggleSaved={removeSavedEvidencias}
+                        newFiles={filesEvidencias}
+                        onRemoveNew={removeEvidencias}
+                        error={error}
+                    />
+                    <div className="grid gap-2">
+                        <Label htmlFor="observaciones">Observaciones</Label>
+                        <textarea
+                            id="observaciones"
+                            className="border-input bg-background flex min-h-20 w-full rounded-md border px-3 py-2 text-sm"
+                            value={observaciones}
+                            onChange={(e) => onObservacionesChange(e.target.value)}
+                        />
+                        <InputError message={errorObservaciones} />
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
 export default function CreatePrueba({
     colaboradores,
     dispositivosDisponibles,
     prueba,
+    dispositivoDefaultId,
 }: {
     colaboradores: ColaboradorOption[];
     dispositivosDisponibles: DispositivoOption[];
     prueba?: PruebaData;
+    dispositivoDefaultId?: number | null;
 }) {
     const breadcrumbs: BreadcrumbItem[] = prueba
         ? [...breadcrumbsBase, { title: 'Editar prueba', href: `/modules/seguridad/pruebas/${prueba.id}/edit` }]
         : [...breadcrumbsBase, { title: 'Registrar prueba', href: '/modules/seguridad/pruebas/create' }];
+    const defaultFechaHora = () => {
+        if (prueba?.fecha_hora) {
+            return prueba.fecha_hora;
+        }
+        const now = new Date();
+        const pad = (n: number) => String(n).padStart(2, '0');
+        return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    };
+
     const { data, setData, post, processing, errors, transform } = useForm<PruebaForm>({
         colaborador_id: prueba?.colaborador_id ? String(prueba.colaborador_id) : '',
         tipo: prueba?.tipo ?? 'pre_ruta',
         es_programacion: prueba ? prueba.estado === 'programada' : false,
         programada_en: prueba?.programada_en ? String(prueba.programada_en) : '',
+        fecha_hora: defaultFechaHora(),
         alcoholimetro_id: prueba?.alcoholimetro_id ? String(prueba.alcoholimetro_id) : '',
         resultado: prueba?.resultado ? String(prueba.resultado) : '0',
         consentimiento_aceptado: prueba?.consentimiento_aceptado ?? false,
@@ -341,7 +445,7 @@ export default function CreatePrueba({
     const [deletedEvidenciasAdicionalesIndices, setDeletedEvidenciasAdicionalesIndices] = useState<number[]>([]);
     const [filesEvidencia, setFilesEvidencia] = useState<PickedFile[]>([]);
     const [filesEvidencias, setFilesEvidencias] = useState<PickedFile[]>([]);
-    const [selectedImage, setSelectedImage] = useState<string | null>(null);
+    const [selectedImage, setSelectedImage] = useState<{ src: string; numero: number; capturedAt: Date } | null>(null);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [pendingDeleteIndex, setPendingDeleteIndex] = useState<number | null>(null);
     const [deleteType, setDeleteType] = useState<'evidencia' | 'adicional' | null>(null);
@@ -473,14 +577,26 @@ export default function CreatePrueba({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={prueba ? 'Editar prueba de alcoholemia' : 'Registrar prueba de alcoholemia'} />
             <div className="flex h-full flex-1 flex-col gap-6 rounded-xl p-4">
-                <HeadingSmall
-                    title={prueba ? 'Editar prueba de alcoholemia' : 'Registrar prueba de alcoholemia'}
-                    description={
-                        prueba
-                            ? 'Modifica los datos de la prueba y guarda los cambios.'
-                            : 'Selecciona al colaborador y completa los datos de la prueba.'
-                    }
-                />
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                    <HeadingSmall
+                        title={prueba ? 'Editar prueba de alcoholemia' : 'Registrar prueba de alcoholemia'}
+                        description={
+                            prueba
+                                ? 'Modifica los datos de la prueba y guarda los cambios.'
+                                : 'Selecciona al colaborador y completa los datos de la prueba.'
+                        }
+                    />
+                    <div className="flex items-center gap-2 pt-1">
+                        <Checkbox
+                            id="es_programacion"
+                            checked={data.es_programacion}
+                            onCheckedChange={(checked) => setData('es_programacion', checked === true)}
+                        />
+                        <Label htmlFor="es_programacion" className="font-normal cursor-pointer">
+                            Programar para más tarde
+                        </Label>
+                    </div>
+                </div>
 
                 <form onSubmit={submit} className="grid gap-6">
                     <SeccionCard icon={Users} titulo="Colaborador y tipo de prueba" tono="verde">
@@ -506,6 +622,8 @@ export default function CreatePrueba({
                                         <SelectItem value="post_ruta">Post Ruta</SelectItem>
                                         <SelectItem value="jl">JL</SelectItem>
                                         <SelectItem value="segundo_viaje">Segundo viaje</SelectItem>
+                                        <SelectItem value="movilizador">Movilizador</SelectItem>
+                                        <SelectItem value="administrativo">Administrativo</SelectItem>
                                     </SelectContent>
                                 </Select>
                                 <InputError message={errors.tipo} />
@@ -533,17 +651,6 @@ export default function CreatePrueba({
                             </div>
                         )}
                     </SeccionCard>
-
-                    <div className="flex items-center space-x-2">
-                        <Checkbox
-                            id="es_programacion"
-                            checked={data.es_programacion}
-                            onCheckedChange={(checked) => setData('es_programacion', checked === true)}
-                        />
-                        <Label htmlFor="es_programacion" className="font-normal">
-                            Programar para más tarde
-                        </Label>
-                    </div>
 
                     {data.es_programacion ? (
                         <SeccionCard icon={CalendarClock} titulo="Programación" tono="azul">
@@ -600,6 +707,17 @@ export default function CreatePrueba({
 
                             <SeccionCard icon={Camera} titulo="Evidencia fotográfica" tono="azul">
                                 <div className="grid gap-6">
+                                    <div className="grid gap-2 sm:max-w-xs">
+                                        <Label htmlFor="fecha_hora">Fecha y hora de la fotografía / prueba</Label>
+                                        <Input
+                                            id="fecha_hora"
+                                            type="datetime-local"
+                                            value={data.fecha_hora}
+                                            onChange={(e) => setData('fecha_hora', e.target.value)}
+                                        />
+                                        <InputError message={errors.fecha_hora} />
+                                    </div>
+
                                     <EvidenciaUploader
                                         label="Evidencia principal (foto)"
                                         inputId="evidencia"
@@ -612,30 +730,35 @@ export default function CreatePrueba({
                                         onToggleSaved={removeSavedEvidencia}
                                         newFiles={filesEvidencia}
                                         onRemoveNew={removeEvidencia}
-                                        onPreview={setSelectedImage}
+                                        onPreview={(src, idx) =>
+                                            setSelectedImage({
+                                                src,
+                                                numero: idx + 1,
+                                                capturedAt: data.fecha_hora ? new Date(data.fecha_hora) : new Date(),
+                                            })
+                                        }
                                         error={errors.evidencia}
                                     />
                                 </div>
                             </SeccionCard>
 
-                            <SeccionCard icon={Paperclip} titulo="Evidencia adicional (PDF)" subtitulo="Opcional" tono="verde">
-                                <PdfUploader
-                                    label="Documentos PDF"
-                                    inputId="evidencias"
-                                    inputRef={evidenciasInputRef}
-                                    onAdd={addEvidencias}
-                                    savedPaths={savedPdfs}
-                                    deletedIndices={deletedEvidenciasAdicionalesIndices}
-                                    canDeleteSaved={Boolean(prueba)}
-                                    onToggleSaved={removeSavedEvidencias}
-                                    newFiles={filesEvidencias}
-                                    onRemoveNew={removeEvidencias}
+                            <EvidenciaAdicionalPlegada
+                                    evidenciasInputRef={evidenciasInputRef}
+                                    savedPdfs={savedPdfs}
+                                    deletedEvidenciasAdicionalesIndices={deletedEvidenciasAdicionalesIndices}
+                                    prueba={prueba}
+                                    removeSavedEvidencias={removeSavedEvidencias}
+                                    filesEvidencias={filesEvidencias}
+                                    removeEvidencias={removeEvidencias}
+                                    addEvidencias={addEvidencias}
                                     error={errors.evidencias}
+                                    observaciones={data.observaciones}
+                                    onObservacionesChange={(v) => setData('observaciones', v)}
+                                    errorObservaciones={errors.observaciones}
                                 />
-                            </SeccionCard>
 
                             <SeccionCard icon={PenTool} titulo="Firma del colaborador" tono="azul">
-                                <div className="max-w-md">
+                                <div className="flex justify-center">
                                     <FirmaPad ref={firmaPadRef} />
                                 </div>
                             </SeccionCard>
@@ -657,16 +780,6 @@ export default function CreatePrueba({
                         </>
                     )}
 
-                    <SeccionCard icon={ClipboardList} titulo="Observaciones" subtitulo="Opcional" tono="azul">
-                        <textarea
-                            id="observaciones"
-                            className="border-input bg-background flex min-h-20 w-full rounded-md border px-3 py-2 text-sm"
-                            value={data.observaciones}
-                            onChange={(e) => setData('observaciones', e.target.value)}
-                        />
-                        <InputError message={errors.observaciones} />
-                    </SeccionCard>
-
                     <div className="flex justify-end">
                         <Button type="submit" disabled={processing || !puedeGuardar}>
                             {processing && <LoaderCircle className="size-4 animate-spin" />}
@@ -683,15 +796,41 @@ export default function CreatePrueba({
             </div>
 
             {selectedImage && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4" onClick={() => setSelectedImage(null)}>
-                    <div className="relative w-full max-w-4xl" onClick={(e) => e.stopPropagation()}>
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm" onClick={() => setSelectedImage(null)}>
+                    <div className="relative inline-block max-h-full max-w-3xl" onClick={(e) => e.stopPropagation()}>
                         <button
                             onClick={() => setSelectedImage(null)}
-                            className="absolute top-4 right-4 z-10 rounded-full bg-black/50 p-2 text-white hover:bg-black/75"
+                            className="absolute top-3 right-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white shadow-lg hover:bg-black/80"
                         >
-                            <X className="h-6 w-6" />
+                            <X className="h-5 w-5" />
                         </button>
-                        <img src={selectedImage} alt="Vista previa" className="h-auto w-full rounded-lg" />
+                        <img src={selectedImage.src} alt="Vista previa" className="block max-h-[88vh] max-w-full rounded-xl object-contain shadow-2xl" />
+                        {/* Marca de agua — esquina inferior derecha, dentro de la foto */}
+                        <div className="pointer-events-none absolute bottom-3 right-3 flex flex-col items-end gap-0.5 text-right">
+                            <span className="font-mono text-sm font-bold leading-none text-white [text-shadow:0_1px_4px_rgba(0,0,0,0.9),0_0_2px_rgba(0,0,0,0.9)]">
+                                VER #{String(selectedImage.numero).padStart(4, '0')}
+                            </span>
+                            <span className="font-mono text-[13px] leading-snug text-white [text-shadow:0_1px_4px_rgba(0,0,0,0.9),0_0_2px_rgba(0,0,0,0.9)]">
+                                {selectedImage.capturedAt.toLocaleDateString('es-CO', {
+                                    year: 'numeric',
+                                    month: '2-digit',
+                                    day: '2-digit',
+                                })}{' '}
+                                {selectedImage.capturedAt.toLocaleTimeString('es-CO', {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    second: '2-digit',
+                                    hour12: false,
+                                })}
+                            </span>
+                            <span className="flex items-center gap-1 text-[12px] leading-snug text-white [text-shadow:0_1px_4px_rgba(0,0,0,0.9),0_0_2px_rgba(0,0,0,0.9)]">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+                                    <circle cx="12" cy="10" r="3"/>
+                                </svg>
+                                Pasto, Nariño · Colombia
+                            </span>
+                        </div>
                     </div>
                 </div>
             )}

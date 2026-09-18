@@ -57,38 +57,35 @@ class EvaluacionCalculator
      * (el registro de hoy ya es inmutable por sí mismo, ver `store()`) —
      * por eso es distinta de {@see faltaRegistrarSalida()}.
      */
+    /**
+     * Bloquea la creación de un NUEVO ingreso: cuando el último registro
+     * histórico del colaborador es un ingreso sin su salida correspondiente.
+     */
     public function jornadaAbierta(Colaborador $colaborador): bool
     {
-        $existeIngresoHoy = CondicionSalud::query()
-            ->where('colaborador_id', $colaborador->id)
-            ->where('momento', 'ingreso')
-            ->whereDate('fecha_hora', Carbon::today())
-            ->exists();
-
-        if ($existeIngresoHoy) {
-            return false;
-        }
-
         return $this->ultimoMomentoEsIngreso($colaborador);
     }
 
     /**
      * Para avisos informativos (dashboard, historial): si el último registro
-     * es un ingreso sin salida, sin importar si es de hoy o de un día
-     * anterior — a diferencia de {@see jornadaAbierta()}, que exceptúa el
-     * ingreso de hoy para permitir editarlo sin bloquear el formulario.
+     * es un ingreso sin salida.
      */
     public function faltaRegistrarSalida(Colaborador $colaborador): bool
     {
         return $this->ultimoMomentoEsIngreso($colaborador);
     }
 
-    private function ultimoMomentoEsIngreso(Colaborador $colaborador): bool
+    public function ultimoRegistro(Colaborador $colaborador): ?CondicionSalud
     {
-        $ultimoRegistro = CondicionSalud::query()
+        return CondicionSalud::query()
             ->where('colaborador_id', $colaborador->id)
             ->latest('fecha_hora')
             ->first();
+    }
+
+    private function ultimoMomentoEsIngreso(Colaborador $colaborador): bool
+    {
+        $ultimoRegistro = $this->ultimoRegistro($colaborador);
 
         return $ultimoRegistro?->momento === 'ingreso';
     }

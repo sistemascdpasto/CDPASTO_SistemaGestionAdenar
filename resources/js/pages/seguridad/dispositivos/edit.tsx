@@ -1,7 +1,8 @@
 import HeadingSmall from '@/components/heading-small';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
-import { DispositivoFormData, DispositivoFormFields } from '@/pages/seguridad/dispositivos/dispositivo-form-fields';
+import { DispositivoFormData, MantenimientoGuardado } from '@/pages/seguridad/dispositivos/dispositivo-form-fields';
+import { DispositivoFormFields } from '@/pages/seguridad/dispositivos/dispositivo-form-fields';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/react';
 import { LoaderCircle } from 'lucide-react';
@@ -18,9 +19,16 @@ interface EditableDispositivo {
     valor_max: string;
     estado: string;
     imagenes_paths?: string[];
+    documentos_paths?: { id: number; url: string; nombre_original: string }[];
 }
 
-export default function EditDispositivo({ dispositivo }: { dispositivo: EditableDispositivo }) {
+export default function EditDispositivo({
+    dispositivo,
+    mantenimientos = [],
+}: {
+    dispositivo: EditableDispositivo;
+    mantenimientos?: MantenimientoGuardado[];
+}) {
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Dashboard', href: '/dashboard' },
         { title: 'Seguridad', href: '/modules/seguridad' },
@@ -39,6 +47,9 @@ export default function EditDispositivo({ dispositivo }: { dispositivo: Editable
         estado: dispositivo.estado,
         imagenes: [],
         deleted_imagenes_indices: [],
+        documentos: [],
+        deleted_documentos_indices: [],
+        mantenimientos: [],
     });
 
     const [errors, setErrors] = useState<Partial<Record<keyof DispositivoFormData, string>>>({});
@@ -72,6 +83,19 @@ export default function EditDispositivo({ dispositivo }: { dispositivo: Editable
             form.append('deleted_imagenes_indices[]', String(index));
         });
 
+        (data.documentos as File[]).forEach((file) => {
+            form.append('documentos[]', file);
+        });
+
+        (data.deleted_documentos_indices as number[]).forEach((index) => {
+            form.append('deleted_documentos_indices[]', String(index));
+        });
+
+        (data.mantenimientos as { fecha: string; descripcion: string }[]).forEach((m, i) => {
+            form.append(`mantenimientos[${i}][fecha]`, m.fecha);
+            form.append(`mantenimientos[${i}][descripcion]`, m.descripcion);
+        });
+
         router.post(route('seguridad.dispositivos.update', dispositivo.id), form as any, {
             onError: (errs) => {
                 setErrors(errs as any);
@@ -94,6 +118,8 @@ export default function EditDispositivo({ dispositivo }: { dispositivo: Editable
                         errors={errors}
                         processing={processing}
                         savedImagenes={dispositivo.imagenes_paths ?? []}
+                        savedDocumentos={dispositivo.documentos_paths ?? []}
+                        savedMantenimientos={mantenimientos}
                     />
 
                     <div className="flex justify-end">

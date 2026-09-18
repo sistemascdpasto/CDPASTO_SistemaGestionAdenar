@@ -12,6 +12,7 @@ class AlcoholimetroDocumento extends Model
     protected $fillable = [
         'alcoholimetro_id',
         'path',
+        'nombre_original',
     ];
 
     public function alcoholimetro(): BelongsTo

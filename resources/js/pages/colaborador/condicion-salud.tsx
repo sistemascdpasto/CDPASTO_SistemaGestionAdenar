@@ -58,6 +58,13 @@ interface ColaboradorIdentidad {
     area: string | null;
 }
 
+interface UltimoIngreso {
+    fecha_hora: string;
+    hora: string;
+    es_de_hoy: boolean;
+    minutos_transcurridos: number | null;
+}
+
 interface CondicionSaludForm {
     momento: 'ingreso' | 'salida';
     estado: string;
@@ -71,6 +78,8 @@ export default function CondicionSaludPortal({
     puedeFirmar,
     firmaPrueba,
     registrosHoy,
+    entradaAbierta = false,
+    ultimoIngreso = null,
     jornadaAbierta,
     consentimiento,
 }: {
@@ -78,15 +87,24 @@ export default function CondicionSaludPortal({
     puedeFirmar: boolean;
     firmaPrueba: FirmaPrueba | null;
     registrosHoy: Record<string, RegistroHoy>;
+    entradaAbierta?: boolean;
+    ultimoIngreso?: UltimoIngreso | null;
     jornadaAbierta: boolean;
     consentimiento: Consentimiento;
 }) {
-    const ingresoBloqueado = jornadaAbierta || Boolean(registrosHoy.ingreso);
-    const salidaBloqueada = Boolean(registrosHoy.salida);
+    const tieneEntradaAbierta = entradaAbierta || jornadaAbierta;
+
+    const ingresoBloqueado = tieneEntradaAbierta || Boolean(registrosHoy.ingreso);
+    const salidaBloqueada = !tieneEntradaAbierta;
     const ambosCompletados = Boolean(registrosHoy.ingreso) && Boolean(registrosHoy.salida);
 
+    const esperaHoraIncompleta =
+        tieneEntradaAbierta &&
+        ultimoIngreso?.minutos_transcurridos !== null &&
+        (ultimoIngreso?.minutos_transcurridos ?? 0) < 60;
+
     const { data, setData, post, processing, errors } = useForm<CondicionSaludForm>({
-        momento: ingresoBloqueado ? 'salida' : 'ingreso',
+        momento: tieneEntradaAbierta ? 'salida' : 'ingreso',
         estado: '',
         observacion: '',
         consentimiento_aceptado: false,
@@ -202,17 +220,24 @@ export default function CondicionSaludPortal({
                                 );
                             })}
                         </div>
-                        {jornadaAbierta && !registrosHoy.ingreso && (
+                        {tieneEntradaAbierta && (
                             <p className="flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-400">
                                 <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
-                                Tienes una jornada sin cerrar (tu último ingreso no tiene salida registrada). Registra tu salida antes de un nuevo
-                                ingreso.
+                                {ultimoIngreso?.es_de_hoy
+                                    ? `Tienes una entrada abierta de hoy (${ultimoIngreso.hora}). Registra tu salida para cerrar este ciclo.`
+                                    : `Tienes una entrada anterior abierta sin cerrar (del ${ultimoIngreso?.fecha_hora ?? 'día anterior'}). Registra tu salida para poder iniciar una nueva entrada.`}
                             </p>
                         )}
-                        {registrosHoy[data.momento] && (
+                        {data.momento === 'salida' && esperaHoraIncompleta && (
+                            <p className="flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-400 font-medium">
+                                <Clock className="mt-0.5 size-3.5 shrink-0" />
+                                Debes esperar como mínimo 1 hora desde tu entrada para poder registrar la salida (Entrada a las {ultimoIngreso?.hora}. Faltan {60 - (ultimoIngreso?.minutos_transcurridos ?? 0)} minutos).
+                            </p>
+                        )}
+                        {!tieneEntradaAbierta && data.momento === 'ingreso' && registrosHoy.ingreso && (
                             <p className="text-xs text-muted-foreground">
-                                Ya registraste tu {data.momento} de hoy como{' '}
-                                <Badge variant="secondary">{registrosHoy[data.momento].estado}</Badge>. No se puede modificar.
+                                Ya registraste tu entrada de hoy como{' '}
+                                <Badge variant="secondary">{registrosHoy.ingreso.estado}</Badge>.
                             </p>
                         )}
                         <InputError message={errors.momento} />
@@ -267,10 +292,15 @@ export default function CondicionSaludPortal({
 
                     <Button
                         type="submit"
-                        disabled={processing || !data.estado || !data.consentimiento_aceptado || Boolean(registrosHoy[data.momento])}
+                        disabled={
+                            processing ||
+                            !data.estado ||
+                            !data.consentimiento_aceptado ||
+                            (data.momento === 'salida' && esperaHoraIncompleta)
+                        }
                     >
                         {processing && <LoaderCircle className="size-4 animate-spin" />}
-                        Registrar
+                        Registrar {data.momento}
                     </Button>
                 </form>
             </div>

@@ -22,6 +22,11 @@ class CondicionSaludController extends Controller
 
         $firmaPrueba = $this->ultimaPruebaConFirma($colaborador);
 
+        $ultimoRegistro = $evaluacion->ultimoRegistro($colaborador);
+
+        $entradaAbierta = $ultimoRegistro?->momento === 'ingreso';
+        $minutosDesdeEntrada = $entradaAbierta ? (int) $ultimoRegistro->fecha_hora->diffInMinutes(Carbon::now()) : null;
+
         $registrosHoy = CondicionSalud::query()
             ->where('colaborador_id', $colaborador->id)
             ->whereDate('fecha_hora', Carbon::today())
@@ -45,6 +50,13 @@ class CondicionSaludController extends Controller
                 'firma_url' => '/storage/'.$firmaPrueba->firma_path,
             ] : null,
             'registrosHoy' => $registrosHoy,
+            'entradaAbierta' => $entradaAbierta,
+            'ultimoIngreso' => $entradaAbierta ? [
+                'fecha_hora' => $ultimoRegistro->fecha_hora->format('d/m/Y H:i'),
+                'hora' => $ultimoRegistro->fecha_hora->format('H:i'),
+                'es_de_hoy' => $ultimoRegistro->fecha_hora->isToday(),
+                'minutos_transcurridos' => $minutosDesdeEntrada,
+            ] : null,
             'jornadaAbierta' => $evaluacion->jornadaAbierta($colaborador),
             'consentimiento' => config('seguridad.consentimiento_condicion_salud'),
         ]);
@@ -69,27 +81,54 @@ class CondicionSaludController extends Controller
             ]);
         }
 
-        if ($request->input('momento') === 'ingreso' && $evaluacion->jornadaAbierta($colaborador)) {
-            return back()->withErrors([
-                'momento' => 'Tienes una jornada sin cerrar (tu último ingreso no tiene salida registrada). Registra tu salida antes de un nuevo ingreso.',
-            ]);
+        $ultimoRegistro = $evaluacion->ultimoRegistro($colaborador);
+        $momento = $request->input('momento');
+
+        if ($momento === 'ingreso') {
+            // Regla: No se permite registrar una nueva entrada si hay una entrada anterior abierta sin cerrar.
+            if ($ultimoRegistro && $ultimoRegistro->momento === 'ingreso') {
+                $fechaEntrada = $ultimoRegistro->fecha_hora->format('d/m/Y H:i');
+                return back()->withErrors([
+                    'momento' => "Tienes una entrada anterior abierta sin cerrar (del {$fechaEntrada}). Debes registrar primero la salida pendiente antes de registrar una nueva entrada.",
+                ]);
+            }
+
+            // Regla: No se permite registrar más de un ingreso en el mismo día actual
+            $existeIngresoHoy = CondicionSalud::query()
+                ->where('colaborador_id', $colaborador->id)
+                ->where('momento', 'ingreso')
+                ->whereDate('fecha_hora', Carbon::today())
+                ->exists();
+
+            if ($existeIngresoHoy) {
+                return back()->withErrors([
+                    'momento' => 'Ya registraste tu entrada de hoy. No es posible registrar otra entrada el mismo día.',
+                ]);
+            }
         }
 
-        $existeHoy = CondicionSalud::query()
-            ->where('colaborador_id', $colaborador->id)
-            ->where('momento', $request->input('momento'))
-            ->whereDate('fecha_hora', Carbon::today())
-            ->exists();
+        if ($momento === 'salida') {
+            // Regla: Nunca se puede registrar una salida si no existe una entrada abierta a la cual pertenezca.
+            if (! $ultimoRegistro || $ultimoRegistro->momento !== 'ingreso') {
+                return back()->withErrors([
+                    'momento' => 'No puedes registrar una salida porque no existe una entrada abierta a la cual pertenezca.',
+                ]);
+            }
 
-        if ($existeHoy) {
-            return back()->withErrors([
-                'momento' => 'Ya registraste tu '.$request->input('momento').' de hoy. No es posible modificarlo.',
-            ]);
+            // Regla: Si se realizó una entrada debe esperar como mínimo 1 hora para registrar la salida de esa entrada.
+            $minutosTranscurridos = (int) $ultimoRegistro->fecha_hora->diffInMinutes(Carbon::now());
+            if ($minutosTranscurridos < 60) {
+                $horaEntrada = $ultimoRegistro->fecha_hora->format('H:i');
+                $minutosFaltantes = 60 - $minutosTranscurridos;
+                return back()->withErrors([
+                    'momento' => "Debes esperar como mínimo 1 hora desde tu entrada para registrar la salida (Entrada realizada a las {$horaEntrada}. Faltan {$minutosFaltantes} minutos).",
+                ]);
+            }
         }
 
         CondicionSalud::create([
             'colaborador_id' => $colaborador->id,
-            'momento' => $request->input('momento'),
+            'momento' => $momento,
             'estado' => $request->input('estado'),
             'observacion' => $request->input('observacion'),
             'responsable_id' => $request->user()->id,
