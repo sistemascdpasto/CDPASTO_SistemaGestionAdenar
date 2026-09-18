@@ -263,53 +263,7 @@ class PlanPremiacionTest extends TestCase
             'is_active' => true,
         ]);
 
-        // Día 1: Entro '07:00' -> 100%
-        \App\Models\Gente\Ausentismo::create([
-            'colaborador_id' => $colab->id,
-            'identificador' => '777777',
-            'fecha' => '2026-09-01',
-            'entro_1' => '07:00',
-            'turno' => 'Mañana',
-        ]);
-
-        // Día 2: Entro nulo, Turno 'Descanso' -> 100%
-        \App\Models\Gente\Ausentismo::create([
-            'colaborador_id' => $colab->id,
-            'identificador' => '777777',
-            'fecha' => '2026-09-02',
-            'entro_1' => null,
-            'turno' => 'Descanso',
-        ]);
-
-        // Día 3: Entro nulo, Turno 'Horario Libre' -> 100%
-        \App\Models\Gente\Ausentismo::create([
-            'colaborador_id' => $colab->id,
-            'identificador' => '777777',
-            'fecha' => '2026-09-03',
-            'entro_1' => null,
-            'turno' => 'Horario Libre',
-        ]);
-
-        // Día 4: Entro nulo, Turno 'No Planificado' -> 100%
-        \App\Models\Gente\Ausentismo::create([
-            'colaborador_id' => $colab->id,
-            'identificador' => '777777',
-            'fecha' => '2026-09-04',
-            'entro_1' => null,
-            'turno' => 'No Planificado',
-        ]);
-
-        // Día 5: Entro nulo, Turno 'Mañana' -> 0% (Falta sin justificar)
-        \App\Models\Gente\Ausentismo::create([
-            'colaborador_id' => $colab->id,
-            'identificador' => '777777',
-            'fecha' => '2026-09-05',
-            'entro_1' => null,
-            'turno' => 'Mañana',
-        ]);
-
-        // Promedio de 5 días: (100 + 100 + 100 + 100 + 0) / 5 = 80%
-
+        // Sin toggle manual → ausentismo_ok = true por defecto → 100%
         $response = $this->actingAs($user)->get(route('gente.plan-premiacion.index', [
             'mes' => 9,
             'anio' => 2026,
@@ -321,8 +275,30 @@ class PlanPremiacionTest extends TestCase
             ->where('colaboradores', function ($colabs) use ($colab) {
                 $c = collect($colabs)->keyBy('id');
 
-                return (float) $c[$colab->id]['porcentaje_ausentismo'] === 80.0
-                    && $c[$colab->id]['porcentaje_ausentismo_label'] === '80%';
+                return (float) $c[$colab->id]['porcentaje_ausentismo'] === 100.0
+                    && $c[$colab->id]['porcentaje_ausentismo_label'] === '100%';
+            }));
+
+        // Hacer toggle → ausentismo_ok = false → 0%
+        $this->actingAs($user)->post(route('gente.plan-premiacion.toggle-ausentismo'), [
+            'colaborador_id' => $colab->id,
+            'mes' => 9,
+            'anio' => 2026,
+        ]);
+
+        $response2 = $this->actingAs($user)->get(route('gente.plan-premiacion.index', [
+            'mes' => 9,
+            'anio' => 2026,
+        ]));
+
+        $response2->assertOk();
+        $response2->assertInertia(fn ($page) => $page
+            ->component('gente/plan-premiacion/index')
+            ->where('colaboradores', function ($colabs) use ($colab) {
+                $c = collect($colabs)->keyBy('id');
+
+                return (float) $c[$colab->id]['porcentaje_ausentismo'] === 0.0
+                    && $c[$colab->id]['porcentaje_ausentismo_label'] === '0%';
             }));
     }
 
