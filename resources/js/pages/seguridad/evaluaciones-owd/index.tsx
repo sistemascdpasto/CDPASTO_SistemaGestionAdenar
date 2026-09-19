@@ -188,71 +188,6 @@ export default function EvaluacionesOwdIndex({
                     </Select>
                     <Input placeholder="Año" value={form.anio} onChange={(e) => setForm({ ...form, anio: e.target.value })} />
 
-                    <Select value={form.bu || 'todos'} onValueChange={set('bu')}>
-                        <SelectTrigger>
-                            <SelectValue placeholder="BU" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="todos">Todas las BU</SelectItem>
-                            {catalogos.bu.map((v) => (
-                                <SelectItem key={v} value={v}>
-                                    {v}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <Select value={form.pais || 'todos'} onValueChange={set('pais')}>
-                        <SelectTrigger>
-                            <SelectValue placeholder="País" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="todos">Todos los países</SelectItem>
-                            {catalogos.pais.map((v) => (
-                                <SelectItem key={v} value={v}>
-                                    {v}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <Select value={form.region || 'todos'} onValueChange={set('region')}>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Región" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="todos">Todas las regiones</SelectItem>
-                            {catalogos.region.map((v) => (
-                                <SelectItem key={v} value={v}>
-                                    {v}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <Select value={form.uen || 'todos'} onValueChange={set('uen')}>
-                        <SelectTrigger>
-                            <SelectValue placeholder="UEN" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="todos">Todas las UEN</SelectItem>
-                            {catalogos.uen.map((v) => (
-                                <SelectItem key={v} value={v}>
-                                    {v}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <Select value={form.agencia || 'todos'} onValueChange={set('agencia')}>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Agencia" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="todos">Todas las agencias</SelectItem>
-                            {catalogos.agencia.map((v) => (
-                                <SelectItem key={v} value={v}>
-                                    {v}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
                     <Select value={form.type || 'todos'} onValueChange={set('type')}>
                         <SelectTrigger>
                             <SelectValue placeholder="Type" />
@@ -290,16 +225,6 @@ export default function EvaluacionesOwdIndex({
                             <SelectItem value="OK">OK</SelectItem>
                             <SelectItem value="No OK">No OK</SelectItem>
                             <SelectItem value="Not Applicable">Not Applicable</SelectItem>
-                        </SelectContent>
-                    </Select>
-                    <Select value={form.plan_accion || 'todos'} onValueChange={set('plan_accion')}>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Plan de acción" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="todos">Todos</SelectItem>
-                            <SelectItem value="1">Con plan de acción</SelectItem>
-                            <SelectItem value="0">Sin plan de acción</SelectItem>
                         </SelectContent>
                     </Select>
 

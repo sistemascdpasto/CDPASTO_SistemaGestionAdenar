@@ -54,20 +54,32 @@ class AlcoholimetroController extends Controller
     public function store(StoreAlcoholimetroRequest $request): RedirectResponse
     {
         $dispositivo = Alcoholimetro::create([
-            ...$request->safe()->except('imagenes'),
+            ...$request->safe()->except('imagenes', 'documentos', 'mantenimientos'),
         ]);
 
         // Guardar imágenes
-        foreach ($request->file('imagenes', []) as $archivo) {
-            $dispositivo->imagenes()->create(['path' => $archivo->store('alcoholimetros', 'public')]);
+        $imagenes = $request->file('imagenes', []);
+        if ($imagenes instanceof \Illuminate\Http\UploadedFile) {
+            $imagenes = [$imagenes];
+        }
+        foreach ($imagenes as $archivo) {
+            if ($archivo instanceof \Illuminate\Http\UploadedFile) {
+                $dispositivo->imagenes()->create(['path' => $archivo->store('alcoholimetros', 'public')]);
+            }
         }
 
         // Guardar documentos (PDF / Excel)
-        foreach ($request->file('documentos', []) as $archivo) {
-            $dispositivo->documentos()->create([
-                'path'          => $archivo->store('alcoholimetros/documentos', 'public'),
-                'nombre_original' => $archivo->getClientOriginalName(),
-            ]);
+        $documentos = $request->file('documentos', []);
+        if ($documentos instanceof \Illuminate\Http\UploadedFile) {
+            $documentos = [$documentos];
+        }
+        foreach ($documentos as $archivo) {
+            if ($archivo instanceof \Illuminate\Http\UploadedFile) {
+                $dispositivo->documentos()->create([
+                    'path'          => $archivo->store('alcoholimetros/documentos', 'public'),
+                    'nombre_original' => $archivo->getClientOriginalName(),
+                ]);
+            }
         }
 
         // Guardar mantenimientos enviados con el formulario
@@ -131,7 +143,7 @@ class AlcoholimetroController extends Controller
     public function update(UpdateAlcoholimetroRequest $request, Alcoholimetro $dispositivo): RedirectResponse
     {
         $dispositivo->update([
-            ...$request->safe()->except('imagenes', 'deleted_imagenes_indices', 'documentos', 'deleted_documentos_indices'),
+            ...$request->safe()->except('imagenes', 'deleted_imagenes_indices', 'documentos', 'deleted_documentos_indices', 'mantenimientos'),
         ]);
 
         // Eliminar imágenes marcadas para eliminación
@@ -148,8 +160,14 @@ class AlcoholimetroController extends Controller
         }
 
         // Agregar nuevas imágenes
-        foreach ($request->file('imagenes', []) as $archivo) {
-            $dispositivo->imagenes()->create(['path' => $archivo->store('alcoholimetros', 'public')]);
+        $imagenes = $request->file('imagenes', []);
+        if ($imagenes instanceof \Illuminate\Http\UploadedFile) {
+            $imagenes = [$imagenes];
+        }
+        foreach ($imagenes as $archivo) {
+            if ($archivo instanceof \Illuminate\Http\UploadedFile) {
+                $dispositivo->imagenes()->create(['path' => $archivo->store('alcoholimetros', 'public')]);
+            }
         }
 
         // Eliminar documentos marcados para eliminación
@@ -166,11 +184,17 @@ class AlcoholimetroController extends Controller
         }
 
         // Agregar nuevos documentos
-        foreach ($request->file('documentos', []) as $archivo) {
-            $dispositivo->documentos()->create([
-                'path'            => $archivo->store('alcoholimetros/documentos', 'public'),
-                'nombre_original' => $archivo->getClientOriginalName(),
-            ]);
+        $documentos = $request->file('documentos', []);
+        if ($documentos instanceof \Illuminate\Http\UploadedFile) {
+            $documentos = [$documentos];
+        }
+        foreach ($documentos as $archivo) {
+            if ($archivo instanceof \Illuminate\Http\UploadedFile) {
+                $dispositivo->documentos()->create([
+                    'path'            => $archivo->store('alcoholimetros/documentos', 'public'),
+                    'nombre_original' => $archivo->getClientOriginalName(),
+                ]);
+            }
         }
 
         // Guardar mantenimientos nuevos enviados con el formulario
