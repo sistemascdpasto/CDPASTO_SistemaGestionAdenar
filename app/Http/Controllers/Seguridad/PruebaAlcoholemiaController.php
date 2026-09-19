@@ -246,6 +246,9 @@ class PruebaAlcoholemiaController extends Controller
 
     public function exportarPdf(Request $request)
     {
+        ini_set('memory_limit', '512M');
+        set_time_limit(180);
+
         $pruebas = $this->filtrarPruebas($request)->latest('fecha_hora')->get();
 
         return Pdf::loadView('seguridad.pruebas-pdf', ['pruebas' => $pruebas])
@@ -255,6 +258,9 @@ class PruebaAlcoholemiaController extends Controller
 
     public function exportarExcel(Request $request)
     {
+        ini_set('memory_limit', '512M');
+        set_time_limit(180);
+
         $pruebas = $this->filtrarPruebas($request)->latest('fecha_hora')->get();
 
         return Excel::download(new PruebasExport($pruebas), 'pruebas-alcoholemia-'.now()->format('Y-m-d').'.xlsx');

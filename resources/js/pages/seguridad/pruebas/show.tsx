@@ -87,7 +87,7 @@ function FotoConOverlay({
             <div className="absolute bottom-2 right-2 flex flex-col items-end gap-0.5 text-right pointer-events-none">
                 {/* Número de verificación */}
                 <span className="font-mono text-[11px] font-bold leading-none text-white [text-shadow:0_1px_4px_rgba(0,0,0,0.9),0_0_2px_rgba(0,0,0,0.9)]">
-                    VER #{String(numero).padStart(4, '0')}
+                    VERIFICACIÓN #{String(numero).padStart(4, '0')}
                 </span>
 
                 {/* Fecha y hora */}
@@ -126,13 +126,30 @@ export default function PruebaShow({
         { title: `Prueba #${prueba.id}`, href: `/modules/seguridad/pruebas/${prueba.id}` },
     ];
 
-    const evidenciaPaths = [
+    const fotos: { src: string; numero: number }[] = [];
+
+    prueba.evidencias
+        .filter((e) => !/\.pdf$/i.test(e.path))
+        .forEach((e) => {
+            const path = e.path.startsWith('/storage/') ? e.path : `/storage/${e.path}`;
+            fotos.push({ src: path, numero: e.id });
+        });
+
+    if (
+        prueba.evidencia_path &&
+        !/\.pdf$/i.test(prueba.evidencia_path) &&
+        !fotos.some((f) => f.src.endsWith(prueba.evidencia_path!))
+    ) {
+        const path = prueba.evidencia_path.startsWith('/storage/')
+            ? prueba.evidencia_path
+            : `/storage/${prueba.evidencia_path}`;
+        fotos.unshift({ src: path, numero: prueba.id });
+    }
+
+    const pdfs = [
         prueba.evidencia_path,
         ...prueba.evidencias.map((e) => e.path),
-    ].filter((p): p is string => Boolean(p));
-
-    const fotos = evidenciaPaths.filter((p) => !/\.pdf$/i.test(p));
-    const pdfs  = evidenciaPaths.filter((p) => /\.pdf$/i.test(p));
+    ].filter((p): p is string => Boolean(p) && /\.pdf$/i.test(p));
 
     const fechaHora = new Date(prueba.fecha_hora);
 
@@ -221,14 +238,14 @@ export default function PruebaShow({
                             </span>
                         </h2>
                         <div className="flex flex-wrap gap-3">
-                            {fotos.map((path, i) => (
+                            {fotos.map((foto) => (
                                 <FotoConOverlay
-                                    key={path}
-                                    src={`/storage/${path}`}
-                                    numero={i + 1}
+                                    key={foto.src}
+                                    src={foto.src}
+                                    numero={foto.numero}
                                     fechaHora={fechaHora}
                                     ubicacion={ubicacion}
-                                    onClick={() => setFotoAmpliada({ src: `/storage/${path}`, numero: i + 1 })}
+                                    onClick={() => setFotoAmpliada({ src: foto.src, numero: foto.numero })}
                                 />
                             ))}
                         </div>
@@ -287,7 +304,7 @@ export default function PruebaShow({
             {/* Marca de agua — esquina inferior derecha, dentro de la foto */}
                         <div className="pointer-events-none absolute bottom-3 right-3 flex flex-col items-end gap-0.5 text-right">
                             <span className="font-mono text-sm font-bold leading-none text-white [text-shadow:0_1px_4px_rgba(0,0,0,0.9),0_0_2px_rgba(0,0,0,0.9)]">
-                                VER #{String(fotoAmpliada.numero).padStart(4, '0')}
+                                VERIFICACIÓN #{String(fotoAmpliada.numero).padStart(4, '0')}
                             </span>
                             <span className="font-mono text-[13px] leading-snug text-white [text-shadow:0_1px_4px_rgba(0,0,0,0.9),0_0_2px_rgba(0,0,0,0.9)]">
                                 {fechaHora.toLocaleDateString('es-CO', {

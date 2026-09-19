@@ -808,7 +808,7 @@ export default function CreatePrueba({
                         {/* Marca de agua — esquina inferior derecha, dentro de la foto */}
                         <div className="pointer-events-none absolute bottom-3 right-3 flex flex-col items-end gap-0.5 text-right">
                             <span className="font-mono text-sm font-bold leading-none text-white [text-shadow:0_1px_4px_rgba(0,0,0,0.9),0_0_2px_rgba(0,0,0,0.9)]">
-                                VER #{String(selectedImage.numero).padStart(4, '0')}
+                                VERIFICACIÓN #{String(selectedImage.numero).padStart(4, '0')}
                             </span>
                             <span className="font-mono text-[13px] leading-snug text-white [text-shadow:0_1px_4px_rgba(0,0,0,0.9),0_0_2px_rgba(0,0,0,0.9)]">
                                 {selectedImage.capturedAt.toLocaleDateString('es-CO', {

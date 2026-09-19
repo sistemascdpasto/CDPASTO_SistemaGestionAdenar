@@ -177,7 +177,7 @@ class MarcarFotosEvidencia extends Command
 
         // Líneas de texto (mismo contenido que el frontend)
         $lineas = [
-            'VER #' . str_pad((string) $numero, 4, '0', STR_PAD_LEFT),
+            'VERIFICACIÓN #' . str_pad((string) $numero, 4, '0', STR_PAD_LEFT),
             $fechaHora->format('d/m/Y') . '  ' . $fechaHora->format('H:i:s'),
             $ubicacion,
         ];

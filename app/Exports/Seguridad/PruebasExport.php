@@ -37,15 +37,15 @@ class PruebasExport implements FromCollection, WithColumnWidths, WithDrawings, W
     public function map($prueba): array
     {
         return [
-            $prueba->fecha_hora->format('d/m/Y H:i'),
-            $prueba->colaborador?->nombre_completo,
-            $prueba->colaborador?->cedula,
+            $prueba->fecha_hora ? $prueba->fecha_hora->format('d/m/Y H:i') : '—',
+            $prueba->colaborador?->nombre_completo ?? '—',
+            $prueba->colaborador?->cedula ?? '—',
             $prueba->tipoLabel(),
-            $prueba->alcoholimetro?->codigo,
-            $prueba->resultado,
+            $prueba->alcoholimetro?->codigo ?? '—',
+            $prueba->resultado ?? '—',
             $prueba->estado === 'programada' ? '—' : $prueba->evaluacion(),
             ucfirst($prueba->estado),
-            $prueba->responsable?->name,
+            $prueba->responsable?->name ?? '—',
             $prueba->firma_path ? '' : '—',
             $prueba->evidenciaPrincipalPath() ? '' : '—',
         ];
@@ -82,15 +82,25 @@ class PruebasExport implements FromCollection, WithColumnWidths, WithDrawings, W
             return;
         }
 
-        $drawing = new Drawing();
-        $drawing->setName($nombre);
-        $drawing->setPath(Storage::disk('public')->path($path));
-        $drawing->setHeight(self::FOTO_ROW_HEIGHT - 6);
-        $drawing->setCoordinates($coordenadas);
-        $drawing->setOffsetX(4);
-        $drawing->setOffsetY(3);
+        try {
+            $fullPath = Storage::disk('public')->path($path);
 
-        $drawings[] = $drawing;
+            if (! file_exists($fullPath) || @filesize($fullPath) === 0 || ! @getimagesize($fullPath)) {
+                return;
+            }
+
+            $drawing = new Drawing();
+            $drawing->setName($nombre);
+            $drawing->setPath($fullPath);
+            $drawing->setHeight(self::FOTO_ROW_HEIGHT - 6);
+            $drawing->setCoordinates($coordenadas);
+            $drawing->setOffsetX(4);
+            $drawing->setOffsetY(3);
+
+            $drawings[] = $drawing;
+        } catch (\Throwable $e) {
+            // Ignorar imagen si el archivo está dañado para no fallar toda la exportación
+        }
     }
 
     public function registerEvents(): array
