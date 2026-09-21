@@ -175,16 +175,6 @@
         @apply border-border;
     }
 
-    /*
-     * overflow-x: clip (no overflow-x: hidden) — hidden convierte a body en
-     * un contenedor de scroll propio, lo que rompe position: sticky en el
-     * header. clip recorta el desborde horizontal sin ese efecto.
-     */
-    html,
-    body {
-        overflow-x: clip;
-    }
-
     body {
         @apply bg-background text-foreground;
     }
