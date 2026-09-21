@@ -1,6 +1,6 @@
 import { CrearCarpetaDialog } from '@/components/capacitaciones/crear-carpeta-dialog';
 import { SubirMaterialDialog } from '@/components/capacitaciones/subir-material-dialog';
-import { FileIcon, getFileCategoryInfo } from '@/components/capacitaciones/file-icon';
+
 import HeadingSmall from '@/components/heading-small';
 import {
     AlertDialog,
@@ -50,16 +50,13 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
 import {
     Activity,
-    AlertTriangle,
     ArrowDownUp,
     ArrowRight,
     BookOpen,
     Calendar,
     CheckCircle2,
     ChevronDown,
-    ChevronUp,
     Clock,
-    Download,
     Eye,
     EyeOff,
     Filter,
@@ -73,10 +70,9 @@ import {
     Search,
     ShieldAlert,
     Trash2,
-    TrendingUp,
     Users,
 } from 'lucide-react';
-import {  FormEventHandler, useEffect, useMemo, useState , memo, useCallback } from 'react';
+import {  FormEventHandler, useEffect, useMemo, useState } from 'react';
 import {
     Area,
     AreaChart,
@@ -196,7 +192,7 @@ interface PortalConfig {
 
 export default function CapacitacionesAdminIndex({
     carpetas = [],
-    _recientes = [],
+
     distribucionEstados = [],
     colaboradores = [],
     colaboradoresResumen = { total: 0, completados: 0, en_proceso: 0, sin_actividad: 0 },

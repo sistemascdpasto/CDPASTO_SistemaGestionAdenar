@@ -266,7 +266,7 @@ function DonutKpi({ pct, label, color, size = 100 }: { pct: number | null; label
 // ─── Página principal ──────────────────────────────────────────────────────────
 export default function IndicadoresAdherenciaIndex({
     distPre, distPost, promPre, promPost, total, porFecha,
-    topBajaPre, heatmap, kpis, topMejor, topCriticos, placas, filters,
+    heatmap, kpis, topMejor, topCriticos, filters,
 }: Props) {
     const [fechaDesde, setFechaDesde] = useState(filters.fecha_desde ?? '');
     const [fechaHasta, setFechaHasta] = useState(filters.fecha_hasta ?? '');
@@ -301,7 +301,7 @@ export default function IndicadoresAdherenciaIndex({
         }],
     });
 
-    const donutOpts = (titulo: string): ChartOptions<'doughnut'> => ({
+    const donutOpts = (): ChartOptions<'doughnut'> => ({
         responsive: true,
         maintainAspectRatio: false,
         cutout: '72%',
@@ -363,10 +363,6 @@ export default function IndicadoresAdherenciaIndex({
     // ── Sparkline data ─────────────────────────────────────────────────────────
     const sparkPre   = porFecha.map((p) => p.promPre);
     const sparkPost  = porFecha.map((p) => p.promPost);
-    const sparkCrit  = porFecha.map((_, i) => {
-        const day = porFecha[i]?.fecha ?? '';
-        return 0; // placeholder — se puede calcular si se pasa por fecha
-    });
 
     const cumplTotal = total > 0 ? Object.values(distPre).reduce((a, b) => a + b, 0) : 0;
     const pctCriticos = cumplTotal > 0 ? +((((distPre['< 70% (Crítico)'] ?? 0) / cumplTotal) * 100).toFixed(1)) : 0;
@@ -617,7 +613,7 @@ export default function IndicadoresAdherenciaIndex({
                             <h3 className="text-xs font-bold text-muted-foreground mb-3">Cumplimiento Pre Operacional</h3>
                             <div className="flex items-center gap-4">
                                 <div style={{ height: 130, width: 130, flexShrink: 0 }}>
-                                    <Doughnut data={mkDonutData(distPre)} options={donutOpts('Pre')} />
+                                    <Doughnut data={mkDonutData(distPre)} options={donutOpts()} />
                                 </div>
                                 <div className="flex-1 space-y-1.5">
                                     {LABELS.map((l, i) => {
@@ -647,7 +643,7 @@ export default function IndicadoresAdherenciaIndex({
                             <h3 className="text-xs font-bold text-muted-foreground mb-3">Cumplimiento Post Operacional</h3>
                             <div className="flex items-center gap-4">
                                 <div style={{ height: 130, width: 130, flexShrink: 0 }}>
-                                    <Doughnut data={mkDonutData(distPost)} options={donutOpts('Post')} />
+                                    <Doughnut data={mkDonutData(distPost)} options={donutOpts()} />
                                 </div>
                                 <div className="flex-1 space-y-1.5">
                                     {LABELS.map((l, i) => {

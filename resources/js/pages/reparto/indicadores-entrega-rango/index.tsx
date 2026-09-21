@@ -41,7 +41,7 @@ import {
     XCircle,
 } from 'lucide-react';
 import { useState } from 'react';
-import { Bar, Doughnut, Line, Radar } from 'react-chartjs-2';
+import { Bar, Doughnut, Radar } from 'react-chartjs-2';
 
 ChartJS.register(
     BarController, BarElement,
@@ -133,7 +133,7 @@ function Spark({ data, color = '#22c55e' }: { data: number[]; color?: string }) 
 
 // ─── KPI Card ──────────────────────────────────────────────────────────────────
 function KpiCard({ label, value, sub, icon: Icon, color, spark }:
-    { label: string; value: string; sub?: string; icon: any; color: string; spark?: number[] }) {
+    { label: string; value: string; sub?: string; icon: React.ElementType; color: string; spark?: number[] }) {
     return (
         <div className="bg-card rounded-xl border border-sidebar-border/70 dark:border-sidebar-border shadow-sm p-4 flex flex-col justify-between gap-2">
             <div className="flex items-start justify-between">
@@ -452,7 +452,7 @@ export default function IndicadoresEntregaRangoIndex({
     };
 
     // ── Gráfica diaria ─────────────────────────────────────────────────────────
-    const diarioData: any = {
+    const diarioData: ChartOptions<'bar'>['data'] | unknown = {
         labels: por_dia.map(p => p.fecha),
         datasets: [
             {
@@ -483,8 +483,8 @@ export default function IndicadoresEntregaRangoIndex({
             legend: { display: true, position: 'bottom', labels: { boxWidth: 10, font: { size: 10 }, color: '#6b7280' } },
             tooltip: {
                 callbacks: {
-                    label: (ctx: any) => ` ${ctx.dataset.label}: ${ctx.parsed.y}${ctx.dataset.yAxisID === 'y' ? '%' : ''}`,
-                    afterBody: (items: any[]) => {
+                    label: (ctx: TooltipItem<'bar' | 'line'>) => ` ${ctx.dataset.label}: ${ctx.parsed.y}${ctx.dataset.yAxisID === 'y' ? '%' : ''}`,
+                    afterBody: (items: TooltipItem<'bar' | 'line'>[]) => {
                         const idx   = items[0]?.dataIndex;
                         const punto = por_dia[idx];
                         if (!punto) return [];
@@ -503,7 +503,7 @@ export default function IndicadoresEntregaRangoIndex({
             },
         },
         scales: {
-            y:  { min: 0, max: 100, position: 'left',  grid: { color: 'rgba(0,0,0,.04)' }, ticks: { color: '#9ca3af', font: { size: 10 }, callback: (v: any) => `${v}%` } },
+            y:  { min: 0, max: 100, position: 'left',  grid: { color: 'rgba(0,0,0,.04)' }, ticks: { color: '#9ca3af', font: { size: 10 }, callback: (v: number | string) => `${v}%` } },
             y2: { min: 0, position: 'right', grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 10 } } },
             x:  { grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 10 }, maxRotation: 45 } },
         },
@@ -744,7 +744,6 @@ export default function IndicadoresEntregaRangoIndex({
                                     {/* Tabla de brechas */}
                                     <div className="mt-3 space-y-1">
                                         {radar_brecha.map((d, i) => {
-                                            const prom = radar_principal[i]?.promedio;
                                             return (
                                                 <div key={d.dia} className="flex items-center justify-between text-[10px]">
                                                     <span className="text-muted-foreground w-20 shrink-0">{d.dia}</span>

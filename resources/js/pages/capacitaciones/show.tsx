@@ -47,7 +47,6 @@ import {
     Search,
     Trash2,
     UploadCloud,
-    Video,
 } from 'lucide-react';
 import { FormEventHandler, useEffect, useState } from 'react';
 

@@ -1,4 +1,3 @@
-import HeadingSmall from '@/components/heading-small';
 import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -842,10 +841,6 @@ function SeguimientosDialog({
         }
     }, [open, reset]);
 
-    const handleOpenChange = (isOpen: boolean) => {
-        setOpen(isOpen);
-    };
-
     const handleRemoveExistingSoporte = (indexToRemove: number) => {
         const files = getSoporteFiles(editingSoportePath);
         const remaining = files.filter((_, idx) => idx !== indexToRemove).map((f) => f.path);
@@ -1175,7 +1170,6 @@ export default function EvaluacionShow({
     recomendacionesCatalogo = [],
     categoriasRecomendacion = {},
     estadosSeguimiento = [],
-    seguimientoOpciones = [],
     empresaDefault = 'Adenar',
 }: {
     evaluacion: EvaluacionDetalle;
@@ -1186,7 +1180,6 @@ export default function EvaluacionShow({
     recomendacionesCatalogo?: RecomendacionLigera[];
     categoriasRecomendacion?: Record<string, string>;
     estadosSeguimiento?: string[];
-    seguimientoOpciones?: string[];
     empresaDefault?: string;
 }) {
     const nombreColaborador = `${evaluacion.colaborador.nombres} ${evaluacion.colaborador.apellidos}`;

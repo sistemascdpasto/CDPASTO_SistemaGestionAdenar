@@ -38,12 +38,10 @@ import {
     Users,
     DollarSign,
     X,
-    Activity,
-    Zap,
     Target,
     Truck,
 } from 'lucide-react';
-import React, { Fragment, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Bar, Line } from 'react-chartjs-2';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, Filler, Tooltip, Legend);
@@ -221,45 +219,6 @@ function KpiCard({ label, value, sub, icon: Icon, color, spark, sparkColor }:
     );
 }
 
-// ─── PersonBar (estilo Adherencia al Tiempo · top/bottom colaboradores) ──────
-function PersonBar({ persona, metaPct }: { persona: CompensacionDiariaRow; metaPct: number }) {
-    const pct = Number(persona.rechazos ?? 0);
-    const color = pct > 2.6 ? COLOR_CRITICAL : pct > 2.1 ? COLOR_WARNING : COLOR_SUCCESS;
-    return (
-        <li className="flex items-center gap-2 py-1.5">
-            <div className="min-w-0 flex-1">
-                <div className="flex items-baseline justify-between gap-1 mb-0.5">
-                    <div className="min-w-0 flex-1">
-                        <span className="text-[11px] font-semibold text-foreground truncate block">
-                            {persona.nombre_completo || persona.cedula}
-                        </span>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                            {persona.placa && (
-                                <span
-                                    className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded"
-                                    style={{ color: COLOR_BLUE, background: `${COLOR_BLUE}1a`, border: `1px solid ${COLOR_BLUE}33` }}>
-                                    {persona.placa}
-                                </span>
-                            )}
-                            {persona.cargo && (
-                                <span className="text-[9px] text-muted-foreground truncate">{persona.cargo}</span>
-                            )}
-                        </div>
-                    </div>
-                    <span className="text-[11px] font-bold shrink-0" style={{ color }}>{pct}%</span>
-                </div>
-                <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden relative">
-                    <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(pct * 10, 100)}%`, background: color }} />
-                    <div className="absolute top-0 bottom-0 w-px opacity-60" style={{ left: `${metaPct * 10}%`, background: COLOR_BLUE }} />
-                </div>
-                <p className="text-[9px] text-muted-foreground mt-0.5">
-                    Var: {formatCurrency(Number(persona.valor_var ?? 0))} · Perd: {formatCurrency(Number(persona.valor_perdido ?? 0))}
-                </p>
-            </div>
-        </li>
-    );
-}
-
 // ─── Gráficas (versión compacta · 3 en una fila) ─────────────────────────────
 function GraficoBarrasValorDiario({ data }: { data: TotalesPorDia }) {
     const labels = (data?.fechas || []).map(f => {
@@ -300,7 +259,7 @@ function GraficoBarrasValorDiario({ data }: { data: TotalesPorDia }) {
                     plugins: { legend: { display: false } },
                     scales: {
                         x: { ticks: { color: '#9ca3af', font: { size: 8 } }, grid: { display: false } },
-                        y: { beginAtZero: true, ticks: { color: '#9ca3af', font: { size: 8 }, callback: (v: any) => '$' + Number(v).toLocaleString('es-CO', { maximumFractionDigits: 0, notation: 'compact' }), maxTicksLimit: 5 }, grid: { color: 'rgba(0,0,0,.04)' } }
+                        y: { beginAtZero: true, ticks: { color: '#9ca3af', font: { size: 8 }, callback: (v: string | number) => '$' + Number(v).toLocaleString('es-CO', { maximumFractionDigits: 0, notation: 'compact' }), maxTicksLimit: 5 }, grid: { color: 'rgba(0,0,0,.04)' } }
                     }
                 }} />
             </div>
@@ -350,7 +309,7 @@ function GraficoLineaRechazos({ data }: { data: TotalesPorDia }) {
                     plugins: { legend: { display: false } },
                     scales: {
                         x: { ticks: { color: '#9ca3af', font: { size: 8 } }, grid: { display: false } },
-                        y: { beginAtZero: true, ticks: { color: '#9ca3af', font: { size: 8 }, callback: (v: any) => `${v}%`, maxTicksLimit: 5 }, grid: { color: 'rgba(0,0,0,.04)' } }
+                        y: { beginAtZero: true, ticks: { color: '#9ca3af', font: { size: 8 }, callback: (v: string | number) => `${v}%`, maxTicksLimit: 5 }, grid: { color: 'rgba(0,0,0,.04)' } }
                     }
                 }} />
             </div>
@@ -431,7 +390,7 @@ function MultiSelectSearchable({ label, placeholder, selectedValues, options, on
             </Label>
             <button type="button" onClick={() => setOpen(!open)}
                 className="h-8 w-full rounded-lg border border-sidebar-border/70 dark:border-sidebar-border bg-card px-2 text-left text-xs flex items-center justify-between gap-1 hover:border-border focus:ring-1 focus:outline-none"
-                style={{ ['--tw-ring-color' as any]: COLOR_MODULO }}>
+                style={{ '--tw-ring-color': COLOR_MODULO } as React.CSSProperties}>
                 <span className={`truncate ${selectedArr.length ? 'text-foreground' : 'text-muted-foreground'}`}>
                     {selectedArr.length ? `${selectedArr.length} seleccionado(s)` : placeholder || 'Todos...'}
                 </span>
@@ -476,7 +435,7 @@ const DEFAULT_TOTALES_MES: TotalesMensuales = { meses: [], rechazos: [], valor_v
 const DEFAULT_CATALOGOS: Catalogos = { anios: [], meses: [], cargos: [], cedulas: [], nombres: [], placas: [], transportes: [], rrs: [] };
 
 export default function CompensacionVariableDiariaIndex() {
-    const pageProps = usePage<any>().props || {};
+    const pageProps = usePage<Record<string, unknown>>().props || {};
 
     console.log('CompensacionVariableDiariaIndex pageProps:', pageProps);
 
@@ -485,10 +444,9 @@ export default function CompensacionVariableDiariaIndex() {
     const totales_por_dia: TotalesPorDia = pageProps.totales_por_dia || DEFAULT_TOTALES_DIA;
     const totales_mensuales: TotalesMensuales = pageProps.totales_mensuales || DEFAULT_TOTALES_MES;
     const filters: FiltrosReales = pageProps.filters || {};
-    const catalogos: Catalogos = pageProps.catalogos || DEFAULT_CATALOGOS;
-    const flash = pageProps.flash || {};
+    const catalogos: Catalogos = (pageProps.catalogos as Catalogos) || DEFAULT_CATALOGOS;
     // El controlador usa ->with('status', [...]) que el middleware comparte como pageProps.status
-    const statusAlert = pageProps.status || null;
+    const statusAlert = (pageProps.status as { type: string, message: string }) || null;
 
     console.log('CompensacionVariableDiariaIndex data:', { data, indicadores, totales_por_dia, totales_mensuales, filters, catalogos });
 
@@ -505,10 +463,7 @@ export default function CompensacionVariableDiariaIndex() {
     const [historialPag, setHistorialPag] = useState(1);
     const HIST_PER_PAGE = 15;
     const [calcularModalOpen, setCalcularModalOpen] = useState(false);
-    const [showRanking, setShowRanking] = useState(true);
-    const [rankMode, setRankMode] = useState<'bottom' | 'top'>('bottom');
-    const [showPlacas, setShowPlacas] = useState(false);
-    const [showCargos, setShowCargos] = useState(false);
+    const [rankMode] = useState<'bottom' | 'top'>('bottom');
 
     const MESES_ES: Record<number, string> = {
         1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
@@ -538,7 +493,7 @@ export default function CompensacionVariableDiariaIndex() {
         return `${m} de ${calcularForm.anio}`;
     }, [calcularForm]);
 
-    const { post: postCalcular, processing: processingCalcular } = useForm({});
+    const { processing: processingCalcular } = useForm({});
 
     const handleCalcular = () => {
         router.post(route('reparto.compensacion-variable-diaria.calcular'), {
@@ -631,67 +586,12 @@ export default function CompensacionVariableDiariaIndex() {
     const promRechazos     = Number(indicadores?.prom_rechazos      ?? 0) || 0;
     const colsUnicos       = Number(indicadores?.colaboradores_unicos?? 0) || 0;
     const vehUnicos        = Number(indicadores?.vehiculos_unicos   ?? 0) || 0;
-    const totalCalRech     = Number(indicadores?.total_cal_rechazos ?? 0) || 0;
-    const totalCalRech2    = Number(indicadores?.total_cal_rechazos_2?? 0) || 0;
-
     const visibleCols = COLUMNAS.filter(([k]) => !hiddenCols.has(k));
     const sparklineValorVar = totales_por_dia.valor_var || [];
-    const sparklineRechazos = totales_por_dia.rechazos || [];
 
-    // Rank colaboradores (bottom / top por % rechazos)
-    const rankData = useMemo(() => {
-        const arr = Array.isArray(data?.data) ? [...data.data] : [];
-        const sorted = [...arr].sort((a, b) => Number(b.rechazos ?? 0) - Number(a.rechazos ?? 0));
-        return rankMode === 'bottom' ? sorted.slice(0, 10) : sorted.slice().reverse().slice(0, 10);
-    }, [data, rankMode]);
-
-    // Resumen por cargo
-    const resumenPorCargo = useMemo(() => {
-        const arr = Array.isArray(data?.data) ? data.data : [];
-        const map: Record<string, { total: number; rechazos: number; valor_var: number; valor_perdido: number; personas: Set<string>; placas: Set<string> }> = {};
-        arr.forEach(r => {
-            const key = r.cargo || 'Sin cargo';
-            if (!map[key]) map[key] = { total: 0, rechazos: 0, valor_var: 0, valor_perdido: 0, personas: new Set(), placas: new Set() };
-            map[key].total += 1;
-            map[key].rechazos += Number(r.rechazos ?? 0);
-            map[key].valor_var += Number(r.valor_var ?? 0);
-            map[key].valor_perdido += Number(r.valor_perdido ?? 0);
-            if (r.cedula) map[key].personas.add(r.cedula);
-            if (r.placa) map[key].placas.add(r.placa);
-        });
-        return Object.entries(map).map(([cargo, v]) => ({
-            cargo,
-            total: v.total,
-            prom_rechazos: v.total > 0 ? v.rechazos / v.total : 0,
-            valor_var: v.valor_var,
-            valor_perdido: v.valor_perdido,
-            personas: v.personas.size,
-            placas: Array.from(v.placas),
-        })).sort((a, b) => b.valor_var - a.valor_var);
-    }, [data]);
-
-    // Resumen por placa
-    const resumenPorPlaca = useMemo(() => {
-        const arr = Array.isArray(data?.data) ? data.data : [];
-        const map: Record<string, { total: number; rechazos: number; valor_var: number }> = {};
-        arr.forEach(r => {
-            const key = r.placa || 'S/Placa';
-            if (!map[key]) map[key] = { total: 0, rechazos: 0, valor_var: 0 };
-            map[key].total += 1;
-            map[key].rechazos += Number(r.rechazos ?? 0);
-            map[key].valor_var += Number(r.valor_var ?? 0);
-        });
-        return Object.entries(map).map(([placa, v]) => ({
-            placa,
-            total: v.total,
-            prom_rechazos: v.total > 0 ? v.rechazos / v.total : 0,
-            valor_var: v.valor_var,
-        })).sort((a, b) => b.valor_var - a.valor_var).slice(0, 25);
-    }, [data]);
-
-    const hasFilters = (formFilters.fecha_desde || formFilters.fecha_hasta || (formFilters.cargo as any)?.length > 0 ||
-        (formFilters.cedula as any)?.length > 0 || (formFilters.nombre_completo as any)?.length > 0 ||
-        (formFilters.placa as any)?.length > 0 || (formFilters.transporte as any)?.length > 0);
+    const hasFilters = (formFilters.fecha_desde || formFilters.fecha_hasta || (formFilters.cargo as string[])?.length > 0 ||
+        (formFilters.cedula as string[])?.length > 0 || (formFilters.nombre_completo as string[])?.length > 0 ||
+        (formFilters.placa as string[])?.length > 0 || (formFilters.transporte as string[])?.length > 0);
 
     // ─── RENDER ────────────────────────────────────────────────────────────────
     return (
@@ -892,15 +792,15 @@ export default function CompensacionVariableDiariaIndex() {
                         <div className="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                             <div className="text-[10px] text-muted-foreground break-words min-w-0">
                                 Viendo <b>{totalRegistros.toLocaleString()} registros</b>
-                                {(formFilters.cargo as any)?.length > 0 && <> · cargo: <b>{(formFilters.cargo as any).length}</b></>}
-                                {(formFilters.cedula as any)?.length > 0 && <> · <b>{(formFilters.cedula as any).length} identificación{(formFilters.cedula as any).length !== 1 ? 'es' : ''}</b></>}
-                                {(formFilters.placa as any)?.length > 0 && <> · <b>{(formFilters.placa as any).length} placa{(formFilters.placa as any).length !== 1 ? 's' : ''}</b></>}
+                                {(formFilters.cargo as string[])?.length > 0 && <> · cargo: <b>{(formFilters.cargo as string[]).length}</b></>}
+                                {(formFilters.cedula as string[])?.length > 0 && <> · <b>{(formFilters.cedula as string[]).length} identificación{(formFilters.cedula as string[]).length !== 1 ? 'es' : ''}</b></>}
+                                {(formFilters.placa as string[])?.length > 0 && <> · <b>{(formFilters.placa as string[]).length} placa{(formFilters.placa as string[]).length !== 1 ? 's' : ''}</b></>}
                                 · <b>{colsUnicos} personas</b> · <b>{vehUnicos} vehículos</b>
                             </div>
                             <div className="flex flex-wrap gap-1.5 items-center shrink-0 relative z-20 pointer-events-auto">
                                 <Button type="button" variant="outline" size="sm" className="h-7 text-[10px] pointer-events-auto relative" asChild
                                     style={{ borderColor: 'rgba(21, 128, 61, 0.3)', color: '#064e3b' }}>
-                                    <a href={route('reparto.compensacion-variable-diaria.exportar', formFilters as any)} onClick={(e) => e.stopPropagation()}>
+                                    <a href={route('reparto.compensacion-variable-diaria.exportar', formFilters as Record<string, unknown>)} onClick={(e) => e.stopPropagation()}>
                                         <Download className="size-3 mr-0.5" /> Exportar
                                     </a>
                                 </Button>
@@ -1065,7 +965,7 @@ export default function CompensacionVariableDiariaIndex() {
                                     value={calcularForm.mes}
                                     onChange={(e) => setCalcularForm({ ...calcularForm, mes: Number(e.target.value) })}
                                     className="h-9 w-full rounded-lg border border-sidebar-border/70 dark:border-sidebar-border bg-card px-2 text-xs focus:ring-1 focus:outline-none"
-                                    style={{ ['--tw-ring-color' as any]: COLOR_MODULO }}>
+                                    style={{ '--tw-ring-color': COLOR_MODULO } as React.CSSProperties}>
                                     {Object.entries(MESES_ES).map(([num, nombre]) => (
                                         <option key={num} value={Number(num)}>{nombre}</option>
                                     ))}
@@ -1080,7 +980,7 @@ export default function CompensacionVariableDiariaIndex() {
                                     value={calcularForm.anio}
                                     onChange={(e) => setCalcularForm({ ...calcularForm, anio: Number(e.target.value) })}
                                     className="h-9 w-full rounded-lg border border-sidebar-border/70 dark:border-sidebar-border bg-card px-2 text-xs focus:ring-1 focus:outline-none"
-                                    style={{ ['--tw-ring-color' as any]: COLOR_MODULO }}>
+                                    style={{ '--tw-ring-color': COLOR_MODULO } as React.CSSProperties}>
                                     {aniosDisponibles.map((y) => (
                                         <option key={y} value={y}>{y}</option>
                                     ))}

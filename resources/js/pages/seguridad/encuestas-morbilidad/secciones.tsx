@@ -1,8 +1,7 @@
-import HeadingSmall from '@/components/heading-small';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { ImageIcon, Trash2, Upload } from 'lucide-react';
 import { useRef } from 'react';
 

@@ -40,7 +40,7 @@ import {
     BarChart3,
 } from 'lucide-react';
 import { useState, Fragment } from 'react';
-import { Bar, Doughnut, Line } from 'react-chartjs-2';
+import { Bar, Doughnut } from 'react-chartjs-2';
 
 ChartJS.register(
     BarController, BarElement,
@@ -437,7 +437,7 @@ function PlacaMultiSelect({
 export default function IndicadoresTiempoIndex({
     kpis, sparkline, por_dia, patron_dow,
     histograma, bandas, rank_bottom, rank_top,
-    pareto, scatter, por_cargo, por_placa,
+    pareto, por_cargo, por_placa,
     heatmap, cargos, todasPlacas, filters,
 }: Props) {
     const [fechaDesde, setFechaDesde] = useState(filters.fecha_desde ?? '');
@@ -466,7 +466,7 @@ export default function IndicadoresTiempoIndex({
     const hasFilters = fechaDesde || fechaHasta || cargo || placasSel.length > 0;
 
     // ── Gráfica diaria ──────────────────────────────────────────────────────
-    const diarioData: any = {
+    const diarioData: ChartOptions<'bar'>['data'] | unknown = {
         labels: por_dia.map(p => p.fecha),
         datasets: [
             {
@@ -526,27 +526,6 @@ export default function IndicadoresTiempoIndex({
         },
     };
 
-    // ── Histograma ──────────────────────────────────────────────────────────
-    const histData = {
-        labels: histograma.map(b => b.rango),
-        datasets: [{
-            label: 'Jornadas',
-            data: histograma.map(b => b.total),
-            backgroundColor: histograma.map(b => colorBanda(b.inicio)),
-            borderRadius: 4,
-        }],
-    };
-    const histOpts: ChartOptions<'bar'> = {
-        responsive: true, maintainAspectRatio: false,
-        plugins: {
-            legend: { display: false },
-            tooltip: { callbacks: { label: (ctx: TooltipItem<'bar'>) => ` ${ctx.parsed.y} jornadas` } },
-        },
-        scales: {
-            y: { grid: { color: 'rgba(0,0,0,.04)' }, ticks: { color: '#9ca3af', font: { size: 10 } } },
-            x: { grid: { display: false }, ticks: { color: '#6b7280', font: { size: 9 } } },
-        },
-    };
 
     // ── Donut bandas ────────────────────────────────────────────────────────
     const bandasLabels  = Object.keys(bandas);
@@ -608,74 +587,6 @@ export default function IndicadoresTiempoIndex({
         scales: {
             y: { min: 0, max: 100, ticks: { color: '#9ca3af', font: { size: 10 }, callback: (v: number | string) => `${v}%` }, grid: { color: 'rgba(0,0,0,.04)' } },
             x: { grid: { display: false }, ticks: { color: '#6b7280', font: { size: 11 } } },
-        },
-    };
-
-    // ── Pareto ──────────────────────────────────────────────────────────────
-    const paretoData: ChartOptions<'bar'> | any = {
-        labels: pareto.map(p => p.placa ? `${p.nombre || p.documento} (${p.placa})` : (p.nombre || p.documento)),
-        datasets: [
-            {
-                type: 'bar' as const,
-                label: 'Jornadas bajo 80%',
-                data: pareto.map(p => p.bajo_critico),
-                backgroundColor: '#f97316aa',
-                borderColor: '#f97316', borderWidth: 1,
-                yAxisID: 'y', order: 2,
-            },
-            {
-                type: 'line' as const,
-                label: '% Acumulado',
-                data: pareto.map(p => p.pct_acumulado),
-                borderColor: '#ef4444',
-                pointRadius: 3, borderWidth: 2,
-                yAxisID: 'y2', order: 1,
-            },
-        ],
-    };
-    const paretoOpts: ChartOptions<'bar'> = {
-        responsive: true, maintainAspectRatio: false,
-        plugins: {
-            legend: { display: true, position: 'bottom', labels: { boxWidth: 10, font: { size: 10 }, color: '#6b7280' } },
-        },
-        scales: {
-            y:  { position: 'left',  ticks: { color: '#9ca3af', font: { size: 10 } }, grid: { color: 'rgba(0,0,0,.04)' } },
-            y2: { position: 'right', min: 0, max: 100, grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 10 }, callback: (v: number | string) => `${v}%` } },
-            x:  { grid: { display: false }, ticks: { color: '#6b7280', font: { size: 9 }, maxRotation: 45 } },
-        },
-    };
-
-    // ── Por cargo ───────────────────────────────────────────────────────────
-    const cargoData = {
-        labels: por_cargo.map(c => c.cargo),
-        datasets: [
-            {
-                type: 'bar' as const,
-                label: '% Bajo 80%',
-                data: por_cargo.map(c => c.pct_bajo),
-                backgroundColor: '#f9731655',
-                borderColor: '#f97316', borderWidth: 1,
-                yAxisID: 'y2', order: 2,
-            },
-            {
-                type: 'bar' as const,
-                label: 'Promedio',
-                data: por_cargo.map(c => c.promedio),
-                backgroundColor: por_cargo.map(c => colorBanda(c.promedio) + 'cc'),
-                borderRadius: 4,
-                yAxisID: 'y', order: 1,
-            },
-        ],
-    };
-    const cargoOpts: ChartOptions<'bar'> = {
-        responsive: true, maintainAspectRatio: false,
-        plugins: {
-            legend: { display: true, position: 'bottom', labels: { boxWidth: 10, font: { size: 10 }, color: '#6b7280' } },
-        },
-        scales: {
-            y:  { min: 0, max: 100, position: 'left',  ticks: { color: '#9ca3af', font: { size: 10 }, callback: (v: number | string) => `${v}%` }, grid: { color: 'rgba(0,0,0,.04)' } },
-            y2: { min: 0, max: 100, position: 'right', ticks: { color: '#9ca3af', font: { size: 10 }, callback: (v: number | string) => `${v}%` }, grid: { display: false } },
-            x:  { grid: { display: false }, ticks: { color: '#6b7280', font: { size: 10 } } },
         },
     };
 

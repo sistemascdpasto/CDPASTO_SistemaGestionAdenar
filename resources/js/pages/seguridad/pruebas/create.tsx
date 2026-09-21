@@ -379,12 +379,10 @@ export default function CreatePrueba({
     colaboradores,
     dispositivosDisponibles,
     prueba,
-    dispositivoDefaultId,
 }: {
     colaboradores: ColaboradorOption[];
     dispositivosDisponibles: DispositivoOption[];
     prueba?: PruebaData;
-    dispositivoDefaultId?: number | null;
 }) {
     const breadcrumbs: BreadcrumbItem[] = prueba
         ? [...breadcrumbsBase, { title: 'Editar prueba', href: `/modules/seguridad/pruebas/${prueba.id}/edit` }]

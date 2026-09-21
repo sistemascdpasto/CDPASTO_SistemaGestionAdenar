@@ -27,7 +27,6 @@ import {
 } from 'chart.js';
 import {
     AlertTriangle,
-    BarChart2,
     Calendar,
     Check,
     CheckCircle2,
@@ -45,7 +44,6 @@ import {
     Trash2,
     TrendingUp,
     Upload,
-    UserCheck,
     Users,
     X,
     Activity,

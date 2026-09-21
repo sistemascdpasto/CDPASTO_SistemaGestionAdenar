@@ -43,7 +43,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Bar, Line, Pie, PolarArea } from 'react-chartjs-2';
+import { Bar, Line, PolarArea } from 'react-chartjs-2';
 import { Link } from '@inertiajs/react';
 
 ChartJS.register(
@@ -70,31 +70,6 @@ interface Colaborador {
     nombre: string;
 }
 
-interface AdherenciaDist {
-    '≥ 90% (Óptimo)': number;
-    '70–89% (Aceptable)': number;
-    '< 70% (Crítico)': number;
-    'Sin dato': number;
-}
-
-interface TopTripulante {
-    nombre: string | null;
-    cedula: string;
-    placa: string;
-    fecha: string;
-    pre: number;
-    post: number | null;
-}
-
-interface Adherencia {
-    distPre: AdherenciaDist;
-    distPost: AdherenciaDist;
-    topBajaPre: TopTripulante[];
-    promPre: number | null;
-    promPost: number | null;
-    total: number;
-}
-
 interface Props {
     puntos: Punto[];
     porFecha: { labels: string[]; series: { placa: string; conductor: string | null; valores: number[] }[] };
@@ -113,7 +88,7 @@ interface Props {
 
 // ─── Mapa (lazy para evitar SSR) ─────────────────────────────────────────────
 function MapaVelocidad({ puntos, centro }: { puntos: Punto[]; centro: { lat: number; lon: number } }) {
-    const [MC, setMC] = useState<any>(null);
+    const [MC, setMC] = useState<{ MapContainer: React.ElementType; TileLayer: React.ElementType; CircleMarker: React.ElementType; Tooltip: React.ElementType } | null>(null);
 
     useEffect(() => {
         const id = 'leaflet-css';
@@ -124,7 +99,7 @@ function MapaVelocidad({ puntos, centro }: { puntos: Punto[]; centro: { lat: num
             document.head.appendChild(link);
         }
         Promise.all([import('leaflet'), import('react-leaflet')]).then(([L, RL]) => {
-            delete (L.Icon.Default.prototype as any)._getIconUrl;
+            delete (L.Icon.Default.prototype as Record<string, unknown>)._getIconUrl;
             L.Icon.Default.mergeOptions({
                 iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
                 shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
@@ -583,7 +558,7 @@ export default function IndicadoresIndex({
                 conductor: serie.conductor ?? null, // metadato para el tooltip
                 data:      serie.valores,
                 borderColor: color.line,
-                backgroundColor: (ctx: any) => {
+                backgroundColor: (ctx: { chart: any }) => {
                     const { chart } = ctx;
                     const { ctx: c, chartArea } = chart;
                     if (!chartArea) return color.fill0;
@@ -633,7 +608,7 @@ export default function IndicadoresIndex({
         datasets: [{
             label: 'Eventos',
             data: porPlaca.map((e) => e.total),
-            backgroundColor: (ctx: any) => {
+            backgroundColor: (ctx: { chart: any }) => {
                 const { chart } = ctx;
                 const { ctx: c, chartArea } = chart;
                 if (!chartArea) return 'rgba(220,38,38,0.5)';
@@ -658,7 +633,7 @@ export default function IndicadoresIndex({
                 borderColor: '#4A90E2', borderWidth: 1, padding: 10, cornerRadius: 8,
                 callbacks: {
                     label: (ctx: TooltipItem<'line'>) => {
-                        const ds = ctx.dataset as any;
+                        const ds = ctx.dataset as { label: string; conductor?: string | null };
                         const lineas: string[] = [`${ds.label}: ${ctx.parsed.y} eventos`];
                         if (ds.conductor) lineas.push(`Conductor: ${ds.conductor}`);
                         return lineas;
@@ -682,7 +657,7 @@ export default function IndicadoresIndex({
                 borderColor: '#FF7F00', borderWidth: 1, padding: 10, cornerRadius: 8,
                 callbacks: {
                     label: (ctx: TooltipItem<'polarArea'>) => {
-                        const ds = ctx.dataset as any;
+                        const ds = ctx.dataset as { placasPorMes?: string[][] };
                         const total = ctx.parsed.r;
                         const placas: string[] = ds.placasPorMes?.[ctx.dataIndex] ?? [];
                         const lineas: string[] = [`${total} eventos`];
@@ -713,7 +688,7 @@ export default function IndicadoresIndex({
         },
         scales: {
             x: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { color: '#6b7280', font: { size: 11 } } },
-            y: { grid: { display: false }, ticks: { color: '#374151', font: { size: 11, family: 'monospace' } as any } },
+            y: { grid: { display: false }, ticks: { color: '#374151', font: { size: 11, family: 'monospace' } } },
         },
     };
 

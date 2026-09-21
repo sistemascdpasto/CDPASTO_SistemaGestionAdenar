@@ -1,7 +1,7 @@
 import { FileIcon, getFileCategoryInfo } from '@/components/capacitaciones/file-icon';
 import { type BreadcrumbItem } from '@/types';
 import { NotificationsBell } from '@/components/notifications-bell';
-import { Badge } from '@/components/ui/badge';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { SidebarTrigger } from '@/components/ui/sidebar';
@@ -26,10 +26,7 @@ import {
 } from 'lucide-react';
 import { FormEventHandler, useEffect, useMemo, useRef, useState } from 'react';
 
-const _breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Dashboard', href: '/dashboard' },
-    { title: 'Mi Centro de Capacitaciones', href: '/portal/capacitaciones' },
-];
+
 
 interface CarpetaProgreso {
     id: number;
@@ -381,26 +378,7 @@ export default function CentroCapacitacionesIndex({
         );
     }, [carpetas, busqueda, resultadosBusqueda]);
 
-    // Items del carrusel: destacadas mapeadas a MediaItem, ordenadas: video primero, imag despues
-    const _itemsCarrusel = useMemo((): MediaItem[] => {
-        const asMedia = (d: MaterialItem): MediaItem => ({
-            id: d.id,
-            titulo: d.titulo,
-            descripcion: d.descripcion ?? null,
-            tipo: d.tipo,
-            mime_type: d.mime_type ?? null,
-            archivo_url: d.archivo_url ?? null,
-            enlace_externo: d.enlace_externo ?? null,
-            carpeta: d.carpeta ?? null,
-        });
-        const esVid = (d: MaterialItem) => d.tipo === 'video' || !!d.mime_type?.startsWith('video/') || /youtube|youtu\.be/.test(d.enlace_externo ?? '');
-        const esImg = (d: MaterialItem) => d.tipo === 'imagen' || !!d.mime_type?.startsWith('image/');
-        return [
-            ...destacadas.filter(esVid).map(asMedia),
-            ...destacadas.filter(d => !esVid(d) && esImg(d)).map(asMedia),
-            ...destacadas.filter(d => !esVid(d) && !esImg(d)).map(asMedia),
-        ];
-    }, [destacadas]);
+
 
     // Stats dinámicas
     const totalMateriales = carpetas.reduce((s, c) => s + c.total_materiales, 0);

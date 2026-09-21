@@ -18,10 +18,7 @@ import {
     Download,
     ExternalLink,
     Eye,
-    FileSpreadsheet,
-    FileText,
     Folder,
-    Presentation,
     Search,
     Video,
 } from 'lucide-react';

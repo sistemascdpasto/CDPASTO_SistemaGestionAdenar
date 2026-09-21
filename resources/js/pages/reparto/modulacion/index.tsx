@@ -689,7 +689,7 @@ export default function ModulacionIndex({
     // GUARDAR PLANEACIÓN DE RUTA COMPLETA (TODAS LAS RUTAS + NOVEDADES)
     const [isSubmitting, setIsSubmitting] = useState(false);
     const handleGuardarTodo = () => {
-        let finalRutas = [...rutas];
+        const finalRutas = [...rutas];
 
         // Si hay datos escritos actualmente en el formulario de ruta, incluirlos
         if (currentRoute.placa && currentRoute.placa.trim() !== '') {

@@ -734,9 +734,9 @@ export default function EncuestaMorbilidadForm({
                                     {seccionActual.numero}. {seccionActual.titulo}
                                 </p>
                                 {/* Descripción opcional de la sección */}
-                                {(seccionActual as any).descripcion && (
+                                {(seccionActual as { descripcion?: string }).descripcion && (
                                     <p className="text-xs text-muted-foreground leading-relaxed">
-                                        {(seccionActual as any).descripcion}
+                                        {(seccionActual as { descripcion?: string }).descripcion}
                                     </p>
                                 )}
                                 {/* Nota de instrucciones para segmentos corporales */}

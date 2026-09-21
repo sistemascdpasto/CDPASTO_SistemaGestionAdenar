@@ -15,7 +15,6 @@ import {
     ExternalLink,
     FileSpreadsheet,
     FileText,
-    Gauge,
     ImageIcon,
     Pencil,
     Wrench,
