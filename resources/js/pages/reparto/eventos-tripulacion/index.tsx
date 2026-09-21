@@ -172,10 +172,6 @@ function formatValor(campo: ColKey, val: unknown): string {
     return String(val);
 }
 
-function pctColor(_val: number | null): string {
-    return 'text-foreground';
-}
-
 /** Renderiza el contenido interior de una celda según el tipo de campo */
 function CeldaContenido({ campo, val }: { campo: ColKey; val: unknown }) {
     if (campo === 'placa') {
@@ -354,7 +350,7 @@ export default function EventosTripulacionIndex({ eventos, filters, flash, error
                     ...arr.filter((k) => COLUMNAS.some(([c]) => c === k)),
                 ] as ColKey[]);
             }
-        } catch {}
+        } catch { /* ignore */ }
         return new Set(COLUMNAS.map(([k]) => k));
     });
     const [showColPicker, setShowColPicker] = useState(false);
@@ -363,8 +359,12 @@ export default function EventosTripulacionIndex({ eventos, filters, flash, error
         if (FIXED_COLS.has(k)) return;
         setColsVisibles((prev) => {
             const next = new Set(prev);
-            next.has(k) ? next.delete(k) : next.add(k);
-            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(next))); } catch {}
+            if (next.has(k)) {
+                next.delete(k);
+            } else {
+                next.add(k);
+            }
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(next))); } catch { /* ignore */ }
             return next;
         });
     };
@@ -437,7 +437,7 @@ export default function EventosTripulacionIndex({ eventos, filters, flash, error
         // 2. Luego enviar el archivo
         const fd = new FormData();
         fd.append('archivo', fileToUpload);
-        router.post(route('reparto.eventos-tripulacion.store'), fd as any, {
+        router.post(route('reparto.eventos-tripulacion.store'), fd as unknown as Record<string, unknown>, {
             forceFormData: true,
             preserveScroll: true,
             onFinish: () => {

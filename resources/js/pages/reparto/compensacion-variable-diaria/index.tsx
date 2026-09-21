@@ -197,6 +197,12 @@ const COLUMNAS: [keyof CompensacionDiariaRow, string, boolean][] = [
     ['meta_2', 'Meta < 2,6%', true],
 ];
 
+const MESES_ES: Record<number, string> = {
+    1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
+    5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
+    9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre',
+};
+
 
 
 // ─── KpiCard (estilo Adherencia al Tiempo, colores paleta CV) ────────────────
@@ -463,13 +469,6 @@ export default function CompensacionVariableDiariaIndex() {
     const [historialPag, setHistorialPag] = useState(1);
     const HIST_PER_PAGE = 15;
     const [calcularModalOpen, setCalcularModalOpen] = useState(false);
-    const [rankMode] = useState<'bottom' | 'top'>('bottom');
-
-    const MESES_ES: Record<number, string> = {
-        1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
-        5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
-        9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre',
-    };
 
     const hoy = new Date();
     const anioActual = hoy.getFullYear();
@@ -480,7 +479,7 @@ export default function CompensacionVariableDiariaIndex() {
         if (calcularModalOpen) {
             setCalcularForm({ anio: anioActual, mes: mesActual });
         }
-    }, [calcularModalOpen]);
+    }, [calcularModalOpen, anioActual, mesActual]);
 
     const aniosDisponibles = useMemo(() => {
         const arr: number[] = [];
@@ -531,6 +530,7 @@ export default function CompensacionVariableDiariaIndex() {
             placa: parseFilterArray(filters.placa),
             transporte: parseFilterArray(filters.transporte),
         }));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [filtersKey]);
 
     const executeFilterQuery = (filtersObj: typeof formFilters) => {

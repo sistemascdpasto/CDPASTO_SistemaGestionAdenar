@@ -1,5 +1,4 @@
 import { FileIcon, getFileCategoryInfo } from '@/components/capacitaciones/file-icon';
-import { type BreadcrumbItem } from '@/types';
 import { NotificationsBell } from '@/components/notifications-bell';
 
 import { Button } from '@/components/ui/button';

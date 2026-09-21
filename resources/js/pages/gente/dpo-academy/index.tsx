@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/react';
-import { Award, BookOpen, CheckCircle2, Crown, Download, Percent, Search, Trash2, Upload, Users } from 'lucide-react';
+import { Award, BookOpen, CheckCircle2, Crown, Download, Percent, Search, Trash2, Upload } from 'lucide-react';
 import { useState } from 'react';
 import { ImportarDpoAcademyDialog } from './importar-dialog';
 

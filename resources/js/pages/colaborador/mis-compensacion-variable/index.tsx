@@ -10,9 +10,7 @@ import {
     ChevronUp,
     CircleDollarSign,
     Info,
-    Star,
     TrendingDown,
-    TrendingUp,
     Trophy,
     User,
     XCircle,
@@ -249,13 +247,13 @@ function FilaMes({ registro, maxPago }: { registro: RegistroMes; maxPago: number
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function MisCompensacionVariableIndex() {
-    const pageProps = usePage<any>().props || {};
-    const colaborador: Colaborador | null  = pageProps.colaborador;
-    const registros: RegistroMes[]         = pageProps.registros ?? [];
-    const resumen: Resumen | null          = pageProps.resumen;
-    const anioSeleccionado: number         = pageProps.anio_seleccionado ?? new Date().getFullYear();
-    const aniosDisponibles: number[]       = pageProps.anios_disponibles ?? [];
-    const error: string | null             = pageProps.error;
+    const pageProps = (usePage<Record<string, unknown>>().props || {}) as Record<string, unknown>;
+    const colaborador: Colaborador | null  = pageProps.colaborador as Colaborador | null;
+    const registros: RegistroMes[]         = (pageProps.registros as RegistroMes[]) ?? [];
+    const resumen: Resumen | null          = pageProps.resumen as Resumen | null;
+    const anioSeleccionado: number         = (pageProps.anio_seleccionado as number) ?? new Date().getFullYear();
+    const aniosDisponibles: number[]       = (pageProps.anios_disponibles as number[]) ?? [];
+    const error: string | null             = pageProps.error as string | null;
 
     const [anio, setAnio] = useState(anioSeleccionado);
     const [historialOpen, setHistorialOpen] = useState(true);

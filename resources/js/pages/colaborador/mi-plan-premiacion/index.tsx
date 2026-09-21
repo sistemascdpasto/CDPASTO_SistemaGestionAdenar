@@ -4,10 +4,8 @@ import { Head, router } from '@inertiajs/react';
 import {
     Award,
     CalendarDays,
-    CheckCircle2,
     ChevronLeft,
     ChevronRight,
-    Flame,
     Gem,
     ShieldCheck,
     Sparkles,

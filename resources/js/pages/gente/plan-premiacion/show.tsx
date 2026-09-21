@@ -204,7 +204,7 @@ function FilaMetrica({ metrica, onToggle, puedeEditar = false }: { metrica: Metr
 
 // ─── Página ───────────────────────────────────────────────────────────────────
 
-export default function PlanPremiacionShow({ colaborador, metricas, historial_aci, mes, anio, umbral_checklist = 90, puede_editar = false }: Props) {
+export default function PlanPremiacionShow({ colaborador, metricas, historial_aci, mes, anio, puede_editar = false }: Props) {
 
     const metricasList = Object.values(metricas);
     const cumplidas    = metricasList.filter(m => m.valor !== null && m.valor >= 95);

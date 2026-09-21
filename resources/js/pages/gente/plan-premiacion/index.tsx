@@ -1,4 +1,3 @@
-import HeadingSmall from '@/components/heading-small';
 import GraficoBarrasMes from '@/components/gente/GraficoBarrasMes';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -17,7 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/react';
-import { Award, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Download, Flame, GraduationCap, Medal, Percent, Search, ShieldCheck, Trophy, Users } from 'lucide-react';
+import { Award, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Download, Medal, Search, ShieldCheck, Trophy, Users } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -128,12 +127,12 @@ const parseCargosFilter = (filterStr?: string): string[] => {
 };
 
 
-export default function PlanPremiacionIndex({ colaboradores, _resumen, top3, peores2 = [], cargos = [], filters, puede_editar = false, _umbral_checklist = 90 }: Props) {
+export default function PlanPremiacionIndex({ colaboradores, top3, peores2 = [], cargos = [], filters, puede_editar = false }: Props) {
     const [mes, setMes] = useState<number>(filters.mes || new Date().getMonth() + 1);
     const [anio, setAnio] = useState<number>(filters.anio || new Date().getFullYear());
     const [search, setSearch] = useState<string>(filters.search || '');
     const [formulasAbiertas, setFormulasAbiertas] = useState<boolean>(false);
-    const [estado, setEstado] = useState<string>(filters.estado || 'todos');
+    const [estado] = useState<string>(filters.estado || 'todos');
     const [selectedCargos, setSelectedCargos] = useState<string[]>(parseCargosFilter(filters.cargo));
 
     // Paginación
@@ -194,7 +193,11 @@ export default function PlanPremiacionIndex({ colaboradores, _resumen, top3, peo
     const toggleCol = (key: ColKey) => {
         setColsVisibles(prev => {
             const next = new Set(prev);
-            next.has(key) ? next.delete(key) : next.add(key);
+            if (next.has(key)) {
+                next.delete(key);
+            } else {
+                next.add(key);
+            }
             return next;
         });
     };
@@ -264,11 +267,6 @@ export default function PlanPremiacionIndex({ colaboradores, _resumen, top3, peo
         const a = parseInt(val, 10);
         setAnio(a);
         handleFilter(mes, a, search, estado, selectedCargos);
-    };
-
-    const _handleEstadoChange = (val: string) => {
-        setEstado(val);
-        handleFilter(mes, anio, search, val, selectedCargos);
     };
 
     const handleToggleCargo = (cargoItem: string) => {

@@ -277,7 +277,9 @@ export default function ChecklistImport({ registros, placas, filters, flash, dup
                 ] as (keyof Registro)[]);
                 return todas;
             }
-        } catch {}
+        } catch {
+            // Ignorar errores de parsing de localStorage
+        }
         return new Set(COLUMNAS.map(([k]) => k));
     });
     const [showColPicker, setShowColPicker] = useState(false);
@@ -286,7 +288,11 @@ export default function ChecklistImport({ registros, placas, filters, flash, dup
         if (FIXED_COLS.has(k)) return;
         setColsVisibles((prev) => {
             const next = new Set(prev);
-            next.has(k) ? next.delete(k) : next.add(k);
+            if (next.has(k)) {
+                next.delete(k);
+            } else {
+                next.add(k);
+            }
             // Guardar en localStorage inmediatamente
             try {
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(next)));

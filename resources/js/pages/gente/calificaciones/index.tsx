@@ -1,5 +1,3 @@
-import HeadingSmall from '@/components/heading-small';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/react';
-import { BookOpen, Building2, Download, GraduationCap, Percent, Search, Trash2, Upload, Users } from 'lucide-react';
+import { BookOpen, Download, GraduationCap, Percent, Search, Trash2, Upload, Users } from 'lucide-react';
 import { useState } from 'react';
 import { ImportarCalificacionesDialog } from './importar-dialog';
 

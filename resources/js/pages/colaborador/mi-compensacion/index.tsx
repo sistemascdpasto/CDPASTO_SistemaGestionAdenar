@@ -21,7 +21,7 @@ import React, { useRef, useState } from 'react';
 
 // ─── Breadcrumbs ─────────────────────────────────────────────────────────────
 
-const breadcrumbs: BreadcrumbItem[] = [
+const _breadcrumbs: BreadcrumbItem[] = [
     { title: 'Portal', href: '/portal' },
     { title: 'Mi Compensación Diaria', href: '/portal/mi-compensacion' },
 ];
@@ -151,41 +151,13 @@ function SectionHeader({ icon: Icon, title, subtitle }: { icon: React.ElementTyp
     );
 }
 
-// ─── KPI ────────────────────────────────────────────────────────────────────
-
-function Kpi({ label, value, green, red, muted }: { label: string; value: React.ReactNode; green?: boolean; red?: boolean; muted?: boolean }) {
-    const color = green ? 'text-green-700 dark:text-green-400' : red ? 'text-red-600 dark:text-red-400' : muted ? 'text-muted-foreground' : 'text-foreground';
-    return (
-        <div>
-            <p className="mb-0.5 text-[10px] text-muted-foreground">{label}</p>
-            <p className={`text-base font-bold tabular-nums leading-tight ${color}`}>{value}</p>
-        </div>
-    );
-}
-
-// ─── Operador ────────────────────────────────────────────────────────────────
-
-function Op({ children }: { children: React.ReactNode }) {
-    return <div className="flex shrink-0 items-center justify-center self-center text-xl font-bold text-muted-foreground">{children}</div>;
-}
-
-// ─── EcuacionCard — más pequeña + tooltip que nunca queda fuera ───────────────
-
-interface TooltipData {
-    titulo: string;
-    formula: string;
-    explicacion: React.ReactNode;
-    resultado: string;
-    resultColor?: string;
-}
-
 function EcuacionCard({
     numero, label, value, subvalue, icon: Icon,
-    highlight, met, neutral, tooltip,
+    highlight, met, tooltip,
 }: {
     numero?: string; label: string; value: string; subvalue?: string;
     icon: React.ElementType; highlight?: 'green' | 'red'; met?: boolean;
-    neutral?: boolean; tooltip: TooltipData;
+    tooltip: TooltipData;
 }) {
     const [open, setOpen] = useState(false);
 
@@ -433,18 +405,18 @@ function DateRangePicker({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function MiCompensacionIndex() {
-    const pageProps = usePage<any>().props || {};
-    const colaborador: Colaborador | null      = pageProps.colaborador;
-    const fechaDesdeProps: string              = pageProps.fecha_desde ?? new Date().toISOString().slice(0, 7) + '-01';
-    const fechaHastaProps: string              = pageProps.fecha_hasta ?? new Date().toISOString().split('T')[0];
-    const registroDia: RegistroDia | null       = pageProps.registro_dia;
-    const ausencias: Ausencias                  = pageProps.ausencias ?? { justificada: 0, injustificada: 0 };
-    const historialAnual: MesHistorial[]        = pageProps.historial_anual ?? [];
-    const estadisticasMes: EstadisticasMes      = pageProps.estadisticas_mes ?? {
+    const pageProps = (usePage<Record<string, unknown>>().props || {}) as Record<string, unknown>;
+    const colaborador: Colaborador | null      = pageProps.colaborador as Colaborador | null;
+    const fechaDesdeProps: string              = (pageProps.fecha_desde as string) ?? new Date().toISOString().slice(0, 7) + '-01';
+    const fechaHastaProps: string              = (pageProps.fecha_hasta as string) ?? new Date().toISOString().split('T')[0];
+    const registroDia: RegistroDia | null       = pageProps.registro_dia as RegistroDia | null;
+    const ausencias: Ausencias                  = (pageProps.ausencias as Ausencias) ?? { justificada: 0, injustificada: 0 };
+    const historialAnual: MesHistorial[]        = (pageProps.historial_anual as MesHistorial[]) ?? [];
+    const estadisticasMes: EstadisticasMes      = (pageProps.estadisticas_mes as EstadisticasMes) ?? {
         dias_trabajados: 0, total_ganado: 0, total_perdido: 0,
         promedio_rechazos: 0, dias_meta_1: 0, dias_meta_2: 0,
     };
-    const error: string | null = pageProps.error;
+    const error: string | null = pageProps.error as string | null;
 
     const [fechaDesde, setFechaDesde] = useState(fechaDesdeProps);
     const [fechaHasta, setFechaHasta] = useState(fechaHastaProps);

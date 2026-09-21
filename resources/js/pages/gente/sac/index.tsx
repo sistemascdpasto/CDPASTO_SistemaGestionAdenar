@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/react';
-import { AlertCircle, CheckCircle2, Clock, Download, FileSpreadsheet, HelpCircle, Search, Trash2, Upload, UserCheck, Users, X } from 'lucide-react';
+import { CheckCircle2, Clock, Download, FileSpreadsheet, Search, Trash2, Upload, UserCheck, Users, X } from 'lucide-react';
 import { useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [

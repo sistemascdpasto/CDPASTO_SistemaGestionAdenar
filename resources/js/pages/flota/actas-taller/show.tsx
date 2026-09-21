@@ -159,9 +159,6 @@ export default function ActasTallerShow({ acta, vehiculos }: Props) {
     const [quienReporta,  setQuienReporta]  = useState(acta.quien_reporta ?? '');
     const [estadoActa,    setEstadoActa]    = useState(acta.estado_acta ?? 'en_taller');
     const [nombreEntrega, setNombreEntrega] = useState(acta.nombre_entrega ?? '');
-    const [_cargoEntrega,  setCargoEntrega]  = useState(acta.cargo_entrega ?? '');
-    const [_idEntrega,     setIdEntrega]     = useState(acta.identificacion_entrega ?? '');
-    const [_telEntrega,    setTelEntrega]    = useState(acta.telefono_entrega ?? '');
     const [nombreRecibe,  setNombreRecibe]  = useState(acta.nombre_recibe ?? '');
     const [novedades,     setNovedades]     = useState<NovedadLocal[]>((acta.novedades ?? []).map(toLocal));
 
@@ -253,7 +250,7 @@ export default function ActasTallerShow({ acta, vehiculos }: Props) {
         if (b64Entrega) fd.append('firma_entrega', b64Entrega);
         if (b64Recibe)  fd.append('firma_recibe',  b64Recibe);
 
-        router.post(route('flota.actas-taller.update', acta.id), fd as any, {
+        router.post(route('flota.actas-taller.update', acta.id), fd as unknown as Record<string, unknown>, {
             forceFormData: true,
             onError:  (errs) => { setErrors(errs); setProcessing(false); },
             onFinish: () => setProcessing(false),
@@ -487,7 +484,7 @@ export default function ActasTallerShow({ acta, vehiculos }: Props) {
                     {acta.evidencias?.length > 0 && (
                         <SeccionCard title={`Evidencia Fotográfica (${acta.evidencias.length})`}>
                             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-                                {acta.evidencias.map((ev: any) => (
+                                {acta.evidencias.map((ev: { id: number; url: string; etiqueta?: string }) => (
                                     <div key={ev.id}>
                                         <img src={ev.url} alt={ev.etiqueta ?? 'Evidencia'}
                                             className="h-28 w-full rounded-xl object-cover border border-sidebar-border/70 shadow-sm" />
