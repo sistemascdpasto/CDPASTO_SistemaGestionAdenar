@@ -65,8 +65,8 @@ function Seccion({ titulo, children, defaultOpen = true }: {
 export default function ActasTallerCreate({ vehiculos, colaboradores, numero_acta, fecha_actual, usuario_nombre }: Props) {
 
     // Flash
-    const { props } = usePage<{ flash?: { status?: string } }>();
-    const flashStatus = (props as any).flash?.status ?? (props as any).status ?? null;
+    const { props } = usePage<{ flash?: { status?: string }; status?: string }>();
+    const flashStatus = props.flash?.status ?? props.status ?? null;
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
     useEffect(() => {
         if (flashStatus) { setSuccessMsg(flashStatus); window.scrollTo({ top: 0, behavior: 'smooth' }); }
@@ -167,7 +167,7 @@ export default function ActasTallerCreate({ vehiculos, colaboradores, numero_act
         if (b64Entrega) fd.append('firma_entrega', b64Entrega);
         if (b64Recibe)  fd.append('firma_recibe',  b64Recibe);
 
-        router.post(route('flota.actas-taller.store'), fd as any, {
+        router.post(route('flota.actas-taller.store'), fd as unknown as Record<string, unknown>, {
             forceFormData: true,
             onError:  (errs) => { setErrors(errs); setProcessing(false); },
             onFinish: () => setProcessing(false),

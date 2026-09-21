@@ -73,7 +73,7 @@ export default function AcisIndex({
     useEffect(() => {
         if (isFirst.current) { isFirst.current = false; return; }
         router.get(route('seguridad.acis.index'), debouncedForm, { preserveState: true, replace: true });
-    }, [JSON.stringify(debouncedForm)]);
+    }, [debouncedForm]);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>

@@ -97,7 +97,7 @@ export function SubirMaterialDialog({
         } else {
             reset();
         }
-    }, [open, materialEditar]);
+    }, [open, materialEditar, clearErrors, reset, setData]);
 
     const handleSubmit: FormEventHandler = (e) => {
         e.preventDefault();

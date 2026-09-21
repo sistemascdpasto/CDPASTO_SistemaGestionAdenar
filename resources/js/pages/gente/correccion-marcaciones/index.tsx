@@ -101,19 +101,6 @@ interface RegistroRow {
     created_at: string;
 }
 
-interface PreviewRow {
-    numero_fila: number;
-    identificacion: string;
-    fecha: string | null;
-    hora: string | null;
-    tipo: string | null;
-    centro_costo: string | null;
-    comentario: string | null;
-    nombre_completo: string | null;
-    cargo: string | null;
-    colaborador_encontrado: boolean;
-    error_validacion: string | null;
-}
 
 interface PaginationLink {
     url: string | null;
@@ -159,7 +146,7 @@ interface PageProps {
     indicadores: Indicadores;
     totales_por_fecha: PorFecha[];
     catalogos: Catalogos;
-    filters: Record<string, any>;
+    filters: Record<string, unknown>;
     hay_datos: boolean;
 }
 
@@ -202,12 +189,12 @@ export default function CorreccionMarcacionesIndex() {
             const t = setTimeout(() => setFlashMsg(undefined), 7000);
             return () => clearTimeout(t);
         }
-    }, [props.flash?.status?.message]);
+    }, [props.flash?.status]);
 
     // Aplicar filtros de inmediato (router.get)
     const aplicarFiltros = useMemo(
-        () => debounce((override?: Partial<Record<string, any>>) => {
-            const q: Record<string, any> = {
+        () => debounce((override?: Partial<Record<string, unknown>>) => {
+            const q: Record<string, unknown> = {
                 fecha_desde: fechaDesde || '',
                 fecha_hasta: fechaHasta || '',
                 identificacion: buscarIdent || '',
@@ -286,11 +273,11 @@ export default function CorreccionMarcacionesIndex() {
                 setArchivoTemporal(null);
             }
             setPreviewDialog(true);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('[CorreccionMarcaciones] error preview:', err);
             setPreviewResumen({
                 ok: false,
-                error: err?.message ?? 'Error al procesar el archivo.',
+                error: err instanceof Error ? err.message : 'Error al procesar el archivo.',
             });
             setPreviewDialog(true);
         } finally {
@@ -863,9 +850,9 @@ export default function CorreccionMarcacionesIndex() {
 
 // ─────────── Utilidades internas ───────────────────────────────────────────
 
-function debounce<T extends (...args: any[]) => any>(fn: T, delay: number) {
+function debounce<T extends (...args: unknown[]) => unknown>(fn: T, delay: number) {
     let t: ReturnType<typeof setTimeout> | null = null;
-    return function (this: any, ...args: Parameters<T>) {
+    return function (this: unknown, ...args: Parameters<T>) {
         if (t) clearTimeout(t);
         t = setTimeout(() => fn.apply(this, args), delay);
     };

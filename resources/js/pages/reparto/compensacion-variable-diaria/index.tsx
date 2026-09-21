@@ -199,11 +199,11 @@ const COLUMNAS: [keyof CompensacionDiariaRow, string, boolean][] = [
     ['meta_2', 'Meta < 2,6%', true],
 ];
 
-const LS_COLS = 'cvd_cols_v1';
+
 
 // ─── KpiCard (estilo Adherencia al Tiempo, colores paleta CV) ────────────────
 function KpiCard({ label, value, sub, icon: Icon, color, spark, sparkColor }:
-    { label: string; value: string; sub?: string; icon: any; color: string; spark?: number[]; sparkColor?: string }) {
+    { label: string; value: string; sub?: string; icon?: React.ElementType; color: string; spark?: number[]; sparkColor?: string }) {
     return (
         <div className="bg-card rounded-xl border border-sidebar-border/70 dark:border-sidebar-border shadow-sm p-4 flex flex-col justify-between gap-2">
             <div className="flex items-start justify-between">
@@ -397,7 +397,7 @@ function GraficoBarrasMensual({ data }: { data: TotalesMensuales }) {
                     plugins: { legend: { display: false } },
                     scales: {
                         x: { ticks: { color: '#6b7280', font: { size: 8 } }, grid: { display: false } },
-                        y: { beginAtZero: true, ticks: { color: '#9ca3af', font: { size: 8 }, callback: (v: any) => '$' + Number(v).toLocaleString('es-CO', { maximumFractionDigits: 0, notation: 'compact' }), maxTicksLimit: 5 }, grid: { color: 'rgba(0,0,0,.04)' } }
+                        y: { beginAtZero: true, ticks: { color: '#9ca3af', font: { size: 8 }, callback: (v: string | number) => '$' + Number(v).toLocaleString('es-CO', { maximumFractionDigits: 0, notation: 'compact' }), maxTicksLimit: 5 }, grid: { color: 'rgba(0,0,0,.04)' } }
                     }
                 }} />
             </div>
@@ -496,7 +496,7 @@ export default function CompensacionVariableDiariaIndex() {
     const [hiddenCols, setHiddenCols] = useState<Set<string>>(() => {
         try { const s = localStorage.getItem(LS_HIDE_COLS); return s ? new Set(JSON.parse(s)) : new Set(COLUMNAS.filter(([,, h]) => !h).map(([k]) => k)); } catch { return new Set(); }
     });
-    useEffect(() => { try { localStorage.setItem(LS_HIDE_COLS, JSON.stringify(Array.from(hiddenCols))); } catch {} }, [hiddenCols]);
+    useEffect(() => { try { localStorage.setItem(LS_HIDE_COLS, JSON.stringify(Array.from(hiddenCols))); } catch { /* empty */ } }, [hiddenCols]);
     const toggleCol = (k: string) => { const next = new Set(hiddenCols); if (next.has(k)) next.delete(k); else next.add(k); setHiddenCols(next); };
     const [colsModalOpen, setColsModalOpen] = useState(false);
     const [drawerOpen, setDrawerOpen] = useState(false);

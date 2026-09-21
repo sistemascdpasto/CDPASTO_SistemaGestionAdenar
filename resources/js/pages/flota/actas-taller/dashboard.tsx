@@ -39,7 +39,7 @@ function KpiCard({ label, value, sub, icon: Icon, color }: {
 }
 
 export default function ActasTallerDashboard({ kpis, novedades_por_mes, novedades_por_tipo, vehiculos_mas_novedades, filters }: {
-    kpis: any; novedades_por_mes: any[]; novedades_por_tipo: any[]; vehiculos_mas_novedades: any[];
+    kpis: Record<string, unknown>; novedades_por_mes: Record<string, unknown>[]; novedades_por_tipo: Record<string, unknown>[]; vehiculos_mas_novedades: Record<string, unknown>[];
     filters: { desde: string; hasta: string };
 }) {
     const [desde, setDesde] = useState(filters.desde);
@@ -153,7 +153,7 @@ export default function ActasTallerDashboard({ kpis, novedades_por_mes, novedade
                                         <Pie data={novedades_por_tipo} dataKey="total" nameKey="categoria" cx="50%" cy="50%" outerRadius={80}>
                                             {novedades_por_tipo.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                                         </Pie>
-                                        <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} formatter={(v: any, n: any) => [`${v}`, n]} />
+                                        <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} formatter={(v: unknown, n: unknown) => [`${v}`, n]} />
                                     </PieChart>
                                 </ResponsiveContainer>
                                 <div className="flex-1 space-y-1.5">

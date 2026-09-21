@@ -124,7 +124,7 @@ export function CrearCarpetaDialog({
         }
         // Al desmontar el componente, libera cualquier URL de objeto pendiente
         return () => liberarObjectUrl();
-    }, [open, carpetaEditar, parentId]);
+    }, [open, carpetaEditar, parentId, clearErrors, reset, setData]);
 
     const handleImageChange = (file: File | null) => {
         setData('portada', file);

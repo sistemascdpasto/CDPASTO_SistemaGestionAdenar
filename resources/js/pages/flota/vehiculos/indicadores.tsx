@@ -153,7 +153,7 @@ export default function VehiculosIndicadores({ kpis, cambios_por_mes, ranking_in
                                         <Pie data={disponibilidadPie} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80}>
                                             {disponibilidadPie.map((item, i) => <Cell key={i} fill={item.color} />)}
                                         </Pie>
-                                        <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} formatter={(v: any, n: any) => [`${v}`, n]} />
+                                        <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} formatter={(v: unknown, n: unknown) => [`${v}`, n]} />
                                     </PieChart>
                                 </ResponsiveContainer>
                                 <div className="flex-1 space-y-1.5">

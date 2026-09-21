@@ -147,7 +147,7 @@ function Spark({ data, color = '#22c55e', h = 32, w = 100 }: { data: number[]; c
 
 // ─── KPI Card ──────────────────────────────────────────────────────────────────
 function KpiCard({ label, value, sub, icon: Icon, color, spark, sparkColor }:
-    { label: string; value: string; sub?: string; icon: any; color: string; spark?: number[]; sparkColor?: string }) {
+    { label: string; value: string; sub?: string; icon: React.ElementType; color: string; spark?: number[]; sparkColor?: string }) {
     return (
         <div className="bg-card rounded-xl border border-sidebar-border/70 dark:border-sidebar-border shadow-sm p-4 flex flex-col justify-between gap-2">
             <div className="flex items-start justify-between">
@@ -329,7 +329,6 @@ function PlacaMultiSelect({
 }: { todas: string[]; seleccionadas: string[]; onChange: (v: string[]) => void }) {
     const [open,    setOpen]    = useState(false);
     const [buscar,  setBuscar]  = useState('');
-    const ref = useState<HTMLDivElement | null>(null);
 
     const filtradas = todas.filter(p =>
         buscar === '' || p.toLowerCase().includes(buscar.toLowerCase())
@@ -500,9 +499,9 @@ export default function IndicadoresTiempoIndex({
             legend: { display: true, position: 'bottom', labels: { boxWidth: 10, font: { size: 10 }, color: '#6b7280' } },
             tooltip: {
                 callbacks: {
-                    label: (ctx: any) =>
+                    label: (ctx: TooltipItem<'bar' | 'line'>) =>
                         ` ${ctx.dataset.label}: ${ctx.parsed.y}${ctx.dataset.yAxisID === 'y' ? '%' : ''}`,
-                    afterBody: (items: any[]) => {
+                    afterBody: (items: TooltipItem<'bar' | 'line'>[]) => {
                         const idx   = items[0]?.dataIndex;
                         const punto = por_dia[idx];
                         if (!punto) return [];
@@ -521,7 +520,7 @@ export default function IndicadoresTiempoIndex({
             },
         },
         scales: {
-            y:  { min: 0, max: 100, position: 'left',  grid: { color: 'rgba(0,0,0,.04)' }, ticks: { color: '#9ca3af', font: { size: 10 }, callback: (v: any) => `${v}%` } },
+            y:  { min: 0, max: 100, position: 'left',  grid: { color: 'rgba(0,0,0,.04)' }, ticks: { color: '#9ca3af', font: { size: 10 }, callback: (v: number | string) => `${v}%` } },
             y2: { min: 0, position: 'right', grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 10 } } },
             x:  { grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 10 }, maxRotation: 45 } },
         },
@@ -588,7 +587,7 @@ export default function IndicadoresTiempoIndex({
                 callbacks: {
                     label: (ctx: TooltipItem<'bar'>) =>
                         ` Promedio: ${ctx.parsed.y}% · ${patron_dow[ctx.dataIndex]?.total} jornadas`,
-                    afterBody: (items: any[]) => {
+                    afterBody: (items: TooltipItem<'bar'>[]) => {
                         const idx   = items[0]?.dataIndex;
                         const punto = patron_dow[idx];
                         if (!punto) return [];
@@ -607,13 +606,13 @@ export default function IndicadoresTiempoIndex({
             },
         },
         scales: {
-            y: { min: 0, max: 100, ticks: { color: '#9ca3af', font: { size: 10 }, callback: (v: any) => `${v}%` }, grid: { color: 'rgba(0,0,0,.04)' } },
+            y: { min: 0, max: 100, ticks: { color: '#9ca3af', font: { size: 10 }, callback: (v: number | string) => `${v}%` }, grid: { color: 'rgba(0,0,0,.04)' } },
             x: { grid: { display: false }, ticks: { color: '#6b7280', font: { size: 11 } } },
         },
     };
 
     // ── Pareto ──────────────────────────────────────────────────────────────
-    const paretoData: any = {
+    const paretoData: ChartOptions<'bar'> | any = {
         labels: pareto.map(p => p.placa ? `${p.nombre || p.documento} (${p.placa})` : (p.nombre || p.documento)),
         datasets: [
             {
@@ -641,7 +640,7 @@ export default function IndicadoresTiempoIndex({
         },
         scales: {
             y:  { position: 'left',  ticks: { color: '#9ca3af', font: { size: 10 } }, grid: { color: 'rgba(0,0,0,.04)' } },
-            y2: { position: 'right', min: 0, max: 100, grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 10 }, callback: (v: any) => `${v}%` } },
+            y2: { position: 'right', min: 0, max: 100, grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 10 }, callback: (v: number | string) => `${v}%` } },
             x:  { grid: { display: false }, ticks: { color: '#6b7280', font: { size: 9 }, maxRotation: 45 } },
         },
     };
@@ -674,8 +673,8 @@ export default function IndicadoresTiempoIndex({
             legend: { display: true, position: 'bottom', labels: { boxWidth: 10, font: { size: 10 }, color: '#6b7280' } },
         },
         scales: {
-            y:  { min: 0, max: 100, position: 'left',  ticks: { color: '#9ca3af', font: { size: 10 }, callback: (v: any) => `${v}%` }, grid: { color: 'rgba(0,0,0,.04)' } },
-            y2: { min: 0, max: 100, position: 'right', ticks: { color: '#9ca3af', font: { size: 10 }, callback: (v: any) => `${v}%` }, grid: { display: false } },
+            y:  { min: 0, max: 100, position: 'left',  ticks: { color: '#9ca3af', font: { size: 10 }, callback: (v: number | string) => `${v}%` }, grid: { color: 'rgba(0,0,0,.04)' } },
+            y2: { min: 0, max: 100, position: 'right', ticks: { color: '#9ca3af', font: { size: 10 }, callback: (v: number | string) => `${v}%` }, grid: { display: false } },
             x:  { grid: { display: false }, ticks: { color: '#6b7280', font: { size: 10 } } },
         },
     };

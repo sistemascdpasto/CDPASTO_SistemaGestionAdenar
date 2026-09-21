@@ -72,8 +72,8 @@ export default function ActasTallerIndex({ actas, vehiculos, filters }: Props) {
     const [confirmId, setConfirmId] = useState<number | null>(null);
 
     // Flash de éxito tras crear o eliminar
-    const { props } = usePage<{ flash?: { status?: string } }>();
-    const flashStatus = (props as any).flash?.status ?? (props as any).status ?? null;
+    const { props } = usePage<{ flash?: { status?: string }; status?: string }>();
+    const flashStatus = props.flash?.status ?? props.status ?? null;
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
     useEffect(() => {
         if (flashStatus) setSuccessMsg(flashStatus);

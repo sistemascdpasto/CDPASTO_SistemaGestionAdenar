@@ -118,7 +118,7 @@ export default function AlertasVelocidadCurvaIndex({ alertas, placas, filters }:
         setIsUploading(true);
         const fd = new FormData();
         fd.append('archivo', file);
-        router.post(route('reparto.alertas-velocidad-curva.store'), fd as any, {
+        router.post(route('reparto.alertas-velocidad-curva.store'), fd as unknown as Record<string, unknown>, {
             onSuccess: () => { setIsUploading(false); if (fileInputRef.current) fileInputRef.current.value = ''; },
             onError:   () => setIsUploading(false),
         });
@@ -133,7 +133,7 @@ export default function AlertasVelocidadCurvaIndex({ alertas, placas, filters }:
         setFormData(a); setIsEditing(true); setEditingId(a.id); setShowModal(true);
     };
 
-    const handleFormChange = (key: keyof Alerta, value: any) =>
+    const handleFormChange = (key: keyof Alerta, value: unknown) =>
         setFormData((prev) => ({ ...prev, [key]: value }));
 
     const handleSaveAlerta = () => {

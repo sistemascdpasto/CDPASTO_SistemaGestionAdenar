@@ -290,7 +290,7 @@ export default function ChecklistImport({ registros, placas, filters, flash, dup
             // Guardar en localStorage inmediatamente
             try {
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(next)));
-            } catch {}
+            } catch { /* empty */ }
             return next;
         });
     };
@@ -324,13 +324,13 @@ export default function ChecklistImport({ registros, placas, filters, flash, dup
         setIsUploading(true);
         const fd = new FormData();
         fd.append('archivo', file);
-        router.post(route('reparto.checklist.import.store'), fd as any, {
+        router.post(route('reparto.checklist.import.store'), fd as unknown as Record<string, unknown>, {
             onSuccess: () => { setIsUploading(false); if (fileInputRef.current) fileInputRef.current.value = ''; },
             onError:   () => setIsUploading(false),
         });
     };
 
-    const fmt = (campo: keyof Registro, val: any): string => {
+    const fmt = (campo: keyof Registro, val: unknown): string => {
         if (val === null || val === undefined || val === '') return '—';
 
         // Fechas → dd/mm/yyyy  (soporta "2026-01-08", "2026-01-08 00:00:00" y "2026-01-08T00:00:00.000000Z")

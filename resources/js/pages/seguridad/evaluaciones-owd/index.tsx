@@ -122,7 +122,7 @@ export default function EvaluacionesOwdIndex({
     useEffect(() => {
         if (isFirst.current) { isFirst.current = false; return; }
         router.get(route('seguridad.evaluaciones-owd.index'), debouncedForm, { preserveState: true, replace: true });
-    }, [JSON.stringify(debouncedForm)]);
+    }, [debouncedForm]);
 
     const limpiarFiltros = () => {
         setForm(vacio);

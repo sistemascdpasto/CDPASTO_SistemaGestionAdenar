@@ -347,7 +347,7 @@ export function GraficoRechazosPorDia({
                 bodyColor: '#ffffff',
                 padding: 8,
                 callbacks: {
-                    label: (ctx: any) => `Rechazos: ${ctx.formattedValue}`,
+                    label: (ctx: { formattedValue: string }) => `Rechazos: ${ctx.formattedValue}`,
                 },
             },
         },
@@ -440,7 +440,7 @@ export function GraficoAdherenciaPorDia({
                 titleColor: '#fff',
                 bodyColor: '#fff',
                 padding: 8,
-                callbacks: { label: (ctx: any) => `Adherencia: ${ctx.formattedValue}%` },
+                callbacks: { label: (ctx: { formattedValue: string }) => `Adherencia: ${ctx.formattedValue}%` },
             },
         },
         scales: {
@@ -525,7 +525,7 @@ export function GraficoPorcentajeRechazosPorDia({
                 titleColor: '#fff',
                 bodyColor: '#fff',
                 padding: 8,
-                callbacks: { label: (ctx: any) => `% Rechazos: ${ctx.formattedValue}%` },
+                callbacks: { label: (ctx: { formattedValue: string }) => `% Rechazos: ${ctx.formattedValue}%` },
             },
         },
         scales: {
@@ -672,9 +672,9 @@ export function RadarPagosMensuales({
                 boxPadding: 4,
                 usePointStyle: true,
                 callbacks: {
-                    label: (context: any) => {
+                    label: (context: { dataset: { label?: string }; raw: unknown }) => {
                         const label = context.dataset.label || '';
-                        const val = formatCurrency(context.raw);
+                        const val = formatCurrency(context.raw as number);
                         return ` ${label}: ${val}`;
                     },
                 },
@@ -1076,9 +1076,9 @@ export default function CompensacionVariableIndex({
                     const wb = XLSX.read(bstr, { type: 'binary' });
                     const wsname = wb.SheetNames[0];
                     const ws = wb.Sheets[wsname];
-                    const parsedData: any[] = XLSX.utils.sheet_to_json(ws, { header: 1 });
+                    const parsedData: unknown[] = XLSX.utils.sheet_to_json(ws, { header: 1 });
                     if (parsedData.length > 0) {
-                        const headers = (parsedData[0] || []).map((h: any) => String(h ?? '').trim());
+                        const headers = ((parsedData as unknown[][])[0] || []).map((h: unknown) => String(h ?? '').trim());
                         const rowCount = Math.max(0, parsedData.length - 1);
 
                         // Find the Identificador column index
@@ -1227,7 +1227,7 @@ export default function CompensacionVariableIndex({
                             Limpiar Datos
                         </Button>
                         <Button variant="outline" size="sm" className="h-8 text-xs" asChild>
-                            <a href={route('reparto.compensacion-variable.exportar', formFilters as any)}>
+                            <a href={route('reparto.compensacion-variable.exportar', formFilters as unknown as Record<string, string>)}>
                                 <Download className="size-3.5 mr-1" />
                                 Exportar CSV
                             </a>

@@ -73,7 +73,7 @@ export default function EvaluacionesOwdIncumplimientos({
     useEffect(() => {
         if (isFirst.current) { isFirst.current = false; return; }
         router.get(route('seguridad.evaluaciones-owd.incumplimientos'), debouncedForm, { preserveState: true, replace: true });
-    }, [JSON.stringify(debouncedForm)]);
+    }, [debouncedForm]);
 
     const limpiarFiltros = () => {
         setForm(vacio);

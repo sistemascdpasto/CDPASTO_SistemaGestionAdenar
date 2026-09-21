@@ -196,7 +196,7 @@ interface PortalConfig {
 
 export default function CapacitacionesAdminIndex({
     carpetas = [],
-    recientes = [],
+    _recientes = [],
     distribucionEstados = [],
     colaboradores = [],
     colaboradoresResumen = { total: 0, completados: 0, en_proceso: 0, sin_actividad: 0 },
@@ -208,7 +208,7 @@ export default function CapacitacionesAdminIndex({
     filters = {},
 }: {
     carpetas?: Carpeta[];
-    recientes?: MaterialReciente[];
+    _recientes?: MaterialReciente[];
     distribucionEstados?: DistribucionItem[];
     colaboradores?: ColaboradorMetrica[];
     colaboradoresResumen?: {
@@ -222,7 +222,7 @@ export default function CapacitacionesAdminIndex({
     graficaActividad?: GraficaActividadItem[];
     portalConfig?: PortalConfig;
     carpetaCarruselId?: number;
-    filters?: any;
+    filters?: Record<string, unknown>;
 }) {
     // Asignar colaboradores recibidos del backend a colaboradoresDetalle para uso interno
     const colaboradoresDetalle = colaboradores || [];
@@ -267,7 +267,7 @@ export default function CapacitacionesAdminIndex({
         fd.append('titulo_hero', heroTitulo);
         fd.append('subtitulo_hero', heroSubtitulo);
         if (heroImagen) fd.append('imagen_hero', heroImagen);
-        router.post(route('capacitaciones.portal-config.update'), fd as any, {
+        router.post(route('capacitaciones.portal-config.update'), fd as unknown as Record<string, unknown>, {
             forceFormData: true,
             onFinish: () => setHeroGuardando(false),
             onSuccess: () => setHeroOpen(false),
@@ -346,7 +346,7 @@ export default function CapacitacionesAdminIndex({
         });
     };
 
-    const cambiarFiltroEstado = (nuevoEstado?: any) => {
+    const cambiarFiltroEstado = (nuevoEstado?: Record<string, unknown> | string) => {
         let key = 'todos';
         if (typeof nuevoEstado === 'string') {
             key = nuevoEstado;
@@ -786,7 +786,7 @@ export default function CapacitacionesAdminIndex({
                                 </span>
                                 <Select
                                     value={ordenamientoTabla}
-                                    onValueChange={(val) => setOrdenamientoTabla(val as any)}
+                                    onValueChange={(val) => setOrdenamientoTabla(val as 'critico_a_completo' | 'completo_a_critico' | 'nombre')}
                                 >
                                     <SelectTrigger className="h-8 text-xs w-[190px]">
                                         <SelectValue />

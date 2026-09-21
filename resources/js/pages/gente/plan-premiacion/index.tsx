@@ -127,12 +127,8 @@ const parseCargosFilter = (filterStr?: string): string[] => {
     return filterStr.split(',').map((s) => s.trim()).filter(Boolean);
 };
 
-const parseMesesChecklistFilter = (filterStr?: string): number[] => {
-    if (!filterStr) return [];
-    return filterStr.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => n >= 1 && n <= 12);
-};
 
-export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peores2 = [], cargos = [], filters, puede_editar = false, umbral_checklist = 90 }: Props) {
+export default function PlanPremiacionIndex({ colaboradores, _resumen, top3, peores2 = [], cargos = [], filters, puede_editar = false, _umbral_checklist = 90 }: Props) {
     const [mes, setMes] = useState<number>(filters.mes || new Date().getMonth() + 1);
     const [anio, setAnio] = useState<number>(filters.anio || new Date().getFullYear());
     const [search, setSearch] = useState<string>(filters.search || '');
@@ -231,7 +227,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
 
     const handlePageSizeInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter') {
-            (e.target as HTMLInputElement).blur();
+            void (e.target as HTMLInputElement).blur();
         }
     };
 
@@ -270,7 +266,7 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
         handleFilter(mes, a, search, estado, selectedCargos);
     };
 
-    const handleEstadoChange = (val: string) => {
+    const _handleEstadoChange = (val: string) => {
         setEstado(val);
         handleFilter(mes, anio, search, val, selectedCargos);
     };
@@ -1221,6 +1217,3 @@ export default function PlanPremiacionIndex({ colaboradores, resumen, top3, peor
     );
 }
 
-function roundNum(num: number): number {
-    return Math.round(num * 10) / 10;
-}

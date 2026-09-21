@@ -63,7 +63,20 @@ function SeccionCard({ title, children }: { title: string; children: React.React
 
 // ─── Mapeo novedad del backend → NovedadLocal ─────────────────────────────────
 
-function toLocal(nov: any): NovedadLocal {
+interface BackendNovedad {
+    id?: number;
+    titulo?: string;
+    descripcion?: string;
+    categoria?: string;
+    prioridad?: string;
+    estado?: string;
+    responsable?: string;
+    fecha_reporte?: string;
+    fecha_solucion?: string;
+    observacion_solucion?: string;
+}
+
+function toLocal(nov: BackendNovedad): NovedadLocal {
     return {
         id:                   nov.id ?? null,
         titulo:               nov.titulo ?? '',
@@ -82,7 +95,40 @@ function toLocal(nov: any): NovedadLocal {
 
 // ─── Página ───────────────────────────────────────────────────────────────────
 
-interface Props { acta: any; vehiculos: string[]; colaboradores: any[] }
+interface Props { 
+    acta: {
+        id: number;
+        numero_acta: string;
+        placa?: string;
+        fecha_entrega_raw?: string;
+        fecha_entrega?: string;
+        fecha_estimada_solucion_raw?: string;
+        fecha_estimada_solucion?: string;
+        kilometraje_entrada?: string | number;
+        combustible?: string | number;
+        motivo_ingreso?: string;
+        quien_reporta?: string;
+        estado_acta?: string;
+        nombre_entrega?: string;
+        cargo_entrega?: string;
+        identificacion_entrega?: string;
+        telefono_entrega?: string;
+        nombre_recibe?: string;
+        cargo_recibe?: string;
+        novedades?: BackendNovedad[];
+        taller?: string;
+        fecha_cierre?: string;
+        kilometraje_salida?: string | number;
+        diagnostico_taller?: string;
+        solucion_realizada?: string;
+        observaciones?: string;
+        evidencias?: { id: number; url: string; etiqueta?: string }[];
+        firma_entrega?: string;
+        firma_recibe?: string;
+    }; 
+    vehiculos: string[]; 
+    colaboradores: Record<string, unknown>[]; 
+}
 
 export default function ActasTallerShow({ acta, vehiculos }: Props) {
 
@@ -92,8 +138,8 @@ export default function ActasTallerShow({ acta, vehiculos }: Props) {
     const [errors,          setErrors]          = useState<Record<string, string>>({});
 
     // Flash
-    const { props } = usePage<{ flash?: { status?: string } }>();
-    const flashStatus = (props as any).flash?.status ?? (props as any).status ?? null;
+    const { props } = usePage<{ flash?: { status?: string }; status?: string }>();
+    const flashStatus = props.flash?.status ?? props.status ?? null;
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
     useEffect(() => {
         if (flashStatus) {
@@ -113,9 +159,9 @@ export default function ActasTallerShow({ acta, vehiculos }: Props) {
     const [quienReporta,  setQuienReporta]  = useState(acta.quien_reporta ?? '');
     const [estadoActa,    setEstadoActa]    = useState(acta.estado_acta ?? 'en_taller');
     const [nombreEntrega, setNombreEntrega] = useState(acta.nombre_entrega ?? '');
-    const [cargoEntrega,  setCargoEntrega]  = useState(acta.cargo_entrega ?? '');
-    const [idEntrega,     setIdEntrega]     = useState(acta.identificacion_entrega ?? '');
-    const [telEntrega,    setTelEntrega]    = useState(acta.telefono_entrega ?? '');
+    const [_cargoEntrega,  setCargoEntrega]  = useState(acta.cargo_entrega ?? '');
+    const [_idEntrega,     setIdEntrega]     = useState(acta.identificacion_entrega ?? '');
+    const [_telEntrega,    setTelEntrega]    = useState(acta.telefono_entrega ?? '');
     const [nombreRecibe,  setNombreRecibe]  = useState(acta.nombre_recibe ?? '');
     const [novedades,     setNovedades]     = useState<NovedadLocal[]>((acta.novedades ?? []).map(toLocal));
 

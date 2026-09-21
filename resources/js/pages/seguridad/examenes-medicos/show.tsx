@@ -16,7 +16,7 @@ import { Head, router, useForm } from '@inertiajs/react';
 import { Ban, CalendarClock, CheckCircle2, Download, FileCheck2, FileText, History, LoaderCircle, Pencil, Play, Plus, Stethoscope, Trash2, User } from 'lucide-react';
 import { FormEventHandler, useEffect, useState } from 'react';
 
-const TIPO_LABELS: Record<string, string> = { ingreso: 'Ingreso', periodico: 'Periódico', egreso: 'Egreso' };
+
 
 const ESTADO_LABELS: Record<string, string> = {
     sin_iniciar: 'Sin Iniciar',
@@ -767,7 +767,7 @@ function SeguimientosDialog({
     const [deletingId, setDeletingId] = useState<number | null>(null);
 
     const seguimientos = evaluacionRecomendacion.seguimientos;
-    const ultimoSeguimiento = seguimientos.length > 0 ? seguimientos[seguimientos.length - 1] : null;
+
 
     const emptyForm = {
         fecha_seguimiento: '',
@@ -840,7 +840,7 @@ function SeguimientosDialog({
             setEditingSoportePath(null);
             reset();
         }
-    }, [open]);
+    }, [open, reset]);
 
     const handleOpenChange = (isOpen: boolean) => {
         setOpen(isOpen);

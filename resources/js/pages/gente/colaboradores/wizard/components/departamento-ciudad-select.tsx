@@ -71,7 +71,7 @@ export function DepartamentoCiudadSelect({ label, value, onValueChange, error, d
         return () => {
             cancelado = true;
         };
-    }, [departamentoSeleccionado?.id]);
+    }, [departamentoSeleccionado]);
 
     return (
         <div className="grid gap-2">

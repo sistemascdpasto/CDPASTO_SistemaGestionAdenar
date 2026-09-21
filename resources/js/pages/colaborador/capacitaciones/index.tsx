@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { FormEventHandler, useEffect, useMemo, useRef, useState } from 'react';
 
-const breadcrumbs: BreadcrumbItem[] = [
+const _breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
     { title: 'Mi Centro de Capacitaciones', href: '/portal/capacitaciones' },
 ];
@@ -130,6 +130,7 @@ function CarruselMedia({ items }: { items: MediaItem[] }) {
         if (total <= 1 || playing) return;
         const t = setTimeout(() => goNext(), 5000);
         return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [idx, total, playing]);
 
     if (total === 0) return null;
@@ -378,9 +379,10 @@ export default function CentroCapacitacionesIndex({
         return carpetas.filter((c) =>
             c.nombre.toLowerCase().includes(q) || c.descripcion?.toLowerCase().includes(q),
         );
+    }, [carpetas, busqueda, resultadosBusqueda]);
 
     // Items del carrusel: destacadas mapeadas a MediaItem, ordenadas: video primero, imag despues
-    const itemsCarrusel = useMemo((): MediaItem[] => {
+    const _itemsCarrusel = useMemo((): MediaItem[] => {
         const asMedia = (d: MaterialItem): MediaItem => ({
             id: d.id,
             titulo: d.titulo,
@@ -399,7 +401,6 @@ export default function CentroCapacitacionesIndex({
             ...destacadas.filter(d => !esVid(d) && !esImg(d)).map(asMedia),
         ];
     }, [destacadas]);
-    }, [carpetas, busqueda, resultadosBusqueda]);
 
     // Stats dinámicas
     const totalMateriales = carpetas.reduce((s, c) => s + c.total_materiales, 0);

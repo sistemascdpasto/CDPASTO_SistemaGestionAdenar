@@ -45,13 +45,20 @@ const PILARES = [
 
 const PAGE_SIZE = 20;
 
-function CustomTooltip({ active, payload, label }: any) {
+interface TooltipPayload {
+    value?: number;
+    dataKey?: string;
+    name?: string;
+    color?: string;
+}
+
+function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: TooltipPayload[]; label?: string }) {
     if (!active || !payload?.length) return null;
-    const total = payload.reduce((acc: number, p: any) => acc + (p.value ?? 0), 0);
+    const total = payload.reduce((acc: number, p) => acc + (p.value ?? 0), 0);
     return (
         <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-lg min-w-[200px]">
             <p className="mb-2 text-xs font-bold text-foreground leading-tight">{label}</p>
-            {payload.map((p: any) => (
+            {payload.map((p) => (
                 <div key={p.dataKey} className="flex items-center justify-between gap-4 text-xs">
                     <span className="flex items-center gap-1.5 text-muted-foreground">
                         <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: p.color }} />

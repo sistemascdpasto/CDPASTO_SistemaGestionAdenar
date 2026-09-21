@@ -27,7 +27,7 @@ interface Seccion {
 
 function SeccionCard({ seccion }: { seccion: Seccion }) {
     const fileRef = useRef<HTMLInputElement>(null);
-    const form = useForm<{ imagen: File | null }>({ imagen: null });
+
 
     const subir = (file: File) => {
         const data = new FormData();
