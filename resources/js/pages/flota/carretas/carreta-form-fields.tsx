@@ -5,35 +5,35 @@ import { Label } from '@/components/ui/label';
 import { type InertiaFormProps } from '@inertiajs/react';
 
 export interface CarretaFormData {
-    placa: string;
+    identificacion: string;
     tipo: string;
     is_active: boolean;
     [key: string]: string | boolean;
 }
 
 interface CarretaFormFieldsProps extends Pick<InertiaFormProps<CarretaFormData>, 'data' | 'setData' | 'errors' | 'processing'> {
-    readonlyPlaca?: boolean;
+    readonlyIdentificacion?: boolean;
 }
 
-export function CarretaFormFields({ data, setData, errors, processing, readonlyPlaca }: CarretaFormFieldsProps) {
+export function CarretaFormFields({ data, setData, errors, processing, readonlyIdentificacion }: CarretaFormFieldsProps) {
     return (
         <div className="max-w-lg space-y-4">
             <div className="grid gap-2">
-                <Label htmlFor="placa">Placa</Label>
-                {readonlyPlaca ? (
+                <Label htmlFor="identificacion">Identificación</Label>
+                {readonlyIdentificacion ? (
                     <div className="border-input bg-muted text-muted-foreground flex h-9 w-full items-center rounded-md border px-3 text-sm">
-                        {data.placa}
+                        {data.identificacion}
                     </div>
                 ) : (
                     <Input
-                        id="placa"
-                        value={data.placa}
-                        onChange={(e) => setData('placa', e.target.value)}
+                        id="identificacion"
+                        value={data.identificacion}
+                        onChange={(e) => setData('identificacion', e.target.value)}
                         disabled={processing}
                         autoFocus
                     />
                 )}
-                <InputError message={errors.placa} />
+                <InputError message={errors.identificacion} />
             </div>
 
             <div className="grid gap-2">

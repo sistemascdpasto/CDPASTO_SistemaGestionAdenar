@@ -20,11 +20,11 @@ class CarretaController extends Controller
         $carretas = Carreta::query()
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($query) use ($search) {
-                    $query->where('placa', 'like', "%{$search}%")
+                    $query->where('identificacion', 'like', "%{$search}%")
                         ->orWhere('tipo', 'like', "%{$search}%");
                 });
             })
-            ->orderBy('placa')
+            ->orderBy('identificacion')
             ->paginate(15)
             ->withQueryString();
 

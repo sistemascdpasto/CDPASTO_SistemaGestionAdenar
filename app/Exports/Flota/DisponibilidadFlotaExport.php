@@ -2,6 +2,7 @@
 
 namespace App\Exports\Flota;
 
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithColumnWidths;
@@ -28,6 +29,7 @@ class DisponibilidadFlotaExport implements FromArray, WithColumnWidths, WithEven
      * @param  array{asignada: int, indisponible: int, disponible: int, porcentaje: float}  $resumenCarretas
      */
     public function __construct(
+        private readonly string $fecha,
         private readonly array $resumenFlota,
         private readonly array $resumenCarretas,
         private readonly Collection $tabla,
@@ -37,7 +39,7 @@ class DisponibilidadFlotaExport implements FromArray, WithColumnWidths, WithEven
     {
         $filas = [
             ['REPORTE DE DISPONIBILIDAD DE FLOTA ADENAR - CD PASTO'],
-            ['Fecha: '.now()->translatedFormat('d/m/Y')],
+            ['Fecha: '.Carbon::parse($this->fecha)->translatedFormat('d/m/Y')],
             [],
             ['FLOTA ASIGNADA', $this->resumenFlota['asignada'], null, 'CARRETAS ASIGNADAS', $this->resumenCarretas['asignada']],
             ['FLOTA INDISPONIBLE', $this->resumenFlota['indisponible'], null, 'CARRETAS INDISPONIBLE', $this->resumenCarretas['indisponible']],

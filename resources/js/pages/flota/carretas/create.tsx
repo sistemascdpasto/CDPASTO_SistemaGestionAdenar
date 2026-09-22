@@ -16,7 +16,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 export default function CreateCarreta() {
     const { data, setData, post, processing, errors } = useForm<CarretaFormData>({
-        placa: '',
+        identificacion: '',
         tipo: '',
         is_active: true,
     });

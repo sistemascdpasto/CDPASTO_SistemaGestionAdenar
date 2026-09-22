@@ -18,7 +18,7 @@ class StoreCarretaRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'placa' => ['required', 'string', 'max:20', Rule::unique('carretas', 'placa')],
+            'identificacion' => ['required', 'string', 'max:20', Rule::unique('carretas', 'identificacion')],
             'tipo' => ['nullable', 'string', 'max:100'],
             'is_active' => ['boolean'],
         ];

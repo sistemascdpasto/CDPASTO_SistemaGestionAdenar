@@ -1,9 +1,11 @@
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head } from '@inertiajs/react';
-import { CalendarDays, FileSpreadsheet, Truck, Wrench } from 'lucide-react';
+import { Head, Link, router } from '@inertiajs/react';
+import { CalendarDays, ChevronLeft, ChevronRight, FileSpreadsheet, History, Truck, Wrench } from 'lucide-react';
 import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -91,15 +93,29 @@ function BloqueDisponibilidad({ titulo, icon: Icon, resumen }: { titulo: string;
 
 export default function DisponibilidadFlotaIndex({
     fecha,
+    fechaFormateada,
+    esHoy,
     resumenFlota,
     resumenCarretas,
     tabla,
 }: {
     fecha: string;
+    fechaFormateada: string;
+    esHoy: boolean;
     resumenFlota: Resumen;
     resumenCarretas: Resumen;
     tabla: FilaTaller[];
 }) {
+    const irAFecha = (nuevaFecha: string) => {
+        router.get(route('flota.disponibilidad.index'), { fecha: nuevaFecha }, { preserveState: true, preserveScroll: true });
+    };
+
+    const sumarDias = (dias: number) => {
+        const d = new Date(fecha + 'T00:00:00');
+        d.setDate(d.getDate() + dias);
+        irAFecha(d.toISOString().slice(0, 10));
+    };
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Disponibilidad de Flota" />
@@ -108,14 +124,49 @@ export default function DisponibilidadFlotaIndex({
                     <div>
                         <h1 className="text-2xl font-bold text-foreground sm:text-3xl">Reporte de Disponibilidad de Flota ADENAR — CD Pasto</h1>
                         <p className="mt-0.5 flex items-center gap-1.5 text-sm text-muted-foreground">
-                            <CalendarDays className="size-4" /> {fecha}
+                            <CalendarDays className="size-4" /> {fechaFormateada}
+                            {esHoy && (
+                                <Badge variant="outline" className="ml-1 text-[10px]">
+                                    Hoy
+                                </Badge>
+                            )}
                         </p>
                     </div>
-                    <Button variant="outline" size="sm" asChild className="gap-1.5">
-                        <a href={route('flota.disponibilidad.exportar-excel')}>
-                            <FileSpreadsheet className="size-4" /> Exportar a Excel
-                        </a>
+                    <div className="flex flex-wrap gap-2">
+                        <Button variant="outline" size="sm" asChild className="gap-1.5">
+                            <Link href={route('flota.disponibilidad.historico')}>
+                                <History className="size-4" /> Ver histórico
+                            </Link>
+                        </Button>
+                        <Button variant="outline" size="sm" asChild className="gap-1.5">
+                            <a href={route('flota.disponibilidad.exportar-excel', { fecha })}>
+                                <FileSpreadsheet className="size-4" /> Exportar a Excel
+                            </a>
+                        </Button>
+                    </div>
+                </div>
+
+                {/* Selector de día */}
+                <div className="flex flex-wrap items-center gap-2 rounded-xl border border-sidebar-border/70 bg-card px-4 py-3 shadow-sm dark:border-sidebar-border">
+                    <Button variant="outline" size="icon" className="size-8" onClick={() => sumarDias(-1)} aria-label="Día anterior">
+                        <ChevronLeft className="size-4" />
                     </Button>
+                    <Input type="date" value={fecha} max={new Date().toISOString().slice(0, 10)} onChange={(e) => irAFecha(e.target.value)} className="h-8 w-40 text-xs" />
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        className="size-8"
+                        onClick={() => sumarDias(1)}
+                        disabled={esHoy}
+                        aria-label="Día siguiente"
+                    >
+                        <ChevronRight className="size-4" />
+                    </Button>
+                    {!esHoy && (
+                        <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => irAFecha(new Date().toISOString().slice(0, 10))}>
+                            Volver a hoy
+                        </Button>
+                    )}
                 </div>
 
                 <div className="grid gap-5 lg:grid-cols-2">
@@ -126,7 +177,7 @@ export default function DisponibilidadFlotaIndex({
                 <div className="rounded-xl border border-sidebar-border/70 bg-card shadow-sm dark:border-sidebar-border overflow-hidden">
                     <div className="border-b border-sidebar-border/70 px-5 py-3 dark:border-sidebar-border">
                         <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                            <Wrench className="size-4" /> Vehículos y carretas actualmente en taller
+                            <Wrench className="size-4" /> Vehículos y carretas en taller — {fechaFormateada}
                         </p>
                     </div>
                     <div className="overflow-x-auto">

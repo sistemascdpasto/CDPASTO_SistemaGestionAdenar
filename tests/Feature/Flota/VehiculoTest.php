@@ -163,19 +163,4 @@ class VehiculoTest extends TestCase
         $this->assertSame(2, $vehiculo->disponibilidadHistorial()->count());
         $this->assertTrue($vehiculo->disponibilidadHistorial()->latest()->first()->disponible);
     }
-
-    public function test_el_dashboard_de_indicadores_de_disponibilidad_carga(): void
-    {
-        $user = $this->actingAsFlota();
-        Vehiculo::create(['placa' => 'IND123', 'is_active' => true]);
-
-        $this->actingAs($user)->get(route('flota.vehiculos.indicadores'))
-            ->assertOk()
-            ->assertInertia(fn ($page) => $page
-                ->component('flota/vehiculos/indicadores')
-                ->has('kpis')
-                ->has('cambios_por_mes')
-                ->has('ranking_incidentes')
-                ->has('novedades_recientes'));
-    }
 }

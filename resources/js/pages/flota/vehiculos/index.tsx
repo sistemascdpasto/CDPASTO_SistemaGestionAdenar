@@ -11,7 +11,7 @@ import AppLayout from '@/layouts/app-layout';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { BarChart3, Plus, Power, Search, Truck } from 'lucide-react';
+import { Plus, Power, Search, Truck } from 'lucide-react';
 import { FormEventHandler, useEffect, useRef, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -112,20 +112,12 @@ export default function VehiculosIndex({ vehiculos, filters }: { vehiculos: Vehi
             <div className="flex h-full flex-1 flex-col gap-6 rounded-xl p-4">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <HeadingSmall title="Documentación de Flota" description="Ficha documental de cada camión: foto, datos y documentos habilitantes." />
-                    <div className="flex gap-2">
-                        <Button variant="outline" asChild>
-                            <Link href={route('flota.vehiculos.indicadores')}>
-                                <BarChart3 className="size-4" />
-                                Indicadores
-                            </Link>
-                        </Button>
-                        <Button asChild>
-                            <Link href={route('flota.vehiculos.create')}>
-                                <Plus className="size-4" />
-                                Nuevo vehículo
-                            </Link>
-                        </Button>
-                    </div>
+                    <Button asChild>
+                        <Link href={route('flota.vehiculos.create')}>
+                            <Plus className="size-4" />
+                            Nuevo vehículo
+                        </Link>
+                    </Button>
                 </div>
 
                 <form onSubmit={submitFilters} className="flex max-w-sm items-center gap-2">

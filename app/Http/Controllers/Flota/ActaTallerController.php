@@ -30,7 +30,7 @@ class ActaTallerController extends Controller
     private function vehiculos(): array
     {
         return Vehiculo::where('is_active', true)->pluck('placa')
-            ->merge(Carreta::where('is_active', true)->pluck('placa'))
+            ->merge(Carreta::where('is_active', true)->pluck('identificacion'))
             ->unique()
             ->sort()
             ->values()

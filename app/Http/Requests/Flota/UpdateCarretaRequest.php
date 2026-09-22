@@ -18,9 +18,9 @@ class UpdateCarretaRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'placa' => [
+            'identificacion' => [
                 'required', 'string', 'max:20',
-                Rule::unique('carretas', 'placa')->ignore($this->route('carreta')),
+                Rule::unique('carretas', 'identificacion')->ignore($this->route('carreta')),
             ],
             'tipo' => ['nullable', 'string', 'max:100'],
             'is_active' => ['boolean'],

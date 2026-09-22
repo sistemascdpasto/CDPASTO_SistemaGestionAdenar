@@ -12,11 +12,6 @@ Route::middleware(['auth', 'active', 'role:Administrador|Flota'])
     ->prefix('modules/flota')
     ->name('flota.')
     ->group(function () {
-        // Antes del resource para que Laravel no la resuelva como
-        // vehiculos/{vehiculo} (comodín del "show").
-        Route::get('vehiculos/indicadores', [VehiculoController::class, 'indicadores'])
-            ->name('vehiculos.indicadores');
-
         // "destroy" se registra aparte con role:Administrador (ver abajo):
         // Flota puede ver/crear/editar/marcar disponibilidad, pero no eliminar.
         Route::resource('vehiculos', VehiculoController::class)
@@ -28,6 +23,8 @@ Route::middleware(['auth', 'active', 'role:Administrador|Flota'])
         // ── Reporte de Disponibilidad de Flota (camiones + carretas) ────────────
         Route::get('disponibilidad', [DisponibilidadFlotaController::class, 'index'])
             ->name('disponibilidad.index');
+        Route::get('disponibilidad/historico', [DisponibilidadFlotaController::class, 'historico'])
+            ->name('disponibilidad.historico');
         Route::get('disponibilidad/exportar-excel', [DisponibilidadFlotaController::class, 'exportarExcel'])
             ->name('disponibilidad.exportar-excel');
 

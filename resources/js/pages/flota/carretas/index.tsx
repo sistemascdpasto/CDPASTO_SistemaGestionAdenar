@@ -21,7 +21,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 interface CarretaRow {
     id: number;
-    placa: string;
+    identificacion: string;
     tipo: string | null;
     is_active: boolean;
     novedad_no_disponible: string | null;
@@ -117,7 +117,7 @@ export default function CarretasIndex({ carretas, filters }: { carretas: Carreta
                 </div>
 
                 <form onSubmit={submitFilters} className="flex max-w-sm items-center gap-2">
-                    <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por placa o tipo..." />
+                    <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por identificación o tipo..." />
                     <Button type="submit" variant="secondary" size="icon" aria-label="Buscar">
                         <Search className="size-4" />
                     </Button>
@@ -127,7 +127,7 @@ export default function CarretasIndex({ carretas, filters }: { carretas: Carreta
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Placa</TableHead>
+                                <TableHead>Identificación</TableHead>
                                 <TableHead>Tipo</TableHead>
                                 <TableHead>Estado</TableHead>
                                 <TableHead className="text-right">Acciones</TableHead>
@@ -143,7 +143,7 @@ export default function CarretasIndex({ carretas, filters }: { carretas: Carreta
                             )}
                             {carretas.data.map((carreta) => (
                                 <TableRow key={carreta.id}>
-                                    <TableCell className="font-medium">{carreta.placa}</TableCell>
+                                    <TableCell className="font-medium">{carreta.identificacion}</TableCell>
                                     <TableCell>{carreta.tipo ?? '—'}</TableCell>
                                     <TableCell>
                                         <Badge variant={carreta.is_active ? 'default' : 'destructive'}>
@@ -179,7 +179,7 @@ export default function CarretasIndex({ carretas, filters }: { carretas: Carreta
                                                         </Button>
                                                     </DialogTrigger>
                                                     <DialogContent>
-                                                        <DialogTitle>¿Eliminar la carreta {carreta.placa}?</DialogTitle>
+                                                        <DialogTitle>¿Eliminar la carreta {carreta.identificacion}?</DialogTitle>
                                                         <DialogDescription>Esta acción elimina la carreta de forma lógica.</DialogDescription>
                                                         <DialogFooter>
                                                             <DialogClose asChild>
@@ -217,7 +217,7 @@ export default function CarretasIndex({ carretas, filters }: { carretas: Carreta
 
             <Dialog open={carretaNoDisponible !== null} onOpenChange={(open) => !open && setCarretaNoDisponible(null)}>
                 <DialogContent>
-                    <DialogTitle>Marcar {carretaNoDisponible?.placa} como no disponible</DialogTitle>
+                    <DialogTitle>Marcar {carretaNoDisponible?.identificacion} como no disponible</DialogTitle>
                     <DialogDescription>Escribe la novedad por la que la carreta queda fuera de servicio.</DialogDescription>
                     <div className="grid gap-1.5 py-2">
                         <Label htmlFor="novedad">Novedad</Label>

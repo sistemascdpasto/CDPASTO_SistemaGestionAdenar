@@ -13,7 +13,7 @@ class Carreta extends Model
     protected $table = 'carretas';
 
     protected $fillable = [
-        'placa',
+        'identificacion',
         'tipo',
         'is_active',
         'novedad_no_disponible',
