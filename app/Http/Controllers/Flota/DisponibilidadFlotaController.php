@@ -67,7 +67,7 @@ class DisponibilidadFlotaController extends Controller
             ->where(function ($q) use ($desdeCarbon) {
                 $q->whereNull('fecha_cierre')->orWhereDate('fecha_cierre', '>=', $desdeCarbon);
             })
-            ->get(['placa', 'fecha_entrega', 'fecha_cierre']);
+            ->get(['placa', 'fecha_entrega', 'fecha_cierre', 'estado_acta', 'updated_at']);
 
         $dias = [];
         $cursor = $desdeCarbon->copy();
@@ -81,7 +81,7 @@ class DisponibilidadFlotaController extends Controller
                     return false;
                 }
 
-                return ! $acta->fecha_cierre || $acta->fecha_cierre->toDateString() > $cursorFecha;
+                return $this->siguioAbiertaEn($acta, $cursorFecha);
             });
 
             $flotaEnTaller = $abiertasEseDia->whereIn('placa', $placasFlota)->pluck('placa')->unique();
@@ -120,15 +120,15 @@ class DisponibilidadFlotaController extends Controller
         $placasFlota = Vehiculo::where('is_active', true)->pluck('placa');
         $identificacionesCarretas = Carreta::where('is_active', true)->pluck('identificacion');
 
+        $fechaString = $fechaCarbon->toDateString();
+
         $actasAbiertas = ActaTaller::where('estado_acta', '!=', ActaTaller::ESTADO_CANCELADA)
             ->whereIn('placa', $placasFlota->merge($identificacionesCarretas))
             ->whereDate('fecha_entrega', '<=', $fechaCarbon)
-            ->where(function ($q) use ($fechaCarbon) {
-                $q->whereNull('fecha_cierre')->orWhereDate('fecha_cierre', '>', $fechaCarbon);
-            })
             ->with('novedades')
             ->orderBy('fecha_entrega')
-            ->get();
+            ->get()
+            ->filter(fn (ActaTaller $acta) => $this->siguioAbiertaEn($acta, $fechaString));
 
         $flotaEnTaller = $actasAbiertas->whereIn('placa', $placasFlota)->pluck('placa')->unique();
         $carretasEnTaller = $actasAbiertas->whereIn('placa', $identificacionesCarretas)->pluck('placa')->unique();
@@ -146,6 +146,27 @@ class DisponibilidadFlotaController extends Controller
         ])->values();
 
         return [$resumenFlota, $resumenCarretas, $tabla];
+    }
+
+    /**
+     * Determina si el acta seguía abierta (ocupando el vehículo/carreta) en
+     * la fecha dada. Usa fecha_cierre cuando está registrada; si el acta ya
+     * no está en_taller pero fecha_cierre quedó vacía (formulario permitía
+     * cerrar sin esa fecha — ver ActaTallerController::update()), usa
+     * updated_at como aproximación de cuándo se cerró, en vez de contarla
+     * como abierta indefinidamente.
+     */
+    private function siguioAbiertaEn(ActaTaller $acta, string $fecha): bool
+    {
+        if ($acta->fecha_cierre) {
+            return $acta->fecha_cierre->toDateString() > $fecha;
+        }
+
+        if ($acta->estado_acta !== ActaTaller::ESTADO_EN_TALLER) {
+            return $acta->updated_at->toDateString() > $fecha;
+        }
+
+        return true;
     }
 
     /**

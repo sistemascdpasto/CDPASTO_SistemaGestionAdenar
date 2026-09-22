@@ -333,6 +333,15 @@ class ActaTallerController extends Controller
             'novedades.*.fecha_solucion' => ['nullable', 'date'],
         ]);
 
+        // Si el acta se cierra o cancela sin traer fecha_cierre, se completa
+        // con "ahora" — de lo contrario queda con fecha_cierre en null pero
+        // ya no "en_taller", lo que hace imposible saber cuándo dejó de
+        // ocupar al vehículo/carreta (afecta el reporte de disponibilidad).
+        if (in_array($data['estado_acta'] ?? null, [ActaTaller::ESTADO_CERRADA, ActaTaller::ESTADO_CANCELADA], true)
+            && empty($data['fecha_cierre'])) {
+            $data['fecha_cierre'] = now();
+        }
+
         DB::transaction(function () use ($data, $request, $actasTaller) {
             $actasTaller->fill($data)->save();
 
