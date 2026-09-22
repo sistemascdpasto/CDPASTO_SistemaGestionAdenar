@@ -10,6 +10,7 @@ import {
     ClipboardCheck,
     ClipboardList,
     Clock,
+    Container,
     Cpu,
     DollarSign,
     FileSpreadsheet,
@@ -188,7 +189,9 @@ export const modules: ModuleDef[] = [
         icon: Car,
         accent: '#2B6CB0',
         submodules: [
+            { title: 'Disponibilidad', slug: 'disponibilidad', icon: BarChart3 },
             { title: 'Documentación', slug: 'vehiculos', icon: Truck },
+            { title: 'Carretas', slug: 'carretas', icon: Container },
             { title: 'Consultas SIMIT', slug: 'simit-consultas', icon: Gavel },
             { title: 'Control de Varadas', slug: 'varadas', icon: Wrench },
             { title: 'Actas de Taller', slug: 'actas-taller', icon: ClipboardList },

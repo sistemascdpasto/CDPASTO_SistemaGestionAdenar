@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Flota\ActaTallerController;
+use App\Http\Controllers\Flota\CarretaController;
+use App\Http\Controllers\Flota\DisponibilidadFlotaController;
 use App\Http\Controllers\Flota\SimitConsultaController;
 use App\Http\Controllers\Flota\VaradaController;
 use App\Http\Controllers\Flota\VehiculoController;
@@ -22,6 +24,19 @@ Route::middleware(['auth', 'active', 'role:Administrador|Flota'])
             ->except(['destroy']);
         Route::patch('vehiculos/{vehiculo}/toggle-activo', [VehiculoController::class, 'toggleActivo'])
             ->name('vehiculos.toggle-activo');
+
+        // ── Reporte de Disponibilidad de Flota (camiones + carretas) ────────────
+        Route::get('disponibilidad', [DisponibilidadFlotaController::class, 'index'])
+            ->name('disponibilidad.index');
+        Route::get('disponibilidad/exportar-excel', [DisponibilidadFlotaController::class, 'exportarExcel'])
+            ->name('disponibilidad.exportar-excel');
+
+        // "destroy" se registra aparte con role:Administrador (ver abajo).
+        Route::resource('carretas', CarretaController::class)
+            ->parameters(['carretas' => 'carreta'])
+            ->except(['destroy', 'show']);
+        Route::patch('carretas/{carreta}/toggle-activo', [CarretaController::class, 'toggleActivo'])
+            ->name('carretas.toggle-activo');
 
         // Solo lectura: los datos los genera la automatizacion SIMIT (ver
         // POST /api/simit/consultas), no se crean/editan desde la web.
@@ -66,4 +81,6 @@ Route::middleware(['auth', 'active', 'role:Administrador'])
     ->group(function () {
         Route::delete('vehiculos/{vehiculo}', [VehiculoController::class, 'destroy'])
             ->name('vehiculos.destroy');
+        Route::delete('carretas/{carreta}', [CarretaController::class, 'destroy'])
+            ->name('carretas.destroy');
     });

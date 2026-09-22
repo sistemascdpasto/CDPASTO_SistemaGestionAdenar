@@ -1,0 +1,128 @@
+<?php
+
+namespace App\Exports\Flota;
+
+use Illuminate\Support\Collection;
+use Maatwebsite\Excel\Concerns\FromArray;
+use Maatwebsite\Excel\Concerns\WithColumnWidths;
+use Maatwebsite\Excel\Concerns\WithEvents;
+use Maatwebsite\Excel\Events\AfterSheet;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+
+class DisponibilidadFlotaExport implements FromArray, WithColumnWidths, WithEvents
+{
+    private const FILA_TITULO = 1;
+
+    private const FILA_FECHA = 2;
+
+    private const FILA_BLOQUE_INICIO = 4;
+
+    private const FILA_PORCENTAJE = 7;
+
+    private const FILA_TABLA_HEADER = 9;
+
+    /**
+     * @param  array{asignada: int, indisponible: int, disponible: int, porcentaje: float}  $resumenFlota
+     * @param  array{asignada: int, indisponible: int, disponible: int, porcentaje: float}  $resumenCarretas
+     */
+    public function __construct(
+        private readonly array $resumenFlota,
+        private readonly array $resumenCarretas,
+        private readonly Collection $tabla,
+    ) {}
+
+    public function array(): array
+    {
+        $filas = [
+            ['REPORTE DE DISPONIBILIDAD DE FLOTA ADENAR - CD PASTO'],
+            ['Fecha: '.now()->translatedFormat('d/m/Y')],
+            [],
+            ['FLOTA ASIGNADA', $this->resumenFlota['asignada'], null, 'CARRETAS ASIGNADAS', $this->resumenCarretas['asignada']],
+            ['FLOTA INDISPONIBLE', $this->resumenFlota['indisponible'], null, 'CARRETAS INDISPONIBLE', $this->resumenCarretas['indisponible']],
+            ['FLOTA DISPONIBLE', $this->resumenFlota['disponible'], null, 'CARRETAS DISPONIBLE', $this->resumenCarretas['disponible']],
+            [$this->resumenFlota['porcentaje'].'%', null, null, $this->resumenCarretas['porcentaje'].'%'],
+            [],
+            ['PLACA', 'FECHA INGRESO', 'NOVEDADES REPORTADAS', 'ENTREGA ESTIMADA', 'DIAS EN TALLER', 'TALLER'],
+        ];
+
+        foreach ($this->tabla as $fila) {
+            $filas[] = [
+                $fila['placa'],
+                $fila['fecha_ingreso'] ?? '—',
+                $fila['novedades'],
+                $fila['entrega_estimada'],
+                $fila['dias_en_taller'] ?? '—',
+                $fila['taller'],
+            ];
+        }
+
+        return $filas;
+    }
+
+    public function columnWidths(): array
+    {
+        return [
+            'A' => 22, 'B' => 16, 'C' => 30, 'D' => 18, 'E' => 14, 'F' => 18,
+        ];
+    }
+
+    public function registerEvents(): array
+    {
+        return [
+            AfterSheet::class => function (AfterSheet $event) {
+                $sheet = $event->sheet->getDelegate();
+
+                $sheet->mergeCells('A'.self::FILA_TITULO.':F'.self::FILA_TITULO);
+                $sheet->getStyle('A'.self::FILA_TITULO)->getFont()->setBold(true)->setSize(14);
+                $sheet->getStyle('A'.self::FILA_TITULO)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                $sheet->getStyle('A'.self::FILA_TITULO)->getFill()
+                    ->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('C6D9B0');
+
+                $sheet->mergeCells('A'.self::FILA_FECHA.':F'.self::FILA_FECHA);
+                $sheet->getStyle('A'.self::FILA_FECHA)->getFont()->setBold(true);
+
+                // Etiquetas de contadores en negrita.
+                foreach ([4, 5, 6] as $fila) {
+                    $sheet->getStyle('A'.$fila)->getFont()->setBold(true);
+                    $sheet->getStyle('D'.$fila)->getFont()->setBold(true);
+                    $sheet->getStyle('B'.$fila)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                    $sheet->getStyle('E'.$fila)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                }
+
+                // Celda grande de % con relleno condicional (sustituye a la dona).
+                $sheet->mergeCells('A'.self::FILA_PORCENTAJE.':B'.self::FILA_PORCENTAJE);
+                $sheet->mergeCells('D'.self::FILA_PORCENTAJE.':E'.self::FILA_PORCENTAJE);
+                foreach (['A', 'D'] as $col) {
+                    $pct = $col === 'A' ? $this->resumenFlota['porcentaje'] : $this->resumenCarretas['porcentaje'];
+                    $sheet->getStyle($col.self::FILA_PORCENTAJE)->getFont()->setBold(true)->setSize(20);
+                    $sheet->getStyle($col.self::FILA_PORCENTAJE)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                    $sheet->getStyle($col.self::FILA_PORCENTAJE)->getFill()
+                        ->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB($this->colorPorcentaje($pct));
+                }
+
+                // Encabezado de la tabla de taller.
+                $sheet->getStyle('A'.self::FILA_TABLA_HEADER.':F'.self::FILA_TABLA_HEADER)
+                    ->getFont()->setBold(true);
+                $sheet->getStyle('A'.self::FILA_TABLA_HEADER.':F'.self::FILA_TABLA_HEADER)
+                    ->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('C6D9B0');
+
+                $ultimaFila = self::FILA_TABLA_HEADER + $this->tabla->count();
+                if ($ultimaFila >= self::FILA_TABLA_HEADER) {
+                    $sheet->getStyle('A'.self::FILA_TABLA_HEADER.':F'.$ultimaFila)
+                        ->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+                }
+            },
+        ];
+    }
+
+    private function colorPorcentaje(float $pct): string
+    {
+        return match (true) {
+            $pct >= 90 => 'C6E0B4',
+            $pct >= 70 => 'FFE699',
+            default => 'F8CBAD',
+        };
+    }
+}
