@@ -33,7 +33,12 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        // No usar redirect()->intended(): con roles estrictos por módulo, si
+        // la sesión quedó con una URL "intended" de otro usuario (dispositivo
+        // compartido) o de un módulo al que este usuario ya no tiene acceso,
+        // el login termina cayendo directo en la pantalla de "Acceso
+        // denegado" en vez del dashboard.
+        return redirect()->route('dashboard');
     }
 
     /**
