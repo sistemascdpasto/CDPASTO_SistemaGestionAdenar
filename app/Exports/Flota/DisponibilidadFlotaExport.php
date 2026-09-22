@@ -46,17 +46,15 @@ class DisponibilidadFlotaExport implements FromArray, WithColumnWidths, WithEven
             ['FLOTA DISPONIBLE', $this->resumenFlota['disponible'], null, 'CARRETAS DISPONIBLE', $this->resumenCarretas['disponible']],
             [$this->resumenFlota['porcentaje'].'%', null, null, $this->resumenCarretas['porcentaje'].'%'],
             [],
-            ['PLACA', 'FECHA INGRESO', 'NOVEDADES REPORTADAS', 'ENTREGA ESTIMADA', 'DIAS EN TALLER', 'TALLER'],
+            ['PLACA', 'NOVEDAD', 'FECHA', 'MARCADO POR'],
         ];
 
         foreach ($this->tabla as $fila) {
             $filas[] = [
                 $fila['placa'],
-                $fila['fecha_ingreso'] ?? '—',
-                $fila['novedades'],
-                $fila['entrega_estimada'],
-                $fila['dias_en_taller'] ?? '—',
-                $fila['taller'],
+                $fila['novedad'],
+                $fila['fecha'],
+                $fila['usuario'],
             ];
         }
 
@@ -66,7 +64,7 @@ class DisponibilidadFlotaExport implements FromArray, WithColumnWidths, WithEven
     public function columnWidths(): array
     {
         return [
-            'A' => 22, 'B' => 16, 'C' => 30, 'D' => 18, 'E' => 14, 'F' => 18,
+            'A' => 16, 'B' => 40, 'C' => 18, 'D' => 22, 'E' => 16,
         ];
     }
 
@@ -76,13 +74,13 @@ class DisponibilidadFlotaExport implements FromArray, WithColumnWidths, WithEven
             AfterSheet::class => function (AfterSheet $event) {
                 $sheet = $event->sheet->getDelegate();
 
-                $sheet->mergeCells('A'.self::FILA_TITULO.':F'.self::FILA_TITULO);
+                $sheet->mergeCells('A'.self::FILA_TITULO.':E'.self::FILA_TITULO);
                 $sheet->getStyle('A'.self::FILA_TITULO)->getFont()->setBold(true)->setSize(14);
                 $sheet->getStyle('A'.self::FILA_TITULO)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
                 $sheet->getStyle('A'.self::FILA_TITULO)->getFill()
                     ->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('C6D9B0');
 
-                $sheet->mergeCells('A'.self::FILA_FECHA.':F'.self::FILA_FECHA);
+                $sheet->mergeCells('A'.self::FILA_FECHA.':E'.self::FILA_FECHA);
                 $sheet->getStyle('A'.self::FILA_FECHA)->getFont()->setBold(true);
 
                 // Etiquetas de contadores en negrita.
@@ -104,15 +102,15 @@ class DisponibilidadFlotaExport implements FromArray, WithColumnWidths, WithEven
                         ->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB($this->colorPorcentaje($pct));
                 }
 
-                // Encabezado de la tabla de taller.
-                $sheet->getStyle('A'.self::FILA_TABLA_HEADER.':F'.self::FILA_TABLA_HEADER)
+                // Encabezado de la tabla de no disponibles.
+                $sheet->getStyle('A'.self::FILA_TABLA_HEADER.':D'.self::FILA_TABLA_HEADER)
                     ->getFont()->setBold(true);
-                $sheet->getStyle('A'.self::FILA_TABLA_HEADER.':F'.self::FILA_TABLA_HEADER)
+                $sheet->getStyle('A'.self::FILA_TABLA_HEADER.':D'.self::FILA_TABLA_HEADER)
                     ->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('C6D9B0');
 
                 $ultimaFila = self::FILA_TABLA_HEADER + $this->tabla->count();
                 if ($ultimaFila >= self::FILA_TABLA_HEADER) {
-                    $sheet->getStyle('A'.self::FILA_TABLA_HEADER.':F'.$ultimaFila)
+                    $sheet->getStyle('A'.self::FILA_TABLA_HEADER.':D'.$ultimaFila)
                         ->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
                 }
             },

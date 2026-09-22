@@ -24,13 +24,11 @@ interface Resumen {
     porcentaje: number;
 }
 
-interface FilaTaller {
+interface FilaNoDisponible {
     placa: string;
-    fecha_ingreso: string | null;
-    novedades: string;
-    entrega_estimada: string;
-    dias_en_taller: number | null;
-    taller: string;
+    novedad: string;
+    fecha: string;
+    usuario: string;
 }
 
 function ContadorFila({ label, value, color }: { label: string; value: number; color?: string }) {
@@ -104,7 +102,7 @@ export default function DisponibilidadFlotaIndex({
     esHoy: boolean;
     resumenFlota: Resumen;
     resumenCarretas: Resumen;
-    tabla: FilaTaller[];
+    tabla: FilaNoDisponible[];
 }) {
     const irAFecha = (nuevaFecha: string) => {
         router.get(route('flota.disponibilidad.index'), { fecha: nuevaFecha }, { preserveState: true, preserveScroll: true });
@@ -177,7 +175,7 @@ export default function DisponibilidadFlotaIndex({
                 <div className="rounded-xl border border-sidebar-border/70 bg-card shadow-sm dark:border-sidebar-border overflow-hidden">
                     <div className="border-b border-sidebar-border/70 px-5 py-3 dark:border-sidebar-border">
                         <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                            <Wrench className="size-4" /> Vehículos y carretas en taller — {fechaFormateada}
+                            <Wrench className="size-4" /> Vehículos y carretas marcados como no disponibles — {fechaFormateada}
                         </p>
                     </div>
                     <div className="overflow-x-auto">
@@ -185,31 +183,27 @@ export default function DisponibilidadFlotaIndex({
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Placa</TableHead>
-                                    <TableHead>Fecha ingreso</TableHead>
-                                    <TableHead>Novedades reportadas</TableHead>
-                                    <TableHead>Entrega estimada</TableHead>
-                                    <TableHead className="text-right">Días en taller</TableHead>
-                                    <TableHead>Taller</TableHead>
+                                    <TableHead>Novedad</TableHead>
+                                    <TableHead>Fecha</TableHead>
+                                    <TableHead>Marcado por</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {tabla.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={6} className="py-6 text-center text-muted-foreground">
-                                            No hay vehículos ni carretas en taller.
+                                        <TableCell colSpan={4} className="py-6 text-center text-muted-foreground">
+                                            No hay vehículos ni carretas marcados como no disponibles.
                                         </TableCell>
                                     </TableRow>
                                 )}
                                 {tabla.map((fila, index) => (
                                     <TableRow key={index}>
                                         <TableCell className="font-mono font-bold text-green-700 dark:text-green-400">{fila.placa}</TableCell>
-                                        <TableCell>{fila.fecha_ingreso ?? '—'}</TableCell>
-                                        <TableCell className="max-w-xs truncate" title={fila.novedades}>
-                                            {fila.novedades}
+                                        <TableCell className="max-w-md truncate" title={fila.novedad}>
+                                            {fila.novedad}
                                         </TableCell>
-                                        <TableCell>{fila.entrega_estimada}</TableCell>
-                                        <TableCell className="text-right tabular-nums">{fila.dias_en_taller ?? '—'}</TableCell>
-                                        <TableCell>{fila.taller}</TableCell>
+                                        <TableCell>{fila.fecha}</TableCell>
+                                        <TableCell>{fila.usuario}</TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>

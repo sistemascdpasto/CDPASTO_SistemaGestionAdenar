@@ -4,9 +4,10 @@ namespace App\Http\Controllers\Flota;
 
 use App\Exports\Flota\DisponibilidadFlotaExport;
 use App\Http\Controllers\Controller;
-use App\Models\Flota\ActaTaller;
 use App\Models\Flota\Carreta;
+use App\Models\Flota\CarretaDisponibilidadHistorial;
 use App\Models\Flota\Vehiculo;
+use App\Models\Flota\VehiculoDisponibilidadHistorial;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -43,12 +44,12 @@ class DisponibilidadFlotaController extends Controller
     }
 
     /**
-     * Histórico día a día: para cada fecha del rango, recalcula la
-     * disponibilidad de ese día a partir de cuándo estuvo abierta cada Acta
-     * de Taller (no hay una foto guardada por día — se reconstruye sobre la
-     * marcha). "Asignada" usa la flota/carretas activas de HOY como
-     * aproximación, ya que no se lleva un histórico de altas/bajas de la
-     * flota en sí.
+     * Histórico día a día: para cada fecha del rango, reconstruye cuántos
+     * vehículos/carretas estaban marcados "no disponible" ese día, a partir
+     * del historial que deja el botón de disponible/no disponible (no hay
+     * una foto guardada por día — se reconstruye sobre la marcha). "Asignada"
+     * usa la flota/carretas registradas HOY como aproximación, ya que no se
+     * lleva un histórico de altas/bajas de la flota en sí.
      */
     public function historico(Request $request): Response
     {
@@ -58,16 +59,23 @@ class DisponibilidadFlotaController extends Controller
         $hastaCarbon = Carbon::parse($hasta)->startOfDay();
         $desdeCarbon = Carbon::parse($desde)->startOfDay();
 
-        $placasFlota = Vehiculo::where('is_active', true)->pluck('placa');
-        $identificacionesCarretas = Carreta::where('is_active', true)->pluck('identificacion');
+        $vehiculoIds = Vehiculo::pluck('id');
+        $carretaIds = Carreta::pluck('id');
+        $totalFlota = $vehiculoIds->count();
+        $totalCarretas = $carretaIds->count();
 
-        $actas = ActaTaller::where('estado_acta', '!=', ActaTaller::ESTADO_CANCELADA)
-            ->whereIn('placa', $placasFlota->merge($identificacionesCarretas))
-            ->whereDate('fecha_entrega', '<=', $hastaCarbon)
-            ->where(function ($q) use ($desdeCarbon) {
-                $q->whereNull('fecha_cierre')->orWhereDate('fecha_cierre', '>=', $desdeCarbon);
-            })
-            ->get(['placa', 'fecha_entrega', 'fecha_cierre', 'estado_acta', 'updated_at']);
+        // Se filtra por las unidades que existen HOY (no soft-eliminadas) —
+        // de lo contrario el historial de una unidad ya eliminada seguiría
+        // contando como indisponible en el histórico.
+        $historialFlota = VehiculoDisponibilidadHistorial::whereIn('vehiculo_id', $vehiculoIds)
+            ->whereDate('created_at', '<=', $hastaCarbon)
+            ->orderBy('created_at')
+            ->get(['vehiculo_id', 'disponible', 'created_at']);
+
+        $historialCarretas = CarretaDisponibilidadHistorial::whereIn('carreta_id', $carretaIds)
+            ->whereDate('created_at', '<=', $hastaCarbon)
+            ->orderBy('created_at')
+            ->get(['carreta_id', 'disponible', 'created_at']);
 
         $dias = [];
         $cursor = $desdeCarbon->copy();
@@ -75,23 +83,11 @@ class DisponibilidadFlotaController extends Controller
         while ($cursor->lte($hastaCarbon)) {
             $cursorFecha = $cursor->toDateString();
 
-            $abiertasEseDia = $actas->filter(function (ActaTaller $acta) use ($cursorFecha) {
-                $entrega = $acta->fecha_entrega?->toDateString();
-                if (! $entrega || $entrega > $cursorFecha) {
-                    return false;
-                }
-
-                return $this->siguioAbiertaEn($acta, $cursorFecha);
-            });
-
-            $flotaEnTaller = $abiertasEseDia->whereIn('placa', $placasFlota)->pluck('placa')->unique();
-            $carretasEnTaller = $abiertasEseDia->whereIn('placa', $identificacionesCarretas)->pluck('placa')->unique();
-
             $dias[] = [
                 'fecha' => $cursorFecha,
                 'fechaCorta' => $cursor->format('d/m'),
-                'flota' => $this->resumen($placasFlota->count(), $flotaEnTaller->count()),
-                'carretas' => $this->resumen($identificacionesCarretas->count(), $carretasEnTaller->count()),
+                'flota' => $this->resumen($totalFlota, $this->contarIndisponiblesEnFecha($historialFlota, 'vehiculo_id', $cursorFecha)),
+                'carretas' => $this->resumen($totalCarretas, $this->contarIndisponiblesEnFecha($historialCarretas, 'carreta_id', $cursorFecha)),
             ];
 
             $cursor->addDay();
@@ -104,12 +100,23 @@ class DisponibilidadFlotaController extends Controller
     }
 
     /**
-     * Cruza vehículos y carretas activos contra las Actas de Taller que
-     * estuvieron abiertas en la fecha dada para calcular los conteos de
-     * disponibilidad y la tabla de "en taller" del reporte de ese día. Un
-     * vehículo/carreta cuenta como indisponible si tiene un acta abierta
-     * (no cancelada, con fecha_entrega <= fecha y fecha_cierre nula o
-     * posterior a la fecha) — para "hoy" equivale a estado_acta=en_taller.
+     * Cuenta cuántas unidades (agrupadas por $idField) tenían su último
+     * evento de historial <= $fecha con disponible = false.
+     */
+    private function contarIndisponiblesEnFecha(Collection $historial, string $idField, string $fecha): int
+    {
+        return $historial
+            ->filter(fn ($h) => $h->created_at->toDateString() <= $fecha)
+            ->groupBy($idField)
+            ->filter(fn (Collection $eventos) => ! $eventos->last()->disponible)
+            ->count();
+    }
+
+    /**
+     * Cruza vehículos y carretas contra su historial de disponibilidad para
+     * determinar cuáles estaban marcados "no disponible" en la fecha dada
+     * (el último evento <= fecha define el estado; sin eventos, el estado
+     * por defecto es disponible).
      *
      * @return array{0: array<string, int|float>, 1: array<string, int|float>, 2: Collection}
      */
@@ -117,56 +124,55 @@ class DisponibilidadFlotaController extends Controller
     {
         $fechaCarbon = Carbon::parse($fecha)->startOfDay();
 
-        $placasFlota = Vehiculo::where('is_active', true)->pluck('placa');
-        $identificacionesCarretas = Carreta::where('is_active', true)->pluck('identificacion');
+        $vehiculos = Vehiculo::all(['id', 'placa']);
+        $carretas = Carreta::all(['id', 'identificacion']);
 
-        $fechaString = $fechaCarbon->toDateString();
+        $historialFlota = VehiculoDisponibilidadHistorial::whereIn('vehiculo_id', $vehiculos->pluck('id'))
+            ->whereDate('created_at', '<=', $fechaCarbon)
+            ->with('user:id,name')
+            ->orderBy('created_at')
+            ->get();
 
-        $actasAbiertas = ActaTaller::where('estado_acta', '!=', ActaTaller::ESTADO_CANCELADA)
-            ->whereIn('placa', $placasFlota->merge($identificacionesCarretas))
-            ->whereDate('fecha_entrega', '<=', $fechaCarbon)
-            ->with('novedades')
-            ->orderBy('fecha_entrega')
-            ->get()
-            ->filter(fn (ActaTaller $acta) => $this->siguioAbiertaEn($acta, $fechaString));
+        $historialCarretas = CarretaDisponibilidadHistorial::whereIn('carreta_id', $carretas->pluck('id'))
+            ->whereDate('created_at', '<=', $fechaCarbon)
+            ->with('user:id,name')
+            ->orderBy('created_at')
+            ->get();
 
-        $flotaEnTaller = $actasAbiertas->whereIn('placa', $placasFlota)->pluck('placa')->unique();
-        $carretasEnTaller = $actasAbiertas->whereIn('placa', $identificacionesCarretas)->pluck('placa')->unique();
+        $tablaFlota = $this->noDisponiblesEnFecha($vehiculos, $historialFlota, 'vehiculo_id', 'placa');
+        $tablaCarretas = $this->noDisponiblesEnFecha($carretas, $historialCarretas, 'carreta_id', 'identificacion');
 
-        $resumenFlota = $this->resumen($placasFlota->count(), $flotaEnTaller->count());
-        $resumenCarretas = $this->resumen($identificacionesCarretas->count(), $carretasEnTaller->count());
+        $resumenFlota = $this->resumen($vehiculos->count(), $tablaFlota->count());
+        $resumenCarretas = $this->resumen($carretas->count(), $tablaCarretas->count());
 
-        $tabla = $actasAbiertas->map(fn (ActaTaller $acta) => [
-            'placa' => $acta->placa,
-            'fecha_ingreso' => $acta->fecha_entrega?->format('d/m/Y'),
-            'novedades' => $acta->novedades->pluck('titulo')->filter()->implode(', ') ?: ($acta->motivo_ingreso ?? '—'),
-            'entrega_estimada' => $acta->fecha_estimada_solucion?->format('d/m/Y') ?? '—',
-            'dias_en_taller' => $acta->fecha_entrega ? (int) $acta->fecha_entrega->diffInDays($fechaCarbon) : null,
-            'taller' => $acta->taller ?? '—',
-        ])->values();
-
-        return [$resumenFlota, $resumenCarretas, $tabla];
+        return [$resumenFlota, $resumenCarretas, $tablaFlota->merge($tablaCarretas)->values()];
     }
 
     /**
-     * Determina si el acta seguía abierta (ocupando el vehículo/carreta) en
-     * la fecha dada. Usa fecha_cierre cuando está registrada; si el acta ya
-     * no está en_taller pero fecha_cierre quedó vacía (formulario permitía
-     * cerrar sin esa fecha — ver ActaTallerController::update()), usa
-     * updated_at como aproximación de cuándo se cerró, en vez de contarla
-     * como abierta indefinidamente.
+     * @param  Collection<int, Vehiculo|Carreta>  $unidades
+     * @param  Collection<int, VehiculoDisponibilidadHistorial|CarretaDisponibilidadHistorial>  $historial  eventos <= fecha, ordenados por created_at, de esas unidades
      */
-    private function siguioAbiertaEn(ActaTaller $acta, string $fecha): bool
+    private function noDisponiblesEnFecha(Collection $unidades, Collection $historial, string $idField, string $labelField): Collection
     {
-        if ($acta->fecha_cierre) {
-            return $acta->fecha_cierre->toDateString() > $fecha;
-        }
+        $porUnidad = $historial->groupBy($idField);
 
-        if ($acta->estado_acta !== ActaTaller::ESTADO_EN_TALLER) {
-            return $acta->updated_at->toDateString() > $fecha;
-        }
+        return $unidades
+            ->map(function ($unidad) use ($porUnidad, $labelField) {
+                $ultimo = $porUnidad->get($unidad->id)?->last();
 
-        return true;
+                if (! $ultimo || $ultimo->disponible) {
+                    return null;
+                }
+
+                return [
+                    'placa' => $unidad->{$labelField},
+                    'novedad' => $ultimo->novedad ?: '—',
+                    'fecha' => $ultimo->created_at->format('d/m/Y H:i'),
+                    'usuario' => $ultimo->user?->name ?? '—',
+                ];
+            })
+            ->filter()
+            ->values();
     }
 
     /**
