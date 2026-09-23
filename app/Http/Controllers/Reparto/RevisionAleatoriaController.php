@@ -14,6 +14,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -23,16 +24,20 @@ use Inertia\Response;
 class RevisionAleatoriaController extends Controller
 {
     /**
-     * MySQL: código de error de entrada duplicada (violación de unique).
+     * SQLSTATE de violación de constraint de integridad (incluye unique),
+     * consistente entre MySQL y SQLite (este último se usa en los tests).
      */
-    private const MYSQL_DUPLICATE_ENTRY = 1062;
+    private const SQLSTATE_INTEGRITY_CONSTRAINT_VIOLATION = '23000';
 
     public function index(): Response
     {
-        $revision = $this->revisionDeHoy();
+        $revisionesHoy = $this->revisionesDeHoy();
+        $revisionActual = $revisionesHoy->first(fn (RevisionAleatoria $r) => ! $r->finalizada_en);
 
         return Inertia::render('reparto/revision-aleatoria/index', [
-            'revision' => $revision ? $this->formatRevision($revision, conDetalle: true) : null,
+            'revision' => $revisionActual ? $this->formatRevision($revisionActual, conDetalle: true) : null,
+            'revisionesHoy' => $revisionesHoy->map(fn (RevisionAleatoria $r) => $this->formatRevision($r, conDetalle: true))->values(),
+            'limiteDiario' => RevisionAleatoria::POR_DIA,
             'vehiculosActivos' => Vehiculo::where('is_active', true)->orderBy('placa')->get(['id', 'placa']),
             'responsablesActivos' => RevisionResponsable::where('is_active', true)->with('colaborador:id,nombres,apellidos')->get()
                 ->map(fn (RevisionResponsable $r) => ['id' => $r->id, 'nombre' => $this->nombreResponsable($r)])
@@ -42,42 +47,52 @@ class RevisionAleatoriaController extends Controller
     }
 
     /**
-     * Crea (si no existe) la revisión de hoy y sortea el vehículo. A prueba
-     * de condiciones de carrera: si dos requests llegan a la vez, solo uno
-     * logra el INSERT (constraint unique en `fecha`); el otro recupera la
-     * fila ya creada por el primero en vez de fallar.
+     * Retoma la revisión de hoy en progreso o, si no hay ninguna, arranca la
+     * siguiente del día (hasta el límite de RevisionAleatoria::POR_DIA) y
+     * sortea el vehículo, excluyendo los que ya salieron hoy. A prueba de
+     * condiciones de carrera: los slots del día (`numero_del_dia`) y el
+     * vehículo (`vehiculo_id`) están protegidos por constraints unique en
+     * BD; si dos requests chocan, uno gana y el otro reintenta con la
+     * siguiente opción en vez de fallar o duplicar.
      */
     public function seleccionarVehiculo(Request $request): RedirectResponse
     {
-        $revision = $this->crearOEncontrarRevisionDeHoy($request);
+        $revision = $this->revisionEnProgresoDeHoy();
 
-        if ($revision->vehiculo_id) {
-            return back()->with('error', 'El vehículo de hoy ya fue seleccionado.');
+        if ($revision && $revision->vehiculo_id) {
+            return back()->with('error', 'El vehículo de esta revisión ya fue seleccionado.');
         }
 
-        $placas = Vehiculo::where('is_active', true)->pluck('id');
-        if ($placas->isEmpty()) {
-            return back()->with('error', 'No hay vehículos disponibles en Documentación de Flota para sortear.');
+        if (! $revision) {
+            $revision = $this->crearRevisionDelDia($request);
+            if (! $revision) {
+                return back()->with('error', 'Ya se realizaron las '.RevisionAleatoria::POR_DIA.' revisiones aleatorias de hoy.');
+            }
         }
 
-        $revision->update([
-            'vehiculo_id' => $placas->random(),
-            'vehiculo_seleccionado_en' => now(),
-        ]);
+        $usadosHoy = RevisionAleatoria::whereDate('fecha', now()->toDateString())->whereNotNull('vehiculo_id')->pluck('vehiculo_id');
+        $disponibles = Vehiculo::where('is_active', true)->whereNotIn('id', $usadosHoy)->pluck('id');
+        if ($disponibles->isEmpty()) {
+            return back()->with('error', 'No quedan vehículos activos sin revisar hoy.');
+        }
+
+        if (! $this->reclamarVehiculoAleatorio($revision, $disponibles)) {
+            return back()->with('error', 'No fue posible asignar un vehículo, intenta de nuevo.');
+        }
 
         return back()->with('status', 'Vehículo seleccionado.');
     }
 
     public function seleccionarResponsable(Request $request): RedirectResponse
     {
-        $revision = $this->revisionDeHoy();
+        $revision = $this->revisionEnProgresoDeHoy();
 
         if (! $revision || ! $revision->vehiculo_id) {
-            return back()->with('error', 'Primero debes seleccionar el vehículo del día.');
+            return back()->with('error', 'Primero debes seleccionar el vehículo de esta revisión.');
         }
 
         if ($revision->responsable_id) {
-            return back()->with('error', 'El responsable de hoy ya fue seleccionado.');
+            return back()->with('error', 'El responsable de esta revisión ya fue seleccionado.');
         }
 
         $ids = RevisionResponsable::where('is_active', true)->pluck('id');
@@ -95,14 +110,10 @@ class RevisionAleatoriaController extends Controller
 
     public function finalizar(Request $request): RedirectResponse
     {
-        $revision = $this->revisionDeHoy();
+        $revision = $this->revisionEnProgresoDeHoy();
 
         if (! $revision || ! $revision->vehiculo_id || ! $revision->responsable_id) {
             return back()->with('error', 'Debes completar la selección de vehículo y responsable antes de finalizar.');
-        }
-
-        if ($revision->finalizada_en) {
-            return back()->with('error', 'La revisión de hoy ya fue finalizada.');
         }
 
         $data = $request->validate([
@@ -111,6 +122,7 @@ class RevisionAleatoriaController extends Controller
             'novedades.*.sku' => ['nullable', 'string', 'max:100'],
             'novedades.*.producto' => ['required_with:novedades', 'string', 'max:255'],
             'novedades.*.cantidad_revisada' => ['nullable', 'integer', 'min:0'],
+            'novedades.*.cantidad_revisada_unidad' => ['nullable', 'required_with:novedades.*.cantidad_revisada', Rule::in(array_keys(RevisionNovedad::UNIDADES_CANTIDAD_REVISADA))],
             'novedades.*.cantidad_novedad' => ['required_with:novedades', 'integer', 'min:1'],
             'novedades.*.causal_id' => ['required_with:novedades', Rule::exists('revision_causales', 'id')],
             'novedades.*.causal_especificacion' => ['nullable', 'string', 'max:500'],
@@ -145,6 +157,7 @@ class RevisionAleatoriaController extends Controller
                     'sku' => $novedadData['sku'] ?? null,
                     'producto' => $novedadData['producto'],
                     'cantidad_revisada' => $novedadData['cantidad_revisada'] ?? null,
+                    'cantidad_revisada_unidad' => $novedadData['cantidad_revisada_unidad'] ?? null,
                     'cantidad_novedad' => $novedadData['cantidad_novedad'],
                     'causal_id' => $novedadData['causal_id'],
                     'causal_especificacion' => $novedadData['causal_especificacion'] ?? null,
@@ -199,10 +212,12 @@ class RevisionAleatoriaController extends Controller
             ->when($filtros['resultado'] ?? null, fn (Builder $q, $v) => $q->where('resultado', $v))
             ->when($filtros['causal_id'] ?? null, fn (Builder $q, $v) => $q->whereHas('novedades', fn (Builder $qq) => $qq->where('causal_id', $v)))
             ->when($filtros['sku'] ?? null, fn (Builder $q, $v) => $q->whereHas('novedades', fn (Builder $qq) => $qq->where('sku', 'like', "%{$v}%")))
-            ->orderByDesc('fecha');
+            ->orderByDesc('fecha')
+            ->orderBy('numero_del_dia');
 
         $revisiones = $query->paginate(20)->withQueryString()->through(fn (RevisionAleatoria $r) => [
             'id' => $r->id,
+            'numero_del_dia' => $r->numero_del_dia,
             'fecha' => $r->fecha->format('d/m/Y'),
             'hora' => $r->finalizada_en?->format('H:i'),
             'placa' => $r->vehiculo?->placa ?? '—',
@@ -334,32 +349,75 @@ class RevisionAleatoriaController extends Controller
         return to_route('reparto.revision-aleatoria.historial')->with('status', 'Revisión eliminada. Esa fecha queda libre para una nueva revisión.');
     }
 
-    private function revisionDeHoy(): ?RevisionAleatoria
+    /**
+     * @return Collection<int, RevisionAleatoria>
+     */
+    private function revisionesDeHoy(): Collection
     {
         return RevisionAleatoria::whereDate('fecha', now()->toDateString())
             ->with(['vehiculo', 'responsable.colaborador', 'usuario', 'novedades.causal', 'novedades.evidencias'])
-            ->first();
+            ->orderBy('numero_del_dia')
+            ->get();
     }
 
-    private function crearOEncontrarRevisionDeHoy(Request $request): RevisionAleatoria
+    private function revisionEnProgresoDeHoy(): ?RevisionAleatoria
     {
-        $existente = RevisionAleatoria::whereDate('fecha', now()->toDateString())->first();
-        if ($existente) {
-            return $existente;
-        }
+        return $this->revisionesDeHoy()->first(fn (RevisionAleatoria $r) => ! $r->finalizada_en);
+    }
 
-        try {
-            return RevisionAleatoria::create([
-                'fecha' => now()->toDateString(),
-                'user_id' => $request->user()->id,
-            ]);
-        } catch (QueryException $e) {
-            if (($e->errorInfo[1] ?? null) === self::MYSQL_DUPLICATE_ENTRY) {
-                return RevisionAleatoria::whereDate('fecha', now()->toDateString())->firstOrFail();
+    /**
+     * Arranca el siguiente slot del día (1..POR_DIA). A prueba de condiciones
+     * de carrera: el constraint unique(fecha, numero_del_dia) es la garantía
+     * real; si el slot ya fue tomado por otro request, se reintenta con el
+     * siguiente en vez de duplicar o fallar. Devuelve null si el día ya
+     * completó las POR_DIA revisiones.
+     */
+    private function crearRevisionDelDia(Request $request): ?RevisionAleatoria
+    {
+        for ($slot = 1; $slot <= RevisionAleatoria::POR_DIA; $slot++) {
+            try {
+                return RevisionAleatoria::create([
+                    'fecha' => now()->toDateString(),
+                    'numero_del_dia' => $slot,
+                    'user_id' => $request->user()->id,
+                ]);
+            } catch (QueryException $e) {
+                if ($e->getCode() === self::SQLSTATE_INTEGRITY_CONSTRAINT_VIOLATION) {
+                    continue;
+                }
+
+                throw $e;
             }
-
-            throw $e;
         }
+
+        return null;
+    }
+
+    /**
+     * Sortea un vehículo entre `$disponibles` y lo asigna a `$revision`. A
+     * prueba de condiciones de carrera: el constraint unique(fecha,
+     * vehiculo_id) es la garantía real; si otro request ya tomó ese
+     * vehículo para hoy, se reintenta con otro candidato de la lista.
+     *
+     * @param  Collection<int, int>  $disponibles
+     */
+    private function reclamarVehiculoAleatorio(RevisionAleatoria $revision, Collection $disponibles): ?int
+    {
+        foreach ($disponibles->shuffle() as $vehiculoId) {
+            try {
+                $revision->update(['vehiculo_id' => $vehiculoId, 'vehiculo_seleccionado_en' => now()]);
+
+                return $vehiculoId;
+            } catch (QueryException $e) {
+                if ($e->getCode() === self::SQLSTATE_INTEGRITY_CONSTRAINT_VIOLATION) {
+                    continue;
+                }
+
+                throw $e;
+            }
+        }
+
+        return null;
     }
 
     private function nombreResponsable(?RevisionResponsable $responsable): string
@@ -375,6 +433,7 @@ class RevisionAleatoriaController extends Controller
     {
         $data = [
             'id' => $revision->id,
+            'numero_del_dia' => $revision->numero_del_dia,
             'fecha' => $revision->fecha->format('Y-m-d'),
             'fecha_formateada' => $revision->fecha->translatedFormat('d/m/Y'),
             'vehiculo' => $revision->vehiculo ? ['id' => $revision->vehiculo->id, 'placa' => $revision->vehiculo->placa] : null,
@@ -396,6 +455,7 @@ class RevisionAleatoriaController extends Controller
                 'sku' => $n->sku,
                 'producto' => $n->producto,
                 'cantidad_revisada' => $n->cantidad_revisada,
+                'cantidad_revisada_unidad' => $n->cantidad_revisada_unidad ? RevisionNovedad::UNIDADES_CANTIDAD_REVISADA[$n->cantidad_revisada_unidad] ?? null : null,
                 'cantidad_novedad' => $n->cantidad_novedad,
                 'causal' => $n->causal?->nombre,
                 'causal_especificacion' => $n->causal_especificacion,

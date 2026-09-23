@@ -14,10 +14,17 @@ class RevisionAleatoria extends Model
 
     const RESULTADO_CON_NOVEDADES = 'con_novedades';
 
+    /**
+     * Cuántas revisiones aleatorias se permiten por día (una por vehículo,
+     * sin repetir vehículo el mismo día).
+     */
+    const POR_DIA = 3;
+
     protected $table = 'revisiones_aleatorias';
 
     protected $fillable = [
         'fecha',
+        'numero_del_dia',
         'vehiculo_id',
         'vehiculo_seleccionado_en',
         'responsable_id',

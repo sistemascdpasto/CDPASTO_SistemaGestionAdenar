@@ -10,6 +10,7 @@ interface NovedadDetalle {
     sku: string | null;
     producto: string;
     cantidad_revisada: number | null;
+    cantidad_revisada_unidad: string | null;
     cantidad_novedad: number;
     causal: string | null;
     causal_especificacion: string | null;
@@ -105,10 +106,14 @@ export default function RevisionAleatoriaShow({ revision }: { revision: Revision
                                 </div>
                                 <div className="mt-2 grid gap-1 text-xs text-muted-foreground sm:grid-cols-3">
                                     <p>
-                                        Cantidad revisada: <strong className="text-foreground">{n.cantidad_revisada ?? '—'}</strong>
+                                        Cantidad revisada:{' '}
+                                        <strong className="text-foreground">
+                                            {n.cantidad_revisada ?? '—'}
+                                            {n.cantidad_revisada !== null && n.cantidad_revisada_unidad && ` (${n.cantidad_revisada_unidad})`}
+                                        </strong>
                                     </p>
                                     <p>
-                                        Cantidad con novedad: <strong className="text-foreground">{n.cantidad_novedad}</strong>
+                                        Cantidad con novedad en unidades: <strong className="text-foreground">{n.cantidad_novedad}</strong>
                                     </p>
                                     {n.causal_especificacion && (
                                         <p>
