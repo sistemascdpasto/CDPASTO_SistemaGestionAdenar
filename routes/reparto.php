@@ -5,9 +5,16 @@ use App\Http\Controllers\Reparto\ChecklistImportController;
 use App\Http\Controllers\Reparto\CompensacionVariableController;
 use App\Http\Controllers\Reparto\CompensacionVariableDiariaController;
 use App\Http\Controllers\Reparto\EventosTripulacionController;
+use App\Http\Controllers\Reparto\IndicadoresAdherenciaController;
 use App\Http\Controllers\Reparto\IndicadoresController;
+use App\Http\Controllers\Reparto\IndicadoresEntregaRangoController;
+use App\Http\Controllers\Reparto\IndicadoresResumenController;
+use App\Http\Controllers\Reparto\IndicadoresTiempoController;
 use App\Http\Controllers\Reparto\MedicionTiempoInventarioController;
 use App\Http\Controllers\Reparto\ModulacionController;
+use App\Http\Controllers\Reparto\RevisionAleatoriaController;
+use App\Http\Controllers\Reparto\RevisionCausalController;
+use App\Http\Controllers\Reparto\RevisionResponsableController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'active'])
@@ -104,19 +111,19 @@ Route::middleware(['auth', 'active'])
             ->name('indicadores.index');
 
         // Indicadores de Adherencia Checklist
-        Route::get('/indicadores-adherencia', [\App\Http\Controllers\Reparto\IndicadoresAdherenciaController::class, 'index'])
+        Route::get('/indicadores-adherencia', [IndicadoresAdherenciaController::class, 'index'])
             ->name('indicadores-adherencia.index');
 
         // Dashboard Adherencia al Tiempo
-        Route::get('/indicadores-tiempo', [\App\Http\Controllers\Reparto\IndicadoresTiempoController::class, 'index'])
+        Route::get('/indicadores-tiempo', [IndicadoresTiempoController::class, 'index'])
             ->name('indicadores-tiempo.index');
 
         // Dashboard Entrega en Rango
-        Route::get('/indicadores-entrega-rango', [\App\Http\Controllers\Reparto\IndicadoresEntregaRangoController::class, 'index'])
+        Route::get('/indicadores-entrega-rango', [IndicadoresEntregaRangoController::class, 'index'])
             ->name('indicadores-entrega-rango.index');
 
         // Resumen Ejecutivo
-        Route::get('/indicadores-resumen', [\App\Http\Controllers\Reparto\IndicadoresResumenController::class, 'index'])
+        Route::get('/indicadores-resumen', [IndicadoresResumenController::class, 'index'])
             ->name('indicadores-resumen.index');
 
         // Checklist de Vehículos
@@ -152,5 +159,55 @@ Route::middleware(['auth', 'active'])
             Route::delete('/medicion-tiempos-inventario/{medicionTiempoInventario}', [MedicionTiempoInventarioController::class, 'destroy'])
                 ->name('medicion-tiempos-inventario.destroy');
         });
-    });
 
+        // Revisión Aleatoria de Vehículos / SKU
+        Route::middleware('role:Administrador|Reparto')->group(function () {
+            Route::get('/revision-aleatoria', [RevisionAleatoriaController::class, 'index'])
+                ->name('revision-aleatoria.index');
+            Route::post('/revision-aleatoria/seleccionar-vehiculo', [RevisionAleatoriaController::class, 'seleccionarVehiculo'])
+                ->name('revision-aleatoria.seleccionar-vehiculo');
+            Route::post('/revision-aleatoria/seleccionar-responsable', [RevisionAleatoriaController::class, 'seleccionarResponsable'])
+                ->name('revision-aleatoria.seleccionar-responsable');
+            Route::post('/revision-aleatoria/finalizar', [RevisionAleatoriaController::class, 'finalizar'])
+                ->name('revision-aleatoria.finalizar');
+            Route::get('/revision-aleatoria/historial', [RevisionAleatoriaController::class, 'historial'])
+                ->name('revision-aleatoria.historial');
+            Route::get('/revision-aleatoria/indicadores', [RevisionAleatoriaController::class, 'indicadores'])
+                ->name('revision-aleatoria.indicadores');
+            // Wildcard al final para no chocar con las rutas fijas de arriba.
+            Route::get('/revision-aleatoria/{revisionAleatoria}', [RevisionAleatoriaController::class, 'show'])
+                ->name('revision-aleatoria.show');
+        });
+
+        // Configuración de la Revisión Aleatoria — exclusivo de Administrador.
+        Route::middleware('role:Administrador')->group(function () {
+            Route::delete('/revision-aleatoria/{revisionAleatoria}', [RevisionAleatoriaController::class, 'destroy'])
+                ->name('revision-aleatoria.destroy');
+
+            Route::get('/revision-responsables', [RevisionResponsableController::class, 'index'])
+                ->name('revision-responsables.index');
+            Route::get('/revision-responsables/create', [RevisionResponsableController::class, 'create'])
+                ->name('revision-responsables.create');
+            Route::post('/revision-responsables', [RevisionResponsableController::class, 'store'])
+                ->name('revision-responsables.store');
+            Route::patch('/revision-responsables/{revisionResponsable}/toggle-activo', [RevisionResponsableController::class, 'toggleActivo'])
+                ->name('revision-responsables.toggle-activo');
+            Route::delete('/revision-responsables/{revisionResponsable}', [RevisionResponsableController::class, 'destroy'])
+                ->name('revision-responsables.destroy');
+
+            Route::get('/revision-causales', [RevisionCausalController::class, 'index'])
+                ->name('revision-causales.index');
+            Route::get('/revision-causales/create', [RevisionCausalController::class, 'create'])
+                ->name('revision-causales.create');
+            Route::post('/revision-causales', [RevisionCausalController::class, 'store'])
+                ->name('revision-causales.store');
+            Route::get('/revision-causales/{revisionCausal}/edit', [RevisionCausalController::class, 'edit'])
+                ->name('revision-causales.edit');
+            Route::put('/revision-causales/{revisionCausal}', [RevisionCausalController::class, 'update'])
+                ->name('revision-causales.update');
+            Route::patch('/revision-causales/{revisionCausal}/toggle-activo', [RevisionCausalController::class, 'toggleActivo'])
+                ->name('revision-causales.toggle-activo');
+            Route::delete('/revision-causales/{revisionCausal}', [RevisionCausalController::class, 'destroy'])
+                ->name('revision-causales.destroy');
+        });
+    });
