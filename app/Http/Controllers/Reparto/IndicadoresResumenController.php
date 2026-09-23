@@ -89,7 +89,7 @@ class IndicadoresResumenController extends Controller
             'modulacion' => $rows
                 ->filter(fn ($r) => is_numeric($r->modulacion))
                 ->pipe(fn ($c) => $c->count() > 0
-                    ? round($c->avg(fn ($r) => (float)$r->modulacion * 100), 1)
+                    ? round($c->avg(fn ($r) => (float)$r->modulacion <= 1.0 ? (float)$r->modulacion * 100 : (float)$r->modulacion), 1)
                     : null),
             'cl_pre'     => $avg('adherencia_checklist_pre'),
             'cl_post'    => $avg('adherencia_checklist_post'),
@@ -176,7 +176,7 @@ class IndicadoresResumenController extends Controller
                 'prom_entrega'  => $g->filter(fn ($r) => is_numeric($r->entrega_en_rango))->avg('entrega_en_rango'),
                 'prom_mod'      => $g->filter(fn ($r) => is_numeric($r->modulacion))
                     ->pipe(fn ($c) => $c->count() > 0
-                        ? round($c->avg(fn ($r) => (float)$r->modulacion * 100), 1) : null),
+                        ? round($c->avg(fn ($r) => (float)$r->modulacion <= 1.0 ? (float)$r->modulacion * 100 : (float)$r->modulacion), 1) : null),
             ])
             ->map(function ($c) {
                 // Score de incumplimiento ponderado

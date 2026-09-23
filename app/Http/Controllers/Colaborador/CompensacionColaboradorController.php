@@ -8,6 +8,7 @@ use App\Models\Reparto\CompensacionVariableDiaria;
 use App\Models\Seguridad\Colaborador;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 

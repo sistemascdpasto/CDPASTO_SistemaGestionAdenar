@@ -257,7 +257,7 @@ class PortalController extends Controller
             'rechazos' => $cnt > 0 ? round($rows->sum('rechazos') / $cnt, 2) : null,
             'modulacion' => $rows->filter(fn ($r) => is_numeric($r->modulacion))
                 ->pipe(fn ($c) => $c->count() > 0
-                    ? round($c->avg(fn ($r) => (float) $r->modulacion * 100), 1) : null),
+                    ? round($c->avg(fn ($r) => (float) $r->modulacion <= 1.0 ? (float) $r->modulacion * 100 : (float) $r->modulacion), 1) : null),
             'cl_pre' => $avg('adherencia_checklist_pre'),
             'cl_post' => $avg('adherencia_checklist_post'),
             'combustible' => $avg('rendimiento_combustible'),
@@ -411,13 +411,21 @@ class PortalController extends Controller
             ->avg('nota_modulo');
         $promedioCalif = $promedioCalif !== null ? round((float) $promedioCalif, 1) : null;
 
+        // ── Checklist Plan Premiación (manual) ─────────────────────────────
+        $manualCheck = ChecklistPlanPremiacion::where('colaborador_id', $colaborador->id)
+            ->where('mes', $mes)
+            ->where('anio', $anio)
+            ->first();
+
         // ── DPO Academy ───────────────────────────────────────────────────
         $estaEnDpo = DB::table('dpo_academy')
-            ->where(function ($q) use ($colaborador, $normStr) {
-                $q->where('colaborador_id', $colaborador->id)
-                    ->orWhereRaw('UPPER(REGEXP_REPLACE(qr_safety,"[^A-Z0-9]","")) = ?', [$normStr($colaborador->codigo_qr_skap ?? '')])
-                    ->orWhereRaw('UPPER(REGEXP_REPLACE(nombre,"[^A-Z0-9]","")) = ?', [$normStr($colaborador->nombre_completo ?? '')]);
-            })->exists();
+            ->get(['colaborador_id', 'qr_safety', 'nombre'])
+            ->contains(function ($r) use ($colaborador, $normStr) {
+                if ($r->colaborador_id && $r->colaborador_id == $colaborador->id) return true;
+                if (!empty($r->qr_safety) && !empty($colaborador->codigo_qr_skap) && $normStr($r->qr_safety) === $normStr($colaborador->codigo_qr_skap)) return true;
+                if (!empty($r->nombre) && !empty($colaborador->nombre_completo) && $normStr($r->nombre) === $normStr($colaborador->nombre_completo)) return true;
+                return false;
+            });
 
         // ── Ausentismo — manual: default 100% (toggle ausentismo_ok) ─────
         $ausentismoAprobado   = $manualCheck ? (bool) $manualCheck->ausentismo_ok : true;
@@ -425,31 +433,28 @@ class PortalController extends Controller
 
         // ── Malas Marcaciones ─────────────────────────────────────────────
         $tieneMalasMarcaciones = DB::table('correcciones_marcaciones')
-            ->where(function ($q) use ($colaborador, $normStr) {
-                $q->whereRaw('UPPER(REGEXP_REPLACE(identificacion,"[^A-Z0-9]","")) = ?', [$normStr($colaborador->cedula)])
-                    ->orWhereRaw('UPPER(REGEXP_REPLACE(nombre_completo,"[^A-Z0-9]","")) = ?', [$normStr($colaborador->nombre_completo ?? '')]);
-            })->exists();
+            ->get(['identificacion', 'nombre_completo'])
+            ->contains(function ($r) use ($colaborador, $normStr) {
+                if (!empty($r->identificacion) && !empty($colaborador->cedula) && $normStr($r->identificacion) === $normStr($colaborador->cedula)) return true;
+                if (!empty($r->nombre_completo) && !empty($colaborador->nombre_completo) && $normStr($r->nombre_completo) === $normStr($colaborador->nombre_completo)) return true;
+                return false;
+            });
 
         // ── Eventos Tripulación ───────────────────────────────────────────
         // Se traen TODOS los registros del mes para calcular el promedio correctamente
         $eventosColaborador = DB::table('eventos_tripulacion')
             ->whereMonth('fecha', $mes)->whereYear('fecha', $anio)
-            ->where(function ($q) use ($colaborador, $normStr) {
-                $q->whereRaw('UPPER(REGEXP_REPLACE(documento,"[^A-Z0-9]","")) = ?', [$normStr($colaborador->cedula)])
-                    ->orWhereRaw('UPPER(REGEXP_REPLACE(nombre,"[^A-Z0-9]","")) = ?', [$normStr($colaborador->nombre_completo ?? '')]);
-            })
-            ->select(['rechazos', 'adherencia_tiempo', 'rmd', 'adherencia_checklist_pre', 'adherencia_checklist_post'])
-            ->get();
+            ->get(['documento', 'nombre', 'rechazos', 'adherencia_tiempo', 'rmd', 'adherencia_checklist_pre', 'adherencia_checklist_post'])
+            ->filter(function ($r) use ($colaborador, $normStr) {
+                if (!empty($r->documento) && !empty($colaborador->cedula) && $normStr($r->documento) === $normStr($colaborador->cedula)) return true;
+                if (!empty($r->nombre) && !empty($colaborador->nombre_completo) && $normStr($r->nombre) === $normStr($colaborador->nombre_completo)) return true;
+                return false;
+            });
 
         $evento = $eventosColaborador->first();
 
         // Solo aplica checklist para conductores (Default 100% / Aprobado)
         $esConductorPortal = str_contains(strtoupper((string)($colaborador->cargo ?? '')), 'CONDUCTOR');
-
-        $manualCheck = ChecklistPlanPremiacion::where('colaborador_id', $colaborador->id)
-            ->where('mes', $mes)
-            ->where('anio', $anio)
-            ->first();
 
         $clPreAprobado  = $manualCheck ? (bool)$manualCheck->cl_pre : true;
         $clPostAprobado = $manualCheck ? (bool)$manualCheck->cl_post : true;

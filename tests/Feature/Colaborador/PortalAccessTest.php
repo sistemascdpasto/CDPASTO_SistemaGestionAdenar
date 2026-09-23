@@ -64,4 +64,32 @@ class PortalAccessTest extends TestCase
                 ->has('indiceRiesgo')
             );
     }
+
+    public function test_colaborador_can_view_mi_plan_premiacion(): void
+    {
+        $role = Role::create(['name' => 'Colaborador', 'guard_name' => 'web']);
+        $user = User::factory()->create();
+        $user->assignRole($role);
+
+        Colaborador::create([
+            'user_id' => $user->id,
+            'cedula' => '1002003004',
+            'nombres' => 'Laura',
+            'apellidos' => 'Portal',
+            'cargo' => 'Conductor',
+            'turno' => 'manana',
+            'area' => 'Ruta Norte',
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('portal.mi-plan-premiacion'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('colaborador/mi-plan-premiacion/index')
+                ->has('colaborador')
+                ->has('metricas')
+                ->has('historial_aci')
+            );
+    }
 }

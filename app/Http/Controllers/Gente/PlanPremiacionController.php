@@ -1111,24 +1111,25 @@ class PlanPremiacionController extends Controller
 
         // ── DPO Academy ───────────────────────────────────────────────────
         $estaEnDpo = DB::table('dpo_academy')
-            ->where(function ($q) use ($colaborador, $normStr) {
-                $q->where('colaborador_id', $colaborador->id)
-                  ->orWhereRaw('UPPER(REGEXP_REPLACE(qr_safety,"[^A-Z0-9]","")) = ?', [$normStr($colaborador->codigo_qr_skap ?? '')])
-                  ->orWhereRaw('UPPER(REGEXP_REPLACE(nombre,"[^A-Z0-9]","")) = ?', [$normStr($colaborador->nombre_completo ?? '')]);
-            })
-            ->exists();
+            ->get(['colaborador_id', 'qr_safety', 'nombre'])
+            ->contains(function ($r) use ($colaborador, $normStr) {
+                if ($r->colaborador_id && $r->colaborador_id == $colaborador->id) return true;
+                if (!empty($r->qr_safety) && !empty($colaborador->codigo_qr_skap) && $normStr($r->qr_safety) === $normStr($colaborador->codigo_qr_skap)) return true;
+                if (!empty($r->nombre) && !empty($colaborador->nombre_completo) && $normStr($r->nombre) === $normStr($colaborador->nombre_completo)) return true;
+                return false;
+            });
 
         // ── Eventos Tripulación ───────────────────────────────────────────
         // Se traen TODOS los registros del mes para poder calcular el promedio
         $eventosColaborador = DB::table('eventos_tripulacion')
             ->whereMonth('fecha', $mes)
             ->whereYear('fecha', $anio)
-            ->where(function ($q) use ($colaborador, $normStr) {
-                $q->whereRaw('UPPER(REGEXP_REPLACE(documento,"[^A-Z0-9]","")) = ?', [$normStr($colaborador->cedula)])
-                  ->orWhereRaw('UPPER(REGEXP_REPLACE(nombre,"[^A-Z0-9]","")) = ?', [$normStr($colaborador->nombre_completo ?? '')]);
-            })
-            ->select(['rechazos','adherencia_tiempo','rmd','adherencia_checklist_pre','adherencia_checklist_post'])
-            ->get();
+            ->get(['documento', 'nombre', 'rechazos', 'adherencia_tiempo', 'rmd', 'adherencia_checklist_pre', 'adherencia_checklist_post'])
+            ->filter(function ($r) use ($colaborador, $normStr) {
+                if (!empty($r->documento) && !empty($colaborador->cedula) && $normStr($r->documento) === $normStr($colaborador->cedula)) return true;
+                if (!empty($r->nombre) && !empty($colaborador->nombre_completo) && $normStr($r->nombre) === $normStr($colaborador->nombre_completo)) return true;
+                return false;
+            });
 
         // Primer registro para métricas de fila única (rechazos, adherencia, rmd)
         $evento = $eventosColaborador->first();
@@ -1150,11 +1151,12 @@ class PlanPremiacionController extends Controller
 
         // ── Malas Marcaciones ─────────────────────────────────────────────
         $tieneMalasMarcaciones = DB::table('correcciones_marcaciones')
-            ->where(function ($q) use ($colaborador, $normStr) {
-                $q->whereRaw('UPPER(REGEXP_REPLACE(identificacion,"[^A-Z0-9]","")) = ?', [$normStr($colaborador->cedula)])
-                  ->orWhereRaw('UPPER(REGEXP_REPLACE(nombre_completo,"[^A-Z0-9]","")) = ?', [$normStr($colaborador->nombre_completo ?? '')]);
-            })
-            ->exists();
+            ->get(['identificacion', 'nombre_completo'])
+            ->contains(function ($r) use ($colaborador, $normStr) {
+                if (!empty($r->identificacion) && !empty($colaborador->cedula) && $normStr($r->identificacion) === $normStr($colaborador->cedula)) return true;
+                if (!empty($r->nombre_completo) && !empty($colaborador->nombre_completo) && $normStr($r->nombre_completo) === $normStr($colaborador->nombre_completo)) return true;
+                return false;
+            });
 
         // ── SAC ───────────────────────────────────────────────────────────
         $casosSac = DB::table('sac')
