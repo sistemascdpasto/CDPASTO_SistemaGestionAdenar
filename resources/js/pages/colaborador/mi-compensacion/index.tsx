@@ -151,12 +151,31 @@ function SectionHeader({ icon: Icon, title, subtitle }: { icon: React.ElementTyp
     );
 }
 
+interface TooltipData {
+    titulo: string;
+    formula?: string;
+    explicacion: React.ReactNode;
+    resultado: string;
+    resultColor?: string;
+}
+
+/** Símbolo de operación (×, +, =, −) entre dos EcuacionCard, centrado con la fila. */
+function Op({ children }: { children: React.ReactNode }) {
+    return (
+        <span className="flex shrink-0 items-center justify-center self-center px-0.5 text-lg font-bold text-muted-foreground">
+            {children}
+        </span>
+    );
+}
+
 function EcuacionCard({
     numero, label, value, subvalue, icon: Icon,
     highlight, met, tooltip,
 }: {
     numero?: string; label: string; value: string; subvalue?: string;
     icon: React.ElementType; highlight?: 'green' | 'red'; met?: boolean;
+    /** Aceptado por los llamadores para marcar explícitamente una card sin highlight ni met — hoy coincide con el estilo por defecto. */
+    neutral?: boolean;
     tooltip: TooltipData;
 }) {
     const [open, setOpen] = useState(false);

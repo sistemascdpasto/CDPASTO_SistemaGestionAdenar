@@ -182,14 +182,14 @@ export default function ColaboradoresIndex({
                 </div>
 
                 {/* KPI Cards — estilo plan de premiación */}
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 2xl:grid-cols-8">
                     {/* Total */}
                     <div className="col-span-2 sm:col-span-2 rounded-xl border border-border bg-gradient-to-br from-muted to-card p-4 shadow-sm">
-                        <div className="flex items-center gap-2 mb-2">
+                        <div className="flex min-w-0 items-center gap-2 mb-2">
                             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
                                 <Users className="h-4 w-4 text-muted-foreground" />
                             </div>
-                            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Total colaboradores</span>
+                            <span className="truncate text-xs font-semibold uppercase tracking-wide text-muted-foreground">Total colaboradores</span>
                         </div>
                         <p className="text-3xl font-black text-foreground">{resumen.total}</p>
                         <p className="mt-1 text-[11px] text-muted-foreground">registros completos</p>
@@ -197,11 +197,11 @@ export default function ColaboradoresIndex({
 
                     {/* Activos */}
                     <div className="rounded-xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white p-4 shadow-sm dark:border-emerald-900/50 dark:from-emerald-950/20 dark:to-transparent">
-                        <div className="flex items-center gap-2 mb-2">
+                        <div className="flex min-w-0 items-center gap-2 mb-2">
                             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/40">
                                 <UserCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                             </div>
-                            <span className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">Activos</span>
+                            <span className="truncate text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">Activos</span>
                         </div>
                         <p className="text-3xl font-black text-emerald-700 dark:text-emerald-400">{resumen.activos}</p>
                         <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-emerald-100 dark:bg-emerald-900/40">
@@ -217,11 +217,11 @@ export default function ColaboradoresIndex({
 
                     {/* Inactivos */}
                     <div className="rounded-xl border border-rose-200 bg-gradient-to-br from-rose-50 to-white p-4 shadow-sm dark:border-rose-900/50 dark:from-rose-950/20 dark:to-transparent">
-                        <div className="flex items-center gap-2 mb-2">
+                        <div className="flex min-w-0 items-center gap-2 mb-2">
                             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-100 dark:bg-rose-900/40">
                                 <UserX className="h-4 w-4 text-rose-600 dark:text-rose-400" />
                             </div>
-                            <span className="text-xs font-semibold uppercase tracking-wide text-rose-700 dark:text-rose-400">Inactivos</span>
+                            <span className="truncate text-xs font-semibold uppercase tracking-wide text-rose-700 dark:text-rose-400">Inactivos</span>
                         </div>
                         <p className="text-3xl font-black text-rose-600 dark:text-rose-400">{resumen.inactivos}</p>
                         <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-rose-100 dark:bg-rose-900/40">
@@ -237,11 +237,11 @@ export default function ColaboradoresIndex({
 
                     {/* Área Operativa */}
                     <div className="rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50 to-white p-4 shadow-sm dark:border-blue-900/50 dark:from-blue-950/20 dark:to-transparent">
-                        <div className="flex items-center gap-2 mb-2">
+                        <div className="flex min-w-0 items-center gap-2 mb-2">
                             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/40">
                                 <Briefcase className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                             </div>
-                            <span className="text-xs font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-400">Operativos</span>
+                            <span className="truncate text-xs font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-400">Operativos</span>
                         </div>
                         <p className="text-3xl font-black text-blue-700 dark:text-blue-400">{resumen.area_operativa}</p>
                         <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-blue-100 dark:bg-blue-900/40">
@@ -255,11 +255,11 @@ export default function ColaboradoresIndex({
 
                     {/* Área Administrativa */}
                     <div className="rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-4 shadow-sm dark:border-amber-900/50 dark:from-amber-950/20 dark:to-transparent">
-                        <div className="flex items-center gap-2 mb-2">
+                        <div className="flex min-w-0 items-center gap-2 mb-2">
                             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/40">
                                 <Briefcase className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                             </div>
-                            <span className="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">Administrativos</span>
+                            <span className="truncate text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">Administrativos</span>
                         </div>
                         <p className="text-3xl font-black text-amber-700 dark:text-amber-400">{resumen.area_administrativa}</p>
                         <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-amber-100 dark:bg-amber-900/40">
@@ -277,7 +277,7 @@ export default function ColaboradoresIndex({
                             ? 'border-orange-200 from-orange-50 dark:border-orange-900/50 dark:from-orange-950/20'
                             : 'border-border from-muted'
                     }`}>
-                        <div className="flex items-center gap-2 mb-2">
+                        <div className="flex min-w-0 items-center gap-2 mb-2">
                             <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${
                                 resumen.contratos_proximos > 0
                                     ? 'bg-orange-100 dark:bg-orange-900/40'
@@ -289,7 +289,7 @@ export default function ColaboradoresIndex({
                                         : 'text-muted-foreground'
                                 }`} />
                             </div>
-                            <span className={`text-xs font-semibold uppercase tracking-wide ${
+                            <span className={`truncate text-xs font-semibold uppercase tracking-wide ${
                                 resumen.contratos_proximos > 0
                                     ? 'text-orange-700 dark:text-orange-400'
                                     : 'text-muted-foreground'
@@ -309,7 +309,7 @@ export default function ColaboradoresIndex({
                             ? 'border-red-200 from-red-50 dark:border-red-900/50 dark:from-red-950/20'
                             : 'border-border from-muted'
                     }`}>
-                        <div className="flex items-center gap-2 mb-2">
+                        <div className="flex min-w-0 items-center gap-2 mb-2">
                             <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${
                                 resumen.contratos_vencidos > 0
                                     ? 'bg-red-100 dark:bg-red-900/40'
@@ -321,7 +321,7 @@ export default function ColaboradoresIndex({
                                         : 'text-muted-foreground'
                                 }`} />
                             </div>
-                            <span className={`text-xs font-semibold uppercase tracking-wide ${
+                            <span className={`truncate text-xs font-semibold uppercase tracking-wide ${
                                 resumen.contratos_vencidos > 0
                                     ? 'text-red-700 dark:text-red-400'
                                     : 'text-muted-foreground'
