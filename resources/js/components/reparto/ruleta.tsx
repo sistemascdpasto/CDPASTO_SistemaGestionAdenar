@@ -24,6 +24,12 @@ function sectorPath(cx: number, cy: number, r: number, startAngle: number, endAn
     return `M ${cx},${cy} L ${start.x},${start.y} A ${r},${r} 0 ${largeArc} 1 ${end.x},${end.y} Z`;
 }
 
+/** Trunca con "…" para que el texto quepa en el ancho radial disponible del gajo. */
+function truncarTexto(texto: string, maxChars: number): string {
+    if (texto.length <= maxChars) return texto;
+    return texto.slice(0, Math.max(1, maxChars - 1)).trimEnd() + '…';
+}
+
 /**
  * Ruleta circular tipo disco de sorteo: gira y se detiene exactamente con
  * `resultadoId` (ya determinado por el backend) bajo la flecha fija de la
@@ -98,31 +104,42 @@ export function Ruleta({
                 style={{ transformOrigin: '50% 50%', display: 'block' }}
             >
                 <circle cx={CENTRO} cy={CENTRO} r={RADIO + 4} fill="white" stroke="#d1d5db" strokeWidth={3} />
-                {items.map((item, i) => {
-                    const start = i * anguloPorGajo;
-                    const end = start + anguloPorGajo;
-                    const mid = start + anguloPorGajo / 2;
-                    const textoPos = polarToCartesian(CENTRO, CENTRO, RADIO * 0.6, mid);
-                    const anguloTexto = mid > 90 && mid < 270 ? mid + 180 : mid;
+                {(() => {
+                    const fontSize = n > 20 ? 7 : n > 12 ? 9 : 11;
+                    const distanciaInicio = RADIO * 0.24;
+                    const margenBorde = 12;
+                    const espacioDisponible = RADIO - margenBorde - distanciaInicio;
+                    const maxChars = Math.max(3, Math.floor(espacioDisponible / (fontSize * 0.62)));
 
-                    return (
-                        <g key={item.id}>
-                            <path d={sectorPath(CENTRO, CENTRO, RADIO, start, end)} fill={COLORES[i % COLORES.length]} stroke="white" strokeWidth={1.5} />
-                            <text
-                                x={textoPos.x}
-                                y={textoPos.y}
-                                transform={`rotate(${anguloTexto}, ${textoPos.x}, ${textoPos.y})`}
-                                textAnchor="middle"
-                                dominantBaseline="middle"
-                                fontSize={n > 20 ? 7 : n > 12 ? 9 : 12}
-                                fontWeight={700}
-                                fill="#1f2937"
-                            >
-                                {item.label}
-                            </text>
-                        </g>
-                    );
-                })}
+                    return items.map((item, i) => {
+                        const start = i * anguloPorGajo;
+                        const end = start + anguloPorGajo;
+                        const mid = start + anguloPorGajo / 2;
+                        // Cerca del centro siempre; el texto crece hacia el borde en la
+                        // dirección `mid`, tanto volteado (270>mid>90) como no.
+                        const textoPos = polarToCartesian(CENTRO, CENTRO, distanciaInicio, mid);
+                        const volteado = mid > 90 && mid < 270;
+                        const anguloTexto = volteado ? mid + 180 : mid;
+
+                        return (
+                            <g key={item.id}>
+                                <path d={sectorPath(CENTRO, CENTRO, RADIO, start, end)} fill={COLORES[i % COLORES.length]} stroke="white" strokeWidth={1.5} />
+                                <text
+                                    x={textoPos.x}
+                                    y={textoPos.y}
+                                    transform={`rotate(${anguloTexto}, ${textoPos.x}, ${textoPos.y})`}
+                                    textAnchor={volteado ? 'end' : 'start'}
+                                    dominantBaseline="middle"
+                                    fontSize={fontSize}
+                                    fontWeight={700}
+                                    fill="#1f2937"
+                                >
+                                    {truncarTexto(item.label, maxChars)}
+                                </text>
+                            </g>
+                        );
+                    });
+                })()}
                 <circle cx={CENTRO} cy={CENTRO} r={10} fill="white" stroke="#d1d5db" strokeWidth={2} />
             </motion.svg>
         </div>
