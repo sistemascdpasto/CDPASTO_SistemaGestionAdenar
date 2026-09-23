@@ -276,18 +276,12 @@ export default function RevisionAleatoriaIndex({
                             <p className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-foreground">
                                 <Truck className="size-4" /> 1. Selección del vehículo
                             </p>
-                            {revision?.vehiculo ? (
-                                <div className="flex items-center gap-3">
-                                    <Ruleta
-                                        items={vehiculoItems}
-                                        resultadoId={revision.vehiculo.id}
-                                        girando={girandoVehiculo}
-                                        onTerminarGiro={() => setGirandoVehiculo(false)}
-                                    />
-                                </div>
-                            ) : (
-                                <Ruleta items={vehiculoItems} resultadoId={null} girando={false} />
-                            )}
+                            <Ruleta
+                                items={vehiculoItems}
+                                resultadoId={revision?.vehiculo?.id ?? null}
+                                girando={girandoVehiculo}
+                                onTerminarGiro={() => setGirandoVehiculo(false)}
+                            />
                             <div className="mt-3 flex items-center justify-between">
                                 {revision?.vehiculo && !girandoVehiculo ? (
                                     <p className="flex items-center gap-1.5 text-sm font-bold text-emerald-700 dark:text-emerald-400">
@@ -311,17 +305,13 @@ export default function RevisionAleatoriaIndex({
                                 <p className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-foreground">
                                     <User className="size-4" /> 2. Selección del responsable
                                 </p>
-                                {revision.responsable ? (
-                                    <Ruleta
-                                        items={responsableItems}
-                                        resultadoId={revision.responsable.id}
-                                        girando={girandoResponsable}
-                                        onTerminarGiro={() => setGirandoResponsable(false)}
-                                        colorAcento="#0369a1"
-                                    />
-                                ) : (
-                                    <Ruleta items={responsableItems} resultadoId={null} girando={false} colorAcento="#0369a1" />
-                                )}
+                                <Ruleta
+                                    items={responsableItems}
+                                    resultadoId={revision.responsable?.id ?? null}
+                                    girando={girandoResponsable}
+                                    onTerminarGiro={() => setGirandoResponsable(false)}
+                                    colorFlecha="#0369a1"
+                                />
                                 <div className="mt-3 flex items-center justify-between">
                                     {revision.responsable && !girandoResponsable ? (
                                         <p className="flex items-center gap-1.5 text-sm font-bold text-sky-700 dark:text-sky-400">
