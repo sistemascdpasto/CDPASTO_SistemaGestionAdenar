@@ -170,6 +170,8 @@ Route::middleware(['auth', 'active'])
                 ->name('revision-aleatoria.seleccionar-responsable');
             Route::post('/revision-aleatoria/finalizar', [RevisionAleatoriaController::class, 'finalizar'])
                 ->name('revision-aleatoria.finalizar');
+            Route::get('/revision-aleatoria/productos/buscar', [RevisionAleatoriaController::class, 'buscarProductos'])
+                ->name('revision-aleatoria.productos.buscar');
             Route::get('/revision-aleatoria/historial', [RevisionAleatoriaController::class, 'historial'])
                 ->name('revision-aleatoria.historial');
             Route::get('/revision-aleatoria/indicadores', [RevisionAleatoriaController::class, 'indicadores'])

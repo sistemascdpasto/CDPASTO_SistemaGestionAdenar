@@ -24,6 +24,7 @@ import {
     X,
 } from 'lucide-react';
 import { useState } from 'react';
+import { ProductoSearchSelect, type ProductoOption } from './producto-search-select';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
@@ -158,6 +159,11 @@ export default function RevisionAleatoriaIndex({
     const actualizarNovedad = (index: number, campo: keyof NovedadFormState, valor: string | PickedFile[]) => {
         const copia = [...form.data.novedades];
         copia[index] = { ...copia[index], [campo]: valor };
+        form.setData('novedades', copia);
+    };
+    const seleccionarProducto = (index: number, producto: ProductoOption) => {
+        const copia = [...form.data.novedades];
+        copia[index] = { ...copia[index], sku: producto.sku, producto: producto.descripcion };
         form.setData('novedades', copia);
     };
 
@@ -411,6 +417,7 @@ export default function RevisionAleatoriaIndex({
                                                 novedad={novedad}
                                                 causales={causales}
                                                 onChange={actualizarNovedad}
+                                                onSelectProducto={(producto) => seleccionarProducto(index, producto)}
                                                 onRemove={() => quitarNovedad(index)}
                                                 puedeQuitar={form.data.novedades.length > 1}
                                                 errors={form.errors}
@@ -452,6 +459,7 @@ function NovedadFields({
     novedad,
     causales,
     onChange,
+    onSelectProducto,
     onRemove,
     puedeQuitar,
     errors,
@@ -460,6 +468,7 @@ function NovedadFields({
     novedad: NovedadFormState;
     causales: Causal[];
     onChange: (index: number, campo: keyof NovedadFormState, valor: string | PickedFile[]) => void;
+    onSelectProducto: (producto: ProductoOption) => void;
     onRemove: () => void;
     puedeQuitar: boolean;
     errors: Partial<Record<string, string>>;
@@ -477,13 +486,16 @@ function NovedadFields({
                 )}
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
-                <div className="grid gap-1.5">
-                    <Label className="text-xs">SKU / código</Label>
-                    <Input value={novedad.sku} onChange={(e) => onChange(index, 'sku', e.target.value)} placeholder="Opcional" />
-                </div>
-                <div className="grid gap-1.5">
-                    <Label className="text-xs">Producto</Label>
-                    <Input value={novedad.producto} onChange={(e) => onChange(index, 'producto', e.target.value)} required />
+                <div className="sm:col-span-2">
+                    <ProductoSearchSelect
+                        id={`novedad-${index}-producto`}
+                        label="Producto"
+                        valor={novedad.producto}
+                        skuActual={novedad.sku}
+                        onChange={(valor) => onChange(index, 'producto', valor)}
+                        onSelect={onSelectProducto}
+                        error={errors[`novedades.${index}.producto`]}
+                    />
                 </div>
                 <div className="grid gap-1.5">
                     <Label className="text-xs">Cantidad revisada</Label>

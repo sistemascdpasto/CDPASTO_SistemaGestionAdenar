@@ -4,12 +4,14 @@ namespace App\Http\Controllers\Reparto;
 
 use App\Http\Controllers\Controller;
 use App\Models\Flota\Vehiculo;
+use App\Models\Producto;
 use App\Models\Reparto\RevisionAleatoria;
 use App\Models\Reparto\RevisionCausal;
 use App\Models\Reparto\RevisionNovedad;
 use App\Models\Reparto\RevisionResponsable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\QueryException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -157,6 +159,29 @@ class RevisionAleatoriaController extends Controller
         });
 
         return to_route('reparto.revision-aleatoria.index')->with('status', 'Revisión finalizada correctamente.');
+    }
+
+    /**
+     * Búsqueda en vivo del catálogo de productos para el campo "Producto"
+     * del formulario de novedades (autocompletado, igual patrón que el
+     * buscador de colaboradores).
+     */
+    public function buscarProductos(Request $request): JsonResponse
+    {
+        $q = trim((string) $request->input('q', ''));
+
+        if ($q === '') {
+            return response()->json([]);
+        }
+
+        $productos = Producto::where('sku', 'like', "%{$q}%")
+            ->orWhere('descripcion', 'like', "%{$q}%")
+            ->orderByRaw('CASE WHEN descripcion LIKE ? THEN 0 ELSE 1 END', ["{$q}%"])
+            ->orderBy('descripcion')
+            ->limit(15)
+            ->get(['id', 'sku', 'descripcion']);
+
+        return response()->json($productos);
     }
 
     public function historial(Request $request): Response
