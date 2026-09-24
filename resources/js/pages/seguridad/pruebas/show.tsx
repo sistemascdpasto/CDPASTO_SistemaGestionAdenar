@@ -21,6 +21,8 @@ interface PruebaDetalle {
     firma_path: string | null;
     observaciones: string | null;
     fecha_hora: string;
+    pertenece_planeacion?: boolean;
+    ruta_asignada?: string | null;
     colaborador: { nombres: string; apellidos: string; cedula: string } | null;
     alcoholimetro: { codigo: string } | null;
     responsable: { name: string } | null;
@@ -149,7 +151,7 @@ export default function PruebaShow({
     const pdfs = [
         prueba.evidencia_path,
         ...prueba.evidencias.map((e) => e.path),
-    ].filter((p): p is string => Boolean(p) && /\.pdf$/i.test(p));
+    ].filter((p): p is string => Boolean(p) && /\.pdf$/i.test(p || ''));
 
     const fechaHora = new Date(prueba.fecha_hora);
 
@@ -188,6 +190,17 @@ export default function PruebaShow({
                             <p>Resultado: {prueba.resultado ?? '—'}</p>
                             <p>Responsable: {prueba.responsable?.name ?? '—'}</p>
                             <p>
+                                Origen Planeación:{' '}
+                                {prueba.pertenece_planeacion ? (
+                                    <Badge className="bg-emerald-600 text-white">Planeada (Realizada)</Badge>
+                                ) : (
+                                    <Badge className="bg-indigo-600 text-white">Evaluación Adicional</Badge>
+                                )}
+                            </p>
+                            {prueba.ruta_asignada && (
+                                <p>Ruta Asignada: <span className="font-mono text-xs font-semibold bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">{prueba.ruta_asignada}</span></p>
+                            )}
+                            <p className="sm:col-span-2">
                                 Consentimiento informado:{' '}
                                 {prueba.consentimiento_aceptado ? 'Aceptado' : 'No registrado'}
                                 {prueba.consentimiento_en

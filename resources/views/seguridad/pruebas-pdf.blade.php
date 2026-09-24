@@ -37,6 +37,8 @@
                 <th>Colaborador</th>
                 <th>Cédula</th>
                 <th>Tipo</th>
+                <th>Origen</th>
+                <th>Ruta Asignada</th>
                 <th>Dispositivo</th>
                 <th>Resultado</th>
                 <th>Evaluación</th>
@@ -57,6 +59,8 @@
                     <td>{{ $prueba->colaborador?->nombre_completo }}</td>
                     <td>{{ $prueba->colaborador?->cedula }}</td>
                     <td>{{ $prueba->tipoLabel() }}</td>
+                    <td>{{ $prueba->pertenece_planeacion ? 'Realizada (Planeada)' : 'Adicional' }}</td>
+                    <td>{{ $prueba->ruta_asignada ?? '—' }}</td>
                     <td>{{ $prueba->alcoholimetro?->codigo }}</td>
                     <td class="{{ $prueba->es_positivo ? 'positivo' : '' }}">{{ $prueba->resultado ?? '—' }}</td>
                     <td>{{ $prueba->estado === 'programada' ? '—' : $prueba->evaluacion() }}</td>

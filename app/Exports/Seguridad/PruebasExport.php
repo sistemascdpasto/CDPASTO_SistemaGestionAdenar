@@ -28,7 +28,7 @@ class PruebasExport implements FromCollection, WithColumnWidths, WithDrawings, W
 
     public function headings(): array
     {
-        return ['Fecha', 'Colaborador', 'Cédula', 'Tipo', 'Dispositivo', 'Resultado', 'Evaluación', 'Estado', 'Responsable', 'Firma', 'Evidencia principal'];
+        return ['Fecha', 'Colaborador', 'Cédula', 'Tipo', 'Origen Planeación', 'Ruta Asignada', 'Dispositivo', 'Resultado', 'Evaluación', 'Estado', 'Responsable', 'Firma', 'Evidencia principal'];
     }
 
     /**
@@ -41,6 +41,8 @@ class PruebasExport implements FromCollection, WithColumnWidths, WithDrawings, W
             $prueba->colaborador?->nombre_completo ?? '—',
             $prueba->colaborador?->cedula ?? '—',
             $prueba->tipoLabel(),
+            $prueba->pertenece_planeacion ? 'Planeada (Realizada)' : 'Evaluación Adicional',
+            $prueba->ruta_asignada ?? '—',
             $prueba->alcoholimetro?->codigo ?? '—',
             $prueba->resultado ?? '—',
             $prueba->estado === 'programada' ? '—' : $prueba->evaluacion(),
@@ -53,7 +55,7 @@ class PruebasExport implements FromCollection, WithColumnWidths, WithDrawings, W
 
     public function columnWidths(): array
     {
-        return ['J' => 18, 'K' => 18];
+        return ['L' => 18, 'M' => 18];
     }
 
     /**
@@ -66,8 +68,8 @@ class PruebasExport implements FromCollection, WithColumnWidths, WithDrawings, W
         foreach ($this->pruebas->values() as $index => $prueba) {
             $fila = $index + 2;
 
-            $this->agregarDrawing($drawings, $prueba->firma_path, "J{$fila}", 'Firma');
-            $this->agregarDrawing($drawings, $prueba->evidenciaPrincipalPath(), "K{$fila}", 'Evidencia principal');
+            $this->agregarDrawing($drawings, $prueba->firma_path, "L{$fila}", 'Firma');
+            $this->agregarDrawing($drawings, $prueba->evidenciaPrincipalPath(), "M{$fila}", 'Evidencia principal');
         }
 
         return $drawings;

@@ -2,6 +2,8 @@
 
 namespace App\Models\Seguridad;
 
+use App\Models\Reparto\Modulacion;
+use App\Services\Seguridad\CoberturaPlaneacionService;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -28,6 +30,9 @@ class PruebaAlcoholemia extends Model
         'programada_en',
         'recordatorio_enviado_at',
         'estado',
+        'pertenece_planeacion',
+        'modulacion_id',
+        'ruta_asignada',
     ];
 
     protected function casts(): array
@@ -40,6 +45,7 @@ class PruebaAlcoholemia extends Model
             'fecha_hora' => 'datetime',
             'programada_en' => 'datetime',
             'recordatorio_enviado_at' => 'datetime',
+            'pertenece_planeacion' => 'boolean',
         ];
     }
 
@@ -52,7 +58,22 @@ class PruebaAlcoholemia extends Model
 
         static::creating(function (self $prueba) {
             $prueba->qr_token ??= Str::random(40);
+
+            if ($prueba->colaborador_id && ($prueba->fecha_hora || $prueba->programada_en) && $prueba->pertenece_planeacion === null) {
+                $fechaEval = ($prueba->fecha_hora ?? $prueba->programada_en)->toDateString();
+                $service = app(CoberturaPlaneacionService::class);
+                $planeacion = $service->resolverPlaneacionRuta($prueba->colaborador_id, $fechaEval);
+
+                $prueba->pertenece_planeacion = $planeacion['pertenece_planeacion'];
+                $prueba->modulacion_id = $planeacion['modulacion_id'];
+                $prueba->ruta_asignada = $planeacion['ruta_asignada'];
+            }
         });
+    }
+
+    public function modulacion(): BelongsTo
+    {
+        return $this->belongsTo(Modulacion::class, 'modulacion_id');
     }
 
     public function colaborador(): BelongsTo

@@ -379,10 +379,16 @@ export default function CreatePrueba({
     colaboradores,
     dispositivosDisponibles,
     prueba,
+    preselectedColaboradorId,
+    preselectedFecha,
+    preselectedRutaAsignada,
 }: {
     colaboradores: ColaboradorOption[];
     dispositivosDisponibles: DispositivoOption[];
     prueba?: PruebaData;
+    preselectedColaboradorId?: number | null;
+    preselectedFecha?: string | null;
+    preselectedRutaAsignada?: string | null;
 }) {
     const breadcrumbs: BreadcrumbItem[] = prueba
         ? [...breadcrumbsBase, { title: 'Editar prueba', href: `/modules/seguridad/pruebas/${prueba.id}/edit` }]
@@ -391,13 +397,18 @@ export default function CreatePrueba({
         if (prueba?.fecha_hora) {
             return prueba.fecha_hora;
         }
+        if (preselectedFecha) {
+            const now = new Date();
+            const pad = (n: number) => String(n).padStart(2, '0');
+            return `${preselectedFecha}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+        }
         const now = new Date();
         const pad = (n: number) => String(n).padStart(2, '0');
         return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
     };
 
     const { data, setData, post, processing, errors, transform } = useForm<PruebaForm>({
-        colaborador_id: prueba?.colaborador_id ? String(prueba.colaborador_id) : '',
+        colaborador_id: prueba?.colaborador_id ? String(prueba.colaborador_id) : (preselectedColaboradorId ? String(preselectedColaboradorId) : ''),
         tipo: prueba?.tipo ?? 'pre_ruta',
         es_programacion: prueba ? prueba.estado === 'programada' : false,
         programada_en: prueba?.programada_en ? String(prueba.programada_en) : '',
@@ -595,6 +606,19 @@ export default function CreatePrueba({
                         </Label>
                     </div>
                 </div>
+
+                {preselectedRutaAsignada && (
+                    <div className="flex items-center gap-3 rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-emerald-900 shadow-xs dark:border-emerald-700/50 dark:bg-emerald-950/40 dark:text-emerald-200">
+                        <ShieldCheck className="size-6 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                        <div>
+                            <p className="text-sm font-semibold">Población Objetivo de Planeación de Ruta</p>
+                            <p className="text-xs text-emerald-800 dark:text-emerald-300">
+                                Este colaborador fue asignado a trabajar el <span className="font-semibold">{preselectedFecha || 'día seleccionado'}</span> en la Planeación de Ruta.
+                                {preselectedRutaAsignada && <> Asignación: <span className="font-semibold">{preselectedRutaAsignada}</span>.</>}
+                            </p>
+                        </div>
+                    </div>
+                )}
 
                 <form onSubmit={submit} className="grid gap-6">
                     <SeccionCard icon={Users} titulo="Colaborador y tipo de prueba" tono="verde">

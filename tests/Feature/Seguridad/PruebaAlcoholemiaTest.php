@@ -262,12 +262,12 @@ class PruebaAlcoholemiaTest extends TestCase
         $export = new \App\Exports\Seguridad\PruebasExport(collect([$prueba]));
 
         $this->assertSame(
-            ['Fecha', 'Colaborador', 'Cédula', 'Tipo', 'Dispositivo', 'Resultado', 'Evaluación', 'Estado', 'Responsable', 'Firma', 'Evidencia principal'],
+            ['Fecha', 'Colaborador', 'Cédula', 'Tipo', 'Origen Planeación', 'Ruta Asignada', 'Dispositivo', 'Resultado', 'Evaluación', 'Estado', 'Responsable', 'Firma', 'Evidencia principal'],
             $export->headings()
         );
 
         $fila = $export->map($prueba);
-        $this->assertCount(11, $fila);
+        $this->assertCount(13, $fila);
         $this->assertSame('', end($fila));
     }
 
@@ -310,5 +310,80 @@ class PruebaAlcoholemiaTest extends TestCase
 
         $prueba->refresh();
         $this->assertSame('2026-09-18 14:45:00', $prueba->fecha_hora->format('Y-m-d H:i:s'));
+    }
+
+    public function test_cobertura_planeacion_calculates_correct_summary_metrics_and_text(): void
+    {
+        $fecha = '2026-09-24';
+        $user = $this->seguridadUser();
+        $col1 = $this->colaborador();
+        $col2 = Colaborador::create([
+            'cedula' => '999888777',
+            'nombres' => 'María',
+            'apellidos' => 'Gómez',
+            'cargo' => 'Auxiliar',
+            'is_active' => true,
+            'estado_registro' => 'completo',
+        ]);
+
+        $modulacion = \App\Models\Reparto\Modulacion::create([
+            'fecha' => $fecha,
+            'user_id' => $user->id,
+        ]);
+
+        $modulacion->items()->create([
+            'placa' => 'ABC-123',
+            'ud' => 'UD-01',
+            'cargo' => 'Conductor',
+            'colaborador_id' => $col1->id,
+            'cedula' => $col1->cedula,
+            'nombres' => $col1->nombres,
+            'tripulacion' => [
+                ['colaborador_id' => $col2->id, 'cedula' => $col2->cedula, 'nombres' => $col2->nombres, 'cargo' => 'Auxiliar'],
+            ],
+        ]);
+
+        // Registrar prueba para col1
+        $prueba = PruebaAlcoholemia::create([
+            'colaborador_id' => $col1->id,
+            'tipo' => 'pre_ruta',
+            'resultado' => '0.000',
+            'responsable_id' => $user->id,
+            'fecha_hora' => "{$fecha} 08:00:00",
+            'estado' => 'realizada',
+        ]);
+
+        $this->assertTrue($prueba->pertenece_planeacion);
+        $this->assertStringContainsString('ABC-123', $prueba->ruta_asignada);
+
+        $service = app(\App\Services\Seguridad\CoberturaPlaneacionService::class);
+        $resumen = $service->obtenerResumenCobertura($fecha);
+
+        $this->assertSame(2, $resumen['total_planeados']);
+        $this->assertSame(1, $resumen['total_realizados']);
+        $this->assertSame(1, $resumen['total_pendientes']);
+        $this->assertSame(50.0, $resumen['porcentaje_cobertura']);
+        $this->assertStringContainsString('2 colaboradores planeados — 1 realizados — 1 pendientes — 50,00% de cobertura', $resumen['resumen_texto']);
+    }
+
+    public function test_prueba_for_unplanned_collaborator_is_registered_as_evaluacion_adicional_without_blocking(): void
+    {
+        $user = $this->seguridadUser();
+        $colaborador = $this->colaborador();
+        $dispositivo = $this->alcoholimetro();
+
+        $response = $this->actingAs($user)->post(route('seguridad.pruebas.store'), [
+            'colaborador_id' => $colaborador->id,
+            'tipo' => 'pre_ruta',
+            'alcoholimetro_id' => $dispositivo->id,
+            'resultado' => '0.000',
+            'consentimiento_aceptado' => true,
+        ]);
+
+        $response->assertRedirect(route('seguridad.pruebas.index'));
+        $prueba = PruebaAlcoholemia::where('colaborador_id', $colaborador->id)->firstOrFail();
+
+        $this->assertFalse($prueba->pertenece_planeacion);
+        $this->assertNull($prueba->modulacion_id);
     }
 }

@@ -21,11 +21,16 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Maatwebsite\Excel\Facades\Excel;
 
+use App\Services\Seguridad\CoberturaPlaneacionService;
+
 class PruebaAlcoholemiaController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request, CoberturaPlaneacionService $coberturaService): Response
     {
         $filtros = $this->filtrosDesdeRequest($request);
+        $fechaConsulta = $filtros['fecha_desde'] ?: ($request->input('fecha', date('Y-m-d')));
+
+        $cobertura = $coberturaService->obtenerResumenCobertura($fechaConsulta);
 
         $pruebas = $this->filtrarPruebas($request)
             ->latest('fecha_hora')
@@ -34,11 +39,13 @@ class PruebaAlcoholemiaController extends Controller
 
         return Inertia::render('seguridad/pruebas/index', [
             'pruebas' => $pruebas,
-            'filters' => $filtros,
+            'cobertura' => $cobertura,
+            'fechaConsulta' => $fechaConsulta,
+            'filters' => array_merge($filtros, ['fecha' => $fechaConsulta]),
         ]);
     }
 
-    public function create(): Response
+    public function create(Request $request): Response
     {
         $dispositivosDisponibles = Alcoholimetro::query()
             ->where('estado', 'Disponible')
@@ -67,6 +74,9 @@ class PruebaAlcoholemiaController extends Controller
                 ->get(['id', 'nombres', 'apellidos', 'cedula', 'turno', 'cargo']),
             'dispositivosDisponibles' => $dispositivosDisponibles,
             'dispositivoDefaultId'    => $dispositivoDefaultId,
+            'preselectedColaboradorId' => $request->input('colaborador_id') ? (int) $request->input('colaborador_id') : null,
+            'preselectedFecha' => $request->input('fecha') ?: null,
+            'preselectedRutaAsignada' => $request->input('ruta_asignada') ?: null,
         ]);
     }
 
@@ -277,6 +287,8 @@ class PruebaAlcoholemiaController extends Controller
             ->with(['colaborador:id,nombres,apellidos,cedula', 'alcoholimetro:id,codigo', 'responsable:id,name', 'evidencias'])
             ->when($filtros['estado'] !== '', fn ($query) => $query->where('estado', $filtros['estado']))
             ->when($filtros['tipo'] !== '', fn ($query) => $query->where('tipo', $filtros['tipo']))
+            ->when($filtros['origen_planeacion'] === 'planeadas', fn ($query) => $query->where('pertenece_planeacion', true))
+            ->when($filtros['origen_planeacion'] === 'adicionales', fn ($query) => $query->where('pertenece_planeacion', false))
             ->when($filtros['fecha_desde'] !== '', fn ($query) => $query->whereDate('fecha_hora', '>=', $filtros['fecha_desde']))
             ->when($filtros['fecha_hasta'] !== '', fn ($query) => $query->whereDate('fecha_hora', '<=', $filtros['fecha_hasta']))
             ->when($filtros['colaborador'] !== '', function ($query) use ($filtros) {
@@ -313,6 +325,7 @@ class PruebaAlcoholemiaController extends Controller
         return [
             'estado' => $request->string('estado')->trim()->toString(),
             'tipo' => $request->string('tipo')->trim()->toString(),
+            'origen_planeacion' => $request->string('origen_planeacion')->trim()->toString(),
             'fecha_desde' => $request->string('fecha_desde')->trim()->toString(),
             'fecha_hasta' => $request->string('fecha_hasta')->trim()->toString(),
             'colaborador' => $request->string('colaborador')->trim()->toString(),
