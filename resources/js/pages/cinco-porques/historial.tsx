@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
-import { Plus } from 'lucide-react';
+import { BarChart3, Plus } from 'lucide-react';
 import { useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -70,11 +70,20 @@ export default function CincoPorquesHistorial({
                         title={puedeVerTodos ? 'Historial de 5 Por Qué' : 'Mi historial de 5 Por Qué'}
                         description={puedeVerTodos ? 'Análisis de causa raíz de todos los colaboradores.' : 'Tus análisis de causa raíz.'}
                     />
-                    <Button size="sm" asChild>
-                        <Link href={route('cinco-porques.create')}>
-                            <Plus className="size-4" /> Nuevo análisis
-                        </Link>
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                        {puedeVerTodos && (
+                            <Button size="sm" variant="outline" asChild>
+                                <Link href={route('cinco-porques.indicadores')}>
+                                    <BarChart3 className="size-4" /> Indicadores
+                                </Link>
+                            </Button>
+                        )}
+                        <Button size="sm" asChild>
+                            <Link href={route('cinco-porques.create')}>
+                                <Plus className="size-4" /> Nuevo análisis
+                            </Link>
+                        </Button>
+                    </div>
                 </div>
 
                 <div className="border-border bg-muted/30 flex flex-wrap items-end gap-3 rounded-lg border p-3">

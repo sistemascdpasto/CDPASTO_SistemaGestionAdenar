@@ -187,11 +187,24 @@ class RevisionAleatoriaController extends Controller
             return response()->json([]);
         }
 
-        $productos = Producto::where('sku', 'like', "%{$q}%")
-            ->orWhere('descripcion', 'like', "%{$q}%")
+        // Cada palabra escrita debe aparecer (en sku o descripción), sin
+        // importar el orden: buscar "aguila light" también debe encontrar
+        // "Light Aguila Lata", y una sola palabra muy genérica no debe tapar
+        // el resto de resultados con el límite de la lista.
+        $terminos = array_filter(preg_split('/\s+/', $q));
+
+        $productos = Producto::query()
+            ->where(function (Builder $query) use ($terminos) {
+                foreach ($terminos as $termino) {
+                    $query->where(function (Builder $q) use ($termino) {
+                        $q->where('descripcion', 'like', "%{$termino}%")
+                            ->orWhere('sku', 'like', "%{$termino}%");
+                    });
+                }
+            })
             ->orderByRaw('CASE WHEN descripcion LIKE ? THEN 0 ELSE 1 END', ["{$q}%"])
             ->orderBy('descripcion')
-            ->limit(15)
+            ->limit(30)
             ->get(['id', 'sku', 'descripcion']);
 
         return response()->json($productos);

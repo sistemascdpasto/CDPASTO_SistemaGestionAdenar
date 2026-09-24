@@ -130,6 +130,38 @@ class CincoPorqueTest extends TestCase
         $this->actingAs($this->usuario('Reparto'))->get(route('cinco-porques.show', $registro))->assertOk();
     }
 
+    public function test_colaborador_no_puede_ver_los_indicadores(): void
+    {
+        $this->actingAs($this->usuario('Colaborador'))->get(route('cinco-porques.indicadores'))->assertForbidden();
+    }
+
+    public function test_reparto_y_administrador_pueden_ver_los_indicadores(): void
+    {
+        $vehiculo = Vehiculo::create(['placa' => 'ABC123', 'is_active' => true]);
+        CincoPorque::create([...$this->datosValidos(['vehiculo_id' => $vehiculo->id]), 'user_id' => $this->usuario('Reparto')->id]);
+
+        $this->actingAs($this->usuario('Reparto'))->get(route('cinco-porques.indicadores'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->component('cinco-porques/indicadores')->where('kpis.total_analisis', 1));
+
+        $this->actingAs($this->usuario('Administrador'))->get(route('cinco-porques.indicadores'))->assertOk();
+    }
+
+    public function test_los_indicadores_reflejan_el_indicador_mas_frecuente_del_rango(): void
+    {
+        $reparto = $this->usuario('Reparto');
+        CincoPorque::create([...$this->datosValidos(['indicador' => 'Rechazos']), 'user_id' => $reparto->id]);
+        CincoPorque::create([...$this->datosValidos(['indicador' => 'Rechazos']), 'user_id' => $reparto->id]);
+        CincoPorque::create([...$this->datosValidos(['indicador' => 'Devolución']), 'user_id' => $reparto->id]);
+
+        $this->actingAs($reparto)->get(route('cinco-porques.indicadores'))
+            ->assertInertia(fn ($page) => $page
+                ->where('kpis.total_analisis', 3)
+                ->where('kpis.indicador_mas_frecuente', 'Rechazos')
+                ->where('kpis.indicador_mas_frecuente_total', 2)
+            );
+    }
+
     public function test_la_ia_devuelve_cinco_opciones_para_el_primer_porque(): void
     {
         Http::fake([

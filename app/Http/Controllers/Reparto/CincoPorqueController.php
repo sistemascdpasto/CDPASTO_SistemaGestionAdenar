@@ -7,6 +7,7 @@ use App\Http\Requests\Reparto\StoreCincoPorqueRequest;
 use App\Models\Flota\Vehiculo;
 use App\Models\Reparto\CincoPorque;
 use App\Services\Reparto\CincoPorquesIaService;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -119,6 +120,97 @@ class CincoPorqueController extends Controller
                 'creado' => $cincoPorque->created_at?->toIso8601String(),
             ],
         ]);
+    }
+
+    /**
+     * Dashboard de indicadores del módulo (solo Reparto/Administrador — un
+     * Colaborador solo diligencia su propio análisis, no ve el agregado de
+     * toda la operación).
+     */
+    public function indicadores(Request $request): Response
+    {
+        $hasta = $request->input('hasta', now()->toDateString());
+        $desde = $request->input('desde', now()->subDays(29)->toDateString());
+
+        $filtros = $request->only(['indicador', 'vehiculo_id']);
+
+        $registros = CincoPorque::query()
+            ->whereDate('fecha', '>=', $desde)
+            ->whereDate('fecha', '<=', $hasta)
+            ->when($filtros['indicador'] ?? null, fn ($q, $v) => $q->where('indicador', $v))
+            ->when($filtros['vehiculo_id'] ?? null, fn ($q, $v) => $q->where('vehiculo_id', $v))
+            ->with(['colaborador:id,nombres,apellidos', 'user:id,name', 'vehiculo:id,placa'])
+            ->get();
+
+        $total = $registros->count();
+        $dias = Carbon::parse($desde)->diffInDays(Carbon::parse($hasta)) + 1;
+
+        // Mismo rango de días, inmediatamente anterior al filtrado, con los
+        // mismos filtros de indicador/vehículo: es lo que permite decir si
+        // los análisis de causa raíz van en aumento o en descenso.
+        $desdeAnterior = Carbon::parse($desde)->subDays($dias)->toDateString();
+        $hastaAnterior = Carbon::parse($desde)->subDay()->toDateString();
+        $totalAnterior = CincoPorque::query()
+            ->whereDate('fecha', '>=', $desdeAnterior)
+            ->whereDate('fecha', '<=', $hastaAnterior)
+            ->when($filtros['indicador'] ?? null, fn ($q, $v) => $q->where('indicador', $v))
+            ->when($filtros['vehiculo_id'] ?? null, fn ($q, $v) => $q->where('vehiculo_id', $v))
+            ->count();
+
+        $variacion = match (true) {
+            $totalAnterior > 0 => round((($total - $totalAnterior) / $totalAnterior) * 100, 1),
+            $total > 0 => 100.0,
+            default => 0.0,
+        };
+
+        $indicadorMasFrecuente = $registros->countBy('indicador')->sortDesc();
+
+        $kpis = [
+            'total_analisis' => $total,
+            'variacion_vs_periodo_anterior' => $variacion,
+            'promedio_por_dia' => $dias > 0 ? round($total / $dias, 1) : 0,
+            'indicador_mas_frecuente' => $indicadorMasFrecuente->keys()->first() ?? '—',
+            'indicador_mas_frecuente_total' => $indicadorMasFrecuente->first() ?? 0,
+            'vehiculos_involucrados' => $registros->pluck('vehiculo_id')->filter()->unique()->count(),
+            'ejecutores_participantes' => $registros->map(fn (CincoPorque $r) => $r->colaborador_id ?? "user-{$r->user_id}")->unique()->count(),
+        ];
+
+        $analisisPorDia = $registros->groupBy(fn (CincoPorque $r) => $r->fecha->format('Y-m-d'))
+            ->map(fn ($g, $fecha) => ['fecha' => $fecha, 'total' => $g->count()])
+            ->sortBy('fecha')->values();
+
+        $porIndicador = $registros->groupBy('indicador')
+            ->map(fn ($g, $nombre) => ['indicador' => $nombre, 'total' => $g->count()])
+            ->sortByDesc('total')->values();
+
+        $porVehiculo = $registros->groupBy(fn (CincoPorque $r) => $r->vehiculo?->placa ?? '—')
+            ->map(fn ($g, $placa) => ['placa' => $placa, 'total' => $g->count()])
+            ->filter(fn ($row) => $row['placa'] !== '—')
+            ->sortByDesc('total')->take(10)->values();
+
+        $porEjecutor = $registros->groupBy(fn (CincoPorque $r) => $this->nombreEjecutor($r))
+            ->map(fn ($g, $nombre) => ['ejecutor' => $nombre, 'total' => $g->count()])
+            ->sortByDesc('total')->take(10)->values();
+
+        return Inertia::render('cinco-porques/indicadores', [
+            'filtros' => [...$filtros, 'desde' => $desde, 'hasta' => $hasta],
+            'kpis' => $kpis,
+            'analisisPorDia' => $analisisPorDia,
+            'porIndicador' => $porIndicador,
+            'porVehiculo' => $porVehiculo,
+            'porEjecutor' => $porEjecutor,
+            'indicadoresDisponibles' => config('cinco_porques.indicadores'),
+            'vehiculosDisponibles' => Vehiculo::orderBy('placa')->get(['id', 'placa']),
+        ]);
+    }
+
+    private function nombreEjecutor(CincoPorque $registro): string
+    {
+        if ($registro->colaborador) {
+            return trim("{$registro->colaborador->nombres} {$registro->colaborador->apellidos}");
+        }
+
+        return $registro->user?->name ?? '—';
     }
 
     /**
