@@ -1,4 +1,5 @@
 import { EvidenciaUploader, type PickedFile } from '@/components/evidencia-uploader';
+import InputError from '@/components/input-error';
 import { Ruleta } from '@/components/reparto/ruleta';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,6 +25,7 @@ import {
     X,
 } from 'lucide-react';
 import { useState } from 'react';
+import { ProductoSearchSelect, type ProductoOption } from './producto-search-select';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
@@ -48,6 +50,7 @@ interface NovedadDetalle {
     sku: string | null;
     producto: string;
     cantidad_revisada: number | null;
+    cantidad_revisada_unidad: string | null;
     cantidad_novedad: number;
     causal: string | null;
     causal_especificacion: string | null;
@@ -57,6 +60,7 @@ interface NovedadDetalle {
 
 interface RevisionHoy {
     id: number;
+    numero_del_dia: number;
     fecha: string;
     fecha_formateada: string;
     vehiculo: { id: number; placa: string } | null;
@@ -74,6 +78,7 @@ interface NovedadFormState {
     sku: string;
     producto: string;
     cantidad_revisada: string;
+    cantidad_revisada_unidad: string;
     cantidad_novedad: string;
     causal_id: string;
     causal_especificacion: string;
@@ -93,6 +98,7 @@ function novedadVacia(): NovedadFormState {
         sku: '',
         producto: '',
         cantidad_revisada: '',
+        cantidad_revisada_unidad: '',
         cantidad_novedad: '',
         causal_id: '',
         causal_especificacion: '',
@@ -103,11 +109,15 @@ function novedadVacia(): NovedadFormState {
 
 export default function RevisionAleatoriaIndex({
     revision,
+    revisionesHoy,
+    limiteDiario,
     vehiculosActivos,
     responsablesActivos,
     causales,
 }: {
     revision: RevisionHoy | null;
+    revisionesHoy: RevisionHoy[];
+    limiteDiario: number;
     vehiculosActivos: RuletaOption[];
     responsablesActivos: RuletaOption[];
     causales: Causal[];
@@ -160,6 +170,11 @@ export default function RevisionAleatoriaIndex({
         copia[index] = { ...copia[index], [campo]: valor };
         form.setData('novedades', copia);
     };
+    const seleccionarProducto = (index: number, producto: ProductoOption) => {
+        const copia = [...form.data.novedades];
+        copia[index] = { ...copia[index], sku: producto.sku, producto: producto.descripcion };
+        form.setData('novedades', copia);
+    };
 
     const finalizarSinNovedades = () => {
         form.transform(() => ({ resultado: 'sin_novedades', novedades: [] }));
@@ -174,6 +189,7 @@ export default function RevisionAleatoriaIndex({
                 sku: n.sku || null,
                 producto: n.producto,
                 cantidad_revisada: n.cantidad_revisada || null,
+                cantidad_revisada_unidad: n.cantidad_revisada_unidad || null,
                 cantidad_novedad: n.cantidad_novedad,
                 causal_id: n.causal_id,
                 causal_especificacion: n.causal_especificacion || null,
@@ -192,7 +208,11 @@ export default function RevisionAleatoriaIndex({
                     <div>
                         <h1 className="text-2xl font-bold text-foreground sm:text-3xl">Revisión Aleatoria Diaria</h1>
                         <p className="mt-0.5 flex items-center gap-1.5 text-sm text-muted-foreground">
-                            <CalendarDays className="size-4" /> {revision?.fecha_formateada ?? new Date().toLocaleDateString('es-CO')}
+                            <CalendarDays className="size-4" />{' '}
+                            {revision?.fecha_formateada ?? revisionesHoy[0]?.fecha_formateada ?? new Date().toLocaleDateString('es-CO')}
+                            <span className="font-semibold text-foreground">
+                                · {revisionesHoy.length} de {limiteDiario} revisiones de hoy
+                            </span>
                         </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -216,60 +236,75 @@ export default function RevisionAleatoriaIndex({
                     </div>
                 </div>
 
-                {/* Revisión ya finalizada hoy: vista de solo lectura */}
-                {revision?.finalizada_en && (
-                    <div className="rounded-xl border border-sidebar-border/70 bg-card shadow-sm dark:border-sidebar-border">
-                        <div
-                            className={`flex items-center gap-2 rounded-t-xl px-5 py-3 ${
-                                revision.resultado === 'con_novedades'
-                                    ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300'
-                                    : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300'
-                            }`}
-                        >
-                            {revision.resultado === 'con_novedades' ? <AlertTriangle className="size-5" /> : <CheckCircle2 className="size-5" />}
-                            <p className="text-sm font-bold">
-                                {revision.resultado === 'con_novedades'
-                                    ? `Revisión finalizada — ${revision.total_novedades} novedad(es) encontrada(s)`
-                                    : 'Revisión finalizada sin novedades'}
-                            </p>
-                        </div>
-                        <div className="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-4">
-                            <ResumenDato label="Vehículo" valor={revision.vehiculo?.placa ?? '—'} icon={Truck} />
-                            <ResumenDato label="Responsable" valor={revision.responsable?.nombre ?? '—'} icon={User} />
-                            <ResumenDato label="Hora finalización" valor={revision.finalizada_en} icon={CalendarDays} />
-                            <ResumenDato label="Registrado por" valor={revision.usuario ?? '—'} icon={User} />
-                        </div>
-                        {revision.novedades.length > 0 && (
-                            <div className="space-y-3 border-t border-sidebar-border/70 p-5 dark:border-sidebar-border">
-                                {revision.novedades.map((n, i) => (
-                                    <div key={n.id} className="rounded-lg border border-sidebar-border/70 p-3 dark:border-sidebar-border">
-                                        <p className="text-xs font-bold text-foreground">
-                                            Novedad {i + 1} — {n.producto} {n.sku && <span className="text-muted-foreground">({n.sku})</span>}
-                                        </p>
-                                        <p className="mt-1 text-xs text-muted-foreground">
-                                            Cantidad afectada: <strong className="text-foreground">{n.cantidad_novedad}</strong> · Causal:{' '}
-                                            <strong className="text-foreground">{n.causal}</strong>
-                                            {n.causal_especificacion && ` — ${n.causal_especificacion}`}
-                                        </p>
-                                        {n.observacion && <p className="mt-1 text-xs text-muted-foreground italic">"{n.observacion}"</p>}
-                                        {n.evidencias.length > 0 && (
-                                            <div className="mt-2 flex flex-wrap gap-2">
-                                                {n.evidencias.map((e) => (
-                                                    <a key={e.id} href={e.url} target="_blank" rel="noreferrer">
-                                                        <img src={e.url} className="h-16 w-16 rounded-md border border-border object-cover" />
-                                                    </a>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
+                {/* Revisiones de hoy ya finalizadas: vista de solo lectura */}
+                {revisionesHoy
+                    .filter((r) => r.finalizada_en)
+                    .map((revisionFinalizada) => (
+                        <div key={revisionFinalizada.id} className="rounded-xl border border-sidebar-border/70 bg-card shadow-sm dark:border-sidebar-border">
+                            <div
+                                className={`flex items-center gap-2 rounded-t-xl px-5 py-3 ${
+                                    revisionFinalizada.resultado === 'con_novedades'
+                                        ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300'
+                                        : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300'
+                                }`}
+                            >
+                                {revisionFinalizada.resultado === 'con_novedades' ? (
+                                    <AlertTriangle className="size-5" />
+                                ) : (
+                                    <CheckCircle2 className="size-5" />
+                                )}
+                                <p className="text-sm font-bold">
+                                    Revisión {revisionFinalizada.numero_del_dia} de {limiteDiario} —{' '}
+                                    {revisionFinalizada.resultado === 'con_novedades'
+                                        ? `finalizada, ${revisionFinalizada.total_novedades} novedad(es) encontrada(s)`
+                                        : 'finalizada sin novedades'}
+                                </p>
                             </div>
-                        )}
+                            <div className="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-4">
+                                <ResumenDato label="Vehículo" valor={revisionFinalizada.vehiculo?.placa ?? '—'} icon={Truck} />
+                                <ResumenDato label="Responsable" valor={revisionFinalizada.responsable?.nombre ?? '—'} icon={User} />
+                                <ResumenDato label="Hora finalización" valor={revisionFinalizada.finalizada_en ?? '—'} icon={CalendarDays} />
+                                <ResumenDato label="Registrado por" valor={revisionFinalizada.usuario ?? '—'} icon={User} />
+                            </div>
+                            {revisionFinalizada.novedades.length > 0 && (
+                                <div className="space-y-3 border-t border-sidebar-border/70 p-5 dark:border-sidebar-border">
+                                    {revisionFinalizada.novedades.map((n, i) => (
+                                        <div key={n.id} className="rounded-lg border border-sidebar-border/70 p-3 dark:border-sidebar-border">
+                                            <p className="text-xs font-bold text-foreground">
+                                                Novedad {i + 1} — {n.producto} {n.sku && <span className="text-muted-foreground">({n.sku})</span>}
+                                            </p>
+                                            <p className="mt-1 text-xs text-muted-foreground">
+                                                Cantidad con novedad en unidades: <strong className="text-foreground">{n.cantidad_novedad}</strong>{' '}
+                                                · Causal: <strong className="text-foreground">{n.causal}</strong>
+                                                {n.causal_especificacion && ` — ${n.causal_especificacion}`}
+                                            </p>
+                                            {n.observacion && <p className="mt-1 text-xs text-muted-foreground italic">"{n.observacion}"</p>}
+                                            {n.evidencias.length > 0 && (
+                                                <div className="mt-2 flex flex-wrap gap-2">
+                                                    {n.evidencias.map((e) => (
+                                                        <a key={e.id} href={e.url} target="_blank" rel="noreferrer">
+                                                            <img src={e.url} className="h-16 w-16 rounded-md border border-border object-cover" />
+                                                        </a>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    ))}
+
+                {/* Ya se completaron todas las revisiones del día */}
+                {!revision && revisionesHoy.length >= limiteDiario && (
+                    <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/20 dark:text-emerald-300">
+                        <CheckCircle2 className="size-5" />
+                        <p className="text-sm font-bold">Ya se completaron las {limiteDiario} revisiones aleatorias de hoy.</p>
                     </div>
                 )}
 
-                {/* Flujo en progreso o por iniciar */}
-                {!revision?.finalizada_en && (
+                {/* Flujo en progreso o por iniciar, mientras no se llegue al límite diario */}
+                {(revision || revisionesHoy.length < limiteDiario) && (
                     <div className="flex flex-col gap-5">
                         {/* Paso 1: vehículo */}
                         <div className="rounded-xl border border-sidebar-border/70 bg-card p-5 shadow-sm dark:border-sidebar-border">
@@ -364,7 +399,8 @@ export default function RevisionAleatoriaIndex({
                         {revision?.vehiculo && revision.responsable && mostrarFormularioSku && (
                             <div className="rounded-xl border border-sidebar-border/70 bg-card p-5 shadow-sm dark:border-sidebar-border">
                                 <p className="mb-4 flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                                    <ClipboardList className="size-4" /> Revisión SKU — {revision.vehiculo.placa}
+                                    <ClipboardList className="size-4" /> Revisión SKU — {revision.vehiculo.placa} (revisión {revision.numero_del_dia}{' '}
+                                    de {limiteDiario})
                                 </p>
 
                                 <div className="mb-5">
@@ -411,6 +447,7 @@ export default function RevisionAleatoriaIndex({
                                                 novedad={novedad}
                                                 causales={causales}
                                                 onChange={actualizarNovedad}
+                                                onSelectProducto={(producto) => seleccionarProducto(index, producto)}
                                                 onRemove={() => quitarNovedad(index)}
                                                 puedeQuitar={form.data.novedades.length > 1}
                                                 errors={form.errors}
@@ -452,6 +489,7 @@ function NovedadFields({
     novedad,
     causales,
     onChange,
+    onSelectProducto,
     onRemove,
     puedeQuitar,
     errors,
@@ -460,6 +498,7 @@ function NovedadFields({
     novedad: NovedadFormState;
     causales: Causal[];
     onChange: (index: number, campo: keyof NovedadFormState, valor: string | PickedFile[]) => void;
+    onSelectProducto: (producto: ProductoOption) => void;
     onRemove: () => void;
     puedeQuitar: boolean;
     errors: Partial<Record<string, string>>;
@@ -477,26 +516,47 @@ function NovedadFields({
                 )}
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
-                <div className="grid gap-1.5">
-                    <Label className="text-xs">SKU / código</Label>
-                    <Input value={novedad.sku} onChange={(e) => onChange(index, 'sku', e.target.value)} placeholder="Opcional" />
-                </div>
-                <div className="grid gap-1.5">
-                    <Label className="text-xs">Producto</Label>
-                    <Input value={novedad.producto} onChange={(e) => onChange(index, 'producto', e.target.value)} required />
-                </div>
-                <div className="grid gap-1.5">
-                    <Label className="text-xs">Cantidad revisada</Label>
-                    <Input
-                        type="number"
-                        min={0}
-                        value={novedad.cantidad_revisada}
-                        onChange={(e) => onChange(index, 'cantidad_revisada', e.target.value)}
-                        placeholder="Opcional"
+                <div className="sm:col-span-2">
+                    <ProductoSearchSelect
+                        id={`novedad-${index}-producto`}
+                        label="Producto"
+                        valor={novedad.producto}
+                        skuActual={novedad.sku}
+                        onChange={(valor) => onChange(index, 'producto', valor)}
+                        onSelect={onSelectProducto}
+                        error={errors[`novedades.${index}.producto`]}
                     />
                 </div>
                 <div className="grid gap-1.5">
-                    <Label className="text-xs">Cantidad con novedad</Label>
+                    <Label className="text-xs">Cantidad revisada</Label>
+                    <div className="flex gap-2">
+                        <Input
+                            type="number"
+                            min={0}
+                            className="flex-1"
+                            value={novedad.cantidad_revisada}
+                            onChange={(e) => onChange(index, 'cantidad_revisada', e.target.value)}
+                            placeholder="Opcional"
+                        />
+                        <Select
+                            value={novedad.cantidad_revisada_unidad}
+                            onValueChange={(v) => onChange(index, 'cantidad_revisada_unidad', v)}
+                        >
+                            <SelectTrigger className="w-36">
+                                <SelectValue placeholder="Unidad" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="caja_30">Caja x30</SelectItem>
+                                <SelectItem value="sixpack">Sixpack</SelectItem>
+                                <SelectItem value="paca_24">Paca x24</SelectItem>
+                                <SelectItem value="unidades">Unidades</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <InputError message={errors[`novedades.${index}.cantidad_revisada_unidad`]} />
+                </div>
+                <div className="grid gap-1.5">
+                    <Label className="text-xs">Cantidad con novedad en unidades</Label>
                     <Input
                         type="number"
                         min={1}

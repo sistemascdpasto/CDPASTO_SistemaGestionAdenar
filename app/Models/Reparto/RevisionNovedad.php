@@ -8,6 +8,17 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class RevisionNovedad extends Model
 {
+    /**
+     * Unidades de empaque disponibles para "cantidad revisada", mostradas en
+     * ese orden en el selector del formulario.
+     */
+    const UNIDADES_CANTIDAD_REVISADA = [
+        'caja_30' => 'Caja x30',
+        'sixpack' => 'Sixpack',
+        'paca_24' => 'Paca x24',
+        'unidades' => 'Unidades',
+    ];
+
     protected $table = 'revision_novedades';
 
     protected $fillable = [
@@ -15,6 +26,7 @@ class RevisionNovedad extends Model
         'sku',
         'producto',
         'cantidad_revisada',
+        'cantidad_revisada_unidad',
         'cantidad_novedad',
         'causal_id',
         'causal_especificacion',

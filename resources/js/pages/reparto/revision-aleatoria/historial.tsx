@@ -21,6 +21,7 @@ const TODOS = '__todos__';
 
 interface FilaHistorial {
     id: number;
+    numero_del_dia: number;
     fecha: string;
     hora: string | null;
     placa: string;
@@ -189,7 +190,9 @@ export default function RevisionAleatoriaHistorial({
                                 )}
                                 {revisiones.data.map((r) => (
                                     <TableRow key={r.id}>
-                                        <TableCell>{r.fecha}</TableCell>
+                                        <TableCell>
+                                            {r.fecha} <span className="text-xs text-muted-foreground">#{r.numero_del_dia}</span>
+                                        </TableCell>
                                         <TableCell>{r.hora ?? '—'}</TableCell>
                                         <TableCell className="font-mono font-bold text-green-700 dark:text-green-400">{r.placa}</TableCell>
                                         <TableCell>{r.responsable}</TableCell>
