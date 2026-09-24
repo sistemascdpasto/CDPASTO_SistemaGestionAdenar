@@ -13,7 +13,7 @@ import { SimpleFileField } from '@/pages/gente/colaboradores/wizard/components/s
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, useForm } from '@inertiajs/react';
 import { Ban, CalendarClock, CheckCircle2, Download, FileCheck2, FileText, History, LoaderCircle, Pencil, Play, Plus, Stethoscope, Trash2, User } from 'lucide-react';
-import { FormEventHandler, useEffect, useState } from 'react';
+import { FormEventHandler, useCallback, useEffect, useState } from 'react';
 
 
 
@@ -787,7 +787,7 @@ function SeguimientosDialog({
     }>(emptyForm);
 
     // Load data from a specific seguimiento into the form (for editing)
-    const loadSeguimiento = (seguimiento: SeguimientoRow) => {
+    const loadSeguimiento = useCallback((seguimiento: SeguimientoRow) => {
         setEditingId(seguimiento.id);
         setEditingSoportePath(seguimiento.soporte_path || evaluacionRecomendacion.soporte_path || null);
         setData({
@@ -798,10 +798,10 @@ function SeguimientosDialog({
             carta_recomendacion_entregada: seguimiento.carta_recomendacion_entregada ?? false,
             soporte: [],
         });
-    };
+    }, [evaluacionRecomendacion.soporte_path, setData]);
 
     // Prepare a new seguimiento, referencing the last one as defaults
-    const prepareNew = () => {
+    const prepareNew = useCallback(() => {
         setEditingId(null);
         const lastSeg = evaluacionRecomendacion.seguimientos.length > 0
             ? evaluacionRecomendacion.seguimientos[evaluacionRecomendacion.seguimientos.length - 1]
@@ -819,7 +819,7 @@ function SeguimientosDialog({
         } else {
             reset();
         }
-    };
+    }, [evaluacionRecomendacion.seguimientos, evaluacionRecomendacion.soporte_path, reset, setData]);
 
     // Cargar el último seguimiento cuando se abre el modal
     useEffect(() => {
@@ -839,7 +839,7 @@ function SeguimientosDialog({
             setEditingSoportePath(null);
             reset();
         }
-    }, [open, reset]);
+    }, [open, editingId, evaluacionRecomendacion.seguimientos, loadSeguimiento, prepareNew, reset]);
 
     const handleRemoveExistingSoporte = (indexToRemove: number) => {
         const files = getSoporteFiles(editingSoportePath);

@@ -74,9 +74,7 @@ interface DowPunto  {
     placas: string[];
     personas: { nombre: string; placa: string; promedio: number }[];
 }
-interface HistBucket{ rango: string; inicio: number; total: number }
 interface Persona   { documento: string; nombre: string; cargo: string; placa: string; dias: number; promedio: number; bajo_critico: number; ceros: number; en_meta: number; pct_acumulado?: number }
-interface ScatterPt  { nombre: string; dias: number; promedio: number; ceros: number; cargo: string }
 interface CargoPtPersona { nombre: string; placa: string; promedio: number; dias: number; bajo_critico: number; fecha_min: string; fecha_max: string }
 interface CargoPt    {
     cargo: string; promedio: number; total: number; bajo_critico: number; pct_bajo: number;
@@ -88,9 +86,7 @@ interface HeatmapData{ personas: HmNombre[]; dias: string[]; celdas: Record<stri
 interface Props {
     kpis: Kpis; sparkline: number[];
     por_dia: DiaPunto[]; patron_dow: DowPunto[];
-    histograma: HistBucket[]; bandas: Record<string, number>;
     rank_bottom: Persona[]; rank_top: Persona[];
-    pareto: Persona[]; scatter: ScatterPt[];
     por_cargo: CargoPt[]; por_placa: PlacaPt[];
     heatmap: HeatmapData;
     cargos: string[];
@@ -436,8 +432,8 @@ function PlacaMultiSelect({
 // ─── Página principal ──────────────────────────────────────────────────────────
 export default function IndicadoresTiempoIndex({
     kpis, sparkline, por_dia, patron_dow,
-    histograma, bandas, rank_bottom, rank_top,
-    pareto, por_cargo, por_placa,
+    rank_bottom, rank_top,
+    por_cargo, por_placa,
     heatmap, cargos, todasPlacas, filters,
 }: Props) {
     const [fechaDesde, setFechaDesde] = useState(filters.fecha_desde ?? '');

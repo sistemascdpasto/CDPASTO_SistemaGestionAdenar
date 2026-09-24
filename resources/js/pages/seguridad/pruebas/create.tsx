@@ -434,7 +434,7 @@ export default function CreatePrueba({
                 }
             })
             .catch(() => { /* ignorar errores de red */ });
-    }, [data.colaborador_id]);
+    }, [data.colaborador_id, prueba]);
     const evidenciaInputRef = useRef<HTMLInputElement>(null);
     const evidenciasInputRef = useRef<HTMLInputElement>(null);
     // Rutas guardadas en el servidor; nunca se mutan localmente, solo se marcan para borrar.

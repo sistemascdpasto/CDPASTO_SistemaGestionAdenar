@@ -1,4 +1,3 @@
-import axios from 'axios';
 import HeadingSmall from '@/components/heading-small';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,7 +14,6 @@ import {
     ArrowLeft,
     Calendar,
     CheckSquare,
-    Eye,
     FileSpreadsheet,
     FileText,
     Filter,
@@ -28,7 +26,7 @@ import {
     UserPlus,
     Users,
 } from 'lucide-react';
-import React, { useEffect, useId, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
 
 interface ColaboradorOption {
@@ -72,6 +70,7 @@ interface ModulacionItemData {
     colaborador_id?: number;
     cedula?: string;
     nombres?: string;
+    doc_tras?: string;
     tripulacion?: MiembroTripulacion[];
     viajes?: Viaje[];
 }
@@ -227,7 +226,7 @@ function NarinoMunicipioInput({
                 let deptRoute: string;
                 try {
                     deptRoute = route('seguridad.colaboradores.referencias.departamentos');
-                } catch (e) {
+                } catch {
                     // Si la ruta no existe, usar el fallback
                     console.warn('Ruta de departamentos no disponible, usando municipios por defecto');
                     return;
@@ -243,7 +242,7 @@ function NarinoMunicipioInput({
                     let citiesRoute: string;
                     try {
                         citiesRoute = route('seguridad.colaboradores.referencias.ciudades', { departamento_id: narino.id });
-                    } catch (e) {
+                    } catch {
                         console.warn('Ruta de ciudades no disponible, usando municipios por defecto');
                         return;
                     }
@@ -301,7 +300,7 @@ function NarinoMunicipioInput({
     );
 }
 
-const cleanString = (val: any, fallback: string = '') => {
+const cleanString = (val: unknown, fallback: string = '') => {
     if (val === null || val === undefined || val === 'undefined' || val === 'null') return fallback;
     return String(val);
 };
@@ -321,10 +320,10 @@ export default function ModulacionIndex({
     
     // Sincronizar isEditing cuando cambia readOnly desde las props de Inertia
     useEffect(() => {
-        if (readOnly && isEditing) {
+        if (readOnly) {
             setIsEditing(false);
         }
-    }, [readOnly]); // Removí isEditing de las dependencias para evitar loops
+    }, [readOnly]);
     
     // Fecha seleccionada con Calendario
     const [fechaTexto, setFechaTexto] = useState<string>(
@@ -362,7 +361,7 @@ export default function ModulacionIndex({
                 alert(`La fecha ${modulacion.fecha} ya tiene una planeación registrada. Se han precargado los datos.`);
             }
         }
-    }, [modulacion]);
+    }, [modulacion, currentUser]);
 
     // Función para cambiar la fecha consultando la base de datos vía API en tiempo real sin redirigir la página
     const handleFechaChange = async (newFecha: string) => {
@@ -378,7 +377,31 @@ export default function ModulacionIndex({
                 console.error('Error checkFecha HTTP:', res.status);
                 return;
             }
-            const data = await res.json();
+            const data = await res.json() as {
+                exists?: boolean;
+                modulacion?: {
+                    ud_programado_por?: string | null;
+                    despachado_por_colaborador_id?: number | null;
+                    despachado_por_nombre?: string | null;
+                    items?: Array<{
+                        id?: number;
+                        placa?: string;
+                        doc_tras?: string | null;
+                        cargo?: string | null;
+                        tripulacion?: MiembroTripulacion[];
+                        viajes?: Array<Partial<Viaje> & { id?: string }>;
+                    }>;
+                    novedades?: ModulacionNovedadData[];
+                } | null;
+                fijosIniciales?: Array<{
+                    colaborador_id?: number;
+                    cedula?: string;
+                    nombres?: string;
+                    cargo?: string;
+                    fijo_rescate?: boolean;
+                    fijo_taller?: boolean;
+                }>;
+            };
             if (data.exists && data.modulacion) {
                 setUdProgramadoPor(cleanString(data.modulacion.ud_programado_por, cleanString(currentUser, '')));
                 if (data.modulacion.despachado_por_colaborador_id) {
@@ -388,13 +411,13 @@ export default function ModulacionIndex({
 
                 if (Array.isArray(data.modulacion.items) && data.modulacion.items.length > 0) {
                     setRutas(
-                        data.modulacion.items.map((item: any) => ({
+                        data.modulacion.items.map((item) => ({
                             id: item.id,
-                            placa: item.placa,
+                            placa: item.placa ?? '',
                             doc_tras: item.doc_tras ?? '',
                             cargo: item.cargo ?? '',
                             tripulacion: item.tripulacion ?? [],
-                            viajes: (item.viajes ?? []).map((v: any, i: number) => ({ ...v, id: v.id ?? `srv-${item.id}-v${i}` })),
+                            viajes: (item.viajes ?? []).map((v, i) => ({ ...v, id: v.id ?? `srv-${item.id ?? 'new'}-v${i}` })),
                         }))
                     );
                 } else {
@@ -412,7 +435,7 @@ export default function ModulacionIndex({
                 setRutas([]);
                 if (Array.isArray(data.fijosIniciales) && data.fijosIniciales.length > 0) {
                     setNovedadesLocal(
-                        data.fijosIniciales.map((f: any, i: number) => ({
+                        data.fijosIniciales.map((f, i) => ({
                             id: -(i + 1),
                             modulacion_id: 0,
                             colaborador_id: f.colaborador_id,
@@ -453,13 +476,12 @@ export default function ModulacionIndex({
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
     // Rutas guardadas en la lista
-    const [rutasLoaded, setRutasLoaded] = useState(false);
     const [rutas, setRutas] = useState<RutaFormState[]>(() => {
         if (modulacion?.items && modulacion.items.length > 0) {
             return modulacion.items.map((item) => ({
                 id: item.id,
                 placa: item.placa,
-                doc_tras: (item as any).doc_tras ?? '',
+                doc_tras: item.doc_tras ?? '',
                 cargo: item.cargo ?? '',
                 tripulacion: item.tripulacion ?? [],
                 viajes: (item.viajes ?? []).map((v, i) => ({ ...v, id: v.id ?? `srv-${item.id}-v${i}` })),
@@ -474,7 +496,7 @@ export default function ModulacionIndex({
                 modulacion.items.map((item) => ({
                     id: item.id,
                     placa: item.placa,
-                    doc_tras: (item as any).doc_tras ?? '',
+                    doc_tras: item.doc_tras ?? '',
                     cargo: item.cargo ?? '',
                     tripulacion: item.tripulacion ?? [],
                     viajes: (item.viajes ?? []).map((v, i) => ({ ...v, id: v.id ?? `srv-${item.id}-v${i}` })),
@@ -494,7 +516,6 @@ export default function ModulacionIndex({
                 setIsEditing(true);
             }
         }
-        setRutasLoaded(true);
     }, [modulacion, readOnly]);
 
     // Filtros de la Tabla Planeación de Ruta (Solo Filtro por Placa)
@@ -554,7 +575,7 @@ export default function ModulacionIndex({
         }
     };
 
-    const handleCurrentRouteFieldChange = (field: keyof RutaFormState, value: any) => {
+    const handleCurrentRouteFieldChange = (field: keyof RutaFormState, value: RutaFormState[keyof RutaFormState]) => {
         setCurrentRoute((prev) => ({ ...prev, [field]: value }));
     };
 
@@ -602,7 +623,7 @@ export default function ModulacionIndex({
         return set;
     }, [rutas, editingIndex]);
 
-    const isCollaboratorAlreadyAssigned = (col: ColaboradorOption) => {
+    const isCollaboratorAlreadyAssigned = useCallback((col: ColaboradorOption) => {
         const colIdStr = String(col.id).trim();
         const colCedStr = col.cedula ? String(col.cedula).trim() : '';
 
@@ -617,7 +638,7 @@ export default function ModulacionIndex({
             assignedCollaboratorsSet.has(`id:${colIdStr}`) ||
             (colCedStr !== '' && assignedCollaboratorsSet.has(`cedula:${colCedStr}`))
         );
-    };
+    }, [assignedCollaboratorsSet, currentRoute.tripulacion]);
 
     // MANEJO DE CHECKLIST DE TRIPULACIÓN
     const handleToggleChecklistMember = (col: ColaboradorOption) => {
@@ -738,7 +759,7 @@ export default function ModulacionIndex({
                 ud_programado_por: udProgramadoPor,
                 despachado_por_colaborador_id: despachadoPorId ? Number(despachadoPorId) : null,
                 despachado_por_nombre: despachadoPorNombre,
-                rutas: finalRutas as any,
+                rutas: finalRutas,
                 novedades: novedadesPayload,
             },
             {
@@ -816,18 +837,6 @@ export default function ModulacionIndex({
     }, [modulacion, fijosIniciales]);
 
     // Para compatibilidad con el payload de storeBatch — mantiene los cambios de checkboxes
-    const [novedadesState, setNovedadesState] = useState<Record<number, ModulacionNovedadData>>({});
-
-    useEffect(() => {
-        if (modulacion?.novedades) {
-            const initialMap: Record<number, ModulacionNovedadData> = {};
-            modulacion.novedades.forEach((nov) => {
-                initialMap[nov.id] = { ...nov };
-            });
-            setNovedadesState(initialMap);
-        }
-    }, [modulacion]);
-
     // FORMULARIO DE INGRESO A TABLA 2
     const [nuevaNovedad, setNuevaNovedad] = useState({
         colaborador_id: '',
@@ -895,7 +904,7 @@ export default function ModulacionIndex({
             permiso: nuevaNovedad.permiso,
             incapacidad: nuevaNovedad.incapacidad,
             vacaciones: nuevaNovedad.vacaciones,
-        } as any;
+        };
 
         setNovedadesLocal((prev) => [...prev, nuevaFila]);
 
@@ -913,7 +922,7 @@ export default function ModulacionIndex({
         });
     };
 
-    const handleNovedadChange = (id: number, field: keyof ModulacionNovedadData, value: any) => {
+    const handleNovedadChange = (id: number, field: keyof ModulacionNovedadData, value: ModulacionNovedadData[keyof ModulacionNovedadData]) => {
         setNovedadesLocal((prev) =>
             prev.map((n) => n.id === id ? { ...n, [field]: value } : n)
         );
@@ -995,7 +1004,7 @@ export default function ModulacionIndex({
         });
 
         return { selectedColaboradores: selected, unselectedColaboradores: unselected };
-    }, [colaboradores, cargoFilter, searchQuery, currentRoute.tripulacion, assignedCollaboratorsSet, fijosColaboradorIds]);
+    }, [colaboradores, cargoFilter, searchQuery, currentRoute.tripulacion, isCollaboratorAlreadyAssigned]);
 
     const allChecklistColaboradores = [...selectedColaboradores, ...unselectedColaboradores];
 

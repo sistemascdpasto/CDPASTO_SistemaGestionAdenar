@@ -62,7 +62,7 @@ export default function PruebasIndex({ pruebas, filters }: { pruebas: PruebasPag
     useEffect(() => {
         if (isFirstRender.current) { isFirstRender.current = false; return; }
         router.get(route('seguridad.pruebas.index'), { ...debouncedForm }, { preserveState: true, replace: true });
-    }, [JSON.stringify(debouncedForm)]);
+    }, [debouncedForm]);
 
     const exportUrl = (ruta: string) => route(ruta, { ...form });
 

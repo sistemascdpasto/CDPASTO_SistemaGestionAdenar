@@ -6,7 +6,7 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { ArrowLeft, PlayCircle, X } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
@@ -34,7 +34,7 @@ interface Props {
 }
 
 export default function MedicionTiemposInventarioCreate({ vehiculos, colaboradores, esColaborador = false }: Props) {
-    const { data, setData, post, processing, errors } = useForm({
+    const { data, setData, post, processing } = useForm({
         fecha_medicion: new Date().toISOString().split('T')[0],
         vehiculo_id: '',
         colaborador_id: '',

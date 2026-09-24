@@ -1,5 +1,4 @@
 import AppLayout from '@/layouts/app-layout';
-import { type BreadcrumbItem } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
 import {
     CalendarDays,
@@ -18,13 +17,6 @@ import {
     ChevronRight,
 } from 'lucide-react';
 import React, { useRef, useState } from 'react';
-
-// ─── Breadcrumbs ─────────────────────────────────────────────────────────────
-
-const _breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Portal', href: '/portal' },
-    { title: 'Mi Compensación Diaria', href: '/portal/mi-compensacion' },
-];
 
 const META_MENSUAL = 800; // COP — hardcoded por diseño del negocio
 

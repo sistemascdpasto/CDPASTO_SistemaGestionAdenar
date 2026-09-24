@@ -8,7 +8,7 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
 import { Eye, Plus, Trash2, Edit, Clock, User, Download, Truck, Timer, TrendingDown, Activity, Users } from 'lucide-react';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     BarElement, CategoryScale, Chart as ChartJS,
     Legend, LinearScale, Tooltip,
@@ -83,7 +83,6 @@ interface Props {
         placa: string;
         colaborador: string;
     };
-    puedeVerTodos: boolean;
     indicadores?: Indicadores;
     por_dia?: DatosPorPeriodo;
     por_mes?: DatosPorPeriodo;
@@ -198,7 +197,7 @@ function GraficaBarras({
             },
             tooltip: {
                 callbacks: {
-                    afterBody: (items: any[]) => {
+                    afterBody: (items: { dataIndex?: number }[]) => {
                         const idx = items[0]?.dataIndex;
                         return idx !== undefined ? [`Inventarios: ${cantidad[idx]}`] : [];
                     },
@@ -214,7 +213,7 @@ function GraficaBarras({
                 beginAtZero: true,
                 ticks: {
                     color: '#9ca3af', font: { size: 9 }, maxTicksLimit: 6,
-                    callback: (v: any) => `${v}m`,
+                    callback: (v: number | string) => `${v}m`,
                 },
                 grid: { color: 'rgba(0,0,0,.04)' },
             },
@@ -232,7 +231,7 @@ function GraficaBarras({
     );
 }
 
-export default function MedicionTiemposInventarioIndex({ registros, filters, puedeVerTodos, indicadores, por_dia, por_mes }: Props) {
+export default function MedicionTiemposInventarioIndex({ registros, filters, indicadores, por_dia, por_mes }: Props) {
     const safeFilters = filters || {};
     const ind = indicadores ?? {} as Indicadores;
 
@@ -253,7 +252,7 @@ export default function MedicionTiemposInventarioIndex({ registros, filters, pue
 
     const isFirstRender = useRef(true);
 
-    const applyFilters = (overrides: Partial<Filters>) => {
+    const applyFilters = useCallback((overrides: Partial<Filters>) => {
         router.get(
             route('reparto.medicion-tiempos-inventario.index'),
             {
@@ -264,12 +263,12 @@ export default function MedicionTiemposInventarioIndex({ registros, filters, pue
             },
             { preserveState: true, preserveScroll: true, replace: true },
         );
-    };
+    }, [debouncedColaborador, debouncedFechaDesde, debouncedFechaHasta, debouncedPlaca]);
 
     useEffect(() => {
         if (isFirstRender.current) { isFirstRender.current = false; return; }
         applyFilters({});
-    }, [debouncedFechaDesde, debouncedFechaHasta, debouncedPlaca, debouncedColaborador]);
+    }, [applyFilters]);
 
     const clearFilters = () => {
         setFechaDesde(''); setFechaHasta(''); setPlaca(''); setColaborador('');
@@ -287,7 +286,7 @@ export default function MedicionTiemposInventarioIndex({ registros, filters, pue
         ...(debouncedFechaHasta && { fecha_hasta: debouncedFechaHasta }),
         ...(debouncedPlaca      && { placa: debouncedPlaca }),
         ...(debouncedColaborador && { colaborador: debouncedColaborador }),
-    } as any);
+    });
 
     const hasFilters = !!(debouncedFechaDesde || debouncedFechaHasta || debouncedPlaca || debouncedColaborador);
 

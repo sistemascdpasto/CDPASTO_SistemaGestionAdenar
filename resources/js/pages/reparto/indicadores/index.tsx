@@ -22,6 +22,7 @@ import {
     RadialLinearScale,
     Tooltip,
     Legend,
+    type Chart,
     type ChartOptions,
     type TooltipItem,
 } from 'chart.js';
@@ -41,7 +42,7 @@ import {
     X,
     Zap,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Bar, Line, PolarArea } from 'react-chartjs-2';
 import { Link } from '@inertiajs/react';
@@ -169,11 +170,11 @@ function usePortalDropdown() {
     const triggerRef = useRef<HTMLButtonElement>(null);
     const [rect, setRect] = useState<DOMRect | null>(null);
 
-    const updateRect = () => {
+    const updateRect = useCallback(() => {
         if (triggerRef.current) {
             setRect(triggerRef.current.getBoundingClientRect());
         }
-    };
+    }, []);
 
     return { triggerRef, rect, updateRect };
 }
@@ -207,7 +208,7 @@ function PlacasMultiselect({
         };
         document.addEventListener('mousedown', handler);
         return () => document.removeEventListener('mousedown', handler);
-    }, [open]);
+    }, [open, triggerRef]);
 
     // Recalcula posición al hacer scroll o resize
     useEffect(() => {
@@ -218,7 +219,7 @@ function PlacasMultiselect({
             window.removeEventListener('scroll', updateRect, true);
             window.removeEventListener('resize', updateRect);
         };
-    }, [open]);
+    }, [open, updateRect]);
 
     const filtradas = opciones.filter((p) =>
         p.toLowerCase().includes(buscar.toLowerCase()),
@@ -345,7 +346,7 @@ function ColaboradorMultiselect({
         };
         document.addEventListener('mousedown', handler);
         return () => document.removeEventListener('mousedown', handler);
-    }, [open]);
+    }, [open, triggerRef]);
 
     useEffect(() => {
         if (!open) return;
@@ -355,7 +356,7 @@ function ColaboradorMultiselect({
             window.removeEventListener('scroll', updateRect, true);
             window.removeEventListener('resize', updateRect);
         };
-    }, [open]);
+    }, [open, updateRect]);
 
     const filtrados = opciones.filter(
         (c) =>
@@ -558,7 +559,7 @@ export default function IndicadoresIndex({
                 conductor: serie.conductor ?? null, // metadato para el tooltip
                 data:      serie.valores,
                 borderColor: color.line,
-                backgroundColor: (ctx: { chart: any }) => {
+                backgroundColor: (ctx: { chart: { ctx: CanvasRenderingContext2D; chartArea?: { top: number; bottom: number } } }) => {
                     const { chart } = ctx;
                     const { ctx: c, chartArea } = chart;
                     if (!chartArea) return color.fill0;
@@ -608,7 +609,7 @@ export default function IndicadoresIndex({
         datasets: [{
             label: 'Eventos',
             data: porPlaca.map((e) => e.total),
-            backgroundColor: (ctx: { chart: any }) => {
+            backgroundColor: (ctx: { chart: Chart<'line'> }) => {
                 const { chart } = ctx;
                 const { ctx: c, chartArea } = chart;
                 if (!chartArea) return 'rgba(220,38,38,0.5)';

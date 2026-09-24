@@ -743,7 +743,7 @@ export default function IndicadoresEntregaRangoIndex({
                                     </div>
                                     {/* Tabla de brechas */}
                                     <div className="mt-3 space-y-1">
-                                        {radar_brecha.map((d, i) => {
+                                        {radar_brecha.map((d) => {
                                             return (
                                                 <div key={d.dia} className="flex items-center justify-between text-[10px]">
                                                     <span className="text-muted-foreground w-20 shrink-0">{d.dia}</span>
