@@ -849,9 +849,9 @@ export default function CompensacionVariableDiariaIndex() {
                                         <TableHeader>
                                             <TableRow className="bg-muted/50 hover:bg-muted/60">
                                                 {visibleCols.map(([k, label]) => (
-                                                    <TableHead key={k as string} className="px-3 py-2.5 text-[10px] font-bold text-muted-foreground whitespace-nowrap">{label}</TableHead>
+                                                    <TableHead key={k as string} className="px-2 py-2.5 text-[10px] font-bold text-muted-foreground whitespace-nowrap">{label}</TableHead>
                                                 ))}
-                                                <TableHead className="px-3 py-2.5 w-10"><Eye className="size-3.5 text-muted-foreground" /></TableHead>
+                                                <TableHead className="px-2 py-2.5 w-10"><Eye className="size-3.5 text-muted-foreground" /></TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
@@ -885,9 +885,9 @@ export default function CompensacionVariableDiariaIndex() {
                                                         }
                                                         if (k === 'meta_1') display = val !== null && val !== undefined && val !== '' ? `< ${Number(val)}%` : '≤ 2,1%';
                                                         if (k === 'meta_2') display = val !== null && val !== undefined && val !== '' ? `< ${Number(val)}%` : '< 2,6%';
-                                                        return <TableCell key={k as string} className="px-3 py-2 text-[11px] whitespace-nowrap text-foreground">{display}</TableCell>;
+                                                        return <TableCell key={k as string} className="px-2 py-2 text-[11px] whitespace-nowrap text-foreground">{display}</TableCell>;
                                                     })}
-                                                    <TableCell className="px-3 py-2 w-10" onClick={(e) => { e.stopPropagation(); handleOpenDetail(row); }}>
+                                                    <TableCell className="px-2 py-2 w-10" onClick={(e) => { e.stopPropagation(); handleOpenDetail(row); }}>
                                                         <Button variant="ghost" size="sm" className="h-6 w-6 p-0 hover:bg-muted" style={{ color: COLOR_MODULO }}>
                                                             <Eye className="size-3.5" />
                                                         </Button>
