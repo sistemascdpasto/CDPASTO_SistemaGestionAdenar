@@ -89,6 +89,7 @@ interface Props {
     rank_bottom: Persona[]; rank_top: Persona[];
     por_cargo: CargoPt[]; por_placa: PlacaPt[];
     heatmap: HeatmapData;
+    bandas: Record<string, number>;
     cargos: string[];
     todasPlacas: string[];
     filters: { fecha_desde: string; fecha_hasta: string; cargo: string; placas: string[] };
@@ -435,6 +436,7 @@ export default function IndicadoresTiempoIndex({
     rank_bottom, rank_top,
     por_cargo, por_placa,
     heatmap, cargos, todasPlacas, filters,
+    bandas,
 }: Props) {
     const [fechaDesde, setFechaDesde] = useState(filters.fecha_desde ?? '');
     const [fechaHasta, setFechaHasta] = useState(filters.fecha_hasta ?? '');
