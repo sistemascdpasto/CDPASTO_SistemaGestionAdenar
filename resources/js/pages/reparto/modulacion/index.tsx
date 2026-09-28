@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
@@ -26,8 +27,8 @@ import {
     UserPlus,
     Users,
 } from 'lucide-react';
-import React, { useCallback, useEffect, useId, useMemo, useState } from 'react';
-import * as XLSX from 'xlsx';
+import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import * as XLSX from 'xlsx-js-style';
 
 interface ColaboradorOption {
     id: number;
@@ -82,10 +83,12 @@ interface ModulacionNovedadData {
     cedula?: string;
     nombres?: string;
     cargo?: string;
+    observaciones?: string;
     fijo: boolean;
     fijo_rescate: boolean;
     fijo_taller: boolean;
     permiso: boolean;
+    no_asitio: boolean;
     incapacidad: boolean;
     vacaciones: boolean;
 }
@@ -105,6 +108,7 @@ interface FijoInicial {
     cedula?: string;
     nombres?: string;
     cargo?: string;
+    observaciones?: string;
     fijo_rescate?: boolean;
     fijo_taller?: boolean;
 }
@@ -120,6 +124,23 @@ interface Props {
     fijosIniciales?: FijoInicial[];
 }
 
+const mapModulacionItems = (items: ModulacionItemData[]): RutaFormState[] =>
+    items.map((item) => ({
+        id: item.id,
+        placa: item.placa,
+        doc_tras: item.doc_tras ?? '',
+        cargo: item.cargo ?? '',
+        tripulacion: item.tripulacion ?? [],
+        viajes: (item.viajes ?? []).map((viaje, index) => ({
+            ...viaje,
+            lugares: viaje.lugares ?? '',
+            barrio: viaje.barrio ?? '',
+            cliente: viaje.cliente ?? '',
+            peso: viaje.peso ?? '',
+            id: viaje.id ?? `srv-${item.id}-v${index}`,
+        })),
+    }));
+
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Reparto', href: '/modules/reparto/modulacion' },
     { title: 'Planeación de ruta', href: '/modules/reparto/modulacion' },
@@ -130,69 +151,6 @@ const clienteOptions: number[] = Array.from({ length: 61 }, (_, i) => i);
 
 // Despachador por defecto
 const DESPACHADO_POR_DEFECTO = 'Jhon alexander rojas muñoz 10041925516';
-
-// Lista de municipios de Nariño para respaldo inmediato
-const NARINO_MUNICIPIOS_FALLBACK = [
-    'Pasto',
-    'Ipiales',
-    'Tumaco',
-    'Túquerres',
-    'La Unión',
-    'Sandoná',
-    'Samaniego',
-    'El Tambo',
-    'Barbacoas',
-    'Buesaco',
-    'Chachagüí',
-    'Consacá',
-    'Cumbal',
-    'Guaitarilla',
-    'Pupiales',
-    'San Pablo',
-    'Taminango',
-    'Albán',
-    'Aldana',
-    'Ancuyá',
-    'Arboleda',
-    'Belén',
-    'Cuaspud',
-    'Córdoba',
-    'El Charco',
-    'El Peñol',
-    'El Rosario',
-    'El Tablón de Gómez',
-    'Francisco Pizarro',
-    'Funes',
-    'Guachucal',
-    'Gualmatán',
-    'Iles',
-    'Imués',
-    'La Cruz',
-    'La Florida',
-    'Leiva',
-    'Linares',
-    'Los Andes',
-    'Magüí Payán',
-    'Mallama',
-    'Mosquera',
-    'Nariño',
-    'Olaya Herrera',
-    'Ospina',
-    'Policarpa',
-    'Potosí',
-    'Providencia',
-    'Puerres',
-    'Ricaurte',
-    'Roberto Payán',
-    'San Bernardo',
-    'San Lorenzo',
-    'San Pedro de Cartago',
-    'Santa Bárbara',
-    'Santacruz',
-    'Sapuyes',
-    'Tangua',
-    'Yacuanquer',
-];
 
 // Acento del módulo Reparto (usado con moderación, igual que en Seguridad)
 const ACCENT = '#D4102A';
@@ -206,96 +164,202 @@ const generateId = () => {
     return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 };
 
-// Componente para seleccionar municipio de Nariño en Lugares Varios
+interface OpcionUbicacion {
+    id: string;
+    nombre: string;
+}
+
+function parseOpcionesUbicacion(value: unknown): OpcionUbicacion[] {
+    if (!Array.isArray(value)) {
+        throw new Error('El servidor devolvió una lista de ubicaciones con formato inválido.');
+    }
+
+    return value.map((opcion: unknown) => {
+        if (
+            typeof opcion !== 'object' ||
+            opcion === null ||
+            !('id' in opcion) ||
+            !('nombre' in opcion) ||
+            (typeof opcion.id !== 'string' && typeof opcion.id !== 'number') ||
+            typeof opcion.nombre !== 'string'
+        ) {
+            throw new Error('El servidor devolvió una ubicación con formato inválido.');
+        }
+
+        return { id: String(opcion.id), nombre: opcion.nombre };
+    });
+}
+
 function NarinoMunicipioInput({
     value,
     onChange,
+    barrio,
+    onBarrioChange,
+    cliente,
+    onClienteChange,
 }: {
     value: string;
     onChange: (val: string) => void;
+    barrio: string;
+    onBarrioChange: (val: string) => void;
+    cliente: string;
+    onClienteChange: (val: string) => void;
 }) {
     const baseId = useId();
-    const [municipios, setMunicipios] = useState<string[]>(NARINO_MUNICIPIOS_FALLBACK);
+    const [municipios, setMunicipios] = useState<OpcionUbicacion[]>([]);
+    const [barrios, setBarrios] = useState<OpcionUbicacion[]>([]);
+    const [municipiosLoading, setMunicipiosLoading] = useState(true);
+    const [barriosLoading, setBarriosLoading] = useState(false);
+    const [ubicacionesError, setUbicacionesError] = useState('');
 
     useEffect(() => {
-        let cancelado = false;
-
-        const loadMunicipios = async () => {
+        const controller = new AbortController();
+        const loadUbicaciones = async () => {
             try {
-                // Intentar obtener la ruta de forma segura
-                let deptRoute: string;
-                try {
-                    deptRoute = route('seguridad.colaboradores.referencias.departamentos');
-                } catch {
-                    // Si la ruta no existe, usar el fallback
-                    console.warn('Ruta de departamentos no disponible, usando municipios por defecto');
-                    return;
-                }
+                const municipiosResponse = await fetch(route('reparto.modulacion.referencias.municipios'), {
+                    headers: { Accept: 'application/json' },
+                    signal: controller.signal,
+                });
+                if (!municipiosResponse.ok) throw new Error('No se pudieron cargar los municipios guardados.');
+                const municipiosJson = (await municipiosResponse.json()) as { data?: unknown };
 
-                const response = await fetch(deptRoute, { headers: { Accept: 'application/json' } });
-                const json: { data?: { id: number; nombre: string }[] } = await response.json();
-                
-                if (cancelado) return;
-                
-                const narino = (json.data ?? []).find((d) => d.nombre.toLowerCase().includes('nariño'));
-                if (narino) {
-                    let citiesRoute: string;
-                    try {
-                        citiesRoute = route('seguridad.colaboradores.referencias.ciudades', { departamento_id: narino.id });
-                    } catch {
-                        console.warn('Ruta de ciudades no disponible, usando municipios por defecto');
-                        return;
-                    }
-
-                    const cityResponse = await fetch(citiesRoute, { headers: { Accept: 'application/json' } });
-                    const cityJson: { data?: { id: number; nombre: string }[] } = await cityResponse.json();
-                    
-                    if (!cancelado && cityJson.data && cityJson.data.length > 0) {
-                        setMunicipios(cityJson.data.map((c) => c.nombre));
-                    }
-                }
+                if (controller.signal.aborted) return;
+                setMunicipios(parseOpcionesUbicacion(municipiosJson.data));
+                setUbicacionesError('');
             } catch (error) {
-                // En caso de cualquier error, simplemente usar el fallback
-                console.warn('Error al cargar municipios, usando lista por defecto:', error);
+                if (controller.signal.aborted) return;
+                setUbicacionesError(error instanceof Error ? error.message : 'No se pudieron cargar las ubicaciones.');
+            } finally {
+                if (!controller.signal.aborted) setMunicipiosLoading(false);
             }
         };
 
-        loadMunicipios();
-
-        return () => {
-            cancelado = true;
-        };
+        void loadUbicaciones();
+        return () => controller.abort();
     }, []);
 
+    const municipioSeleccionado = municipios.find((municipio) =>
+        municipio.nombre.localeCompare(value.trim(), 'es', { sensitivity: 'base' }) === 0,
+    );
+
+    useEffect(() => {
+        if (!municipioSeleccionado) {
+            setBarrios([]);
+            setBarriosLoading(false);
+            return;
+        }
+
+        const controller = new AbortController();
+        const loadBarrios = async () => {
+            setBarrios([]);
+            setUbicacionesError('');
+            setBarriosLoading(true);
+            try {
+                const response = await fetch(
+                    route('reparto.modulacion.referencias.barrios', { municipio_id: municipioSeleccionado.id }),
+                    { headers: { Accept: 'application/json' }, signal: controller.signal },
+                );
+                if (!response.ok) throw new Error('No se pudieron cargar los barrios del municipio.');
+                const json = (await response.json()) as { data?: unknown; api_disponible?: unknown };
+                let data = json.data;
+                let apiDisponible = json.api_disponible;
+                if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
+                    const respuestaAnidada = data as { data?: unknown; api_disponible?: unknown };
+                    data = respuestaAnidada.data;
+                    apiDisponible = respuestaAnidada.api_disponible ?? apiDisponible;
+                }
+                const opcionesBarrios = parseOpcionesUbicacion(data);
+                if (!controller.signal.aborted) setBarrios(opcionesBarrios);
+                if (!controller.signal.aborted && apiDisponible === false) {
+                    setUbicacionesError('No fue posible consultar el catálogo externo; se muestran los barrios guardados localmente.');
+                }
+            } catch (error) {
+                if (!controller.signal.aborted) {
+                    setUbicacionesError(error instanceof Error ? error.message : 'No se pudieron cargar los barrios.');
+                }
+            } finally {
+                if (!controller.signal.aborted) setBarriosLoading(false);
+            }
+        };
+
+        void loadBarrios();
+        return () => controller.abort();
+    }, [municipioSeleccionado?.id]);
+
     return (
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-                <Label className="text-xs text-muted-foreground">Departamento</Label>
+                <Label className="text-xs font-medium text-muted-foreground">Departamento</Label>
                 <Input
                     type="text"
                     value="Nariño"
                     readOnly
-                    className="h-8 text-xs mt-0.5 bg-muted font-medium text-muted-foreground"
+                    className="h-10 text-sm mt-0.5 bg-muted font-medium text-muted-foreground"
                 />
             </div>
             <div>
-                <Label className="text-xs text-muted-foreground">Municipio / Destino</Label>
+                <Label className="text-xs font-medium text-muted-foreground">Municipio / Destino</Label>
                 <Input
                     id={`${baseId}-municipio`}
                     list={`${baseId}-municipios-list`}
-                    type="text"
-                    placeholder="Seleccione o escriba municipio"
                     value={value}
-                    onChange={(e) => onChange(e.target.value)}
-                    className="h-8 text-xs mt-0.5"
+                    onChange={(event) => {
+                        onChange(event.target.value);
+                        onBarrioChange('');
+                    }}
+                    placeholder={municipiosLoading ? 'Cargando municipios...' : 'Seleccione o escriba un municipio'}
+                    className="mt-0.5 h-10 text-sm"
                     autoComplete="off"
                 />
                 <datalist id={`${baseId}-municipios-list`}>
-                    {municipios.map((m) => (
-                        <option key={m} value={m} />
+                    {municipios.map((municipio) => (
+                        <option key={municipio.id} value={municipio.nombre} />
                     ))}
                 </datalist>
             </div>
+            <div className="grid gap-1.5">
+                <Label htmlFor={`${baseId}-barrio`} className="text-xs font-medium text-muted-foreground">Barrio</Label>
+                <Input
+                    id={`${baseId}-barrio`}
+                    list={`${baseId}-barrios-list`}
+                    value={barrio}
+                    onChange={(event) => onBarrioChange(event.target.value)}
+                    disabled={!value.trim()}
+                    placeholder={value.trim() ? 'Seleccione o escriba un barrio' : 'Escriba primero el municipio'}
+                    className="mt-0.5 h-10 text-sm"
+                    autoComplete="off"
+                />
+                <datalist id={`${baseId}-barrios-list`}>
+                    {barrios.map((opcion) => <option key={opcion.id} value={opcion.nombre} />)}
+                </datalist>
+                <p className="text-xs text-muted-foreground" aria-live="polite">
+                    {barriosLoading
+                        ? 'Cargando barrios del municipio...'
+                        : value.trim() && municipioSeleccionado && barrios.length === 0
+                          ? 'No hay barrios en el catálogo. Puede escribir uno y se guardará con la ruta.'
+                          : value.trim() && !municipioSeleccionado
+                            ? 'El municipio y el barrio escritos se guardarán al guardar la ruta.'
+                            : ''}
+                </p>
+            </div>
+            <div className="grid gap-1.5">
+                <Label htmlFor={`${baseId}-cliente`} className="text-xs font-medium text-muted-foreground">Cliente (0 - 60)</Label>
+                <Select
+                            value={cliente !== '' ? String(cliente) : CLIENTE_CLEAR}
+                            onValueChange={(value) => onClienteChange(value === CLIENTE_CLEAR ? '' : value)}
+                >
+                            <SelectTrigger id={`${baseId}-cliente`} className="mt-0.5 h-10 text-sm w-full">
+                                <SelectValue placeholder="-- Seleccionar --" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value={CLIENTE_CLEAR}>-- Seleccionar --</SelectItem>
+                                {clienteOptions.map((option) => (
+                                    <SelectItem key={option} value={String(option)}>{String(option)}</SelectItem>
+                                ))}
+                            </SelectContent>
+                </Select>
+            </div>
+            {ubicacionesError && <p role="alert" className="text-xs text-destructive sm:col-span-2">{ubicacionesError}</p>}
         </div>
     );
 }
@@ -325,10 +389,19 @@ export default function ModulacionIndex({
         }
     }, [readOnly]);
     
-    // Fecha seleccionada con Calendario
-    const [fechaTexto, setFechaTexto] = useState<string>(
-        String(modulacion?.fecha ?? initialFecha ?? new Date().toISOString().split('T')[0])
-    );
+    // Fecha seleccionada con Calendario — usar fecha LOCAL (no UTC) para evitar desfase de zona horaria
+    const [fechaTexto, setFechaTexto] = useState<string>(() => {
+        const fromModulacion = modulacion?.fecha ? String(modulacion.fecha) : null;
+        const fromInitial = initialFecha ? String(initialFecha) : null;
+        if (fromModulacion) return fromModulacion;
+        if (fromInitial) return fromInitial;
+        const d = new Date();
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    });
+    const [activeModulacionId, setActiveModulacionId] = useState<number | null>(modulacion?.id ?? null);
 
     // UD Programado por
     const [udProgramadoPor, setUdProgramadoPor] = useState<string>(() =>
@@ -346,32 +419,61 @@ export default function ModulacionIndex({
 
     // Flag para saber si la consulta de fecha fue iniciada manualmente por el usuario al crear/cambiar fecha
     const userInitiatedDateChange = React.useRef(false);
+    const dateCheckController = useRef<AbortController | null>(null);
+
+    useEffect(() => () => dateCheckController.current?.abort(), []);
 
     useEffect(() => {
+        setActiveModulacionId(modulacion?.id ?? null);
         if (modulacion) {
             if (modulacion.fecha) setFechaTexto(String(modulacion.fecha));
-            setUdProgramadoPor(cleanString(modulacion.ud_programado_por, cleanString(currentUser, '')));
-            if (modulacion.despachado_por_colaborador_id)
-                setDespachadoPorId(String(modulacion.despachado_por_colaborador_id));
-            setDespachadoPorNombre(cleanString(modulacion.despachado_por_nombre, DESPACHADO_POR_DEFECTO));
+            if (readOnly) {
+                setUdProgramadoPor(cleanString(modulacion.ud_programado_por, cleanString(currentUser, '')));
+                if (modulacion.despachado_por_colaborador_id)
+                    setDespachadoPorId(String(modulacion.despachado_por_colaborador_id));
+                setDespachadoPorNombre(cleanString(modulacion.despachado_por_nombre, DESPACHADO_POR_DEFECTO));
+            } else {
+                setUdProgramadoPor(cleanString(currentUser, ''));
+                setDespachadoPorId('');
+                setDespachadoPorNombre(DESPACHADO_POR_DEFECTO);
+            }
 
             // Notificar ALERTA SOLO cuando el usuario estaba creando o cambiando de fecha explícitamente
             if (modulacion.fecha && userInitiatedDateChange.current) {
                 userInitiatedDateChange.current = false;
-                alert(`La fecha ${modulacion.fecha} ya tiene una planeación registrada. Se han precargado los datos.`);
+                alert(readOnly
+                    ? `La fecha ${modulacion.fecha} ya tiene una planeación registrada. Se han precargado los datos.`
+                    : `La fecha ${modulacion.fecha} ya tiene una planeación. La pantalla quedó vacía.`);
             }
         }
-    }, [modulacion, currentUser]);
+    }, [modulacion, currentUser, readOnly]);
 
     // Función para cambiar la fecha consultando la base de datos vía API en tiempo real sin redirigir la página
     const handleFechaChange = async (newFecha: string) => {
         setFechaTexto(newFecha);
         if (!newFecha) return;
 
+        dateCheckController.current?.abort();
+        const controller = new AbortController();
+        dateCheckController.current = controller;
+
+        setActiveModulacionId(null);
+        setRutas([]);
+        setCurrentRoute(createEmptyRoute());
+        setCurrentViajeForm({ lugares: '', barrio: '', cliente: '', peso: '' });
+        setEditingIndex(null);
+        setEditingViajeIndex(null);
+        setFilterTablePlaca('todas');
+        setNovedadesLocal([]);
+        setUdProgramadoPor(cleanString(currentUser, ''));
+        setDespachadoPorId('');
+        setDespachadoPorNombre(DESPACHADO_POR_DEFECTO);
+
         try {
             const res = await fetch(`/modules/reparto/modulacion/check-fecha?fecha=${encodeURIComponent(newFecha)}`, {
                 headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 credentials: 'same-origin',
+                signal: controller.signal,
             });
             if (!res.ok) {
                 console.error('Error checkFecha HTTP:', res.status);
@@ -380,6 +482,7 @@ export default function ModulacionIndex({
             const data = await res.json() as {
                 exists?: boolean;
                 modulacion?: {
+                    id?: number;
                     ud_programado_por?: string | null;
                     despachado_por_colaborador_id?: number | null;
                     despachado_por_nombre?: string | null;
@@ -402,37 +505,33 @@ export default function ModulacionIndex({
                     fijo_taller?: boolean;
                 }>;
             };
+            if (controller.signal.aborted) return;
             if (data.exists && data.modulacion) {
-                setUdProgramadoPor(cleanString(data.modulacion.ud_programado_por, cleanString(currentUser, '')));
-                if (data.modulacion.despachado_por_colaborador_id) {
-                    setDespachadoPorId(String(data.modulacion.despachado_por_colaborador_id));
-                }
-                setDespachadoPorNombre(cleanString(data.modulacion.despachado_por_nombre, DESPACHADO_POR_DEFECTO));
-
-                if (Array.isArray(data.modulacion.items) && data.modulacion.items.length > 0) {
-                    setRutas(
-                        data.modulacion.items.map((item) => ({
-                            id: item.id,
-                            placa: item.placa ?? '',
-                            doc_tras: item.doc_tras ?? '',
-                            cargo: item.cargo ?? '',
-                            tripulacion: item.tripulacion ?? [],
-                            viajes: (item.viajes ?? []).map((v, i) => ({ ...v, id: v.id ?? `srv-${item.id ?? 'new'}-v${i}` })),
-                        }))
-                    );
-                } else {
-                    setRutas([]);
-                }
+                setActiveModulacionId(data.modulacion.id ?? null);
+                const rutasExistentes = mapModulacionItems(data.modulacion.items ?? []);
+                setRutasGuardadas(rutasExistentes);
+                setRutas(readOnly ? rutasExistentes : []);
 
                 if (Array.isArray(data.modulacion.novedades)) {
-                    setNovedadesLocal([...data.modulacion.novedades]);
+                    setNovedadesLocal(readOnly ? [...data.modulacion.novedades] : []);
                 }
 
                 if (!readOnly) setIsEditing(true);
 
-                alert(`La fecha ${newFecha} ya tiene una planeación registrada. Se han precargado los datos.`);
+                if (readOnly) {
+                    setUdProgramadoPor(cleanString(data.modulacion.ud_programado_por, cleanString(currentUser, '')));
+                    if (data.modulacion.despachado_por_colaborador_id) {
+                        setDespachadoPorId(String(data.modulacion.despachado_por_colaborador_id));
+                    }
+                    setDespachadoPorNombre(cleanString(data.modulacion.despachado_por_nombre, DESPACHADO_POR_DEFECTO));
+                    alert(`La fecha ${newFecha} ya tiene una planeación registrada. Se han precargado los datos.`);
+                } else {
+                    alert(`La fecha ${newFecha} ya tiene una planeación. La pantalla quedó vacía; puede cargarla manualmente para editarla.`);
+                }
             } else {
+                setActiveModulacionId(null);
                 setRutas([]);
+                setRutasGuardadas([]);
                 if (Array.isArray(data.fijosIniciales) && data.fijosIniciales.length > 0) {
                     setNovedadesLocal(
                         data.fijosIniciales.map((f, i) => ({
@@ -442,10 +541,12 @@ export default function ModulacionIndex({
                             cedula: f.cedula,
                             nombres: f.nombres,
                             cargo: f.cargo,
+                            observaciones: '',
                             fijo: true,
                             fijo_rescate: Boolean(f.fijo_rescate),
                             fijo_taller: Boolean(f.fijo_taller),
                             permiso: false,
+                            no_asitio: false,
                             incapacidad: false,
                             vacaciones: false,
                         }))
@@ -456,6 +557,7 @@ export default function ModulacionIndex({
                 if (!readOnly) setIsEditing(true);
             }
         } catch (err) {
+            if (controller.signal.aborted) return;
             console.error('Error al verificar planeación por fecha:', err);
         }
     };
@@ -466,55 +568,44 @@ export default function ModulacionIndex({
         doc_tras: '',
         cargo: '',
         tripulacion: [],
-        viajes: [
-            { id: generateId(), lugares: '', barrio: '', cliente: '', peso: '' },
-            { id: generateId(), lugares: '', barrio: '', cliente: '', peso: '' },
-        ],
+        viajes: [],
     });
 
     const [currentRoute, setCurrentRoute] = useState<RutaFormState>(createEmptyRoute());
+    const [currentViajeForm, setCurrentViajeForm] = useState<Viaje>({
+        lugares: '',
+        barrio: '',
+        cliente: '',
+        peso: '',
+    });
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
+    const [editingViajeIndex, setEditingViajeIndex] = useState<number | null>(null);
 
     // Rutas guardadas en la lista
     const [rutas, setRutas] = useState<RutaFormState[]>(() => {
-        if (modulacion?.items && modulacion.items.length > 0) {
-            return modulacion.items.map((item) => ({
-                id: item.id,
-                placa: item.placa,
-                doc_tras: item.doc_tras ?? '',
-                cargo: item.cargo ?? '',
-                tripulacion: item.tripulacion ?? [],
-                viajes: (item.viajes ?? []).map((v, i) => ({ ...v, id: v.id ?? `srv-${item.id}-v${i}` })),
-            }));
-        }
-        return [];
+        return readOnly ? mapModulacionItems(modulacion?.items ?? []) : [];
     });
+    const [rutasGuardadas, setRutasGuardadas] = useState<RutaFormState[]>(() =>
+        mapModulacionItems(modulacion?.items ?? []),
+    );
 
     useEffect(() => {
-        if (modulacion?.items && modulacion.items.length > 0) {
-            setRutas(
-                modulacion.items.map((item) => ({
-                    id: item.id,
-                    placa: item.placa,
-                    doc_tras: item.doc_tras ?? '',
-                    cargo: item.cargo ?? '',
-                    tripulacion: item.tripulacion ?? [],
-                    viajes: (item.viajes ?? []).map((v, i) => ({ ...v, id: v.id ?? `srv-${item.id}-v${i}` })),
-                }))
-            );
-            if (!readOnly) {
-                setIsEditing(true);
-            }
+        setCurrentRoute(createEmptyRoute());
+        setCurrentViajeForm({ lugares: '', barrio: '', cliente: '', peso: '' });
+        setEditingIndex(null);
+        setEditingViajeIndex(null);
+
+        const rutasIniciales = mapModulacionItems(modulacion?.items ?? []);
+        setRutasGuardadas(rutasIniciales);
+        if (readOnly) {
+            setRutas(rutasIniciales);
+            setIsEditing(false);
         } else if (modulacion) {
             setRutas([]);
-            if (!readOnly) {
-                setIsEditing(true);
-            }
+            setIsEditing(true);
         } else {
             setRutas([]);
-            if (!readOnly) {
-                setIsEditing(true);
-            }
+            setIsEditing(true);
         }
     }, [modulacion, readOnly]);
 
@@ -528,7 +619,7 @@ export default function ModulacionIndex({
     // COLABORADORES FIJOS
     const fijosColaboradorIds = useMemo(() => {
         const ids = new Set<string>();
-        if (modulacion?.novedades) {
+        if (readOnly && modulacion?.novedades) {
             modulacion.novedades.forEach((nov) => {
                 if (nov.fijo && nov.colaborador_id) {
                     ids.add(String(nov.colaborador_id).trim());
@@ -539,7 +630,7 @@ export default function ModulacionIndex({
             });
         }
         return ids;
-    }, [modulacion?.novedades]);
+    }, [modulacion?.novedades, readOnly]);
 
     // BOTÓN EDITAR EN LA TABLA PLANEACIÓN DE RUTA
     const handleEditRoute = (index: number) => {
@@ -553,8 +644,47 @@ export default function ModulacionIndex({
             tripulacion: Array.isArray(routeToEdit.tripulacion) ? [...routeToEdit.tripulacion] : [],
             viajes: Array.isArray(routeToEdit.viajes) ? [...routeToEdit.viajes] : [],
         });
+        // Precargar el último viaje en el formulario si existe
+        const viajes = Array.isArray(routeToEdit.viajes) ? routeToEdit.viajes : [];
+        const lastViaje = viajes.length > 0 ? viajes[viajes.length - 1] : null;
+        setCurrentViajeForm({
+            lugares: lastViaje?.lugares ?? '',
+            barrio: lastViaje?.barrio ?? '',
+            cliente: lastViaje?.cliente ?? '',
+            peso: lastViaje?.peso ?? '',
+        });
         setEditingIndex(index);
-        setIsEditing(true); // Activar modo edición automáticamente
+        setEditingViajeIndex(null); // Resetear índice de viaje al editar ruta completa
+        setIsEditing(true);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    // BOTÓN EDITAR VIAJE INDIVIDUAL EN LA TABLA
+    const handleEditViajeIndividual = (rutaIndex: number, viajeIndex: number) => {
+        const routeToEdit = rutas[rutaIndex];
+        if (!routeToEdit) return;
+        const viajes = Array.isArray(routeToEdit.viajes) ? routeToEdit.viajes : [];
+        if (viajes.length === 0 || viajeIndex >= viajes.length) return;
+
+        const viajeToEdit = viajes[viajeIndex];
+        setCurrentRoute({
+            id: routeToEdit.id,
+            placa: routeToEdit.placa,
+            doc_tras: routeToEdit.doc_tras ?? '',
+            cargo: routeToEdit.cargo ?? '',
+            tripulacion: Array.isArray(routeToEdit.tripulacion) ? [...routeToEdit.tripulacion] : [],
+            viajes: Array.isArray(routeToEdit.viajes) ? [...routeToEdit.viajes] : [],
+        });
+        // Precargar el viaje específico en el formulario
+        setCurrentViajeForm({
+            lugares: viajeToEdit.lugares ?? '',
+            barrio: viajeToEdit.barrio ?? '',
+            cliente: viajeToEdit.cliente ?? '',
+            peso: viajeToEdit.peso ?? '',
+        });
+        setEditingIndex(rutaIndex);
+        setEditingViajeIndex(viajeIndex); // Establecer índice del viaje específico
+        setIsEditing(true);
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
@@ -564,7 +694,14 @@ export default function ModulacionIndex({
         setRutas((prev) => prev.filter((_, i) => i !== index));
         if (editingIndex === index) {
             setCurrentRoute(createEmptyRoute());
+            setCurrentViajeForm({
+                lugares: '',
+                barrio: '',
+                cliente: '',
+                peso: '',
+            });
             setEditingIndex(null);
+            setEditingViajeIndex(null);
         }
         // Si tenía id en BD, eliminar en el servidor también
         if (itemToRemove?.id) {
@@ -576,32 +713,44 @@ export default function ModulacionIndex({
     };
 
     const handleCurrentRouteFieldChange = (field: keyof RutaFormState, value: RutaFormState[keyof RutaFormState]) => {
-        setCurrentRoute((prev) => ({ ...prev, [field]: value }));
-    };
-
-    // AGREGAR / EDITAR RUTA INDIVIDUALMENTE EN LA LISTA LOCAL
-    const handleGuardarRutaLocal = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!currentRoute.placa || currentRoute.placa.trim() === '') {
-            alert('Por favor ingrese una Placa para la ruta.');
-            return;
-        }
-
-        // Tripulación contiene ÚNICAMENTE los colaboradores asignados en el checklist
-        const rutaFinal = { ...currentRoute, tripulacion: [...(currentRoute.tripulacion || [])] };
-
-        setRutas((prev) => {
-            const updated = [...prev];
-            if (editingIndex !== null && editingIndex >= 0 && editingIndex < updated.length) {
-                updated[editingIndex] = rutaFinal;
-            } else {
-                updated.push(rutaFinal);
+        setCurrentRoute((prev) => {
+            const updated = { ...prev, [field]: value };
+            if (editingIndex !== null && editingIndex >= 0) {
+                setRutas((prevRutas) => {
+                    const list = [...prevRutas];
+                    if (list[editingIndex]) {
+                        list[editingIndex] = updated;
+                    }
+                    return list;
+                });
             }
             return updated;
         });
+    };
 
-        setCurrentRoute(createEmptyRoute());
+    const handlePlacaChange = (newPlaca: string) => {
+        const placaUpper = newPlaca.trim().toUpperCase();
+        const currentPlacaUpper = currentRoute.placa.trim().toUpperCase();
+
+        if (placaUpper === currentPlacaUpper) return;
+
+        setCurrentRoute({
+            placa: placaUpper,
+            doc_tras: '',
+            cargo: '',
+            tripulacion: [],
+            viajes: [],
+        });
         setEditingIndex(null);
+        setEditingViajeIndex(null);
+        setCurrentViajeForm({
+            lugares: '',
+            barrio: '',
+            cliente: '',
+            peso: '',
+        });
+        setSearchQuery('');
+        setCargoFilter('todos');
     };
 
     // OBTENER LISTA DE COLABORADORES ASIGNADOS (EXCLUYENDO LA RUTA ACTUAL EN EDICIÓN)
@@ -667,23 +816,160 @@ export default function ModulacionIndex({
             });
         }
 
-        setCurrentRoute((prev) => ({ ...prev, tripulacion: trip }));
+        setCurrentRoute((prev) => {
+            const updated = { ...prev, tripulacion: trip };
+            if (editingIndex !== null && editingIndex >= 0) {
+                setRutas((prevRutas) => {
+                    const list = [...prevRutas];
+                    if (list[editingIndex]) {
+                        list[editingIndex] = updated;
+                    }
+                    return list;
+                });
+            }
+            return updated;
+        });
     };
 
-    // MANEJO DE VIAJES DINÁMICOS
-    const handleAddViaje = () => {
-        setCurrentRoute((prev) => ({
-            ...prev,
-            viajes: [...prev.viajes, { id: generateId(), lugares: '', barrio: '', cliente: '', peso: '' }],
-        }));
+    // MANEJO DE VIAJE FORMULARIO Y AGREGAR VIAJE
+    const handleViajeFormChange = (field: keyof Viaje, value: string) => {
+        let finalVal = value;
+        if (field === 'peso' && value !== '') {
+            const parsed = parseFloat(value);
+            if (!isNaN(parsed) && parsed > 10) {
+                alert('El peso máximo permitido por viaje es de 10 toneladas.');
+                finalVal = '10';
+            }
+        }
+        setCurrentViajeForm((prev) => ({ ...prev, [field]: finalVal }));
     };
 
-    const handleRemoveViaje = (viajeIndex: number) => {
+    const handleAddViaje = (e?: React.FormEvent | React.MouseEvent) => {
+        if (e) {
+            e.preventDefault();
+            if ('stopPropagation' in e) e.stopPropagation();
+        }
+        if (!currentRoute.placa || currentRoute.placa.trim() === '') {
+            alert('Por favor ingrese una Placa para la ruta.');
+            return;
+        }
+
+        const cv = currentViajeForm;
+        const viajeFormLleno =
+            (cv.lugares && cv.lugares.trim() !== '') ||
+            (cv.barrio && cv.barrio.trim() !== '') ||
+            (cv.cliente && cv.cliente.toString().trim() !== '') ||
+            (cv.peso && cv.peso.toString().trim() !== '');
+
+        if (!viajeFormLleno) {
+            alert('Por favor ingrese al menos un dato en Destino, Barrio, Cliente o Peso para agregar el viaje.');
+            return;
+        }
+
+        let updatedRoute: RutaFormState;
+
+        // Solo reemplaza un viaje cuando se inició desde su acción de edición.
+        if (editingViajeIndex !== null && editingIndex !== null) {
+            let updatedViajes = [...(currentRoute.viajes || [])];
+
+            if (editingViajeIndex >= 0 && editingViajeIndex < updatedViajes.length) {
+                updatedViajes[editingViajeIndex] = {
+                    ...updatedViajes[editingViajeIndex],
+                    lugares: cv.lugares || '',
+                    barrio: cv.barrio || '',
+                    cliente: cv.cliente || '',
+                    peso: cv.peso || '',
+                };
+            }
+
+            updatedRoute = {
+                ...currentRoute,
+                tripulacion: [...(currentRoute.tripulacion || [])],
+                viajes: updatedViajes,
+            };
+
+            setRutas((prev) => {
+                const updated = [...prev];
+                if (editingIndex >= 0 && editingIndex < updated.length) {
+                    updated[editingIndex] = updatedRoute;
+                }
+                return updated;
+            });
+
+            setCurrentRoute(updatedRoute);
+            // Limpiar el formulario de viaje después de actualizar
+            setCurrentViajeForm({
+                lugares: '',
+                barrio: '',
+                cliente: '',
+                peso: '',
+            });
+            setEditingViajeIndex(null); // Resetear índice de viaje
+            alert('Viaje actualizado correctamente');
+            return;
+        }
+
+        // Agregar viaje, también cuando la placa ya tiene otros viajes en la tabla.
+        const newViaje: Viaje = {
+            id: generateId(),
+            lugares: cv.lugares || '',
+            barrio: cv.barrio || '',
+            cliente: cv.cliente || '',
+            peso: cv.peso || '',
+        };
+
+        const updatedViajes = [...(currentRoute.viajes || []), newViaje];
+        updatedRoute = {
+            ...currentRoute,
+            tripulacion: [...(currentRoute.tripulacion || [])],
+            viajes: updatedViajes,
+        };
+
+        const existingRouteIndex = rutas.findIndex(
+            (route) => route.placa.toUpperCase() === currentRoute.placa.toUpperCase(),
+        );
+        const routeIndex = existingRouteIndex >= 0 ? existingRouteIndex : rutas.length;
+
+        setRutas((prev) => {
+            const updated = [...prev];
+            const existingIdx = updated.findIndex((route) => route.placa.toUpperCase() === currentRoute.placa.toUpperCase());
+            if (existingIdx >= 0) {
+                updated[existingIdx] = updatedRoute;
+            } else {
+                updated.push(updatedRoute);
+            }
+            return updated;
+        });
+
+        setCurrentRoute({
+            ...updatedRoute,
+            viajes: updatedViajes,
+        });
+        setEditingIndex(routeIndex);
+    };
+
+    const handleRemoveViaje = (viajeIndex: number, e?: React.MouseEvent) => {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
         if (currentRoute.viajes.length <= 1) return;
         setCurrentRoute((prev) => ({
             ...prev,
             viajes: prev.viajes.filter((_, i) => i !== viajeIndex),
         }));
+    };
+
+    const handleRemoveViajeIndividual = (rutaIndex: number, viajeIndex: number) => {
+        if (confirm('¿Está seguro de eliminar este viaje?')) {
+            setRutas((prev) => {
+                const updated = [...prev];
+                if (updated[rutaIndex]?.viajes) {
+                    updated[rutaIndex].viajes = updated[rutaIndex].viajes.filter((_, i) => i !== viajeIndex);
+                }
+                return updated;
+            });
+        }
     };
 
     const handleViajeChange = (viajeIndex: number, field: keyof Viaje, value: string) => {
@@ -695,9 +981,10 @@ export default function ModulacionIndex({
                 finalVal = '10';
             }
         }
-        const newViajes = [...currentRoute.viajes];
-        newViajes[viajeIndex][field] = finalVal;
-        setCurrentRoute((prev) => ({ ...prev, viajes: newViajes }));
+        setCurrentRoute((prev) => ({
+            ...prev,
+            viajes: prev.viajes.map((v, i) => (i === viajeIndex ? { ...v, [field]: finalVal } : v)),
+        }));
     };
 
     // Calcular el total de toneladas acumuladas en los viajes de la ruta actual
@@ -712,12 +999,44 @@ export default function ModulacionIndex({
     const handleGuardarTodo = () => {
         const finalRutas = [...rutas];
 
-        // Si hay datos escritos actualmente en el formulario de ruta, incluirlos
         if (currentRoute.placa && currentRoute.placa.trim() !== '') {
+            const viajes = Array.isArray(currentRoute.viajes) ? [...currentRoute.viajes] : [];
+            const cv = currentViajeForm;
+            const viajeFormTieneDatos =
+                (cv.lugares && cv.lugares.trim() !== '') ||
+                (cv.barrio && cv.barrio.trim() !== '') ||
+                (cv.cliente && cv.cliente.toString().trim() !== '') ||
+                (cv.peso && cv.peso.toString().trim() !== '');
+
+            if (viajeFormTieneDatos) {
+                const yaExisteEnArray = viajes.some((v) => {
+                    return (
+                        (v.lugares === cv.lugares) &&
+                        (v.barrio === cv.barrio) &&
+                        (String(v.cliente ?? '') === String(cv.cliente ?? '')) &&
+                        (String(v.peso ?? '') === String(cv.peso ?? ''))
+                    );
+                });
+                if (!yaExisteEnArray) {
+                    viajes.push({
+                        id: generateId(),
+                        lugares: cv.lugares || '',
+                        barrio: cv.barrio || '',
+                        cliente: cv.cliente || '',
+                        peso: cv.peso || '',
+                    });
+                }
+            }
+
+            const currentRouteFinal: RutaFormState = {
+                ...currentRoute,
+                viajes,
+            };
+
             if (editingIndex !== null && editingIndex >= 0 && editingIndex < finalRutas.length) {
-                finalRutas[editingIndex] = { ...currentRoute };
+                finalRutas[editingIndex] = currentRouteFinal;
             } else {
-                finalRutas.push({ ...currentRoute });
+                finalRutas.push(currentRouteFinal);
             }
         }
 
@@ -742,10 +1061,12 @@ export default function ModulacionIndex({
                 cedula: nov.cedula ?? null,
                 nombres: nov.nombres ?? null,
                 cargo: nov.cargo ?? null,
+                observaciones: nov.observaciones ?? null,
                 fijo_rescate: Boolean(nov.fijo_rescate),
                 fijo_taller: Boolean(nov.fijo_taller),
                 fijo: Boolean(nov.fijo_rescate) || Boolean(nov.fijo_taller),
                 permiso: Boolean(nov.permiso),
+                no_asitio: Boolean(nov.no_asitio),
                 incapacidad: Boolean(nov.incapacidad),
                 vacaciones: Boolean(nov.vacaciones),
             };
@@ -754,7 +1075,7 @@ export default function ModulacionIndex({
         router.post(
             route('reparto.modulacion.storeBatch'),
             {
-                modulacion_id: modulacion?.id ?? null,
+                modulacion_id: activeModulacionId,
                 fecha: fechaTexto,
                 ud_programado_por: udProgramadoPor,
                 despachado_por_colaborador_id: despachadoPorId ? Number(despachadoPorId) : null,
@@ -767,10 +1088,6 @@ export default function ModulacionIndex({
                 preserveState: false,
                 onSuccess: () => {
                     setIsSubmitting(false);
-                    setRutasLoaded(false);
-                    setNovedadesLocal([]);
-                    setCurrentRoute(createEmptyRoute());
-                    setEditingIndex(null);
                     alert('Planeación de ruta guardada correctamente.');
                 },
                 onError: (errs) => {
@@ -788,7 +1105,7 @@ export default function ModulacionIndex({
 
     // TABLA 2: NOVEDADES — estado local unificado (servidor + fijos iniciales + pendientes nuevas)
     const [novedadesLocal, setNovedadesLocal] = useState<ModulacionNovedadData[]>(() => {
-        if (modulacion?.novedades && modulacion.novedades.length > 0) {
+        if (readOnly && modulacion?.novedades && modulacion.novedades.length > 0) {
             return [...modulacion.novedades];
         }
         if (fijosIniciales && fijosIniciales.length > 0) {
@@ -799,10 +1116,12 @@ export default function ModulacionIndex({
                 cedula: f.cedula,
                 nombres: f.nombres,
                 cargo: f.cargo,
+                observaciones: '',
                 fijo: true,
                 fijo_rescate: Boolean(f.fijo_rescate),
                 fijo_taller: Boolean(f.fijo_taller),
                 permiso: false,
+                no_asitio: false,
                 incapacidad: false,
                 vacaciones: false,
             }));
@@ -812,7 +1131,7 @@ export default function ModulacionIndex({
 
     // Sincronizar novedades cuando cambia modulacion o fijosIniciales
     useEffect(() => {
-        if (modulacion?.novedades && modulacion.novedades.length > 0) {
+        if (readOnly && modulacion?.novedades && modulacion.novedades.length > 0) {
             setNovedadesLocal([...modulacion.novedades]);
         } else if (!modulacion && fijosIniciales && fijosIniciales.length > 0) {
             setNovedadesLocal(
@@ -823,18 +1142,20 @@ export default function ModulacionIndex({
                     cedula: f.cedula,
                     nombres: f.nombres,
                     cargo: f.cargo,
+                    observaciones: '',
                     fijo: true,
                     fijo_rescate: Boolean(f.fijo_rescate),
                     fijo_taller: Boolean(f.fijo_taller),
                     permiso: false,
+                    no_asitio: false,
                     incapacidad: false,
                     vacaciones: false,
                 }))
             );
-        } else if (!modulacion) {
+        } else {
             setNovedadesLocal([]);
         }
-    }, [modulacion, fijosIniciales]);
+    }, [modulacion, fijosIniciales, readOnly]);
 
     // Para compatibilidad con el payload de storeBatch — mantiene los cambios de checkboxes
     // FORMULARIO DE INGRESO A TABLA 2
@@ -843,9 +1164,11 @@ export default function ModulacionIndex({
         cedula: '',
         nombres: '',
         cargo: '',
+        observaciones: '',
         fijo_rescate: false,
         fijo_taller: false,
         permiso: false,
+        no_asitio: false,
         incapacidad: false,
         vacaciones: false,
     });
@@ -893,15 +1216,17 @@ export default function ModulacionIndex({
         const tempId = -(Date.now());
         const nuevaFila: ModulacionNovedadData = {
             id: tempId,
-            modulacion_id: modulacion?.id ?? 0,
+            modulacion_id: activeModulacionId ?? 0,
             colaborador_id: nuevaNovedad.colaborador_id ? Number(nuevaNovedad.colaborador_id) : undefined,
             cedula: nuevaNovedad.cedula,
             nombres: nuevaNovedad.nombres,
             cargo: nuevaNovedad.cargo,
+            observaciones: nuevaNovedad.observaciones,
             fijo: nuevaNovedad.fijo_rescate || nuevaNovedad.fijo_taller,
             fijo_rescate: nuevaNovedad.fijo_rescate,
             fijo_taller: nuevaNovedad.fijo_taller,
             permiso: nuevaNovedad.permiso,
+            no_asitio: nuevaNovedad.no_asitio,
             incapacidad: nuevaNovedad.incapacidad,
             vacaciones: nuevaNovedad.vacaciones,
         };
@@ -914,9 +1239,11 @@ export default function ModulacionIndex({
             cedula: '',
             nombres: '',
             cargo: '',
+            observaciones: '',
             fijo_rescate: false,
             fijo_taller: false,
             permiso: false,
+            no_asitio: false,
             incapacidad: false,
             vacaciones: false,
         });
@@ -947,6 +1274,10 @@ export default function ModulacionIndex({
     };
 
     // SEPARACIÓN Y FILTRADO ESTRICTO DE COLABORADORES
+    const isFiltering = useMemo(() => {
+        return searchQuery.trim() !== '' || cargoFilter !== 'todos';
+    }, [searchQuery, cargoFilter]);
+
     const { selectedColaboradores, unselectedColaboradores } = useMemo(() => {
         const selected: ColaboradorOption[] = [];
         const unselected: ColaboradorOption[] = [];
@@ -966,19 +1297,21 @@ export default function ModulacionIndex({
                 return;
             }
 
-            const matchesCargo = cargoFilter === 'todos' || col.cargo === cargoFilter;
-            const q = searchQuery.toLowerCase().trim();
-            const matchesSearch =
-                !q ||
-                (col.nombre_completo && col.nombre_completo.toLowerCase().includes(q)) ||
-                (col.cedula && col.cedula.includes(q));
+            // Solo mostrar colaboradores libres no seleccionados cuando el usuario está filtrando
+            if (isFiltering) {
+                const matchesCargo = cargoFilter === 'todos' || col.cargo === cargoFilter;
+                const q = searchQuery.toLowerCase().trim();
+                const matchesSearch =
+                    !q ||
+                    (col.nombre_completo && col.nombre_completo.toLowerCase().includes(q)) ||
+                    (col.cedula && col.cedula.includes(q));
 
-            if (!matchesCargo || !matchesSearch) return;
-
-            const isAssignedElsewhere = isCollaboratorAlreadyAssigned(col);
-
-            if (!isAssignedElsewhere) {
-                unselected.push(col);
+                if (matchesCargo && matchesSearch) {
+                    const isAssignedElsewhere = isCollaboratorAlreadyAssigned(col);
+                    if (!isAssignedElsewhere) {
+                        unselected.push(col);
+                    }
+                }
             }
         });
 
@@ -1004,7 +1337,7 @@ export default function ModulacionIndex({
         });
 
         return { selectedColaboradores: selected, unselectedColaboradores: unselected };
-    }, [colaboradores, cargoFilter, searchQuery, currentRoute.tripulacion, isCollaboratorAlreadyAssigned]);
+    }, [colaboradores, cargoFilter, searchQuery, currentRoute.tripulacion, isCollaboratorAlreadyAssigned, isFiltering]);
 
     const allChecklistColaboradores = [...selectedColaboradores, ...unselectedColaboradores];
 
@@ -1029,56 +1362,638 @@ export default function ModulacionIndex({
         });
     }, [rutas, filterTablePlaca]);
 
-    // FUNCIÓN PARA EXPORTAR A EXCEL
+    // FUNCIÓN PARA EXPORTAR A EXCEL — Formato exacto según plantilla con estilos
     const handleExportExcel = () => {
         if (filteredRutasTable.length === 0) {
             alert('No hay rutas para exportar con los filtros seleccionados.');
             return;
         }
 
-        const exportData = filteredRutasTable.map((r, index) => {
-            const tripulacionStr = (r.tripulacion || [])
-                .map((m) => `${m.nombres} (Cédula: ${m.cedula}${m.cargo ? ' - Cargo: ' + m.cargo : ''})`)
-                .join(' | ');
+        const wb = XLSX.utils.book_new();
 
-            const colaboradoresStr = novedadesLocal
-                .map((nov) => {
-                    const types = [];
-                    if (nov.fijo_rescate) types.push('FIJO RESCATE');
-                    if (nov.fijo_taller) types.push('FIJO TALLER');
-                    if (nov.permiso) types.push('PERMISO');
-                    if (nov.incapacidad) types.push('INCAPACIDAD');
-                    if (nov.vacaciones) types.push('VACACIONES');
-                    const typeStr = types.length > 0 ? ` [${types.join(', ')}]` : '';
-                    return `${nov.nombres || ''} (Cédula: ${nov.cedula || '-'}${nov.cargo ? ' - ' + nov.cargo : ''})${typeStr}`;
-                })
-                .join(' | ');
+        // ─── Paleta y estilos base ──────────────────────────────────
+        const AZUL_OSCURO = '1F3864';       // Encabezados (fondo azul marino)
+        const AZUL_CLARO_NOMBRES = 'B4C6E7'; // Fondo columna NOMBRE en novedades
+        const AZUL_CARGO_1 = '4472C4';      // 1er tripulante
+        const AMARILLO_CARGO_2 = 'FFFF00';  // 2do tripulante
+        const GRIS_CARGO_3 = 'D9D9D9';      // 3er tripulante
+        const BLANCO_CARGO_4 = 'FFFFFF';    // 4to tripulante
+        const NEGRO_PLACA = '000000';       // Fondo columna placa
+        const AZUL_TEXTO_AUX = '0563C1';    // Texto azul para tripulante 2
 
-            const viajesStr = (r.viajes || [])
-                .map(
-                    (v, vIdx) =>
-                        `Viaje ${vIdx + 1}: Lugares: Nariño - ${v.lugares || '-'}${v.barrio ? ' - Barrio: ' + v.barrio : ''}, Cliente: ${v.cliente || '-'}, Peso: ${v.peso || '-'} ton`
-                )
-                .join(' | ');
+        const BORDER_THIN = {
+            top: { style: 'thin', color: { rgb: 'FF000000' } },
+            bottom: { style: 'thin', color: { rgb: 'FF000000' } },
+            left: { style: 'thin', color: { rgb: 'FF000000' } },
+            right: { style: 'thin', color: { rgb: 'FF000000' } },
+        };
 
-            return {
-                '#': index + 1,
-                Fecha: fechaTexto,
-                'Programado Por': udProgramadoPor || '-',
-                'Despachado Por': despachadoPorNombre || '-',
-                Placa: r.placa,
-                Tripulación: tripulacionStr || '-',
-                Colaboradores: colaboradoresStr || '-',
-                Viajes: viajesStr || '-',
-            };
+        const FONT_HEADER = {
+            bold: true,
+            color: { rgb: 'FFFFFF' },
+            sz: 11,
+            name: 'Calibri',
+        };
+        const FONT_BODY = { sz: 11, name: 'Calibri', color: { rgb: '000000' } };
+        const FONT_BODY_BLUE = { sz: 11, name: 'Calibri', color: { rgb: AZUL_TEXTO_AUX } };
+        const FONT_BODY_BOLD_BLACK = { sz: 11, name: 'Calibri', bold: true, color: { rgb: '000000' } };
+        const FONT_PLACA = { sz: 12, name: 'Calibri', bold: true, color: { rgb: 'FFFFFF' } };
+
+        const ALIGN_CENTER = { horizontal: 'center' as const, vertical: 'center' as const, wrapText: true };
+        const ALIGN_LEFT = { horizontal: 'left' as const, vertical: 'center' as const, wrapText: true };
+        const ALIGN_RIGHT = { horizontal: 'right' as const, vertical: 'center' as const };
+
+        // ─── Determinar máximo de viajes y tripulantes ──────────────
+        let maxViajes = 1;
+        let maxTripulantes = 1;
+        filteredRutasTable.forEach((r) => {
+            const numViajes = (r.viajes || []).length;
+            const numTrip = (r.tripulacion || []).length;
+            if (numViajes > maxViajes) maxViajes = numViajes;
+            if (numTrip > maxTripulantes) maxTripulantes = numTrip;
         });
 
-        const worksheet = XLSX.utils.json_to_sheet(exportData);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, 'Planeación de Ruta');
+        // Estructura de columnas (SECCIÓN RUTAS, 1 fila por ruta):
+        // [A] placa, [B] DOC.T RAS, [C] OBSERVACIONES (NUEVA),
+        // [D] TRIPULACION (multi-linea), [E] REUNION,
+        // [F..F+n-1] 1ER/2DO VIAJE..., [G+n] CLIENTE, [H+n] peso
+        //
+        // SECCIÓN NOVEDADES (1 fila por novedad, 1 sola columna A, NO merge cols):
+        // [A] IDENTIFICACIÓN / NOMBRE (multi-linea), [B] OBSERVACIONES,
+        // [C] FIJO RESCATE, [D] FIJO TALLER, [E] PERMISO, [F] NO ASISTIO,
+        // [G] INCAPACIDAD, [H] VACACIONES
 
-        const fileName = `Planeacion_Ruta_${fechaTexto || new Date().toISOString().split('T')[0]}.xlsx`;
-        XLSX.writeFile(workbook, fileName);
+        const cell = (
+            v: unknown,
+            opts: {
+                s?: XLSX.CellStyle;
+                t?: 's' | 'n' | 'b';
+            } = {}
+        ): XLSX.CellObject => {
+            let type: 's' | 'n' | 'b' = opts.t ?? 's';
+            const value = v;
+            if (typeof v === 'number') {
+                type = 'n';
+            } else if (typeof v === 'boolean') {
+                type = 'b';
+            }
+            const out: XLSX.CellObject = {
+                t: type as any,
+                v: value as any,
+            };
+            if (opts.s) out.s = opts.s;
+            return out;
+        };
+
+        const emptyCell = (s?: XLSX.CellStyle): XLSX.CellObject => cell('', { s });
+
+        const styleHeaderBase: XLSX.CellStyle = {
+            fill: { patternType: 'solid', fgColor: { rgb: AZUL_OSCURO } },
+            font: FONT_HEADER,
+            alignment: ALIGN_CENTER,
+            border: BORDER_THIN,
+        };
+        const styleHeaderRotated = (deg: number): XLSX.CellStyle => ({
+            ...styleHeaderBase,
+            alignment: {
+                ...ALIGN_CENTER,
+                textRotation: deg,
+            },
+        });
+        const styleBodyBase: XLSX.CellStyle = {
+            font: FONT_BODY,
+            alignment: ALIGN_LEFT,
+            border: BORDER_THIN,
+        };
+        const styleBodyCenter: XLSX.CellStyle = {
+            font: FONT_BODY,
+            alignment: ALIGN_CENTER,
+            border: BORDER_THIN,
+        };
+        const styleBodyBoldBlack: XLSX.CellStyle = {
+            font: FONT_BODY_BOLD_BLACK,
+            alignment: ALIGN_LEFT,
+            border: BORDER_THIN,
+        };
+
+        // ─── Construir hoja ──────────────────────────────────────────
+        // Usamos un objeto plano { A1: cell, B1: cell, ... } para control total
+        const wsData: Record<string, XLSX.CellObject> = {};
+        const setCell = (r: number, c: number, val: XLSX.CellObject) => {
+            const addr = XLSX.utils.encode_cell({ r, c });
+            wsData[addr] = val;
+        };
+
+        // Índice de columnas (base 0)
+        const COL = {
+            PLACA: 0,
+            DOC_TRAS: 1,
+            TRIP_COLOR: 2,
+            TRIP_NOMBRE: 3,
+            REUNION: 4,
+            PRIMER_VIAJE: 5,
+        };
+        const LAST_VIAJE_COL = COL.PRIMER_VIAJE + maxViajes - 1;
+        const COL_CLIENTE = LAST_VIAJE_COL + 1;
+        const COL_PESO = COL_CLIENTE + 1;
+        const TOTAL_COLS = Math.max(COL_PESO + 1, 6);
+        const merges: { s: { r: number; c: number }; e: { r: number; c: number } }[] = [];
+
+        // Parsear fecha en HORA LOCAL para evitar desfase por zona horaria UTC
+        // fechaTexto viene como 'YYYY-MM-DD' (sin hora); sin time part JS lo interpreta como UTC
+        const fechaString = fechaTexto
+            ? `${fechaTexto}T00:00:00`
+            : new Date().toISOString().split('T')[0] + 'T00:00:00';
+        const fechaDate = new Date(fechaString);
+        const DIAS_SEMANA = ['DOMINGO', 'LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO'];
+        const MESES = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'];
+        const diaStr = DIAS_SEMANA[fechaDate.getDay()] ?? '';
+        const mesStr = MESES[fechaDate.getMonth()] ?? '';
+        const textoFecha = `${diaStr} ${fechaDate.getDate()} ${mesStr} ${fechaDate.getFullYear()}`;
+        const totalRutas = filteredRutasTable.length;
+        const textoRutas = `${totalRutas} RUTA${totalRutas === 1 ? '' : 'S'} - ${textoFecha}`;
+
+        // ─── Fila 0 (r=0): Cantidad de rutas en A:E + PROGRAMADO POR en viajes ───
+        const textoProgramado = `PROGRAMADO POR **${(udProgramadoPor || '').toUpperCase()}**`;
+        // Merge PROGRAMADO POR sobre columnas de viajes + cliente + peso
+        const mergeRow0Header = {
+            s: { r: 0, c: COL.PRIMER_VIAJE },
+            e: { r: 0, c: COL_PESO },
+        };
+        // Merge A:E (0..4) para la cantidad de rutas + fecha, combinando 2 filas (0 y 1)
+        const mergeRutas = { s: { r: 0, c: 0 }, e: { r: 1, c: 4 } };
+        for (let c = 0; c < TOTAL_COLS; c++) {
+            if (c >= 0 && c <= 4) {
+                if (c === 0) {
+                    setCell(0, c, cell(textoRutas, {
+                        s: {
+                            fill: { patternType: 'solid', fgColor: { rgb: AZUL_OSCURO } },
+                            font: { ...FONT_HEADER, sz: 14 },
+                            alignment: { ...ALIGN_CENTER },
+                            border: BORDER_THIN,
+                        },
+                    }));
+                } else {
+                    setCell(0, c, emptyCell({
+                        fill: { patternType: 'solid', fgColor: { rgb: AZUL_OSCURO } },
+                        border: BORDER_THIN,
+                    }));
+                }
+            } else if (c === COL.PRIMER_VIAJE) {
+                setCell(0, c, cell(textoProgramado, {
+                    s: {
+                        fill: { patternType: 'solid', fgColor: { rgb: AZUL_OSCURO } },
+                        font: { ...FONT_HEADER, sz: 12 },
+                        alignment: ALIGN_CENTER,
+                        border: BORDER_THIN,
+                    },
+                }));
+            } else {
+                setCell(0, c, emptyCell({
+                    fill: c >= COL.PRIMER_VIAJE
+                        ? { patternType: 'solid', fgColor: { rgb: AZUL_OSCURO } }
+                        : undefined,
+                    border: BORDER_THIN,
+                }));
+            }
+        }
+
+        // ─── Fila 1 (r=1): DESPACHADO POR ──────────────
+        const textoDespachado = `DESPACHADO POR **${(despachadoPorNombre || '').toUpperCase()}**`;
+        const mergeRow1Header = {
+            s: { r: 1, c: COL.PRIMER_VIAJE },
+            e: { r: 1, c: COL_PESO },
+        };
+        for (let c = 0; c < TOTAL_COLS; c++) {
+            if (c >= COL.PRIMER_VIAJE) {
+                if (c === COL.PRIMER_VIAJE) {
+                    setCell(1, c, cell(textoDespachado, {
+                        s: {
+                            fill: { patternType: 'solid', fgColor: { rgb: AZUL_OSCURO } },
+                            font: { ...FONT_HEADER, sz: 12 },
+                            alignment: ALIGN_CENTER,
+                            border: BORDER_THIN,
+                        },
+                    }));
+                } else {
+                    setCell(1, c, emptyCell({
+                        fill: { patternType: 'solid', fgColor: { rgb: AZUL_OSCURO } },
+                        border: BORDER_THIN,
+                    }));
+                }
+            } else {
+                setCell(1, c, emptyCell({
+                    fill: { patternType: 'solid', fgColor: { rgb: AZUL_OSCURO } },
+                    border: BORDER_THIN,
+                }));
+            }
+        }
+
+        // ─── Fila 2 (r=2): Encabezados ───────────────────────────────
+        setCell(2, COL.PLACA, cell('PLACA', { s: styleHeaderBase }));
+        setCell(2, COL.DOC_TRAS, cell('DOC.T RAS', { s: styleHeaderRotated(60) }));
+        setCell(2, COL.TRIP_COLOR, cell('', { s: styleHeaderBase }));
+        setCell(2, COL.TRIP_NOMBRE, cell('TRIPULACION', { s: styleHeaderBase }));
+        setCell(2, COL.REUNION, cell('REUNION', { s: styleHeaderRotated(90) }));
+        // Viajes
+        for (let v = 0; v < maxViajes; v++) {
+            const label = maxViajes === 1
+                ? '1ER VIAJE'
+                : v === 0
+                ? '1ER VIAJE'
+                : v === 1
+                ? '2DO VIAJE'
+                : `${v + 1}° VIAJE`;
+            setCell(2, COL.PRIMER_VIAJE + v, cell(label, { s: styleHeaderBase }));
+        }
+        setCell(2, COL_CLIENTE, cell('CLIENTE', { s: styleHeaderRotated(90) }));
+        setCell(2, COL_PESO, cell('PESO', { s: styleHeaderRotated(90) }));
+        // Llenar columnas restantes con bordes
+        for (let c = COL_PESO + 1; c < TOTAL_COLS; c++) {
+            setCell(2, c, cell('', {
+                s: {
+                    font: FONT_BODY,
+                    alignment: ALIGN_CENTER,
+                    border: BORDER_THIN,
+                },
+            }));
+        }
+
+        // ─── Filas de datos de rutas ─── filas separadas por tripulante con columna de color y nombre
+        let currentRow = 3;
+        filteredRutasTable.forEach((r) => {
+            const tripulacion = r.tripulacion || [];
+            const viajes = r.viajes || [];
+            const r0 = currentRow;
+
+            const totalCliente = viajes.reduce((sum, vj) => sum + (parseInt(vj.cliente) || 0), 0);
+            const totalPeso = viajes.reduce((sum, vj) => sum + (parseFloat(vj.peso) || 0), 0);
+            const numFilasMerge = Math.max(tripulacion.length, 1);
+
+            // PLACA (merge sobre todas las filas de tripulantes)
+            for (let fila = 0; fila < numFilasMerge; fila++) {
+                const estiloPlaca: XLSX.CellStyle = {
+                    font: FONT_PLACA,
+                    fill: { patternType: 'solid', fgColor: { rgb: NEGRO_PLACA } },
+                    alignment: ALIGN_CENTER,
+                    border: BORDER_THIN,
+                };
+                if (fila === 0) {
+                    setCell(r0 + fila, COL.PLACA, cell((r.placa || '').toUpperCase(), { s: estiloPlaca }));
+                } else {
+                    setCell(r0 + fila, COL.PLACA, cell('', { s: estiloPlaca }));
+                }
+            }
+            merges.push({
+                s: { r: r0, c: COL.PLACA },
+                e: { r: r0 + numFilasMerge - 1, c: COL.PLACA },
+            });
+
+            // DOC.T RAS (merge sobre todas las filas de tripulantes, rotado)
+            for (let fila = 0; fila < numFilasMerge; fila++) {
+                const estiloDocTras: XLSX.CellStyle = {
+                    font: FONT_BODY_BOLD_BLACK,
+                    alignment: { ...ALIGN_CENTER, textRotation: 60 },
+                    border: BORDER_THIN,
+                };
+                if (fila === 0) {
+                    setCell(r0 + fila, COL.DOC_TRAS, cell(r.doc_tras || '', { s: estiloDocTras }));
+                } else {
+                    setCell(r0 + fila, COL.DOC_TRAS, cell('', { s: estiloDocTras }));
+                }
+            }
+            merges.push({
+                s: { r: r0, c: COL.DOC_TRAS },
+                e: { r: r0 + numFilasMerge - 1, c: COL.DOC_TRAS },
+            });
+
+            // TRIPULANTES (columna de color chica y columna de nombre al lado)
+            for (let t = 0; t < maxTripulantes; t++) {
+                const trip = tripulacion[t];
+                const nombre = (trip?.nombres || '').toUpperCase();
+                let colorFondo: string;
+
+                if (t === 0) {
+                    colorFondo = AZUL_CARGO_1;
+                } else if (t === 1) {
+                    colorFondo = AMARILLO_CARGO_2;
+                } else if (t === 2) {
+                    colorFondo = GRIS_CARGO_3;
+                } else {
+                    colorFondo = BLANCO_CARGO_4;
+                }
+
+                // Columna de color (chica)
+                setCell(r0 + t, COL.TRIP_COLOR, cell('', {
+                    s: {
+                        fill: { patternType: 'solid', fgColor: { rgb: colorFondo } },
+                        border: BORDER_THIN,
+                    },
+                }));
+
+                // Columna de nombre (al lado)
+                setCell(r0 + t, COL.TRIP_NOMBRE, cell(nombre, {
+                    s: {
+                        font: { ...FONT_BODY, bold: true },
+                        alignment: ALIGN_LEFT,
+                        border: BORDER_THIN,
+                    },
+                }));
+            }
+
+            // REUNION (merge sobre todas las filas de tripulantes)
+            for (let fila = 0; fila < numFilasMerge; fila++) {
+                setCell(r0 + fila, COL.REUNION, cell('', {
+                    s: {
+                        font: FONT_BODY,
+                        alignment: ALIGN_CENTER,
+                        border: BORDER_THIN,
+                    },
+                }));
+            }
+            merges.push({
+                s: { r: r0, c: COL.REUNION },
+                e: { r: r0 + numFilasMerge - 1, c: COL.REUNION },
+            });
+
+            // Llenar columnas entre REUNION y PRIMER_VIAJE con bordes
+            for (let c = COL.REUNION + 1; c < COL.PRIMER_VIAJE; c++) {
+                for (let fila = 0; fila < numFilasMerge; fila++) {
+                    setCell(r0 + fila, c, cell('', {
+                        s: {
+                            font: FONT_BODY,
+                            alignment: ALIGN_CENTER,
+                            border: BORDER_THIN,
+                        },
+                    }));
+                }
+                merges.push({
+                    s: { r: r0, c: c },
+                    e: { r: r0 + numFilasMerge - 1, c: c },
+                });
+            }
+
+            // Viajes (municipio + barrio 2 lineas, 1 celda por viaje, merge sobre filas de tripulantes)
+            for (let v = 0; v < maxViajes; v++) {
+                let contenido = '';
+                if (viajes[v]) {
+                    const lugar = (viajes[v].lugares || '').trim().toUpperCase();
+                    const barrio = (viajes[v].barrio || '').trim().toUpperCase();
+                    const partes: string[] = [];
+                    if (lugar) partes.push(lugar);
+                    if (barrio) partes.push(barrio);
+                    contenido = partes.join('\n');
+                }
+                const colViaje = COL.PRIMER_VIAJE + v;
+                const numFilasMerge = Math.max(tripulacion.length, 1);
+
+                // Aplicar bordes a todas las celdas dentro del merge
+                for (let fila = 0; fila < numFilasMerge; fila++) {
+                    const estiloViaje: XLSX.CellStyle = {
+                        font: { ...FONT_BODY, bold: true, sz: 12 },
+                        alignment: ALIGN_CENTER,
+                        border: BORDER_THIN,
+                    };
+                    if (fila === 0) {
+                        setCell(r0 + fila, colViaje, cell(contenido, { s: estiloViaje }));
+                    } else {
+                        setCell(r0 + fila, colViaje, cell('', { s: estiloViaje }));
+                    }
+                }
+
+                merges.push({
+                    s: { r: r0, c: colViaje },
+                    e: { r: r0 + numFilasMerge - 1, c: colViaje },
+                });
+            }
+
+            // CLIENTE y PESO (merge sobre filas de tripulantes)
+            // CLIENTE - aplicar bordes a todas las celdas del merge
+            for (let fila = 0; fila < numFilasMerge; fila++) {
+                const estiloCliente: XLSX.CellStyle = {
+                    font: { ...FONT_BODY, bold: true },
+                    alignment: ALIGN_CENTER,
+                    border: BORDER_THIN,
+                };
+                if (fila === 0) {
+                    setCell(r0 + fila, COL_CLIENTE, cell(totalCliente > 0 ? totalCliente : '', {
+                        t: totalCliente > 0 ? 'n' : 's',
+                        s: estiloCliente,
+                    }));
+                } else {
+                    setCell(r0 + fila, COL_CLIENTE, cell('', { s: estiloCliente }));
+                }
+            }
+            merges.push({
+                s: { r: r0, c: COL_CLIENTE },
+                e: { r: r0 + numFilasMerge - 1, c: COL_CLIENTE },
+            });
+
+            // PESO - aplicar bordes a todas las celdas del merge
+            for (let fila = 0; fila < numFilasMerge; fila++) {
+                const estiloPeso: XLSX.CellStyle = {
+                    font: { ...FONT_BODY, bold: true },
+                    alignment: ALIGN_CENTER,
+                    border: BORDER_THIN,
+                };
+                if (fila === 0) {
+                    setCell(r0 + fila, COL_PESO, cell(totalPeso > 0 ? parseFloat(totalPeso.toFixed(1)) : '', {
+                        t: totalPeso > 0 ? 'n' : 's',
+                        s: estiloPeso,
+                    }));
+                } else {
+                    setCell(r0 + fila, COL_PESO, cell('', { s: estiloPeso }));
+                }
+            }
+            merges.push({
+                s: { r: r0, c: COL_PESO },
+                e: { r: r0 + numFilasMerge - 1, c: COL_PESO },
+            });
+
+            currentRow += Math.max(tripulacion.length, 1);
+        });
+
+        // ─── Fila separadora ─────────────────────────────────────────
+        currentRow += 1;
+
+        // ─── SECCIÓN 2: NOVEDADES ────────────────────────────────────
+        // OBSERVACIONES ocupa 2 columnas combinadas (B:C)
+        const NOV_COL = {
+            IDENT_NOMB: 0, // [A] 1 sola columna para cédula + nombre (multi-linea)
+            OBSERVACIONES: 1, // [B:C] 2 columnas combinadas
+            FIJO_RESCATE: 3, // [D]
+            FIJO_TALLER: 4, // [E]
+            PERMISO: 5, // [F]
+            NO_ASISTIO: 6, // [G]
+            INCAPACIDAD: 7, // [H]
+            VACACIONES: 8, // [I]
+        };
+
+        // Encabezado novedades
+        setCell(currentRow, NOV_COL.IDENT_NOMB, cell('IDENTIFICACIÓN / NOMBRE', {
+            s: {
+                fill: { patternType: 'solid', fgColor: { rgb: AZUL_OSCURO } },
+                font: FONT_HEADER,
+                alignment: ALIGN_CENTER,
+                border: BORDER_THIN,
+            },
+        }));
+        // OBSERVACIONES con merge de 2 columnas (B:C)
+        setCell(currentRow, NOV_COL.OBSERVACIONES, cell('OBSERVACIONES', {
+            s: {
+                fill: { patternType: 'solid', fgColor: { rgb: AZUL_OSCURO } },
+                font: FONT_HEADER,
+                alignment: ALIGN_CENTER,
+                border: BORDER_THIN,
+            },
+        }));
+        merges.push({
+            s: { r: currentRow, c: NOV_COL.OBSERVACIONES },
+            e: { r: currentRow, c: NOV_COL.OBSERVACIONES + 1 },
+        });
+        const novedadCols: [number, string][] = [
+            [NOV_COL.FIJO_RESCATE, 'FIJO RESCATE'],
+            [NOV_COL.FIJO_TALLER, 'FIJO TALLER'],
+            [NOV_COL.PERMISO, 'PERMISO'],
+            [NOV_COL.NO_ASISTIO, 'NO ASISTIO'],
+            [NOV_COL.INCAPACIDAD, 'INCAPACIDAD'],
+            [NOV_COL.VACACIONES, 'VACACIONES'],
+        ];
+        novedadCols.forEach(([col, label]) => {
+            setCell(currentRow, col, cell(label, {
+                s: {
+                    fill: { patternType: 'solid', fgColor: { rgb: AZUL_OSCURO } },
+                    font: FONT_HEADER,
+                    alignment: ALIGN_CENTER,
+                    border: BORDER_THIN,
+                },
+            }));
+        });
+        // Llenar el resto de columnas de la fila con borde
+        for (let c = 9; c < TOTAL_COLS; c++) {
+            setCell(currentRow, c, cell('', {
+                s: {
+                    font: FONT_BODY,
+                    alignment: ALIGN_CENTER,
+                    border: BORDER_THIN,
+                },
+            }));
+        }
+        currentRow += 1;
+
+        novedadesLocal.forEach((nov) => {
+            // 1 SOLA CELDA: cédula + Nombres (2 líneas con wrapText) — NO hay merge entre cols 0-1
+            const cedula = (nov.cedula || '').trim();
+            const nombres = (nov.nombres || '').trim().toUpperCase();
+            const identContent = [cedula, nombres].filter(Boolean).join('\n');
+
+            setCell(currentRow, NOV_COL.IDENT_NOMB, cell(identContent, {
+                s: {
+                    fill: { patternType: 'solid', fgColor: { rgb: AZUL_CLARO_NOMBRES } },
+                    font: { ...FONT_BODY, bold: true },
+                    alignment: ALIGN_LEFT,
+                    border: BORDER_THIN,
+                },
+            }));
+
+            // OBSERVACIONES (2 columnas combinadas B:C)
+            const estiloObservaciones: XLSX.CellStyle = {
+                fill: { patternType: 'solid', fgColor: { rgb: AZUL_CLARO_NOMBRES } },
+                font: FONT_BODY,
+                alignment: ALIGN_LEFT,
+                border: BORDER_THIN,
+            };
+            setCell(currentRow, NOV_COL.OBSERVACIONES, cell(nov.observaciones || '', { s: estiloObservaciones }));
+            setCell(currentRow, NOV_COL.OBSERVACIONES + 1, cell('', { s: estiloObservaciones }));
+            merges.push({
+                s: { r: currentRow, c: NOV_COL.OBSERVACIONES },
+                e: { r: currentRow, c: NOV_COL.OBSERVACIONES + 1 },
+            });
+
+            // Checkboxes
+            const checks: [number, boolean][] = [
+                [NOV_COL.FIJO_RESCATE, !!nov.fijo_rescate],
+                [NOV_COL.FIJO_TALLER, !!nov.fijo_taller],
+                [NOV_COL.PERMISO, !!nov.permiso],
+                [NOV_COL.NO_ASISTIO, !!nov.no_asitio],
+                [NOV_COL.INCAPACIDAD, !!nov.incapacidad],
+                [NOV_COL.VACACIONES, !!nov.vacaciones],
+            ];
+            checks.forEach(([col, val]) => {
+                setCell(currentRow, col, cell(val ? 'X' : '', {
+                    s: {
+                        font: { ...FONT_BODY_BOLD_BLACK, sz: 14 },
+                        alignment: ALIGN_CENTER,
+                        border: BORDER_THIN,
+                    },
+                }));
+            });
+
+            // Llenar columnas restantes con bordes
+            for (let c = 9; c < TOTAL_COLS; c++) {
+                setCell(currentRow, c, cell('', {
+                    s: {
+                        font: FONT_BODY,
+                        alignment: ALIGN_CENTER,
+                        border: BORDER_THIN,
+                    },
+                }));
+            }
+
+            currentRow += 1;
+        });
+
+        // ─── Merges (solo encabezados, ya NO merges por conductor)
+        merges.unshift(mergeRutas, mergeRow0Header, mergeRow1Header);
+
+        // ─── Construir worksheet final ───────────────────────────────
+        const ws: XLSX.WorkSheet = { ...wsData };
+        ws['!ref'] = XLSX.utils.encode_range({
+            s: { r: 0, c: 0 },
+            e: { r: currentRow + 1, c: TOTAL_COLS - 1 },
+        });
+        ws['!merges'] = merges;
+
+        // ─── Anchos de columna ───────────────────────────────────────
+        const colWidths: { wch: number }[] = [
+            { wch: 14 }, // A placa / IDENT+NOMBRE (novedades)
+            { wch: 14 }, // B DOC.T RAS / OBSERVACIONES (novedades)
+            { wch: 3 },  // C TRIP_COLOR (columna chica de color)
+            { wch: 40 }, // D TRIP_NOMBRE (nombre del colaborador)
+            { wch: 9 },  // E REUNION
+        ];
+        for (let v = 0; v < maxViajes; v++) colWidths.push({ wch: 30 }); // 1ER/2DO VIAJE...
+        colWidths.push({ wch: 14 }, { wch: 10 }); // CLIENTE, PESO (september)
+        ws['!cols'] = colWidths;
+
+        // ─── Alturas de fila ─────────────────────────────────────────
+        const rowHeights: { hpt: number }[] = [];
+        rowHeights.push({ hpt: 26 }); // fila 0 PROGRAMADO POR
+        rowHeights.push({ hpt: 26 }); // fila 1 DESPACHADO POR
+        rowHeights.push({ hpt: 60 }); // fila 2 encabezados
+        // Alturas para filas de rutas (múltiples filas por ruta, una por tripulante)
+        filteredRutasTable.forEach((r) => {
+            const numTrip = Math.max((r.tripulacion || []).length, 1);
+            // altura base por cada fila de tripulante
+            for (let t = 0; t < numTrip; t++) {
+                rowHeights.push({ hpt: 22 });
+            }
+        });
+        ws['!rows'] = rowHeights;
+
+        XLSX.utils.book_append_sheet(wb, ws, 'Planeación de Ruta');
+
+        // Generar nombre de archivo con FECHA LOCAL (no UTC)
+        let fechaNombre: string = fechaTexto || '';
+        if (!fechaNombre) {
+            const d = new Date();
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            fechaNombre = `${y}-${m}-${day}`;
+        }
+        const fileName = `Planeacion_Ruta_${fechaNombre}.xlsx`;
+        XLSX.writeFile(wb, fileName);
     };
 
     return (
@@ -1086,261 +2001,227 @@ export default function ModulacionIndex({
             <Head title="Planeación de ruta" />
 
             <div className="flex h-full flex-1 flex-col gap-6 rounded-xl p-4">
-                {/* Header título */}
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b pb-4">
-                    <HeadingSmall title="Planeación de ruta" />
-                    <div className="flex items-center gap-2">
+
+                {/* ── Header ─────────────────────────────────────────────── */}
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                            <div className="flex size-10 items-center justify-center rounded-xl" style={{ backgroundColor: '#D4102A20' }}>
+                                <MapPin className="size-5" style={{ color: ACCENT }} />
+                            </div>
+                            <div>
+                                <h1 className="text-2xl font-bold tracking-tight text-foreground">Planificación de ruta</h1>
+                                <p className="text-sm text-muted-foreground">Organiza y gestiona la salida de la ruta de reparto</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3">
                         {readOnly && (
-                            <Button variant="outline" asChild>
+                            <Button variant="outline" size="sm" asChild>
                                 <Link href={route('reparto.modulacion.historial')}>
                                     <ArrowLeft className="size-4" />
                                     Volver al historial
                                 </Link>
                             </Button>
                         )}
+                        <div className="flex items-center gap-2">
+                            <Label htmlFor="ud_programado_por" className="text-xs font-semibold text-muted-foreground whitespace-nowrap">
+                                UD Programado Por:
+                            </Label>
+                            <Input
+                                id="ud_programado_por"
+                                type="text"
+                                placeholder="Nombre del usuario programador"
+                                value={udProgramadoPor}
+                                onChange={(e) => setUdProgramadoPor(e.target.value)}
+                                className="h-10 w-64 text-sm bg-background"
+                            />
+                        </div>
                     </div>
                 </div>
 
-                {/* CARD DE FILTROS */}
-                {/* Creando: sin filtros. Editando con planeación existente: solo filtro por placa */}
-                {isEditing && modulacion?.id && (
-                <Card className="border-sidebar-border/70 dark:border-sidebar-border">
-                    <CardHeader className="pb-2 border-b">
-                        <CardTitle className="text-sm font-semibold flex items-center justify-between">
-                            <span className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-                                <Filter className="size-4" />
-                                Filtros
-                            </span>
+                {/* ── Filtros de fecha y placa ───────────────────────────── */}
+                {isEditing && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 rounded-xl border border-sidebar-border/70 bg-card p-4 dark:border-sidebar-border">
+                    <div>
+                        <Label htmlFor="filtro-fecha" className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground mb-1.5">
+                            <Calendar className="h-3.5 w-3.5" style={{ color: ACCENT }} />
+                            Fecha de la planeación
+                        </Label>
+                        <Input
+                            id="filtro-fecha"
+                            type="date"
+                            value={fechaTexto}
+                            onChange={(e) => handleFechaChange(e.target.value)}
+                            className="h-10 text-sm"
+                        />
+                        {activeModulacionId && rutasGuardadas.length > 0 && rutas.length === 0 && (
                             <Button
                                 type="button"
-                                onClick={handleExportExcel}
-                                className="text-xs h-8 px-3"
+                                variant="outline"
+                                size="sm"
+                                className="mt-2"
+                                onClick={() => {
+                                    setRutas(rutasGuardadas);
+                                    setCurrentRoute(createEmptyRoute());
+                                    setCurrentViajeForm({ lugares: '', barrio: '', cliente: '', peso: '' });
+                                }}
                             >
-                                <FileSpreadsheet className="h-4 w-4 mr-1.5" />
-                                {'Exportar Excel'}
+                                Cargar planeación guardada
                             </Button>
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-4">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {/* Selector de Fecha con Calendario */}
-                            <div>
-                                <Label htmlFor="filtro-fecha" className="flex items-center gap-1.5 text-xs font-semibold">
-                                    <Calendar className="h-3.5 w-3.5" style={{ color: ACCENT }} />
-                                    {'Fecha de la Planeación (Calendario)'}
+                        )}
+                    </div>
+                    <div>
+                        <Label className="flex items-center gap-1 text-xs font-semibold text-muted-foreground mb-1.5">
+                            <Filter className="size-3.5" style={{ color: ACCENT }} />
+                            Filtro por placa
+                        </Label>
+                        <Select value={filterTablePlaca} onValueChange={setFilterTablePlaca}>
+                            <SelectTrigger className="h-10 text-sm w-full">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="todas">-- Todas las Placas --</SelectItem>
+                                {uniquePlacasInRutas.map((placa) => (
+                                    <SelectItem key={placa} value={placa}>{placa}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+                )}
+
+                {/* ── Formulario nueva / editar salida ─────────────────────── */}
+                <form onSubmit={handleAddViaje} className="space-y-4" style={{ display: (!readOnly || isEditing) ? 'block' : 'none' }}>
+                    {/* Card 1: Datos generales y Tripulación */}
+                    <div className="rounded-xl border border-sidebar-border/70 bg-card p-5 dark:border-sidebar-border shadow-sm space-y-6">
+
+                        {/* Título inline (modo edición) */}
+                        {editingIndex !== null && (
+                            <div className="flex items-center justify-between border-b border-border pb-3">
+                                <div className="flex items-center gap-2">
+                                    <FileText className="size-4" style={{ color: ACCENT }} />
+                                    <span className="font-semibold text-foreground">
+                                        Editando ruta #{editingIndex + 1}
+                                    </span>
+                                    {currentRoute.placa && (
+                                        <Badge variant="outline" className="font-mono text-xs" style={{ borderColor: ACCENT, color: ACCENT }}>
+                                            {currentRoute.placa}
+                                        </Badge>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* ── Sección 1: Datos Generales de la Salida ── */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {/* Placa */}
+                            <div className="grid gap-1.5">
+                                <Label className="text-xs font-medium">
+                                    Placa <span className="text-red-500">*</span>
                                 </Label>
+                                {vehiculos.length > 0 && (
+                                    <select
+                                        value={currentRoute.placa}
+                                        onChange={(e) => handlePlacaChange(e.target.value)}
+                                        className="h-10 w-full rounded-lg border border-input bg-background px-3 py-2 font-mono text-sm uppercase text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                                    >
+                                        <option value="">-- Seleccionar Placa --</option>
+                                        {vehiculos
+                                            .filter((v) => {
+                                                const placaUpper = String(v).toUpperCase();
+                                                if (currentRoute.placa && String(currentRoute.placa).toUpperCase() === placaUpper) return true;
+                                                return !rutas.some((r, idx) => {
+                                                    if (editingIndex !== null && idx === editingIndex) return false;
+                                                    return String(r.placa).toUpperCase() === placaUpper;
+                                                });
+                                            })
+                                            .map((v) => (
+                                                <option key={v} value={String(v)}>{String(v)}</option>
+                                            ))}
+                                    </select>
+                                )}
+                            </div>
+
+                            {/* Documento Transporte */}
+                            <div className="grid gap-1.5">
+                                <Label className="text-xs font-medium">Documento Transporte</Label>
                                 <Input
-                                    id="filtro-fecha"
-                                    type="date"
-                                    value={fechaTexto}
-                                    onChange={(e) => handleFechaChange(e.target.value)}
-                                    className="mt-1"
+                                    type="text"
+                                    placeholder="Ej: 8008417408"
+                                    value={currentRoute.doc_tras ?? ''}
+                                    onChange={(e) => handleCurrentRouteFieldChange('doc_tras', e.target.value)}
+                                    className="h-10 text-sm font-mono"
+                                    required
                                 />
                             </div>
 
-                            {/* Filtro por Placa */}
-                            <div>
-                                <Label className="flex items-center gap-1 text-xs font-medium">
-                                    <Filter className="size-3.5 text-muted-foreground" />
-                                    Filtro por placa
+                            {/* Despachado Por */}
+                            <div className="grid gap-1.5">
+                                <Label htmlFor="despachado_por" className="text-xs font-medium">
+                                    Despachado Por (Colaborador)
                                 </Label>
-                                <Select value={filterTablePlaca} onValueChange={setFilterTablePlaca}>
-                                    <SelectTrigger className="h-10 text-xs mt-1 w-full">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="todas">-- Todas las Placas --</SelectItem>
-                                        {uniquePlacasInRutas.map((placa) => (
-                                            <SelectItem key={placa} value={placa}>
-                                                {placa}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <div className="relative">
+                                    <Input
+                                        id="despachado_por"
+                                        type="text"
+                                        value={despachadoPorNombre}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            setDespachadoPorNombre(val);
+                                            setShowDespachadorDropdown(true);
+                                            const found = colaboradores.find(
+                                                (c) => c.nombre_completo.toLowerCase() === val.toLowerCase() ||
+                                                       `${c.nombre_completo} ${c.cedula}`.toLowerCase() === val.toLowerCase()
+                                            );
+                                            setDespachadoPorId(found ? String(found.id) : '');
+                                        }}
+                                        onBlur={() => setTimeout(() => setShowDespachadorDropdown(false), 150)}
+                                        placeholder="Busque o escriba el nombre..."
+                                        autoComplete="off"
+                                        className="h-10 text-sm"
+                                    />
+                                    {showDespachadorDropdown && (
+                                        <div className="absolute left-0 right-0 top-full z-10 mt-0.5 max-h-48 overflow-y-auto rounded-lg border border-input bg-popover shadow-lg">
+                                            {colaboradores
+                                                .filter((c) => {
+                                                    const q = despachadoPorNombre.toLowerCase().trim();
+                                                    if (!q) return true;
+                                                    const full = (c.nombre_completo + " " + (c.cedula || "")).toLowerCase();
+                                                    return c.nombre_completo.toLowerCase().includes(q) || (c.cedula && c.cedula.includes(q)) || full.includes(q);
+                                                })
+                                                .map((c) => (
+                                                    <div
+                                                        key={c.id}
+                                                        onMouseDown={() => {
+                                                            setDespachadoPorNombre(`${c.nombre_completo} ${c.cedula}`);
+                                                            setDespachadoPorId(String(c.id));
+                                                            setShowDespachadorDropdown(false);
+                                                        }}
+                                                        className="cursor-pointer border-b border-border px-3 py-2 text-sm last:border-b-0 hover:bg-muted"
+                                                    >
+                                                        <div className="font-medium text-foreground">{c.nombre_completo}</div>
+                                                        <div className="text-xs text-muted-foreground">{c.cedula} · {c.cargo}</div>
+                                                    </div>
+                                                ))}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
-                    </CardContent>
-                </Card>
-                )}
-                {/* fin card filtros */}
 
-                {/* FORMULARIO NUEVA SALIDA — visible en creación o edición */}
-                <form onSubmit={handleGuardarRutaLocal} className="space-y-6" style={{ display: (!readOnly || isEditing) ? 'block' : 'none' }}>
-                    {/* FORMULARIO DE RUTA UNIFICADO (CARD NUEVA SALIDA) */}
-                    <Card className="relative border-sidebar-border/70 dark:border-sidebar-border">
-                        <CardHeader className="pb-3 border-b">
-                            <CardTitle className="text-base font-semibold flex items-center gap-2">
-                                <Badge>{editingIndex !== null ? `Editando ruta #${editingIndex + 1}` : 'Nueva salida'}</Badge>
-                                {currentRoute.placa ? <span>{`Placa: ${currentRoute.placa}`}</span> : null}
-                            </CardTitle>
-                        </CardHeader>
-
-                        <CardContent className="space-y-6 pt-4">
-                            {/* DATOS GENERALES DE LA SALIDA */}
-                            <div className="p-4 rounded-lg border border-sidebar-border/70 dark:border-sidebar-border space-y-4">
-                                <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                                    <FileText className="size-4" style={{ color: ACCENT }} />
-                                    Datos generales de la salida
-                                </div>
-
-                                {/* Fila 1: Programado Por, Despachado Por */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <Label htmlFor="ud_programado_por" className="text-xs font-medium text-foreground">
-                                            UD Programado Por
-                                        </Label>
-                                        <Input
-                                            id="ud_programado_por"
-                                            type="text"
-                                            placeholder="Nombre del usuario programador"
-                                            value={udProgramadoPor}
-                                            onChange={(e) => setUdProgramadoPor(e.target.value)}
-                                            className="mt-1"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <Label htmlFor="despachado_por" className="text-xs font-medium">
-                                            Despachado Por (Colaborador)
-                                        </Label>
-                                        <div className="relative mt-1">
-                                            <Input
-                                                id="despachado_por"
-                                                type="text"
-                                                value={despachadoPorNombre}
-                                                onChange={(e) => {
-                                                    const val = e.target.value;
-                                                    setDespachadoPorNombre(val);
-                                                    setShowDespachadorDropdown(true);
-                                                    // Si coincide con un colaborador de la lista, guardar su ID
-                                                    const found = colaboradores.find(
-                                                        (c) => c.nombre_completo.toLowerCase() === val.toLowerCase() ||
-                                                               `${c.nombre_completo} ${c.cedula}`.toLowerCase() === val.toLowerCase()
-                                                    );
-                                                    setDespachadoPorId(found ? String(found.id) : '');
-                                                }}
-                                                onFocus={() => setShowDespachadorDropdown(true)}
-                                                onBlur={() => setTimeout(() => setShowDespachadorDropdown(false), 150)}
-                                                placeholder="Busque o escriba el nombre..."
-                                                className="mt-1 bg-background font-medium"
-                                                autoComplete="off"
-                                            />
-                                            {/* Dropdown de colaboradores */}
-                                            {showDespachadorDropdown && (
-                                                <div className="absolute left-0 right-0 top-full z-10 mt-0.5 max-h-48 overflow-y-auto rounded-md border border-input bg-popover shadow-md">
-                                                    {colaboradores
-                                                        .filter((c) => {
-                                                            const q = despachadoPorNombre.toLowerCase().trim();
-                                                            return !q || 
-                                                                c.nombre_completo.toLowerCase().includes(q) || 
-                                                                (c.cedula && c.cedula.includes(q));
-                                                        })
-                                                        .map((c) => (
-                                                            <div
-                                                                key={c.id}
-                                                                onMouseDown={() => {
-                                                                    setDespachadoPorNombre(`${c.nombre_completo} ${c.cedula}`);
-                                                                    setDespachadoPorId(String(c.id));
-                                                                    setShowDespachadorDropdown(false);
-                                                                }}
-                                                                className="cursor-pointer border-b border-border px-3 py-2 text-sm text-foreground last:border-b-0 hover:bg-muted"
-                                                            >
-                                                                <div className="font-medium">{c.nombre_completo}</div>
-                                                                <div className="text-xs text-muted-foreground">{c.cedula} • {c.cargo}</div>
-                                                            </div>
-                                                        ))}
-                                                    {colaboradores.filter((c) => {
-                                                        const q = despachadoPorNombre.toLowerCase().trim();
-                                                        return !q || 
-                                                            c.nombre_completo.toLowerCase().includes(q) || 
-                                                            (c.cedula && c.cedula.includes(q));
-                                                    }).length === 0 && (
-                                                        <div className="px-3 py-4 text-center text-sm text-muted-foreground">
-                                                            No se encontraron colaboradores
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-                                        <Input
-                                            id="despachado_por"
-                                            type="text"
-                                            value={despachadoPorNombre}
-                                            onChange={(e) => setDespachadoPorNombre(e.target.value)}
-                                            placeholder="Despachado Por"
-                                            className="mt-1 font-medium"
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Fila 2: Placa + Documento Transporte */}
-                                <div className="pt-2 border-t border-red-100 dark:border-red-900/30">
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                        <div>
-                                            <Label className="text-xs font-medium text-foreground">
-                                                Placa <span className="text-red-500">*</span>
-                                            </Label>
-                                            {vehiculos.length > 0 && (
-                                                <select
-                                                    value={currentRoute.placa}
-                                                    onChange={(e) => {
-                                                        if (e.target.value) {
-                                                            handleCurrentRouteFieldChange('placa', e.target.value);
-                                                        }
-                                                    }}
-                                                    className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs uppercase text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                                                >
-                                                    <option value="">-- Seleccionar Placa --</option>
-                                                    {vehiculos
-                                                        .filter((v) => {
-                                                            const placaUpper = String(v).toUpperCase();
-                                                            // Permitir la placa que ya tiene la ruta en edición
-                                                            if (currentRoute.placa && String(currentRoute.placa).toUpperCase() === placaUpper) return true;
-                                                            // Excluir placas ya usadas en otras rutas
-                                                            return !rutas.some((r, idx) => {
-                                                                if (editingIndex !== null && idx === editingIndex) return false;
-                                                                return String(r.placa).toUpperCase() === placaUpper;
-                                                            });
-                                                        })
-                                                        .map((v) => (
-                                                        <option key={v} value={String(v)}>
-                                                            {String(v)}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            )}
-                                        </div>
-                                        <div>
-                                            <Label className="text-xs font-medium text-foreground">
-                                                Documento Transporte
-                                            </Label>
-                                            <Input
-                                                type="text"
-                                                placeholder="Ej: 8008417408"
-                                                value={currentRoute.doc_tras ?? ''}
-                                                onChange={(e) => handleCurrentRouteFieldChange('doc_tras', e.target.value)}
-                                                className="h-10 mt-1 font-mono"
-                                                required
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* SECCIÓN TRIPULACIÓN: CHECKLIST CON FILTRO */}
-                            <div className="border border-sidebar-border/70 dark:border-sidebar-border rounded-lg p-4 space-y-4">
-                                <div className="border-b pb-2">
-                                    <h3 className="flex items-center gap-1.5 text-sm font-semibold">
-                                        <Users className="h-4 w-4 text-muted-foreground" />
-                                        Tripulación de la Ruta (Solo colaboradores libres para la fecha)
-                                    </h3>
-                                </div>
-
-                                {/* BARRA DE FILTROS Y BUSCADOR */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-md border">
-                                    <div>
-                                        <Label className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground">
-                                            <Search className="h-3 w-3 text-muted-foreground" />
+                        {/* ── Sección 2: Tripulación de la Ruta ── */}
+                        <div className="space-y-3 pt-2 border-t border-border/60">
+                            <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                <Users className="size-3.5" style={{ color: ACCENT }} />
+                                Tripulación de la Ruta
+                            </p>
+                            <div className="space-y-3">
+                                {/* Filtros */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div className="grid gap-1.5">
+                                        <Label className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+                                            <Search className="size-3" style={{ color: ACCENT }} />
                                             Buscar por Nombre o Cédula
                                         </Label>
                                         <Input
@@ -1348,48 +2229,41 @@ export default function ModulacionIndex({
                                             placeholder="Escriba para filtrar colaboradores..."
                                             value={searchQuery}
                                             onChange={(e) => setSearchQuery(e.target.value)}
-                                            className="h-8 text-xs mt-1"
+                                            className="h-10 text-sm"
                                         />
                                     </div>
-
-                                    <div>
-                                        <Label className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground">
-                                            <Filter className="h-3 w-3 text-muted-foreground" />
+                                    <div className="grid gap-1.5">
+                                        <Label className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+                                            <Filter className="size-3" style={{ color: ACCENT }} />
                                             Filtrar por Cargo
                                         </Label>
                                         <Select value={cargoFilter} onValueChange={setCargoFilter}>
-                                            <SelectTrigger className="h-8 text-xs mt-1 w-full">
+                                            <SelectTrigger className="h-10 text-sm w-full">
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="todos">-- Todos los Cargos --</SelectItem>
                                                 {cargos.map((cg) => (
-                                                    <SelectItem key={cg} value={String(cg)}>
-                                                        {String(cg)}
-                                                    </SelectItem>
+                                                    <SelectItem key={cg} value={String(cg)}>{String(cg)}</SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
                                     </div>
                                 </div>
 
-                                {/* CHECKLIST DE COLABORADORES DISPONIBLES */}
-                                <div className="rounded-md border p-3 space-y-2 max-h-48 overflow-y-auto">
-                                    <Label className="flex items-center gap-1 border-b pb-1 text-[11px] font-semibold text-muted-foreground">
-                                        <CheckSquare className="h-3.5 w-3.5 text-muted-foreground" />
-                                        Marcar colaboradores libres al día para la Tripulación ({allChecklistColaboradores.length} disponibles)
-                                    </Label>
-
-                                    {allChecklistColaboradores.length === 0 ? (
-                                        <p className="text-xs text-muted-foreground py-2 text-center">
-                                            No se encontraron colaboradores libres para la fecha seleccionada.
-                                        </p>
-                                    ) : (
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 pt-1">
+                                {/* Checklist */}
+                                <div className="rounded-lg border border-border bg-background p-3 max-h-52 overflow-y-auto">
+                                    <p className="mb-2 flex items-center gap-1 text-[11px] font-semibold text-muted-foreground">
+                                        <CheckSquare className="size-3.5" style={{ color: ACCENT }} />
+                                        {isFiltering
+                                            ? `Resultados del filtro (${allChecklistColaboradores.length})`
+                                            : `Colaboradores asignados a la tripulación (${selectedColaboradores.length})`}
+                                    </p>
+                                    {allChecklistColaboradores.length > 0 ? (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                                             {allChecklistColaboradores.map((col) => {
                                                 const colIdStr = String(col.id).trim();
                                                 const colCedStr = col.cedula ? String(col.cedula).trim() : '';
-
                                                 const isChecked = currentRoute.tripulacion.some(
                                                     (m) =>
                                                         (m.colaborador_id && String(m.colaborador_id).trim() === colIdStr) ||
@@ -1398,616 +2272,355 @@ export default function ModulacionIndex({
                                                 const isFijo = fijosColaboradorIds.has(colIdStr) || (colCedStr !== '' && fijosColaboradorIds.has(`cedula:${colCedStr}`));
 
                                                 return (
-                                                    <div
+                                                    <label
                                                         key={`col-item-${col.id ?? col.cedula}`}
-                                                        className={`flex items-center space-x-2 p-1.5 rounded border transition-colors ${
+                                                        htmlFor={`check-${col.id ?? col.cedula}`}
+                                                        className={`flex items-start gap-2 p-2 rounded-lg border transition-colors cursor-pointer select-none ${
                                                             isChecked
                                                                 ? isFijo
-                                                                    ? 'border-[#0ca30c]/50 bg-[#0ca30c]/10 ring-1 ring-[#0ca30c]/30'
-                                                                    : 'border-primary/40 bg-primary/5 ring-1 ring-primary/20'
-                                                                : 'hover:bg-muted/50'
-                                                        }`}
+                                                                    ? 'border-emerald-300 bg-emerald-50 dark:border-emerald-700 dark:bg-emerald-950/30'
+                                                                    : 'border-primary/40 bg-primary/5'
+                                                                : 'border-border hover:bg-muted/50'
+                                                        } ${isFijo && isChecked ? 'cursor-not-allowed opacity-80' : ''}`}
                                                     >
                                                         <Checkbox
-                                                            id={`check-${col.id}`}
+                                                            id={`check-${col.id ?? col.cedula}`}
                                                             checked={isChecked}
                                                             disabled={isFijo && isChecked}
-                                                            onCheckedChange={() => handleToggleChecklistMember(col)}
+                                                            onCheckedChange={() => !isFijo && handleToggleChecklistMember(col)}
+                                                            className="mt-0.5 shrink-0"
                                                         />
-                                                        <label
-                                                            htmlFor={`check-${col.id}`}
-                                                            className="text-xs font-medium cursor-pointer leading-tight truncate flex-1"
-                                                        >
-                                                            <span className="font-semibold text-foreground">
-                                                                {String(col.nombre_completo ?? '')}
-                                                            </span>
-                                                            {col.cedula ? (
-                                                                <span className="text-[10px] text-muted-foreground font-mono block">
-                                                                    {'Cédula: ' + String(col.cedula ?? '')}
-                                                                </span>
-                                                            ) : null}
-                                                            {col.cargo ? (
-                                                                <span className="text-[10px] text-muted-foreground block truncate">
-                                                                    {String(col.cargo ?? '')}
-                                                                </span>
-                                                            ) : null}
-                                                        </label>
-                                                        {isFijo && isChecked ? (
-                                                            <Badge className="border-transparent bg-[#15803d] px-1.5 py-0 text-[9px] text-white">FIJO</Badge>
-                                                        ) : isChecked ? (
-                                                            <Badge variant="secondary" className="text-[9px] px-1.5 py-0">
-                                                                {'Seleccionado'}
-                                                            </Badge>
-                                                        ) : null}
-                                                    </div>
+                                                        <div className="min-w-0 flex-1">
+                                                            <p className="text-xs font-semibold text-foreground truncate">{String(col.nombre_completo ?? '')}</p>
+                                                            {col.cedula && <p className="text-[10px] font-mono text-muted-foreground">Cédula: {col.cedula}</p>}
+                                                            {col.cargo && <p className="text-[10px] text-muted-foreground truncate">{col.cargo}</p>}
+                                                        </div>
+                                                        {isFijo && isChecked && (
+                                                            <Badge className="shrink-0 bg-emerald-600 text-[9px] px-1.5 py-0 text-white">FIJO</Badge>
+                                                        )}
+                                                    </label>
                                                 );
                                             })}
                                         </div>
-                                    )}
+                                    ) : isFiltering ? (
+                                        <p className="py-4 text-center text-xs text-muted-foreground">
+                                            No se encontraron colaboradores libres que coincidan con el filtro.
+                                        </p>
+                                    ) : null}
                                 </div>
                             </div>
+                        </div>
+                    </div>
 
-                            {/* SECCIÓN VIAJES DINÁMICOS CON LUGARES DE NARIÑO Y API */}
-                            <div className="space-y-3 rounded-lg border border-sidebar-border/70 bg-muted/40 p-4 dark:border-sidebar-border">
-                                <div className="flex items-center justify-between border-b pb-2 flex-wrap gap-2">
-                                    <div className="flex items-center gap-2">
-                                        <h3 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                                            <MapPin className="h-4 w-4 text-red-500" />
-                                            Viajes de la Ruta (Destinos Nariño, Cliente y Peso por Fila)
-                                        </h3>
-                                        <Badge variant="outline" className="font-mono text-xs border-red-300 text-red-700 bg-red-50 dark:bg-red-950/40 dark:text-red-300">
-                                            Fórmula Total Peso: {totalPesoActual} ton
-                                        </Badge>
+                    {/* Card 2: Viajes de la Ruta */}
+                    <div className="rounded-xl border border-sidebar-border/70 bg-card p-5 dark:border-sidebar-border shadow-sm space-y-6">
+                        <div className="flex items-center justify-between">
+                            <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                <MapPin className="size-3.5" style={{ color: ACCENT }} />
+                                Viajes de la Ruta
+                            </p>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs font-bold uppercase tracking-wider" style={{ color: ACCENT }}>
+                                    Viaje #{(currentRoute.viajes?.length || 0) + 1}
+                                </span>
+                            </div>
+
+                            {/* Campos en 2 columnas: Departamento hasta Peso */}
+                            <div key={`viaje-form-group-${currentRoute.placa || 'empty'}`} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {/* Departamento y Municipio / Destino (2 columnas) */}
+                                <div className="sm:col-span-2">
+                                    <NarinoMunicipioInput
+                                        value={String(currentViajeForm.lugares ?? '')}
+                                        onChange={(val) => handleViajeFormChange('lugares', val)}
+                                        barrio={String(currentViajeForm.barrio ?? '')}
+                                        onBarrioChange={(val) => handleViajeFormChange('barrio', val)}
+                                        cliente={String(currentViajeForm.cliente ?? '')}
+                                        onClienteChange={(val) => handleViajeFormChange('cliente', val)}
+                                    />
+                                </div>
+
+                                {/* Peso (Toneladas) */}
+                                <div className="grid gap-1.5 sm:col-span-2">
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-xs font-medium text-muted-foreground">Peso (Toneladas)</Label>
+                                        <span className="text-[10px] font-semibold text-red-600">Máx 10 ton</span>
                                     </div>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={handleAddViaje}
-                                        className="text-xs"
-                                        style={{ color: ACCENT }}
-                                    >
-                                        <Plus className="h-3.5 w-3.5 mr-1" />
-                                        Aumentar Más Viajes
-                                    </Button>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                    {currentRoute.viajes.map((viaje, vIdx) => (
-                                        <div
-                                            key={viaje.id ?? `form-viaje-${vIdx}`}
-                                            className="p-3 border rounded-md space-y-2 relative"
-                                        >
-                                            <div className="flex items-center justify-between border-b pb-1">
-                                                <span className="text-xs font-bold" style={{ color: ACCENT }}>
-                                                    {`Viaje ${vIdx + 1}`}
-                                                </span>
-                                                {currentRoute.viajes.length > 1 && (
-                                                    <Button
-                                                        type="button"
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        onClick={() => handleRemoveViaje(vIdx)}
-                                                        className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                                                        aria-label="Eliminar viaje"
-                                                    >
-                                                        <Trash2 className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                )}
-                                            </div>
-
-                                            <NarinoMunicipioInput
-                                                value={String(viaje.lugares ?? '')}
-                                                onChange={(val) => handleViajeChange(vIdx, 'lugares', val)}
-                                            />
-
-                                            {/* Barrio */}
-                                            <div>
-                                                <Label className="text-xs text-muted-foreground">
-                                                    Barrio
-                                                </Label>
-                                                <Input
-                                                    type="text"
-                                                    placeholder="Ej: Centro, El Tejar..."
-                                                    value={String(viaje.barrio ?? '')}
-                                                    onChange={(e) => handleViajeChange(vIdx, 'barrio', e.target.value)}
-                                                    className="mt-0.5 h-8 text-xs"
-                                                />
-                                            </div>
-
-                                            {/* Barrio */}
-                                            <div>
-                                                <Label className="text-xs text-muted-foreground">
-                                                    Cliente (0 - 60)
-                                                </Label>
-                                                <Select
-                                                    value={viaje.cliente ? String(viaje.cliente) : undefined}
-                                                    onValueChange={(v) =>
-                                                        handleViajeChange(vIdx, 'cliente', v === CLIENTE_CLEAR ? '' : v)
-                                                    }
-                                                >
-                                                    <SelectTrigger className="h-8 text-xs mt-0.5 w-full">
-                                                        <SelectValue placeholder="-- Seleccionar --" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value={CLIENTE_CLEAR}>-- Seleccionar --</SelectItem>
-                                                        {clienteOptions.map((n) => (
-                                                            <SelectItem key={n} value={String(n)}>
-                                                                {String(n)}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-
-                                            <div>
-                                                <div className="flex items-center justify-between">
-                                                    <Label className="text-xs text-muted-foreground">
-                                                        Peso (Toneladas)
-                                                    </Label>
-                                                    <span className="text-[10px] text-red-600 font-bold">Máx 10 Ton</span>
-                                                </div>
-                                                <Input
-                                                    type="number"
-                                                    step="0.01"
-                                                    min="0"
-                                                    max="10"
-                                                    placeholder="Ej: 1.5"
-                                                    value={String(viaje.peso ?? '')}
-                                                    onChange={(e) => handleViajeChange(vIdx, 'peso', e.target.value)}
-                                                    className="h-8 text-xs mt-0.5"
-                                                />
-                                            </div>
-                                        </div>
-                                    ))}
+                                    <Input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        max="10"
+                                        placeholder="Ej: 1.5"
+                                        value={String(currentViajeForm.peso ?? '')}
+                                        onChange={(e) => handleViajeFormChange('peso', e.target.value)}
+                                        className="h-10 text-sm"
+                                    />
                                 </div>
                             </div>
-                        </CardContent>
-                    </Card>
+                        </div>
 
-                    {/* BOTONES RUTA INDIVIDUAL */}
-                    <div className="flex justify-end gap-2 pt-2">
-                        {editingIndex !== null && (
+                        {/* Botón Agregar viaje / Actualizar */}
+                        <div className="flex justify-end gap-2 pt-4 border-t border-border">
                             <Button
                                 type="button"
-                                onClick={() => {
-                                    setCurrentRoute(createEmptyRoute());
-                                    setEditingIndex(null);
-                                }}
-                                className="bg-green-600 hover:bg-green-700 text-white text-sm px-6 py-2 font-semibold shadow-sm"
+                                onClick={(e) => handleAddViaje(e)}
+                                className="gap-1.5 h-10 px-6"
                             >
-                                <Plus className="h-4 w-4 mr-1.5" />
-                                Agregar Ruta
+                                {editingViajeIndex !== null ? (
+                                    <>
+                                        <Save className="size-4" />
+                                        Actualizar
+                                    </>
+                                ) : (
+                                    <>
+                                        <Plus className="size-4" />
+                                        Agregar viaje
+                                    </>
+                                )}
                             </Button>
-                        )}
-                        <Button type="submit" className="text-sm px-6 py-2 font-semibold">
-                            <Plus className="h-4 w-4 mr-1.5" />
-                            {editingIndex !== null ? 'Actualizar Ruta' : 'Guardar Ruta'}
-                        </Button>
+                        </div>
                     </div>
                 </form>
-                
-                {/* fin formulario */}
 
-                {/* 3. TABLA 1: PLANEACIÓN DE RUTA */}
-                <Card className="border-sidebar-border/70 dark:border-sidebar-border">
-                    <CardHeader className="pb-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3 border-b">
+                {/* ── Tabla planeación de ruta ────────────────────────────── */}
+                <div className="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border overflow-hidden">
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-sidebar-border/70 dark:border-sidebar-border bg-muted/30 px-5 py-3">
                         <div className="flex items-center gap-2">
-                            <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                                <FileText className="h-5 w-5" style={{ color: ACCENT }} />
-                                {'Planeación de Ruta'}
-                                {filteredRutasTable.length > 0 && (
-                                    <Badge variant="secondary" className="ml-2">
-                                        {String(filteredRutasTable.length)} {'rutas'}
-                                    </Badge>
-                                )}
-                            </CardTitle>
+                            <FileText className="size-4" style={{ color: ACCENT }} />
+                            <span className="font-semibold text-foreground">Planeación de Ruta</span>
+                            {filteredRutasTable.length > 0 && (
+                                <span className="text-xs text-muted-foreground">({filteredRutasTable.length} ruta{filteredRutasTable.length !== 1 ? 's' : ''})</span>
+                            )}
                         </div>
+                    </div>
 
-                        {/* METADATOS */}
-                        <div className="flex flex-wrap items-center gap-3">
-                            <div className="flex items-center gap-3 text-xs bg-muted px-3 py-1.5 rounded-md border">
-                                <div>
-                                    <span className="font-semibold text-muted-foreground">Fecha:</span>{' '}
-                                    <span className="font-bold text-foreground">{fechaTexto}</span>
-                                </div>
-                                <div>
-                                    <span className="font-semibold text-muted-foreground">Programado Por:</span>{' '}
-                                    <span className="font-bold text-foreground">{udProgramadoPor || '-'}</span>
-                                </div>
-                                <div>
-                                    <span className="font-semibold text-muted-foreground">Despachado Por:</span>{' '}
-                                    <span className="font-bold text-foreground">{despachadoPorNombre || '-'}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </CardHeader>
-
-                    <CardContent className="pt-4 space-y-4">
-                        {/* TABLA DE RUTAS */}
-                        <div className="rounded-md border overflow-x-auto">
-                            <Table>
-                                <TableHeader className="bg-muted/50">
+                    <div className="overflow-x-auto">
+                        <Table>
+                            <TableHeader>
+                                <TableRow className="bg-muted/30">
+                                    <TableHead className="w-10 text-center">#</TableHead>
+                                    <TableHead className="font-semibold">Placa</TableHead>
+                                    <TableHead className="font-semibold">Doc. Transporte</TableHead>
+                                    <TableHead className="font-semibold">Tripulación</TableHead>
+                                    <TableHead className="font-semibold">Viajes</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {filteredRutasTable.length === 0 ? (
                                     <TableRow>
-                                        <TableHead className="w-10 text-center">{'#'}</TableHead>
-                                        <TableHead className="font-semibold">{'Placa'}</TableHead>
-                                        <TableHead className="font-semibold min-w-[140px]">{'Doc. Transporte'}</TableHead>
-                                        <TableHead className="font-semibold min-w-[220px]">{'Tripulación'}</TableHead>
-                                        <TableHead className="font-semibold min-w-[240px]">{'Colaboradores'}</TableHead>
-                                        <TableHead className="font-semibold min-w-[300px]">{'Viajes (Lugar, Cliente, Peso)'}</TableHead>
-                                        <TableHead className="text-right font-semibold w-28">{'Acciones'}</TableHead>
+                                        <TableCell colSpan={5} className="py-12 text-center">
+                                            <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                                                <FileText className="size-8 opacity-30" style={{ color: ACCENT }} />
+                                                <p className="text-sm">
+                                                    {rutas.length === 0
+                                                        ? 'No hay rutas registradas. Complete el formulario y presione Guardar ruta.'
+                                                        : 'No hay rutas que coincidan con los filtros aplicados.'}
+                                                </p>
+                                            </div>
+                                        </TableCell>
                                     </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {filteredRutasTable.length === 0 ? (
-                                        <TableRow>
-                                            <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                                                {rutas.length === 0
-                                                    ? 'No hay rutas registradas para esta fecha. Complete los campos arriba y presione Guardar Ruta.'
-                                                    : 'No hay rutas que coincidan con los filtros aplicados.'}
-                                            </TableCell>
-                                        </TableRow>
-                                    ) : (
-                                        filteredRutasTable.map((item, idx) => {
-                                            const tripMembers = Array.isArray(item.tripulacion) ? item.tripulacion : [];
-                                            const viajesList = Array.isArray(item.viajes) ? item.viajes : [];
+                                ) : (
+                                    filteredRutasTable.map((item, idx) => {
+                                        const tripMembers = Array.isArray(item.tripulacion) ? item.tripulacion : [];
+                                        const viajesList = Array.isArray(item.viajes) ? item.viajes : [];
 
-                                            return (
-                                                <TableRow key={item.id ?? `ruta-${item.placa}-${idx}`} className="hover:bg-muted/50">
-                                                    <TableCell className="text-center text-xs text-muted-foreground font-mono">
-                                                        {String(idx + 1)}
-                                                    </TableCell>
-                                                    <TableCell className="font-semibold font-mono text-sm" style={{ color: ACCENT }}>
-                                                        {String(item.placa ?? '')}
-                                                    </TableCell>
+                                        return (
+                                            <TableRow key={item.id ?? `ruta-${item.placa}-${idx}`} className="hover:bg-muted/30 align-top">
+                                                <TableCell className="text-center text-sm font-medium">{idx + 1}</TableCell>
 
-                                                    {/* DOC. TRANSPORTE */}
-                                                    <TableCell className="font-mono text-xs text-foreground">
-                                                        {item.doc_tras ? (
-                                                            <Badge variant="outline" className="font-mono text-xs">
-                                                                {String(item.doc_tras)}
-                                                            </Badge>
-                                                        ) : (
-                                                            <span className="text-muted-foreground italic text-xs">—</span>
-                                                        )}
-                                                    </TableCell>
+                                                <TableCell className="text-sm font-semibold text-foreground">
+                                                    {item.placa}
+                                                </TableCell>
 
-                                                    {/* TRIPULACIÓN */}
-                                                    <TableCell className="text-xs">
-                                                        {tripMembers.length > 0 ? (
-                                                            <div className="space-y-1.5">
-                                                                {tripMembers.map((m, mIdx) => (
-                                                                    <div key={`trip-${m.colaborador_id ?? m.cedula}-${mIdx}`} className="p-1.5 rounded border flex items-center justify-between gap-2 bg-muted">
-                                                                        <div className="flex items-center gap-1.5 truncate">
-                                                                            <Badge variant="outline" className="font-mono text-[10px] shrink-0">
-                                                                                {String(m.cedula ?? 'S/I')}
-                                                                            </Badge>
-                                                                            <span className="font-semibold text-foreground truncate">
-                                                                                {String(m.nombres ?? 'Sin nombre')}
-                                                                            </span>
-                                                                        </div>
-                                                                        {m.cargo ? (
-                                                                            <span className="text-[10px] text-blue-600 font-medium shrink-0">
-                                                                                {String(m.cargo)}
-                                                                            </span>
-                                                                        ) : null}
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        ) : (
-                                                            <span className="text-muted-foreground">{'-'}</span>
-                                                        )}
-                                                    </TableCell>
+                                                <TableCell className="text-sm text-foreground">
+                                                    {item.doc_tras || '—'}
+                                                </TableCell>
 
-                                                    {/* COLABORADORES AGREGADOS */}
-                                                    <TableCell className="text-xs">
-                                                        {novedadesLocal.length > 0 ? (
-                                                            <div className="space-y-1.5">
-                                                                {novedadesLocal.map((nov) => {
-                                                                    const badges: { text: string; color: string }[] = [];
-                                                                    if (nov.fijo_rescate) badges.push({ text: 'FIJO RESCATE', color: 'bg-green-600' });
-                                                                    if (nov.fijo_taller) badges.push({ text: 'FIJO TALLER', color: 'bg-emerald-600' });
-                                                                    if (!nov.fijo_rescate && !nov.fijo_taller && nov.fijo) badges.push({ text: 'FIJO', color: 'bg-green-600' });
-                                                                    if (nov.permiso) badges.push({ text: 'PERMISO', color: 'bg-amber-600' });
-                                                                    if (nov.incapacidad) badges.push({ text: 'INCAPACIDAD', color: 'bg-red-600' });
-                                                                    if (nov.vacaciones) badges.push({ text: 'VACACIONES', color: 'bg-purple-600' });
-
-                                                                    return (
-                                                                        <div key={`colab-${nov.id ?? nov.cedula}`} className="p-1.5 rounded border bg-blue-50/50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900 flex items-center justify-between gap-2">
-                                                                            <div className="flex items-center gap-1.5 truncate">
-                                                                                {nov.cedula && (
-                                                                                    <Badge variant="outline" className="font-mono text-[10px] shrink-0">
-                                                                                        {String(nov.cedula)}
-                                                                                    </Badge>
-                                                                                )}
-                                                                                <span className="font-semibold text-foreground truncate">
-                                                                                    {String(nov.nombres ?? 'Sin nombre')}
-                                                                                </span>
-                                                                            </div>
-                                                                            <div className="flex items-center gap-1 shrink-0 flex-wrap">
-                                                                                {nov.cargo ? (
-                                                                                    <span className="text-[10px] text-blue-600 font-medium">
-                                                                                        {String(nov.cargo)}
-                                                                                    </span>
-                                                                                ) : null}
-                                                                                {badges.map((b, bIdx) => (
-                                                                                    <Badge key={bIdx} className={`text-[9px] px-1 py-0 ${b.color} text-white`}>
-                                                                                        {b.text}
-                                                                                    </Badge>
-                                                                                ))}
-                                                                            </div>
-                                                                        </div>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                        ) : (
-                                                            <span className="text-muted-foreground">{'-'}</span>
-                                                        )}
-                                                    </TableCell>
-
-                                                    {/* VIAJES */}
-                                                    <TableCell className="text-xs">
-                                                        {viajesList.length > 0 ? (
-                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                                                {viajesList.map((v, vIdx) => (
-                                                                    <div key={v.id ?? `viaje-${v.lugares}-${v.cliente}-${vIdx}`} className="p-2 bg-muted/50 rounded border space-y-1">
-                                                                        <div className="font-bold text-[10px] border-b pb-0.5" style={{ color: ACCENT }}>
-                                                                            {'Viaje ' + String(vIdx + 1)}
-                                                                        </div>
-                                                                        <div className="text-[11px] text-muted-foreground">
-                                                                            <span className="font-semibold">{'Lugar: '}</span>
-                                                                            {v.lugares ? `Nariño - ${v.lugares}` : '-'}
-                                                                            {v.barrio ? ` · Barrio: ${v.barrio}` : ''}
-                                                                        </div>
-                                                                        <div className="text-[11px] text-muted-foreground">
-                                                                            <span className="font-semibold">{'Cliente: '}</span>
-                                                                            {String(v.cliente ?? '-')}
-                                                                        </div>
-                                                                        <div className="text-[11px] text-muted-foreground">
-                                                                            <span className="font-semibold">{'Peso: '}</span>
-                                                                            {v.peso ? `${v.peso} ton` : '-'}
-                                                                        </div>
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        ) : (
-                                                            <span className="text-muted-foreground">{'-'}</span>
-                                                        )}
-                                                    </TableCell>
-
-                                                    {/* ACCIONES */}
-                                                    <TableCell className="text-right">
-                                                        <div className="flex items-center justify-end gap-1">
-                                                            <Button
-                                                                variant="outline"
-                                                                size="sm"
-                                                                onClick={() => handleEditRoute(idx)}
-                                                                className="h-8 px-2 text-xs"
-                                                            >
-                                                                <Pencil className="h-3.5 w-3.5 mr-1" />
-                                                                {'Editar'}
-                                                            </Button>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                onClick={() => handleRemoveRutaFromList(idx)}
-                                                                className="h-8 w-8"
-                                                                aria-label="Eliminar ruta"
-                                                            >
-                                                                <Trash2 className="h-4 w-4 text-destructive" />
-                                                            </Button>
+                                                <TableCell className="text-sm text-foreground">
+                                                    {tripMembers.length > 0 ? (
+                                                        <div className="space-y-1">
+                                                            {tripMembers.map((m, mIdx) => (
+                                                                <div key={`trip-${m.colaborador_id ?? m.cedula}-${mIdx}`}>
+                                                                    {m.nombres ?? 'Sin nombre'}{m.cedula ? ` (${m.cedula})` : ''}{m.cargo ? ` - ${m.cargo}` : ''}
+                                                                </div>
+                                                            ))}
                                                         </div>
-                                                    </TableCell>
-                                                </TableRow>
-                                            );
-                                        })
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </div>
-                    </CardContent>
-                </Card>
+                                                    ) : <span className="text-muted-foreground">—</span>}
+                                                </TableCell>
 
-                {/* 4. TABLA 2: NOVEDADES DE COLABORADORES AGREGADOS — solo en modo edición */}
+                                                <TableCell className="text-sm text-foreground">
+                                                    {viajesList.length > 0 ? (
+                                                        <div className="space-y-2">
+                                                            {viajesList.map((v, vIdx) => (
+                                                                <div key={v.id ?? `viaje-${vIdx}`} className="flex items-center justify-between border-b border-border/50 pb-1 last:border-0">
+                                                                    <div className="flex-1">
+                                                                        <span className="font-semibold text-xs" style={{ color: ACCENT }}>Viaje {vIdx + 1}:</span> {v.lugares ? `Nariño - ${v.lugares}` : '—'}{v.barrio ? `, Barrio: ${v.barrio}` : ''}{v.cliente ? `, Cliente: ${v.cliente}` : ''}{v.peso ? `, Peso: ${v.peso} ton` : ''}
+                                                                    </div>
+                                                                    <div className="flex items-center gap-1 ml-2">
+                                                                        <Button variant="ghost" size="icon" onClick={() => handleEditViajeIndividual(idx, vIdx)} className="size-6 hover:bg-accent/10" style={{ color: ACCENT }}>
+                                                                            <Pencil className="size-3" />
+                                                                        </Button>
+                                                                        <Button variant="ghost" size="icon" onClick={() => handleRemoveViajeIndividual(idx, vIdx)} className="size-6 text-destructive hover:text-destructive hover:bg-destructive/10">
+                                                                            <Trash2 className="size-3" />
+                                                                        </Button>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    ) : <span className="text-muted-foreground">—</span>}
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </div>
+
+                {/* ── Tabla novedades ──────────────────────────────────────── */}
                 {isEditing && (
-                <Card className="border-sidebar-border/70 dark:border-sidebar-border">
-                    <CardHeader className="pb-3">
-                        <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                            <Users className="h-5 w-5 text-blue-600" />
-                            {'Agregar Colaboradores'}
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        {/* FORMULARIO SUPERIOR MANUAL */}
-                        <div className="p-3 rounded-lg border border-sidebar-border/70 dark:border-sidebar-border space-y-3">
-                            <Label className="flex items-center gap-1.5 text-xs font-semibold">
-                                <UserPlus className="h-4 w-4 text-muted-foreground" />
-                                {'Ingresar Colaborador a Novedades'}
-                            </Label>
-                            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
-                                <div>
-                                    <Label className="text-xs text-muted-foreground">
-                                        {'Seleccionar Colaborador'}
-                                    </Label>
-                                    <Select
-                                        value={nuevaNovedad.colaborador_id || undefined}
-                                        onValueChange={(v) =>
-                                            handleNuevaNovedadSelectColaborador(v === CLIENTE_CLEAR ? '' : v)
-                                        }
-                                    >
-                                        <SelectTrigger className="h-8 text-xs mt-1 w-full">
-                                            <SelectValue placeholder="-- Seleccionar colaborador --" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value={CLIENTE_CLEAR}>-- Seleccionar colaborador --</SelectItem>
-                                            {colaboradores.map((col) => (
-                                                <SelectItem key={col.id} value={String(col.id)}>
-                                                    {`${col.nombre_completo ?? ''} (${col.cedula ?? ''})`}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+                <div className="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border overflow-hidden">
+                    <div className="flex items-center gap-2 border-b border-sidebar-border/70 dark:border-sidebar-border bg-muted/30 px-5 py-3">
+                        <Users className="size-4 text-blue-600" />
+                        <span className="font-semibold text-foreground">Agregar Colaboradores</span>
+                        {novedadesLocal.length > 0 && (
+                            <Badge variant="secondary">{novedadesLocal.length}</Badge>
+                        )}
+                    </div>
 
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div>
-                                        <Label className="text-xs text-muted-foreground">
-                                            {'Cédula'}
-                                        </Label>
-                                        <Input
-                                            type="text"
-                                            placeholder="Cédula"
-                                            value={nuevaNovedad.cedula}
-                                            onChange={(e) => setNuevaNovedad((prev) => ({ ...prev, cedula: e.target.value }))}
-                                            className="h-8 text-xs mt-1 font-mono"
-                                        />
-                                    </div>
-                                    <div>
-                                        <Label className="text-xs text-muted-foreground">
-                                            {'Cargo'}
-                                        </Label>
-                                        <Input
-                                            type="text"
-                                            placeholder="Cargo"
-                                            value={nuevaNovedad.cargo}
-                                            onChange={(e) => setNuevaNovedad((prev) => ({ ...prev, cargo: e.target.value }))}
-                                            className="h-8 text-xs mt-1"
-                                        />
-                                    </div>
-                                </div>
+                    <div className="p-4 space-y-4">
+                        {/* Formulario agregar colaborador */}
+                        <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+                            <div className="sm:col-span-4 grid gap-1.5">
+                                <Label className="text-xs text-muted-foreground">Seleccionar Colaborador</Label>
+                                <Select
+                                    value={nuevaNovedad.colaborador_id || undefined}
+                                    onValueChange={(v) => handleNuevaNovedadSelectColaborador(v === CLIENTE_CLEAR ? '' : v)}
+                                >
+                                    <SelectTrigger className="h-10 text-sm w-full">
+                                        <SelectValue placeholder="-- Seleccionar colaborador --" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value={CLIENTE_CLEAR}>-- Seleccionar colaborador --</SelectItem>
+                                        {colaboradores.map((col) => (
+                                            <SelectItem key={col.id} value={String(col.id)}>
+                                                {`${col.nombre_completo ?? ''} (${col.cedula ?? ''})`}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
 
-                                {/* CHECKBOXES FIJO RESCATE / FIJO TALLER */}
-                                <div className="flex flex-col gap-2">
-                                    <div className="flex items-center gap-2 p-2 bg-green-50 dark:bg-green-950/30 rounded-md border border-green-200">
-                                        <Checkbox
-                                            id="nuevo-fijo-rescate"
-                                            checked={nuevaNovedad.fijo_rescate}
-                                            onCheckedChange={(checked) =>
-                                                setNuevaNovedad((prev) => ({ ...prev, fijo_rescate: Boolean(checked) }))
-                                            }
-                                        />
-                                        <label htmlFor="nuevo-fijo-rescate" className="text-xs font-semibold text-green-800 dark:text-green-300 cursor-pointer">
-                                            Fijo Rescate (aparece en todas las rutas)
-                                        </label>
-                                    </div>
-                                    <div className="flex items-center gap-2 p-2 bg-emerald-50 dark:bg-emerald-950/30 rounded-md border border-emerald-200">
-                                        <Checkbox
-                                            id="nuevo-fijo-taller"
-                                            checked={nuevaNovedad.fijo_taller}
-                                            onCheckedChange={(checked) =>
-                                                setNuevaNovedad((prev) => ({ ...prev, fijo_taller: Boolean(checked) }))
-                                            }
-                                        />
-                                        <label htmlFor="nuevo-fijo-taller" className="text-xs font-semibold text-emerald-800 dark:text-emerald-300 cursor-pointer">
-                                            Fijo Taller (aparece en todas las rutas)
-                                        </label>
-                                    </div>
-                                </div>
+                            <div className="sm:col-span-5 grid gap-1.5">
+                                <Label className="text-xs text-muted-foreground">Observaciones</Label>
+                                <Input
+                                    type="text"
+                                    placeholder="Notas adicionales..."
+                                    value={nuevaNovedad.observaciones}
+                                    onChange={(e) => setNuevaNovedad((prev) => ({ ...prev, observaciones: e.target.value }))}
+                                    className="h-10 text-sm"
+                                />
+                            </div>
 
-                                <div>
-                                    <Button
-                                        type="button"
-                                        onClick={handleAgregarNovedadTabla2}
-                                        className="font-semibold text-xs h-8 w-full"
-                                    >
-                                        <Plus className="h-4 w-4 mr-1" />
-                                        {'+ Agregar a Novedades'}
-                                    </Button>
-                                </div>
+                            <div className="sm:col-span-3 flex items-center gap-2">
+                                <label className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/30 px-3 py-2 cursor-pointer h-10 flex-1">
+                                    <Checkbox
+                                        id="nuevo-fijo-rescate"
+                                        checked={nuevaNovedad.fijo_rescate}
+                                        onCheckedChange={(checked) => setNuevaNovedad((prev) => ({ ...prev, fijo_rescate: Boolean(checked) }))}
+                                    />
+                                    <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-300 whitespace-nowrap">Fijo Rescate</span>
+                                </label>
+                                <label className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30 px-3 py-2 cursor-pointer h-10 flex-1">
+                                    <Checkbox
+                                        id="nuevo-fijo-taller"
+                                        checked={nuevaNovedad.fijo_taller}
+                                        onCheckedChange={(checked) => setNuevaNovedad((prev) => ({ ...prev, fijo_taller: Boolean(checked) }))}
+                                    />
+                                    <span className="text-xs font-semibold text-green-800 dark:text-green-300 whitespace-nowrap">Fijo Taller</span>
+                                </label>
+                            </div>
+
+                            <div className="sm:col-span-2">
+                                <Button
+                                    type="button"
+                                    onClick={handleAgregarNovedadTabla2}
+                                    className="h-10 w-full gap-1.5 text-sm"
+                                >
+                                    <Plus className="size-4" />
+                                    Agregar
+                                </Button>
                             </div>
                         </div>
 
-                        {/* TABLA DE NOVEDADES */}
-                        <div className="rounded-md border overflow-x-auto">
+                        {/* Tabla novedades */}
+                        <div className="rounded-lg border border-border overflow-x-auto">
                             <Table>
-                                <TableHeader className="bg-muted/50">
-                                    <TableRow>
-                                        <TableHead className="font-semibold">{'Identificación'}</TableHead>
-                                        <TableHead className="font-semibold">{'Nombres'}</TableHead>
-                                        <TableHead className="font-semibold">{'Cargo'}</TableHead>
-                                        <TableHead className="text-center font-semibold">{'Fijo Rescate'}</TableHead>
-                                        <TableHead className="text-center font-semibold">{'Fijo Taller'}</TableHead>
-                                        <TableHead className="text-center font-semibold">{'Permiso'}</TableHead>
-                                        <TableHead className="text-center font-semibold">{'Incapacidad'}</TableHead>
-                                        <TableHead className="text-center font-semibold">{'Vacaciones'}</TableHead>
-                                        <TableHead className="text-right font-semibold w-24">{'Acciones'}</TableHead>
+                                <TableHeader>
+                                    <TableRow className="bg-muted/30">
+                                        <TableHead className="font-semibold">Identificación</TableHead>
+                                        <TableHead className="font-semibold">Nombres</TableHead>
+                                        <TableHead className="font-semibold">Observaciones</TableHead>
+                                        <TableHead className="text-center font-semibold">Fijo Rescate</TableHead>
+                                        <TableHead className="text-center font-semibold">Fijo Taller</TableHead>
+                                        <TableHead className="text-center font-semibold">Permiso</TableHead>
+                                        <TableHead className="text-center font-semibold">No Asistio</TableHead>
+                                        <TableHead className="text-center font-semibold">Incapacidad</TableHead>
+                                        <TableHead className="text-center font-semibold">Vacaciones</TableHead>
+                                        <TableHead className="text-right font-semibold w-16">Eliminar</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {novedadesLocal.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                                                {'No hay colaboradores agregados en novedades para esta fecha. Utilice el formulario arriba para agregar uno.'}
+                                            <TableCell colSpan={10} className="py-8 text-center text-sm text-muted-foreground">
+                                                No hay colaboradores en novedades. Use el formulario de arriba para agregar uno.
                                             </TableCell>
                                         </TableRow>
                                     ) : (
                                         novedadesLocal.map((nov) => (
-                                            <TableRow key={nov.id} className={(nov.fijo || nov.fijo_rescate || nov.fijo_taller) ? 'bg-green-50/50 dark:bg-green-950/20' : ''}>
-                                                <TableCell className="font-mono text-sm">{String(nov.cedula ?? '-')}</TableCell>
-                                                <TableCell className="font-medium text-sm">{String(nov.nombres ?? '-')}</TableCell>
-                                                <TableCell className="text-sm text-muted-foreground">
-                                                    {String(nov.cargo ?? '-')}
-                                                </TableCell>
-
-                                                 {/* Fijo Rescate */}
-                                                <TableCell className="text-center">
-                                                    <Checkbox
-                                                        checked={Boolean(nov.fijo_rescate)}
-                                                        onCheckedChange={(checked) =>
-                                                            handleNovedadChange(nov.id, 'fijo_rescate', Boolean(checked))
-                                                        }
+                                            <TableRow key={nov.id} className={(nov.fijo || nov.fijo_rescate || nov.fijo_taller) ? 'bg-emerald-50/40 dark:bg-emerald-950/10' : ''}>
+                                                <TableCell className="font-mono text-sm">{nov.cedula ?? '—'}</TableCell>
+                                                <TableCell className="font-medium text-sm">{nov.nombres ?? '—'}</TableCell>
+                                                <TableCell className="text-sm">
+                                                    <Input
+                                                        type="text"
+                                                        value={nov.observaciones ?? ''}
+                                                        onChange={(e) => handleNovedadChange(nov.id, 'observaciones', e.target.value)}
+                                                        placeholder="Observaciones..."
+                                                        className="h-8 text-sm"
                                                     />
                                                 </TableCell>
-
-                                                {/* Fijo Taller */}
                                                 <TableCell className="text-center">
-                                                    <Checkbox
-                                                        checked={Boolean(nov.fijo_taller)}
-                                                        onCheckedChange={(checked) =>
-                                                            handleNovedadChange(nov.id, 'fijo_taller', Boolean(checked))
-                                                        }
-                                                    />
+                                                    <Checkbox checked={Boolean(nov.fijo_rescate)} onCheckedChange={(c) => handleNovedadChange(nov.id, 'fijo_rescate', Boolean(c))} />
                                                 </TableCell>
-
-                                                {/* Permiso */}
                                                 <TableCell className="text-center">
-                                                    <Checkbox
-                                                        checked={Boolean(nov.permiso)}
-                                                        onCheckedChange={(checked) =>
-                                                            handleNovedadChange(nov.id, 'permiso', Boolean(checked))
-                                                        }
-                                                    />
+                                                    <Checkbox checked={Boolean(nov.fijo_taller)} onCheckedChange={(c) => handleNovedadChange(nov.id, 'fijo_taller', Boolean(c))} />
                                                 </TableCell>
-
-                                                {/* Incapacidad */}
                                                 <TableCell className="text-center">
-                                                    <Checkbox
-                                                        checked={Boolean(nov.incapacidad)}
-                                                        onCheckedChange={(checked) =>
-                                                            handleNovedadChange(nov.id, 'incapacidad', Boolean(checked))
-                                                        }
-                                                    />
+                                                    <Checkbox checked={Boolean(nov.permiso)} onCheckedChange={(c) => handleNovedadChange(nov.id, 'permiso', Boolean(c))} />
                                                 </TableCell>
-
-                                                {/* Vacaciones */}
                                                 <TableCell className="text-center">
-                                                    <Checkbox
-                                                        checked={Boolean(nov.vacaciones)}
-                                                        onCheckedChange={(checked) =>
-                                                            handleNovedadChange(nov.id, 'vacaciones', Boolean(checked))
-                                                        }
-                                                    />
+                                                    <Checkbox checked={Boolean(nov.no_asitio)} onCheckedChange={(c) => handleNovedadChange(nov.id, 'no_asitio', Boolean(c))} />
                                                 </TableCell>
-
-                                                {/* Acciones */}
+                                                <TableCell className="text-center">
+                                                    <Checkbox checked={Boolean(nov.incapacidad)} onCheckedChange={(c) => handleNovedadChange(nov.id, 'incapacidad', Boolean(c))} />
+                                                </TableCell>
+                                                <TableCell className="text-center">
+                                                    <Checkbox checked={Boolean(nov.vacaciones)} onCheckedChange={(c) => handleNovedadChange(nov.id, 'vacaciones', Boolean(c))} />
+                                                </TableCell>
                                                 <TableCell className="text-right">
                                                     <Button
-                                                        size="sm"
+                                                        size="icon"
                                                         variant="ghost"
                                                         onClick={() => handleDeleteNovedad(nov.id)}
-                                                        className="h-7 w-7 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                                        className="size-8 text-destructive hover:text-destructive hover:bg-destructive/10"
                                                     >
-                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                        <Trash2 className="size-3.5" />
                                                     </Button>
                                                 </TableCell>
                                             </TableRow>
@@ -2016,21 +2629,30 @@ export default function ModulacionIndex({
                                 </TableBody>
                             </Table>
                         </div>
-                    </CardContent>
-                </Card>
+                    </div>
+                </div>
                 )}
-                {/* fin tabla 2 novedades */}
 
-                {/* BOTÓN GENERAL PARA GUARDAR LA PLANEACIÓN DE RUTA COMPLETA (TODAS LAS RUTAS Y NOVEDADES) — solo en modo edición */}
+                {/* ── Botón guardar todo y exportar Excel ──────────────────── */}
                 {isEditing && (
-                <div className="flex items-center justify-end border-t border-sidebar-border/70 pt-4 dark:border-sidebar-border">
-                    <Button type="button" size="lg" disabled={isSubmitting} onClick={handleGuardarTodo}>
+                <div className="flex items-center justify-end gap-3 border-t border-sidebar-border/70 pt-4 dark:border-sidebar-border">
+                    <Button
+                        type="button"
+                        onClick={handleExportExcel}
+                        variant="outline"
+                        size="lg"
+                        className="gap-2"
+                    >
+                        <FileSpreadsheet className="size-5 text-emerald-600" />
+                        Exportar Excel
+                    </Button>
+                    <Button type="button" size="lg" disabled={isSubmitting} onClick={handleGuardarTodo} className="gap-2 px-8">
                         <Save className="size-4" />
                         Guardar planeación de ruta
                     </Button>
                 </div>
                 )}
-                {/* fin botón guardar todo */}
+
             </div>
         </AppLayout>
     );

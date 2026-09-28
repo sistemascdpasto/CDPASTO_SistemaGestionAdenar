@@ -95,7 +95,6 @@ class PruebaAlcoholemia extends Model
     {
         return $this->belongsTo(User::class, 'responsable_id');
     }
-
     /**
      * HU029: impide dos pruebas del mismo tipo para el mismo colaborador
      * dentro de la ventana mínima configurada.

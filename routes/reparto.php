@@ -24,6 +24,12 @@ Route::middleware(['auth', 'active'])
         // Modulación
         Route::get('/modulacion', [ModulacionController::class, 'index'])
             ->name('modulacion.index');
+        Route::get('/modulacion/referencias/departamentos', [ModulacionController::class, 'departamentos'])
+            ->name('modulacion.referencias.departamentos');
+        Route::get('/modulacion/referencias/municipios', [ModulacionController::class, 'municipios'])
+            ->name('modulacion.referencias.municipios');
+        Route::get('/modulacion/referencias/barrios', [ModulacionController::class, 'barrios'])
+            ->name('modulacion.referencias.barrios');
         Route::get('/modulacion/check-fecha', [ModulacionController::class, 'checkFecha'])
             ->name('modulacion.checkFecha');
         Route::get('/modulacion/historial', [ModulacionController::class, 'historial'])

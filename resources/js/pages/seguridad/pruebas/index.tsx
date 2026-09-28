@@ -11,7 +11,7 @@ import AppLayout from '@/layouts/app-layout';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
-import { CalendarDays, Eye, FileSpreadsheet, FileText, Pencil, Plus, ShieldCheck, UserCheck, UserX, Users } from 'lucide-react';
+import { Eye, FileSpreadsheet, FileText, Pencil, Plus, Truck, UserCheck } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -47,6 +47,7 @@ interface PruebaRow {
 
 interface PendingCollaborator {
     key: string;
+    fecha?: string;
     colaborador_id: number | null;
     cedula: string | null;
     nombres: string;
@@ -56,6 +57,18 @@ interface PendingCollaborator {
     placa?: string | null;
     ud?: string | null;
     estado_cobertura: string;
+}
+
+interface PlaneacionResumen {
+    fecha: string;
+    total_planeados: number;
+    total_realizados: number;
+    total_pendientes: number;
+    pre_ruta_realizados: number;
+    pre_ruta_completa: boolean;
+    post_ruta_realizados: number;
+    post_ruta_completa: boolean;
+    esta_completa: boolean;
 }
 
 interface CoberturaResumen {
@@ -71,6 +84,7 @@ interface CoberturaResumen {
     pendientes: PendingCollaborator[];
     realizados: PendingCollaborator[];
     todos_planeados: PendingCollaborator[];
+    planeaciones: PlaneacionResumen[];
 }
 
 interface PaginationLink {
@@ -111,6 +125,8 @@ export default function PruebasIndex({
     const debouncedForm = useDebouncedValue(form, 400);
     const isFirstRender = useRef(true);
 
+    const planeacionCompleta = cobertura.planeacion_existe && cobertura.total_planeados > 0 && cobertura.total_pendientes === 0;
+
     useEffect(() => {
         if (isFirstRender.current) {
             isFirstRender.current = false;
@@ -131,12 +147,6 @@ export default function PruebasIndex({
                         description="Seguimiento de cobertura de población objetivo (Planeación de Ruta) y registro de evaluaciones."
                     />
                     <div className="flex flex-wrap gap-2">
-                        <Button variant="outline" asChild>
-                            <Link href={route('seguridad.pruebas.calendario')}>
-                                <CalendarDays className="size-4" />
-                                Calendario
-                            </Link>
-                        </Button>
                         <Button asChild>
                             <Link href={route('seguridad.pruebas.create')}>
                                 <Plus className="size-4" />
@@ -146,44 +156,27 @@ export default function PruebasIndex({
                     </div>
                 </div>
 
-                {/* Resumen Visual de Cobertura */}
-                <div className="flex flex-col gap-4 rounded-xl border border-emerald-200 bg-emerald-50/40 p-4 sm:p-5 dark:border-emerald-800/40 dark:bg-emerald-950/20">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="flex items-center gap-2.5">
-                            <div className="flex size-9 items-center justify-center rounded-lg bg-emerald-600 text-white shadow-xs">
-                                <ShieldCheck className="size-5" />
-                            </div>
-                            <div>
-                                <h3 className="font-semibold text-base text-foreground">Cobertura de Planeación de Ruta</h3>
-                                <p className="text-xs text-muted-foreground">Población objetivo asignada a laborar</p>
-                            </div>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                            <Label htmlFor="fecha_cobertura" className="text-xs font-medium text-muted-foreground">
-                                Seleccionar fecha:
-                            </Label>
-                            <Input
-                                id="fecha_cobertura"
-                                type="date"
-                                className="w-auto h-9 text-xs bg-white dark:bg-background"
-                                value={form.fecha || fechaConsulta}
-                                onChange={(e) => {
-                                    const val = e.target.value;
-                                    setForm({ ...form, fecha: val, fecha_desde: val, fecha_hasta: val });
-                                }}
-                            />
-                        </div>
-                    </div>
-
-                    <div className="rounded-lg border border-emerald-300/70 bg-white/80 p-3.5 shadow-xs dark:border-emerald-700/50 dark:bg-sidebar">
+                {/* Panel Unificado: Resumen de Cobertura + Filtros de Búsqueda */}
+                <div className="flex flex-col gap-4 rounded-xl border border-sidebar-border/70 p-4 sm:p-5 dark:border-sidebar-border">
+                    {/* Barra de Cobertura */}
+                    <div className="rounded-lg border border-emerald-300/70 bg-emerald-50/50 p-3.5 shadow-xs dark:border-emerald-700/50 dark:bg-emerald-950/20">
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
                             <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-200">
                                 {cobertura.resumen_texto}
                             </p>
-                            <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/60 px-2.5 py-1 rounded-full w-fit">
-                                Cobertura: {cobertura.porcentaje_cobertura}%
-                            </span>
+                            <div className="flex items-center gap-2">
+                                {planeacionCompleta && (
+                                    <Button size="sm" variant="outline" className="h-7 text-xs border-emerald-600 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-500 dark:text-emerald-300" asChild>
+                                        <Link href={route('reparto.modulacion.index', { fecha: form.fecha || fechaConsulta, readOnly: true })}>
+                                            <Truck className="size-3.5 mr-1" />
+                                            Ver Detalles de la Ruta
+                                        </Link>
+                                    </Button>
+                                )}
+                                <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/60 px-2.5 py-1 rounded-full w-fit">
+                                    Cobertura: {Math.round(cobertura.porcentaje_cobertura)}%
+                                </span>
+                            </div>
                         </div>
                         <div className="h-3 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
                             <div
@@ -193,118 +186,73 @@ export default function PruebasIndex({
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                        <div className="rounded-lg border bg-white p-3 shadow-xs dark:bg-sidebar">
-                            <div className="flex items-center justify-between">
-                                <p className="text-xs font-medium text-muted-foreground">Planeados</p>
-                                <Users className="size-4 text-slate-500" />
-                            </div>
-                            <p className="mt-1 text-xl font-bold text-foreground">{cobertura.total_planeados}</p>
+                    {/* Filtros de Búsqueda */}
+                    <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                        <div className="grid gap-1.5">
+                            <Label htmlFor="colaborador">Colaborador o cédula</Label>
+                            <Input
+                                id="colaborador"
+                                value={form.colaborador}
+                                onChange={(e) => setForm({ ...form, colaborador: e.target.value })}
+                                placeholder="Buscar..."
+                            />
                         </div>
-                        <div className="rounded-lg border border-emerald-200 bg-emerald-100/50 p-3 shadow-xs dark:border-emerald-800 dark:bg-emerald-950/40">
-                            <div className="flex items-center justify-between">
-                                <p className="text-xs font-medium text-emerald-800 dark:text-emerald-300">Realizados</p>
-                                <UserCheck className="size-4 text-emerald-600 dark:text-emerald-400" />
-                            </div>
-                            <p className="mt-1 text-xl font-bold text-emerald-700 dark:text-emerald-300">{cobertura.total_realizados}</p>
+                        <div className="grid gap-1.5">
+                            <Label htmlFor="fecha_desde">Desde</Label>
+                            <Input id="fecha_desde" type="date" value={form.fecha_desde} onChange={(e) => setForm({ ...form, fecha_desde: e.target.value, fecha: e.target.value })} />
                         </div>
-                        <div className="rounded-lg border border-amber-200 bg-amber-100/50 p-3 shadow-xs dark:border-amber-800 dark:bg-amber-950/40">
-                            <div className="flex items-center justify-between">
-                                <p className="text-xs font-medium text-amber-800 dark:text-amber-300">Pendientes</p>
-                                <UserX className="size-4 text-amber-600 dark:text-amber-400" />
-                            </div>
-                            <p className="mt-1 text-xl font-bold text-amber-700 dark:text-amber-300">{cobertura.total_pendientes}</p>
+                        <div className="grid gap-1.5">
+                            <Label htmlFor="fecha_hasta">Hasta</Label>
+                            <Input id="fecha_hasta" type="date" value={form.fecha_hasta} onChange={(e) => setForm({ ...form, fecha_hasta: e.target.value })} />
                         </div>
-                        <div className="rounded-lg border border-indigo-200 bg-indigo-100/50 p-3 shadow-xs dark:border-indigo-800 dark:bg-indigo-950/40">
-                            <div className="flex items-center justify-between">
-                                <p className="text-xs font-medium text-indigo-800 dark:text-indigo-300">Adicionales</p>
-                                <Plus className="size-4 text-indigo-600 dark:text-indigo-400" />
-                            </div>
-                            <p className="mt-1 text-xl font-bold text-indigo-700 dark:text-indigo-300">{cobertura.total_adicionales}</p>
+                        <div className="grid gap-1.5">
+                            <Label>Tipo de prueba</Label>
+                            <Select value={form.tipo || 'todos'} onValueChange={(value) => setForm({ ...form, tipo: value === 'todos' ? '' : value })}>
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="todos">Todos</SelectItem>
+                                    <SelectItem value="pre_ruta">Pre Ruta</SelectItem>
+                                    <SelectItem value="ruta">Ruta</SelectItem>
+                                    <SelectItem value="post_ruta">Post Ruta</SelectItem>
+                                    <SelectItem value="jl">JL</SelectItem>
+                                    <SelectItem value="segundo_viaje">Segundo viaje</SelectItem>
+                                    <SelectItem value="movilizador">Movilizador</SelectItem>
+                                    <SelectItem value="administrativo">Administrativo</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
-                    </div>
+                        <div className="grid gap-1.5">
+                            <Label>Origen de Planeación</Label>
+                            <Select value={form.origen_planeacion || 'todos'} onValueChange={(value) => setForm({ ...form, origen_planeacion: value === 'todos' ? '' : value })}>
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="todos">Todos</SelectItem>
+                                    <SelectItem value="planeadas">Realizada (Planeada)</SelectItem>
+                                    <SelectItem value="adicionales">Evaluación Adicional</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="flex flex-wrap items-end gap-2 sm:col-span-2 lg:col-span-5">
+                            <Button type="button" variant="outline" asChild>
+                                <a href={exportUrl('seguridad.pruebas.exportar-pdf')}>
+                                    <FileText className="size-4" />
+                                    Exportar PDF
+                                </a>
+                            </Button>
+                            <Button type="button" variant="outline" asChild>
+                                <a href={exportUrl('seguridad.pruebas.exportar-excel')}>
+                                    <FileSpreadsheet className="size-4" />
+                                    Exportar Excel
+                                </a>
+                            </Button>
+                        </div>
+                    </form>
                 </div>
-
-                {/* Filtros de Búsqueda */}
-                <form className="grid gap-3 rounded-lg border border-sidebar-border/70 p-4 sm:grid-cols-2 lg:grid-cols-6 dark:border-sidebar-border">
-                    <div className="grid gap-1.5">
-                        <Label htmlFor="colaborador">Colaborador o cédula</Label>
-                        <Input
-                            id="colaborador"
-                            value={form.colaborador}
-                            onChange={(e) => setForm({ ...form, colaborador: e.target.value })}
-                            placeholder="Buscar..."
-                        />
-                    </div>
-                    <div className="grid gap-1.5">
-                        <Label htmlFor="fecha_desde">Desde</Label>
-                        <Input id="fecha_desde" type="date" value={form.fecha_desde} onChange={(e) => setForm({ ...form, fecha_desde: e.target.value })} />
-                    </div>
-                    <div className="grid gap-1.5">
-                        <Label htmlFor="fecha_hasta">Hasta</Label>
-                        <Input id="fecha_hasta" type="date" value={form.fecha_hasta} onChange={(e) => setForm({ ...form, fecha_hasta: e.target.value })} />
-                    </div>
-                    <div className="grid gap-1.5">
-                        <Label>Tipo de prueba</Label>
-                        <Select value={form.tipo || 'todos'} onValueChange={(value) => setForm({ ...form, tipo: value === 'todos' ? '' : value })}>
-                            <SelectTrigger>
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="todos">Todos</SelectItem>
-                                <SelectItem value="pre_ruta">Pre Ruta</SelectItem>
-                                <SelectItem value="ruta">Ruta</SelectItem>
-                                <SelectItem value="post_ruta">Post Ruta</SelectItem>
-                                <SelectItem value="jl">JL</SelectItem>
-                                <SelectItem value="segundo_viaje">Segundo viaje</SelectItem>
-                                <SelectItem value="movilizador">Movilizador</SelectItem>
-                                <SelectItem value="administrativo">Administrativo</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="grid gap-1.5">
-                        <Label>Origen de Planeación</Label>
-                        <Select value={form.origen_planeacion || 'todos'} onValueChange={(value) => setForm({ ...form, origen_planeacion: value === 'todos' ? '' : value })}>
-                            <SelectTrigger>
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="todos">Todos</SelectItem>
-                                <SelectItem value="planeadas">Realizada (Planeada)</SelectItem>
-                                <SelectItem value="adicionales">Evaluación Adicional</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="grid gap-1.5">
-                        <Label>Estado</Label>
-                        <Select value={form.estado || 'todas'} onValueChange={(value) => setForm({ ...form, estado: value === 'todas' ? '' : value })}>
-                            <SelectTrigger>
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="todas">Todos los estados</SelectItem>
-                                <SelectItem value="realizada">Realizadas</SelectItem>
-                                <SelectItem value="programada">Programadas</SelectItem>
-                                <SelectItem value="cancelada">Canceladas</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-                    <div className="flex flex-wrap items-end gap-2 sm:col-span-2 lg:col-span-6">
-                        <Button type="button" variant="outline" asChild>
-                            <a href={exportUrl('seguridad.pruebas.exportar-pdf')}>
-                                <FileText className="size-4" />
-                                Exportar PDF
-                            </a>
-                        </Button>
-                        <Button type="button" variant="outline" asChild>
-                            <a href={exportUrl('seguridad.pruebas.exportar-excel')}>
-                                <FileSpreadsheet className="size-4" />
-                                Exportar Excel
-                            </a>
-                        </Button>
-                    </div>
-                </form>
 
                 {/* Tabs de Navegación de Vistas */}
                 <div className="flex border-b border-sidebar-border/70 dark:border-sidebar-border">
@@ -322,6 +270,7 @@ export default function PruebasIndex({
                             {pruebas.total}
                         </Badge>
                     </button>
+
                     <button
                         type="button"
                         onClick={() => setActiveTab('pendientes')}
@@ -336,28 +285,42 @@ export default function PruebasIndex({
                             {cobertura.total_pendientes}
                         </Badge>
                     </button>
-                    <button
-                        type="button"
-                        onClick={() => setActiveTab('planeados')}
-                        className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
-                            activeTab === 'planeados'
-                                ? 'border-emerald-500 text-emerald-600 font-semibold'
-                                : 'border-transparent text-muted-foreground hover:text-foreground'
-                        }`}
-                    >
-                        Población Planeada Completa
-                        <Badge variant="outline" className="ml-1 text-xs">
-                            {cobertura.total_planeados}
-                        </Badge>
-                    </button>
+
+                    {cobertura.total_planeados > 0 && (
+                        <button
+                            type="button"
+                            onClick={() => setActiveTab('planeados')}
+                            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+                                activeTab === 'planeados'
+                                    ? 'border-emerald-500 text-emerald-600 font-semibold'
+                                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                            }`}
+                        >
+                            Planeación Completa
+                            <Badge className="ml-1 text-xs bg-emerald-600 text-white">
+                                {cobertura.planeaciones ? cobertura.planeaciones.length : cobertura.total_planeados}
+                            </Badge>
+                        </button>
+                    )}
                 </div>
 
-                {/* Vista: Pendientes de la Planeación */}
+                {/* Vista: Pendientes de la Planeación (Histórico Completo) */}
                 {activeTab === 'pendientes' && (
-                    <div className="rounded-lg border border-sidebar-border/70 dark:border-sidebar-border">
+                    <div className="rounded-lg border border-sidebar-border/70 dark:border-sidebar-border overflow-hidden">
+                        <div className="p-3.5 bg-amber-50/70 dark:bg-amber-950/30 border-b border-sidebar-border/70 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div>
+                                <h3 className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+                                    📋 Histórico de Colaboradores Pendientes ({cobertura.total_pendientes})
+                                </h3>
+                                <p className="text-xs text-amber-700/80 dark:text-amber-400/80 mt-0.5">
+                                    Listado histórico de todos los colaboradores asignados en planeación de ruta que aún no han realizado su prueba de alcoholemia, ordenados por fecha.
+                                </p>
+                            </div>
+                        </div>
                         <Table>
                             <TableHeader>
                                 <TableRow>
+                                    <TableHead>Fecha Planeada</TableHead>
                                     <TableHead>Colaborador</TableHead>
                                     <TableHead>Cédula</TableHead>
                                     <TableHead>Cargo</TableHead>
@@ -369,30 +332,33 @@ export default function PruebasIndex({
                             <TableBody>
                                 {cobertura.pendientes.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={6} className="text-muted-foreground py-8 text-center">
-                                            🎉 ¡Excelente! No hay colaboradores pendientes de prueba para esta planeación.
+                                        <TableCell colSpan={7} className="text-muted-foreground py-8 text-center">
+                                            🎉 ¡Excelente! No hay colaboradores pendientes de prueba de alcoholemia en el histórico.
                                         </TableCell>
                                     </TableRow>
                                 ) : (
                                     cobertura.pendientes.map((item) => (
                                         <TableRow key={item.key}>
+                                            <TableCell className="whitespace-nowrap font-medium">
+                                                <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-700/50 dark:bg-amber-950/40 dark:text-amber-200 font-mono">
+                                                    📅 {item.fecha || form.fecha || fechaConsulta}
+                                                </Badge>
+                                            </TableCell>
                                             <TableCell className="font-medium text-foreground">{item.nombre_completo}</TableCell>
                                             <TableCell>{item.cedula || '—'}</TableCell>
                                             <TableCell>{item.cargo || '—'}</TableCell>
+                                            <TableCell>{item.ruta_asignada}</TableCell>
                                             <TableCell>
-                                                <span className="text-xs bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200 px-2 py-1 rounded font-mono">
-                                                    {item.ruta_asignada}
-                                                </span>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Badge className="bg-amber-500 text-white hover:bg-amber-600">Pendiente</Badge>
+                                                <Badge variant="outline" className="border-amber-500 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30">
+                                                    Pendiente
+                                                </Badge>
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" asChild>
                                                     <Link
                                                         href={route('seguridad.pruebas.create', {
                                                             colaborador_id: item.colaborador_id,
-                                                            fecha: form.fecha || fechaConsulta,
+                                                            fecha: item.fecha || form.fecha || fechaConsulta,
                                                             ruta_asignada: item.ruta_asignada,
                                                         })}
                                                     >
@@ -409,62 +375,64 @@ export default function PruebasIndex({
                     </div>
                 )}
 
-                {/* Vista: Población Planeada Completa */}
+                {/* Vista: Planeación Completa (Resumen por Fecha: Pre Ruta y Post Ruta) */}
                 {activeTab === 'planeados' && (
                     <div className="rounded-lg border border-sidebar-border/70 dark:border-sidebar-border">
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Colaborador</TableHead>
-                                    <TableHead>Cédula</TableHead>
-                                    <TableHead>Cargo</TableHead>
-                                    <TableHead>Asignación de Ruta</TableHead>
+                                    <TableHead>Fecha de la Ruta</TableHead>
+                                    <TableHead>Población Planeada</TableHead>
+                                    <TableHead>Pre Ruta</TableHead>
+                                    <TableHead>Post Ruta</TableHead>
                                     <TableHead>Estado Cobertura</TableHead>
                                     <TableHead className="text-right">Acción</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {cobertura.todos_planeados.length === 0 ? (
+                                {!cobertura.planeaciones || cobertura.planeaciones.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={6} className="text-muted-foreground py-8 text-center">
-                                            No hay datos de Planeación de Ruta para la fecha seleccionada.
+                                            No hay registros de planeación de ruta en el histórico.
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    cobertura.todos_planeados.map((item) => (
-                                        <TableRow key={item.key}>
-                                            <TableCell className="font-medium text-foreground">{item.nombre_completo}</TableCell>
-                                            <TableCell>{item.cedula || '—'}</TableCell>
-                                            <TableCell>{item.cargo || '—'}</TableCell>
-                                            <TableCell>
-                                                <span className="text-xs bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200 px-2 py-1 rounded font-mono">
-                                                    {item.ruta_asignada}
-                                                </span>
+                                    cobertura.planeaciones.map((plan) => (
+                                        <TableRow key={plan.fecha}>
+                                            <TableCell className="font-semibold text-foreground whitespace-nowrap">
+                                                {plan.fecha}
                                             </TableCell>
                                             <TableCell>
-                                                {item.estado_cobertura === 'realizada' ? (
-                                                    <Badge className="bg-emerald-600 text-white">Realizada</Badge>
+                                                {plan.total_planeados} colaboradores
+                                            </TableCell>
+                                            <TableCell>
+                                                {plan.pre_ruta_completa ? (
+                                                    <span className="font-medium text-emerald-600 dark:text-emerald-400">Completa</span>
                                                 ) : (
-                                                    <Badge className="bg-amber-500 text-white">Pendiente</Badge>
+                                                    <span className="text-muted-foreground">Incompleta ({plan.pre_ruta_realizados}/{plan.total_planeados})</span>
+                                                )}
+                                            </TableCell>
+                                            <TableCell>
+                                                {plan.post_ruta_completa ? (
+                                                    <span className="font-medium text-emerald-600 dark:text-emerald-400">Completa</span>
+                                                ) : (
+                                                    <span className="text-muted-foreground">Incompleta ({plan.post_ruta_realizados}/{plan.total_planeados})</span>
+                                                )}
+                                            </TableCell>
+                                            <TableCell>
+                                                {plan.esta_completa ? (
+                                                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">Completa</span>
+                                                ) : (
+                                                    <span className="text-amber-600 dark:text-amber-400">En Proceso ({plan.total_realizados}/{plan.total_planeados})</span>
                                                 )}
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                {item.estado_cobertura === 'pendiente' ? (
-                                                    <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" asChild>
-                                                        <Link
-                                                            href={route('seguridad.pruebas.create', {
-                                                                colaborador_id: item.colaborador_id,
-                                                                fecha: form.fecha || fechaConsulta,
-                                                                ruta_asignada: item.ruta_asignada,
-                                                            })}
-                                                        >
-                                                            <Plus className="size-3.5 mr-1" />
-                                                            Registrar prueba
-                                                        </Link>
-                                                    </Button>
-                                                ) : (
-                                                    <span className="text-xs text-emerald-600 font-medium">✓ Evaluado</span>
-                                                )}
+                                                <Button size="sm" variant="outline" className="h-8 text-xs border-emerald-600 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-500 dark:text-emerald-300" asChild>
+                                                    <Link href={route('reparto.modulacion.index', { fecha: plan.fecha, readOnly: true })}>
+                                                        <Truck className="size-3.5 mr-1" />
+                                                        Ver Detalles de la Ruta
+                                                    </Link>
+                                                </Button>
                                             </TableCell>
                                         </TableRow>
                                     ))
@@ -487,7 +455,6 @@ export default function PruebasIndex({
                                         <TableHead>Planeación / Ruta</TableHead>
                                         <TableHead>Dispositivo</TableHead>
                                         <TableHead>Resultado</TableHead>
-                                        <TableHead>Origen</TableHead>
                                         <TableHead>Responsable</TableHead>
                                         <TableHead>Firma</TableHead>
                                         <TableHead className="text-right">Acciones</TableHead>
@@ -496,7 +463,7 @@ export default function PruebasIndex({
                                 <TableBody>
                                     {pruebas.data.length === 0 && (
                                         <TableRow>
-                                            <TableCell colSpan={10} className="text-muted-foreground py-6 text-center">
+                                            <TableCell colSpan={9} className="text-muted-foreground py-6 text-center">
                                                 No se encontraron pruebas de alcoholemia.
                                             </TableCell>
                                         </TableRow>
@@ -508,30 +475,19 @@ export default function PruebasIndex({
                                                 {prueba.colaborador ? `${prueba.colaborador.nombres} ${prueba.colaborador.apellidos}` : '—'}
                                             </TableCell>
                                             <TableCell>{TIPO_LABELS[prueba.tipo] ?? prueba.tipo}</TableCell>
-                                            <TableCell>
-                                                {prueba.ruta_asignada ? (
-                                                    <span className="text-xs font-mono bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-2 py-0.5 rounded">
-                                                        {prueba.ruta_asignada}
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-muted-foreground text-xs">—</span>
-                                                )}
-                                            </TableCell>
+                                            <TableCell>{prueba.ruta_asignada || '—'}</TableCell>
                                             <TableCell>{prueba.alcoholimetro?.codigo ?? '—'}</TableCell>
                                             <TableCell>
                                                 {prueba.estado === 'programada' ? (
                                                     <Badge variant="secondary">Programada</Badge>
+                                                ) : prueba.es_positivo ? (
+                                                    <span className="font-bold text-red-600 dark:text-red-400">
+                                                        {prueba.resultado} — Positivo
+                                                    </span>
                                                 ) : (
-                                                    <Badge variant={prueba.es_positivo ? 'destructive' : 'default'}>
-                                                        {prueba.resultado} — {prueba.es_positivo ? 'Positivo' : 'Negativo'}
-                                                    </Badge>
-                                                )}
-                                            </TableCell>
-                                            <TableCell>
-                                                {prueba.pertenece_planeacion ? (
-                                                    <Badge className="bg-emerald-600 text-white">Realizada</Badge>
-                                                ) : (
-                                                    <Badge className="bg-indigo-600 text-white">Adicional</Badge>
+                                                    <span>
+                                                        {prueba.resultado ?? '0.000'} — Negativo
+                                                    </span>
                                                 )}
                                             </TableCell>
                                             <TableCell>{prueba.responsable?.name ?? '—'}</TableCell>

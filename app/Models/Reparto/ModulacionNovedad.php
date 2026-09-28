@@ -16,6 +16,7 @@ class ModulacionNovedad extends Model
         'cedula',
         'nombres',
         'cargo',
+        'observaciones',
         'fijo',
         'fijo_rescate',
         'fijo_taller',
@@ -47,5 +48,11 @@ class ModulacionNovedad extends Model
     public function colaborador(): BelongsTo
     {
         return $this->belongsTo(Colaborador::class);
+    }
+
+    // Accessor para mantener compatibilidad con frontend que espera no_asistio
+    protected function getNoAsistioAttribute(): bool
+    {
+        return (bool) ($this->attributes['no_asitio'] ?? false);
     }
 }

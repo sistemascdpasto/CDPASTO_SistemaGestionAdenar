@@ -8,15 +8,60 @@ use App\Models\Reparto\Modulacion;
 use App\Models\Reparto\ModulacionItem;
 use App\Models\Reparto\ModulacionNovedad;
 use App\Models\Seguridad\Colaborador;
+use App\Services\Reparto\ModulacionUbicacionesService;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 use Inertia\Response;
+use RuntimeException;
 
 class ModulacionController extends Controller
 {
+    public function departamentos(ModulacionUbicacionesService $ubicaciones): JsonResponse
+    {
+        return $this->responderUbicaciones(fn () => $ubicaciones->departamentos());
+    }
+
+    public function municipios(ModulacionUbicacionesService $ubicaciones): JsonResponse
+    {
+        return $this->responderUbicaciones(fn () => $ubicaciones->municipios());
+    }
+
+    public function barrios(Request $request, ModulacionUbicacionesService $ubicaciones): JsonResponse
+    {
+        $validated = $request->validate([
+            'municipio_id' => ['required', 'string', 'regex:/^\d+$/', 'max:20'],
+        ]);
+
+        return $this->responderUbicaciones(
+            fn () => $ubicaciones->barrios($validated['municipio_id']),
+            incluirSobreData: false
+        );
+    }
+
+    private function responderUbicaciones(callable $consulta, bool $incluirSobreData = true): JsonResponse
+    {
+        try {
+            $resultado = $consulta();
+
+            return response()->json($incluirSobreData ? ['data' => $resultado] : $resultado);
+        } catch (ConnectionException|RequestException|RuntimeException $exception) {
+            Log::warning('Falló la consulta de ubicaciones de modulación.', [
+                'error' => $exception->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'No fue posible cargar las ubicaciones geográficas. Intente nuevamente.',
+            ], 502);
+        }
+    }
+
     private function ensureFijoColumnExists(): void
     {
         if (Schema::hasTable('modulacion_novedades') && ! Schema::hasColumn('modulacion_novedades', 'fijo')) {
@@ -33,7 +78,8 @@ class ModulacionController extends Controller
         $fecha = $request->input('fecha', date('Y-m-d'));
 
         $modulacion = Modulacion::with(['items', 'novedades'])
-            ->where('fecha', $fecha)
+            ->whereDate('fecha', $fecha)
+            ->orderByDesc('id')
             ->first();
 
         // Pre-cargar colaboradores fijos (fijo_rescate o fijo_taller) si no existen aún en esta planeación
@@ -108,7 +154,7 @@ class ModulacionController extends Controller
                     ->where(function ($q) {
                         $q->where('fijo_rescate', true)->orWhere('fijo_taller', true);
                     })
-                    ->get(['colaborador_id', 'cedula', 'nombres', 'cargo', 'fijo_rescate', 'fijo_taller'])
+                    ->get(['colaborador_id', 'cedula', 'nombres', 'cargo', 'observaciones', 'fijo_rescate', 'fijo_taller'])
                     ->toArray();
             }
         }
@@ -160,6 +206,7 @@ class ModulacionController extends Controller
 
         $modulacion = Modulacion::with(['items', 'novedades'])
             ->whereDate('fecha', $fecha)
+            ->orderByDesc('id')
             ->first();
 
         $fijosIniciales = [];
@@ -178,7 +225,7 @@ class ModulacionController extends Controller
                     ->where(function ($q) {
                         $q->where('fijo_rescate', true)->orWhere('fijo_taller', true);
                     })
-                    ->get(['colaborador_id', 'cedula', 'nombres', 'cargo', 'fijo_rescate', 'fijo_taller'])
+                    ->get(['colaborador_id', 'cedula', 'nombres', 'cargo', 'observaciones', 'fijo_rescate', 'fijo_taller'])
                     ->toArray();
             }
         }
@@ -250,7 +297,7 @@ class ModulacionController extends Controller
         ]);
     }
 
-    public function storeBatch(Request $request): RedirectResponse
+    public function storeBatch(Request $request, ModulacionUbicacionesService $ubicaciones): RedirectResponse
     {
         $this->ensureFijoColumnExists();
 
@@ -273,6 +320,7 @@ class ModulacionController extends Controller
             'rutas.*.tripulacion.*.cargo' => 'nullable|string',
             'rutas.*.viajes' => 'nullable|array',
             'rutas.*.viajes.*.lugares' => 'nullable|string|max:255',
+            'rutas.*.viajes.*.barrio' => 'nullable|string|max:200',
             'rutas.*.viajes.*.cliente' => 'nullable|string|max:255',
             'rutas.*.viajes.*.peso' => 'nullable|string|max:100',
             'novedades' => 'nullable|array',
@@ -281,10 +329,12 @@ class ModulacionController extends Controller
             'novedades.*.cedula' => 'nullable|string|max:50',
             'novedades.*.nombres' => 'nullable|string|max:255',
             'novedades.*.cargo' => 'nullable|string|max:100',
+            'novedades.*.observaciones' => 'nullable|string',
             'novedades.*.fijo' => 'nullable|boolean',
             'novedades.*.fijo_rescate' => 'nullable|boolean',
             'novedades.*.fijo_taller' => 'nullable|boolean',
             'novedades.*.permiso' => 'nullable|boolean',
+            'novedades.*.no_asitio' => 'nullable|boolean',
             'novedades.*.incapacidad' => 'nullable|boolean',
             'novedades.*.vacaciones' => 'nullable|boolean',
         ]);
@@ -342,6 +392,8 @@ class ModulacionController extends Controller
                 if ($ced)   $assignedCedulas[]         = $ced;
             }
         }
+
+        $ubicaciones->guardarUbicacionesDeRutas($validated['rutas']);
 
         // Obtener o crear la planeación
         // Si viene modulacion_id, actualizar esa planeación (incluyendo su fecha si cambió)
@@ -401,12 +453,14 @@ class ModulacionController extends Controller
                     'fijo_taller'  => $fijoTaller,
                     'fijo'         => $fijoRescate || $fijoTaller,
                     'permiso'      => !empty($novItem['permiso']),
+                    'no_asitio'    => !empty($novItem['no_asitio']),
                     'incapacidad'  => !empty($novItem['incapacidad']),
                     'vacaciones'   => !empty($novItem['vacaciones']),
+                    'observaciones' => $novItem['observaciones'] ?? null,
                 ];
 
                 if (!empty($novItem['id'])) {
-                    // Novedad existente → actualizar checkboxes
+                    // Novedad existente → actualizar checkboxes y observaciones
                     ModulacionNovedad::where('id', $novItem['id'])->update($campos);
                 } else {
                     // Novedad nueva (pendiente) → crear en BD
@@ -511,8 +565,10 @@ class ModulacionController extends Controller
         $validated = $request->validate([
             'fijo' => 'boolean',
             'permiso' => 'boolean',
+            'no_asitio' => 'boolean',
             'incapacidad' => 'boolean',
             'vacaciones' => 'boolean',
+            'observaciones' => 'nullable|string',
         ]);
 
         $novedad->update($validated);

@@ -595,16 +595,6 @@ export default function CreatePrueba({
                                 : 'Selecciona al colaborador y completa los datos de la prueba.'
                         }
                     />
-                    <div className="flex items-center gap-2 pt-1">
-                        <Checkbox
-                            id="es_programacion"
-                            checked={data.es_programacion}
-                            onCheckedChange={(checked) => setData('es_programacion', checked === true)}
-                        />
-                        <Label htmlFor="es_programacion" className="font-normal cursor-pointer">
-                            Programar para más tarde
-                        </Label>
-                    </div>
                 </div>
 
                 {preselectedRutaAsignada && (

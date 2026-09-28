@@ -28,9 +28,15 @@ class PruebaAlcoholemiaController extends Controller
     public function index(Request $request, CoberturaPlaneacionService $coberturaService): Response
     {
         $filtros = $this->filtrosDesdeRequest($request);
-        $fechaConsulta = $filtros['fecha_desde'] ?: ($request->input('fecha', date('Y-m-d')));
 
-        $cobertura = $coberturaService->obtenerResumenCobertura($fechaConsulta);
+
+        $fechaInput = $request->string('fecha')->trim()->toString();
+        $fechaConsulta = $filtros['fecha_desde'] ?: ($fechaInput ?: date('Y-m-d'));
+
+        $cobertura = $coberturaService->obtenerResumenCobertura(
+            $filtros['fecha_desde'] ?: null,
+            $filtros['fecha_hasta'] ?: null
+        );
 
         $pruebas = $this->filtrarPruebas($request)
             ->latest('fecha_hora')

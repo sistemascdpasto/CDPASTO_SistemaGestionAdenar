@@ -363,7 +363,7 @@ class PruebaAlcoholemiaTest extends TestCase
         $this->assertSame(1, $resumen['total_realizados']);
         $this->assertSame(1, $resumen['total_pendientes']);
         $this->assertSame(50.0, $resumen['porcentaje_cobertura']);
-        $this->assertStringContainsString('2 colaboradores planeados — 1 realizados — 1 pendientes — 50,00% de cobertura', $resumen['resumen_texto']);
+        $this->assertStringContainsString('2 colaboradores planeados — 1 realizados — 1 pendientes — 50% de cobertura', $resumen['resumen_texto']);
     }
 
     public function test_prueba_for_unplanned_collaborator_is_registered_as_evaluacion_adicional_without_blocking(): void
