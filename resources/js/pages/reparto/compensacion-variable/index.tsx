@@ -1448,17 +1448,17 @@ export default function CompensacionVariableIndex({
                                 <TableHead className="font-bold py-2">Nombre</TableHead>
                                 <TableHead className="font-bold py-2">Cargo</TableHead>
                                 <TableHead className="font-bold py-2">Identificador</TableHead>
-                                <TableHead className="text-center font-bold py-2">Aus. Justificadas</TableHead>
-                                <TableHead className="text-center font-bold py-2">Aus. Injustificadas</TableHead>
-                                <TableHead className="text-center font-bold py-2">TRI / Fatalidades</TableHead>
+                                <TableHead className="text-center font-bold py-2" title="Ausencias justificadas">Aus. Just.</TableHead>
+                                <TableHead className="text-center font-bold py-2" title="Ausencias injustificadas">Aus. Injust.</TableHead>
+                                <TableHead className="text-center font-bold py-2" title="TRI / Fatalidades">TRI/Fatal.</TableHead>
                                 <TableHead className="text-center font-bold py-2">Adherencia GP</TableHead>
-                                <TableHead className="text-center font-bold py-2">Market Refusals (POCs)</TableHead>
+                                <TableHead className="text-center font-bold py-2" title="Market Refusals (POCs)">Mkt. Refusals</TableHead>
                                 <TableHead className="text-center font-bold py-2">% Rechazos</TableHead>
-                                <TableHead className="text-center font-bold py-2">Habilitadores</TableHead>
+                                <TableHead className="text-center font-bold py-2">Habilitad.</TableHead>
                                 <TableHead className="text-center font-bold py-2">Variable</TableHead>
-                                <TableHead className="text-center font-bold py-2">Días Trabajados</TableHead>
-                                <TableHead className="text-right font-bold py-2">Salario Variable</TableHead>
-                                <TableHead className="text-right font-bold py-2" style={{ color: COLOR_SUCCESS }}>Pago Variable DT</TableHead>
+                                <TableHead className="text-center font-bold py-2" title="Días trabajados">Días Trab.</TableHead>
+                                <TableHead className="text-right font-bold py-2" title="Salario variable">Sal. Variable</TableHead>
+                                <TableHead className="text-right font-bold py-2" style={{ color: COLOR_SUCCESS }} title="Pago Variable DT">Pago Var. DT</TableHead>
                                 <TableHead className="text-center font-bold py-2">Acción</TableHead>
                             </TableRow>
                         </TableHeader>

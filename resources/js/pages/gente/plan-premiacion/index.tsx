@@ -170,6 +170,13 @@ export default function PlanPremiacionIndex({ colaboradores, top3, peores2 = [],
     const STORAGE_KEY = 'plan-premiacion:cols-visibles';
     const allKeys = COLUMNAS_DEF.map(c => c.key);
 
+    // Columnas visibles la primera vez que alguien abre el módulo (sin
+    // preferencia guardada todavía). Con las 17 columnas de métricas a la
+    // vez la tabla generaba un scroll horizontal muy notorio; por defecto
+    // se deja solo el resultado de cada pilar + el total, y el detalle de
+    // cada métrica se activa desde el selector "Columnas".
+    const DEFAULT_VISIBLE_KEYS: ColKey[] = ['res_seguridad', 'res_gente', 'res_reparto', 'res_flota', 'total'];
+
     const [colsVisibles, setColsVisibles] = useState<Set<ColKey>>(() => {
         try {
             const stored = localStorage.getItem(STORAGE_KEY);
@@ -182,8 +189,8 @@ export default function PlanPremiacionIndex({ colaboradores, top3, peores2 = [],
         } catch {
             // Si hay algún error de parseo, usar default
         }
-        
-        return new Set(allKeys);
+
+        return new Set(DEFAULT_VISIBLE_KEYS);
     });
 
     useEffect(() => {
@@ -712,7 +719,7 @@ export default function PlanPremiacionIndex({ colaboradores, top3, peores2 = [],
                                 <TableBody>
                                     {colaboradores.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={19} className="py-8 text-center text-muted-foreground">
+                                            <TableCell colSpan={2 + colsVisibles.size} className="py-8 text-center text-muted-foreground">
                                                 No se encontraron colaboradores para el filtro seleccionado.
                                             </TableCell>
                                         </TableRow>

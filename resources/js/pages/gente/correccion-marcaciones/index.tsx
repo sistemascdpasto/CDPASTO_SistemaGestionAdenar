@@ -590,14 +590,14 @@ export default function CorreccionMarcacionesIndex() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead className="whitespace-nowrap">Identificación</TableHead>
-                                        <TableHead className="whitespace-nowrap">Nombre Completo</TableHead>
+                                        <TableHead className="whitespace-nowrap" title="Identificación">Identif.</TableHead>
+                                        <TableHead className="whitespace-nowrap">Nombre</TableHead>
                                         <TableHead className="whitespace-nowrap">Cargo</TableHead>
                                         <TableHead className="whitespace-nowrap">Fecha</TableHead>
                                         <TableHead className="whitespace-nowrap">Hora</TableHead>
                                         <TableHead className="whitespace-nowrap">Tipo</TableHead>
-                                        <TableHead className="whitespace-nowrap">Centro Costo</TableHead>
-                                        <TableHead className="whitespace-nowrap min-w-[180px]">Comentario</TableHead>
+                                        <TableHead className="whitespace-nowrap" title="Centro de costo">C. Costo</TableHead>
+                                        <TableHead className="whitespace-nowrap min-w-[140px]">Comentario</TableHead>
                                         <TableHead className="whitespace-nowrap text-center">Validación</TableHead>
                                         <TableHead className="whitespace-nowrap text-right">Acciones</TableHead>
                                     </TableRow>
@@ -626,7 +626,7 @@ export default function CorreccionMarcacionesIndex() {
                                                         : <span className="text-muted-foreground">—</span>}
                                                 </TableCell>
                                                 <TableCell className="text-xs text-muted-foreground">{r.centro_costo ?? '—'}</TableCell>
-                                                <TableCell className="text-xs max-w-[280px] truncate" title={r.comentario ?? ''}>
+                                                <TableCell className="text-xs max-w-[200px] truncate" title={r.comentario ?? ''}>
                                                     {r.comentario ?? <span className="text-muted-foreground italic">—</span>}
                                                 </TableCell>
                                                 <TableCell className="text-center">

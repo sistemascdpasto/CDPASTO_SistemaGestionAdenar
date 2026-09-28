@@ -24,7 +24,7 @@ import {
     User,
     X,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ProductoSearchSelect, type ProductoOption } from './producto-search-select';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -133,6 +133,20 @@ export default function RevisionAleatoriaIndex({
         resultado: '',
         novedades: [novedadVacia()],
     });
+
+    // La página no se desmonta entre una revisión y la siguiente del mismo
+    // día (Inertia solo actualiza las props), así que sin esto el formulario
+    // de novedades —incluidas las fotos ya elegidas— seguiría arrastrando
+    // los datos de la revisión anterior al abrir la 2ª o 3ª del día.
+    const idRevisionAnterior = useRef(revision?.id);
+    useEffect(() => {
+        if (revision?.id !== idRevisionAnterior.current) {
+            idRevisionAnterior.current = revision?.id;
+            setMostrarFormularioSku(false);
+            form.setData({ resultado: '', novedades: [novedadVacia()] });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [revision?.id]);
 
     const vehiculoItems = vehiculosActivos.map((v) => ({ id: v.id, label: v.placa ?? '' }));
     const responsableItems = responsablesActivos.map((r) => ({ id: r.id, label: r.nombre ?? '' }));

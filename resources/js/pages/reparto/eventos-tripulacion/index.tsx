@@ -118,6 +118,21 @@ const FIXED_COLS = new Set<ColKey>(
     COLUMNAS.filter(([, , fixed]) => fixed).map(([k]) => k)
 );
 
+// Columnas visibles la primera vez que alguien abre el módulo (sin
+// preferencia guardada en localStorage todavía). Con las 18 columnas
+// completas la tabla generaba un scroll horizontal excesivo; el resto
+// de columnas se puede activar desde el selector "Columnas".
+const DEFAULT_COLS: ColKey[] = [
+    'fecha',
+    'placa',
+    'documento',
+    'nombre',
+    'cargo',
+    'excesos_tiempo_ruta',
+    'alertas_velocidad_curvas',
+    'rechazos',
+];
+
 const PCT_FIELDS = new Set<ColKey>([
     'adherencia_checklist_pre',
     'adherencia_checklist_post',
@@ -351,7 +366,7 @@ export default function EventosTripulacionIndex({ eventos, filters, flash, error
                 ] as ColKey[]);
             }
         } catch { /* ignore */ }
-        return new Set(COLUMNAS.map(([k]) => k));
+        return new Set(DEFAULT_COLS);
     });
     const [showColPicker, setShowColPicker] = useState(false);
 
