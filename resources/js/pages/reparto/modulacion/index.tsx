@@ -286,8 +286,10 @@ function NarinoMunicipioInput({
     return (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-                <Label className="text-xs font-medium text-muted-foreground">Departamento</Label>
+                <Label htmlFor={`${baseId}-departamento`} className="text-xs font-medium text-muted-foreground">Departamento</Label>
                 <Input
+                    id={`${baseId}-departamento`}
+                    name={`${baseId}-departamento`}
                     type="text"
                     value="Nariño"
                     readOnly
@@ -295,9 +297,10 @@ function NarinoMunicipioInput({
                 />
             </div>
             <div>
-                <Label className="text-xs font-medium text-muted-foreground">Municipio / Destino</Label>
+                <Label htmlFor={`${baseId}-municipio`} className="text-xs font-medium text-muted-foreground">Municipio / Destino</Label>
                 <Input
                     id={`${baseId}-municipio`}
+                    name={`${baseId}-municipio`}
                     list={`${baseId}-municipios-list`}
                     value={value}
                     onChange={(event) => {
@@ -318,6 +321,7 @@ function NarinoMunicipioInput({
                 <Label htmlFor={`${baseId}-barrio`} className="text-xs font-medium text-muted-foreground">Barrio</Label>
                 <Input
                     id={`${baseId}-barrio`}
+                    name={`${baseId}-barrio`}
                     list={`${baseId}-barrios-list`}
                     value={barrio}
                     onChange={(event) => onBarrioChange(event.target.value)}
@@ -1338,10 +1342,13 @@ export default function ModulacionIndex({
             } = {}
         ): XLSX.CellObject => {
             let type: 's' | 'n' | 'b' = opts.t ?? 's';
-            const value = v;
-            if (typeof v === 'number') {
+            const value: XLSX.CellObject['v'] =
+                typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean' || v instanceof Date
+                    ? v
+                    : String(v ?? '');
+            if (typeof value === 'number') {
                 type = 'n';
-            } else if (typeof v === 'boolean') {
+            } else if (typeof value === 'boolean') {
                 type = 'b';
             }
             const out: XLSX.CellObject = { t: type, v: value };
@@ -1960,12 +1967,12 @@ export default function ModulacionIndex({
                         )}
                     </div>
                     <div>
-                        <Label className="flex items-center gap-1 text-xs font-semibold text-muted-foreground mb-1.5">
+                        <Label htmlFor="filtro-placa" className="flex items-center gap-1 text-xs font-semibold text-muted-foreground mb-1.5">
                             <Filter className="size-3.5" style={{ color: ACCENT }} />
                             Filtro por placa
                         </Label>
                         <Select value={filterTablePlaca} onValueChange={setFilterTablePlaca}>
-                            <SelectTrigger className="h-10 text-sm w-full">
+                            <SelectTrigger id="filtro-placa" className="h-10 text-sm w-full">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -2005,11 +2012,13 @@ export default function ModulacionIndex({
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                             {/* Placa */}
                             <div className="grid gap-1.5">
-                                <Label className="text-xs font-medium">
+                                <Label htmlFor="placa-ruta" className="text-xs font-medium">
                                     Placa <span className="text-red-500">*</span>
                                 </Label>
                                 {vehiculos.length > 0 && (
                                     <select
+                                        id="placa-ruta"
+                                        name="placa"
                                         value={currentRoute.placa}
                                         onChange={(e) => handlePlacaChange(e.target.value)}
                                         className="h-10 w-full rounded-lg border border-input bg-background px-3 py-2 font-mono text-sm uppercase text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
@@ -2033,8 +2042,10 @@ export default function ModulacionIndex({
 
                             {/* Documento Transporte */}
                             <div className="grid gap-1.5">
-                                <Label className="text-xs font-medium">Documento Transporte</Label>
+                                <Label htmlFor="documento-transporte" className="text-xs font-medium">Documento Transporte</Label>
                                 <Input
+                                    id="documento-transporte"
+                                    name="doc_tras"
                                     type="text"
                                     placeholder="Ej: 8008417408"
                                     value={currentRoute.doc_tras ?? ''}
@@ -2108,11 +2119,13 @@ export default function ModulacionIndex({
                                 {/* Filtros */}
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div className="grid gap-1.5">
-                                        <Label className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+                                        <Label htmlFor="buscar-tripulacion" className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
                                             <Search className="size-3" style={{ color: ACCENT }} />
                                             Buscar por Nombre o Cédula
                                         </Label>
                                         <Input
+                                            id="buscar-tripulacion"
+                                            name="buscar_tripulacion"
                                             type="text"
                                             placeholder="Escriba para filtrar colaboradores..."
                                             value={searchQuery}
@@ -2121,12 +2134,12 @@ export default function ModulacionIndex({
                                         />
                                     </div>
                                     <div className="grid gap-1.5">
-                                        <Label className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+                                        <Label htmlFor="filtrar-cargo" className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
                                             <Filter className="size-3" style={{ color: ACCENT }} />
                                             Filtrar por Cargo
                                         </Label>
                                         <Select value={cargoFilter} onValueChange={setCargoFilter}>
-                                            <SelectTrigger className="h-10 text-sm w-full">
+                                            <SelectTrigger id="filtrar-cargo" className="h-10 text-sm w-full">
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -2233,10 +2246,12 @@ export default function ModulacionIndex({
                                 {/* Peso (Toneladas) */}
                                 <div className="grid gap-1.5 sm:col-span-2">
                                     <div className="flex items-center justify-between">
-                                        <Label className="text-xs font-medium text-muted-foreground">Peso (Toneladas)</Label>
+                                        <Label htmlFor="peso-viaje" className="text-xs font-medium text-muted-foreground">Peso (Toneladas)</Label>
                                         <span className="text-[10px] font-semibold text-red-600">Máx 10 ton</span>
                                     </div>
                                     <Input
+                                        id="peso-viaje"
+                                        name="peso"
                                         type="number"
                                         step="0.01"
                                         min="0"
@@ -2384,12 +2399,12 @@ export default function ModulacionIndex({
                         {/* Formulario agregar colaborador */}
                         <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
                             <div className="sm:col-span-4 grid gap-1.5">
-                                <Label className="text-xs text-muted-foreground">Seleccionar Colaborador</Label>
+                                <Label htmlFor="nueva-novedad-colaborador" className="text-xs text-muted-foreground">Seleccionar Colaborador</Label>
                                 <Select
                                     value={nuevaNovedad.colaborador_id || undefined}
                                     onValueChange={(v) => handleNuevaNovedadSelectColaborador(v === CLIENTE_CLEAR ? '' : v)}
                                 >
-                                    <SelectTrigger className="h-10 text-sm w-full">
+                                    <SelectTrigger id="nueva-novedad-colaborador" className="h-10 text-sm w-full">
                                         <SelectValue placeholder="-- Seleccionar colaborador --" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -2404,8 +2419,10 @@ export default function ModulacionIndex({
                             </div>
 
                             <div className="sm:col-span-5 grid gap-1.5">
-                                <Label className="text-xs text-muted-foreground">Observaciones</Label>
+                                <Label htmlFor="nueva-novedad-observaciones" className="text-xs text-muted-foreground">Observaciones</Label>
                                 <Input
+                                    id="nueva-novedad-observaciones"
+                                    name="observaciones"
                                     type="text"
                                     placeholder="Notas adicionales..."
                                     value={nuevaNovedad.observaciones}
@@ -2476,6 +2493,8 @@ export default function ModulacionIndex({
                                                 <TableCell className="font-medium text-sm">{nov.nombres ?? '—'}</TableCell>
                                                 <TableCell className="text-sm">
                                                     <Input
+                                                        id={`novedad-${nov.id}-observaciones`}
+                                                        name={`novedad-${nov.id}-observaciones`}
                                                         type="text"
                                                         value={nov.observaciones ?? ''}
                                                         onChange={(e) => handleNovedadChange(nov.id, 'observaciones', e.target.value)}
@@ -2484,22 +2503,22 @@ export default function ModulacionIndex({
                                                     />
                                                 </TableCell>
                                                 <TableCell className="text-center">
-                                                    <Checkbox checked={Boolean(nov.fijo_rescate)} onCheckedChange={(c) => handleNovedadChange(nov.id, 'fijo_rescate', Boolean(c))} />
+                                                    <Checkbox id={`novedad-${nov.id}-fijo-rescate`} aria-label={`Fijo Rescate: ${nov.nombres ?? nov.cedula ?? nov.id}`} checked={Boolean(nov.fijo_rescate)} onCheckedChange={(c) => handleNovedadChange(nov.id, 'fijo_rescate', Boolean(c))} />
                                                 </TableCell>
                                                 <TableCell className="text-center">
-                                                    <Checkbox checked={Boolean(nov.fijo_taller)} onCheckedChange={(c) => handleNovedadChange(nov.id, 'fijo_taller', Boolean(c))} />
+                                                    <Checkbox id={`novedad-${nov.id}-fijo-taller`} aria-label={`Fijo Taller: ${nov.nombres ?? nov.cedula ?? nov.id}`} checked={Boolean(nov.fijo_taller)} onCheckedChange={(c) => handleNovedadChange(nov.id, 'fijo_taller', Boolean(c))} />
                                                 </TableCell>
                                                 <TableCell className="text-center">
-                                                    <Checkbox checked={Boolean(nov.permiso)} onCheckedChange={(c) => handleNovedadChange(nov.id, 'permiso', Boolean(c))} />
+                                                    <Checkbox id={`novedad-${nov.id}-permiso`} aria-label={`Permiso: ${nov.nombres ?? nov.cedula ?? nov.id}`} checked={Boolean(nov.permiso)} onCheckedChange={(c) => handleNovedadChange(nov.id, 'permiso', Boolean(c))} />
                                                 </TableCell>
                                                 <TableCell className="text-center">
-                                                    <Checkbox checked={Boolean(nov.no_asitio)} onCheckedChange={(c) => handleNovedadChange(nov.id, 'no_asitio', Boolean(c))} />
+                                                    <Checkbox id={`novedad-${nov.id}-no-asistio`} aria-label={`No asistió: ${nov.nombres ?? nov.cedula ?? nov.id}`} checked={Boolean(nov.no_asitio)} onCheckedChange={(c) => handleNovedadChange(nov.id, 'no_asitio', Boolean(c))} />
                                                 </TableCell>
                                                 <TableCell className="text-center">
-                                                    <Checkbox checked={Boolean(nov.incapacidad)} onCheckedChange={(c) => handleNovedadChange(nov.id, 'incapacidad', Boolean(c))} />
+                                                    <Checkbox id={`novedad-${nov.id}-incapacidad`} aria-label={`Incapacidad: ${nov.nombres ?? nov.cedula ?? nov.id}`} checked={Boolean(nov.incapacidad)} onCheckedChange={(c) => handleNovedadChange(nov.id, 'incapacidad', Boolean(c))} />
                                                 </TableCell>
                                                 <TableCell className="text-center">
-                                                    <Checkbox checked={Boolean(nov.vacaciones)} onCheckedChange={(c) => handleNovedadChange(nov.id, 'vacaciones', Boolean(c))} />
+                                                    <Checkbox id={`novedad-${nov.id}-vacaciones`} aria-label={`Vacaciones: ${nov.nombres ?? nov.cedula ?? nov.id}`} checked={Boolean(nov.vacaciones)} onCheckedChange={(c) => handleNovedadChange(nov.id, 'vacaciones', Boolean(c))} />
                                                 </TableCell>
                                                 <TableCell className="text-right">
                                                     <Button
