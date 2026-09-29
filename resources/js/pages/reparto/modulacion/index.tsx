@@ -216,7 +216,16 @@ function NarinoMunicipioInput({
                     headers: { Accept: 'application/json' },
                     signal: controller.signal,
                 });
-                if (!municipiosResponse.ok) throw new Error('No se pudieron cargar los municipios guardados.');
+                if (!municipiosResponse.ok) {
+                    const respuestaError = municipiosResponse.headers.get('content-type')?.includes('application/json')
+                        ? ((await municipiosResponse.json()) as { message?: unknown })
+                        : null;
+                    const detalle =
+                        typeof respuestaError?.message === 'string'
+                            ? respuestaError.message
+                            : `el servidor respondió HTTP ${municipiosResponse.status}`;
+                    throw new Error(`No se pudieron cargar los municipios: ${detalle}`);
+                }
                 const municipiosJson = (await municipiosResponse.json()) as { data?: unknown };
 
                 if (controller.signal.aborted) return;

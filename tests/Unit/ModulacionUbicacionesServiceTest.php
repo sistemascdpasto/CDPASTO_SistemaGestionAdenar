@@ -10,6 +10,7 @@ use Illuminate\Http\Client\Request;
 use Illuminate\Http\Request as HttpRequest;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class ModulacionUbicacionesServiceTest extends TestCase
@@ -111,6 +112,25 @@ class ModulacionUbicacionesServiceTest extends TestCase
             ['id' => (string) $municipio->id, 'nombre' => 'Municipio Nuevo'],
             $service->municipios()
         );
+    }
+
+    public function test_devuelve_municipios_de_dane_si_falla_el_catalogo_local(): void
+    {
+        Http::fake([
+            'https://geoportal.dane.gov.co/*/317/query*' => Http::response([
+                'features' => [
+                    ['attributes' => ['DPTO_CCDGO' => '52', 'MPIO_CDPMP' => '52001', 'MPIO_CNMBRE' => 'PASTO']],
+                ],
+            ]),
+        ]);
+        Schema::shouldReceive('hasTable')
+            ->once()
+            ->with('modulacion_municipios')
+            ->andThrow(new \PDOException('Database unavailable'));
+
+        $municipios = app(ModulacionUbicacionesService::class)->municipios();
+
+        $this->assertSame([['id' => '52001', 'nombre' => 'Pasto']], $municipios);
     }
 
     public function test_endpoint_de_barrios_devuelve_la_lista_sin_anidar_data(): void

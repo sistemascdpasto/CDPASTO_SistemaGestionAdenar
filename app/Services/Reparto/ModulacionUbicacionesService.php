@@ -84,57 +84,74 @@ class ModulacionUbicacionesService
             ]);
         }
 
-        if (! Schema::hasTable('modulacion_municipios')) {
-            return collect($municipiosApi)
-                ->map(fn (array $municipio) => [
-                    'id' => $municipio['codigo_dane'],
-                    'nombre' => $municipio['nombre'],
-                ])
-                ->all();
-        }
-
-        foreach ($municipiosApi as $index => $municipioApi) {
-            $normalizado = $this->normalizar($municipioApi['nombre']);
-            $municipio = ModulacionMunicipio::query()
-                ->where('codigo_dane', $municipioApi['codigo_dane'])
-                ->orWhere('nombre_normalizado', $normalizado)
-                ->first();
-
-            if ($municipio) {
-                $municipio->update([
-                    'codigo_dane' => $municipioApi['codigo_dane'],
-                    'nombre' => $municipioApi['nombre'],
-                    'nombre_normalizado' => $normalizado,
-                ]);
-            } else {
-                $municipio = ModulacionMunicipio::create([
-                    'codigo_dane' => $municipioApi['codigo_dane'],
-                    'nombre' => $municipioApi['nombre'],
-                    'nombre_normalizado' => $normalizado,
-                    'origen' => 'dane',
-                ]);
+        try {
+            if (! Schema::hasTable('modulacion_municipios')) {
+                return $this->municipiosDesdeApi($municipiosApi);
             }
 
-            $municipiosApi[$index] = [
-                'id' => (string) $municipio->id,
-                'nombre' => $municipio->nombre,
-            ];
+            foreach ($municipiosApi as $index => $municipioApi) {
+                $normalizado = $this->normalizar($municipioApi['nombre']);
+                $municipio = ModulacionMunicipio::query()
+                    ->where('codigo_dane', $municipioApi['codigo_dane'])
+                    ->orWhere('nombre_normalizado', $normalizado)
+                    ->first();
+
+                if ($municipio) {
+                    $municipio->update([
+                        'codigo_dane' => $municipioApi['codigo_dane'],
+                        'nombre' => $municipioApi['nombre'],
+                        'nombre_normalizado' => $normalizado,
+                    ]);
+                } else {
+                    $municipio = ModulacionMunicipio::create([
+                        'codigo_dane' => $municipioApi['codigo_dane'],
+                        'nombre' => $municipioApi['nombre'],
+                        'nombre_normalizado' => $normalizado,
+                        'origen' => 'dane',
+                    ]);
+                }
+
+                $municipiosApi[$index] = [
+                    'id' => (string) $municipio->id,
+                    'nombre' => $municipio->nombre,
+                ];
+            }
+
+            $municipiosLocales = ModulacionMunicipio::query()
+                ->orderBy('nombre')
+                ->get(['id', 'nombre'])
+                ->map(fn (ModulacionMunicipio $municipio) => [
+                    'id' => (string) $municipio->id,
+                    'nombre' => $municipio->nombre,
+                ])
+                ->all();
+
+            return collect($municipiosApi)
+                ->merge($municipiosLocales)
+                ->unique(fn (array $municipio) => $this->normalizar($municipio['nombre']))
+                ->sortBy('nombre', SORT_NATURAL | SORT_FLAG_CASE)
+                ->values()
+                ->all();
+        } catch (\PDOException $exception) {
+            Log::warning('No se pudo acceder al catálogo local de municipios; se usará la respuesta de DANE.', [
+                'error' => $exception->getMessage(),
+            ]);
+
+            return $this->municipiosDesdeApi($municipiosApi);
         }
+    }
 
-        $municipiosLocales = ModulacionMunicipio::query()
-            ->orderBy('nombre')
-            ->get(['id', 'nombre'])
-            ->map(fn (ModulacionMunicipio $municipio) => [
-                'id' => (string) $municipio->id,
-                'nombre' => $municipio->nombre,
+    /**
+     * @param  array<int, array{codigo_dane: string, nombre: string}>  $municipios
+     * @return array<int, array{id: string, nombre: string}>
+     */
+    private function municipiosDesdeApi(array $municipios): array
+    {
+        return collect($municipios)
+            ->map(fn (array $municipio) => [
+                'id' => $municipio['codigo_dane'],
+                'nombre' => $municipio['nombre'],
             ])
-            ->all();
-
-        return collect($municipiosApi)
-            ->merge($municipiosLocales)
-            ->unique(fn (array $municipio) => $this->normalizar($municipio['nombre']))
-            ->sortBy('nombre', SORT_NATURAL | SORT_FLAG_CASE)
-            ->values()
             ->all();
     }
 
