@@ -1,13 +1,10 @@
-import HeadingSmall from '@/components/heading-small';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
@@ -24,7 +21,6 @@ import {
     Save,
     Search,
     Trash2,
-    UserPlus,
     Users,
 } from 'lucide-react';
 import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
@@ -241,9 +237,10 @@ function NarinoMunicipioInput({
     const municipioSeleccionado = municipios.find((municipio) =>
         municipio.nombre.localeCompare(value.trim(), 'es', { sensitivity: 'base' }) === 0,
     );
+    const municipioSeleccionadoId = municipioSeleccionado?.id;
 
     useEffect(() => {
-        if (!municipioSeleccionado) {
+        if (!municipioSeleccionadoId) {
             setBarrios([]);
             setBarriosLoading(false);
             return;
@@ -256,7 +253,7 @@ function NarinoMunicipioInput({
             setBarriosLoading(true);
             try {
                 const response = await fetch(
-                    route('reparto.modulacion.referencias.barrios', { municipio_id: municipioSeleccionado.id }),
+                    route('reparto.modulacion.referencias.barrios', { municipio_id: municipioSeleccionadoId }),
                     { headers: { Accept: 'application/json' }, signal: controller.signal },
                 );
                 if (!response.ok) throw new Error('No se pudieron cargar los barrios del municipio.');
@@ -284,7 +281,7 @@ function NarinoMunicipioInput({
 
         void loadBarrios();
         return () => controller.abort();
-    }, [municipioSeleccionado?.id]);
+    }, [municipioSeleccionadoId]);
 
     return (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -632,33 +629,6 @@ export default function ModulacionIndex({
         return ids;
     }, [modulacion?.novedades, readOnly]);
 
-    // BOTÓN EDITAR EN LA TABLA PLANEACIÓN DE RUTA
-    const handleEditRoute = (index: number) => {
-        const routeToEdit = rutas[index];
-        if (!routeToEdit) return;
-        setCurrentRoute({
-            id: routeToEdit.id,
-            placa: routeToEdit.placa,
-            doc_tras: routeToEdit.doc_tras ?? '',
-            cargo: routeToEdit.cargo ?? '',
-            tripulacion: Array.isArray(routeToEdit.tripulacion) ? [...routeToEdit.tripulacion] : [],
-            viajes: Array.isArray(routeToEdit.viajes) ? [...routeToEdit.viajes] : [],
-        });
-        // Precargar el último viaje en el formulario si existe
-        const viajes = Array.isArray(routeToEdit.viajes) ? routeToEdit.viajes : [];
-        const lastViaje = viajes.length > 0 ? viajes[viajes.length - 1] : null;
-        setCurrentViajeForm({
-            lugares: lastViaje?.lugares ?? '',
-            barrio: lastViaje?.barrio ?? '',
-            cliente: lastViaje?.cliente ?? '',
-            peso: lastViaje?.peso ?? '',
-        });
-        setEditingIndex(index);
-        setEditingViajeIndex(null); // Resetear índice de viaje al editar ruta completa
-        setIsEditing(true);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    };
-
     // BOTÓN EDITAR VIAJE INDIVIDUAL EN LA TABLA
     const handleEditViajeIndividual = (rutaIndex: number, viajeIndex: number) => {
         const routeToEdit = rutas[rutaIndex];
@@ -686,30 +656,6 @@ export default function ModulacionIndex({
         setEditingViajeIndex(viajeIndex); // Establecer índice del viaje específico
         setIsEditing(true);
         window.scrollTo({ top: 0, behavior: 'smooth' });
-    };
-
-    const handleRemoveRutaFromList = (index: number) => {
-        const itemToRemove = rutas[index];
-        // Quitar del estado local inmediatamente
-        setRutas((prev) => prev.filter((_, i) => i !== index));
-        if (editingIndex === index) {
-            setCurrentRoute(createEmptyRoute());
-            setCurrentViajeForm({
-                lugares: '',
-                barrio: '',
-                cliente: '',
-                peso: '',
-            });
-            setEditingIndex(null);
-            setEditingViajeIndex(null);
-        }
-        // Si tenía id en BD, eliminar en el servidor también
-        if (itemToRemove?.id) {
-            router.delete(route('reparto.modulacion.destroyItem', itemToRemove.id), {
-                preserveScroll: true,
-                preserveState: true,
-            });
-        }
     };
 
     const handleCurrentRouteFieldChange = (field: keyof RutaFormState, value: RutaFormState[keyof RutaFormState]) => {
@@ -870,7 +816,7 @@ export default function ModulacionIndex({
 
         // Solo reemplaza un viaje cuando se inició desde su acción de edición.
         if (editingViajeIndex !== null && editingIndex !== null) {
-            let updatedViajes = [...(currentRoute.viajes || [])];
+            const updatedViajes = [...(currentRoute.viajes || [])];
 
             if (editingViajeIndex >= 0 && editingViajeIndex < updatedViajes.length) {
                 updatedViajes[editingViajeIndex] = {
@@ -948,18 +894,6 @@ export default function ModulacionIndex({
         setEditingIndex(routeIndex);
     };
 
-    const handleRemoveViaje = (viajeIndex: number, e?: React.MouseEvent) => {
-        if (e) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
-        if (currentRoute.viajes.length <= 1) return;
-        setCurrentRoute((prev) => ({
-            ...prev,
-            viajes: prev.viajes.filter((_, i) => i !== viajeIndex),
-        }));
-    };
-
     const handleRemoveViajeIndividual = (rutaIndex: number, viajeIndex: number) => {
         if (confirm('¿Está seguro de eliminar este viaje?')) {
             setRutas((prev) => {
@@ -971,28 +905,6 @@ export default function ModulacionIndex({
             });
         }
     };
-
-    const handleViajeChange = (viajeIndex: number, field: keyof Viaje, value: string) => {
-        let finalVal = value;
-        if (field === 'peso' && value !== '') {
-            const parsed = parseFloat(value);
-            if (!isNaN(parsed) && parsed > 10) {
-                alert('El peso máximo permitido por viaje es de 10 toneladas.');
-                finalVal = '10';
-            }
-        }
-        setCurrentRoute((prev) => ({
-            ...prev,
-            viajes: prev.viajes.map((v, i) => (i === viajeIndex ? { ...v, [field]: finalVal } : v)),
-        }));
-    };
-
-    // Calcular el total de toneladas acumuladas en los viajes de la ruta actual
-    const totalPesoActual = useMemo(() => {
-        return currentRoute.viajes
-            .reduce((sum, v) => sum + (parseFloat(v.peso) || 0), 0)
-            .toFixed(2);
-    }, [currentRoute.viajes]);
 
     // GUARDAR PLANEACIÓN DE RUTA COMPLETA (TODAS LAS RUTAS + NOVEDADES)
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -1379,8 +1291,6 @@ export default function ModulacionIndex({
         const GRIS_CARGO_3 = 'D9D9D9';      // 3er tripulante
         const BLANCO_CARGO_4 = 'FFFFFF';    // 4to tripulante
         const NEGRO_PLACA = '000000';       // Fondo columna placa
-        const AZUL_TEXTO_AUX = '0563C1';    // Texto azul para tripulante 2
-
         const BORDER_THIN = {
             top: { style: 'thin', color: { rgb: 'FF000000' } },
             bottom: { style: 'thin', color: { rgb: 'FF000000' } },
@@ -1395,14 +1305,11 @@ export default function ModulacionIndex({
             name: 'Calibri',
         };
         const FONT_BODY = { sz: 11, name: 'Calibri', color: { rgb: '000000' } };
-        const FONT_BODY_BLUE = { sz: 11, name: 'Calibri', color: { rgb: AZUL_TEXTO_AUX } };
         const FONT_BODY_BOLD_BLACK = { sz: 11, name: 'Calibri', bold: true, color: { rgb: '000000' } };
         const FONT_PLACA = { sz: 12, name: 'Calibri', bold: true, color: { rgb: 'FFFFFF' } };
 
         const ALIGN_CENTER = { horizontal: 'center' as const, vertical: 'center' as const, wrapText: true };
         const ALIGN_LEFT = { horizontal: 'left' as const, vertical: 'center' as const, wrapText: true };
-        const ALIGN_RIGHT = { horizontal: 'right' as const, vertical: 'center' as const };
-
         // ─── Determinar máximo de viajes y tripulantes ──────────────
         let maxViajes = 1;
         let maxTripulantes = 1;
@@ -1437,10 +1344,7 @@ export default function ModulacionIndex({
             } else if (typeof v === 'boolean') {
                 type = 'b';
             }
-            const out: XLSX.CellObject = {
-                t: type as any,
-                v: value as any,
-            };
+            const out: XLSX.CellObject = { t: type, v: value };
             if (opts.s) out.s = opts.s;
             return out;
         };
@@ -1460,22 +1364,6 @@ export default function ModulacionIndex({
                 textRotation: deg,
             },
         });
-        const styleBodyBase: XLSX.CellStyle = {
-            font: FONT_BODY,
-            alignment: ALIGN_LEFT,
-            border: BORDER_THIN,
-        };
-        const styleBodyCenter: XLSX.CellStyle = {
-            font: FONT_BODY,
-            alignment: ALIGN_CENTER,
-            border: BORDER_THIN,
-        };
-        const styleBodyBoldBlack: XLSX.CellStyle = {
-            font: FONT_BODY_BOLD_BLACK,
-            alignment: ALIGN_LEFT,
-            border: BORDER_THIN,
-        };
-
         // ─── Construir hoja ──────────────────────────────────────────
         // Usamos un objeto plano { A1: cell, B1: cell, ... } para control total
         const wsData: Record<string, XLSX.CellObject> = {};
