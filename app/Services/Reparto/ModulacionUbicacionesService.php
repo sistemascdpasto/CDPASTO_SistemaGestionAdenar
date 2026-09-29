@@ -4,6 +4,7 @@ namespace App\Services\Reparto;
 
 use App\Models\Reparto\ModulacionBarrio;
 use App\Models\Reparto\ModulacionMunicipio;
+use App\Services\Seguridad\UbicacionesColombiaService;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Cache;
@@ -22,6 +23,8 @@ class ModulacionUbicacionesService
         'https://visor.codigopostal.gov.co/arcgis/rest/services/DivisionAdministrativa/MapServer';
 
     private const CODIGO_NARINO = '52';
+
+    public function __construct(private readonly UbicacionesColombiaService $ubicacionesColombia) {}
 
     /**
      * @return array<int, array{id: string, nombre: string}>
@@ -74,6 +77,7 @@ class ModulacionUbicacionesService
                 ->map(fn (array $attributes) => [
                     'codigo_dane' => (string) $attributes['MPIO_CDPMP'],
                     'nombre' => mb_convert_case((string) $attributes['MPIO_CNMBRE'], MB_CASE_TITLE, 'UTF-8'),
+                    'id_externo' => null,
                 ])
                 ->unique('codigo_dane')
                 ->values()
@@ -84,24 +88,32 @@ class ModulacionUbicacionesService
             ]);
         }
 
+        if ($municipiosApi === []) {
+            $municipiosApi = $this->municipiosDesdeApiColombia();
+        }
+
         try {
             if (! Schema::hasTable('modulacion_municipios')) {
-                return $this->municipiosDesdeApi($municipiosApi);
+                return $this->municipiosSinCatalogoLocal($municipiosApi);
             }
 
             foreach ($municipiosApi as $index => $municipioApi) {
                 $normalizado = $this->normalizar($municipioApi['nombre']);
-                $municipio = ModulacionMunicipio::query()
-                    ->where('codigo_dane', $municipioApi['codigo_dane'])
-                    ->orWhere('nombre_normalizado', $normalizado)
-                    ->first();
+                $consulta = ModulacionMunicipio::query()->where('nombre_normalizado', $normalizado);
+                if ($municipioApi['codigo_dane'] !== null) {
+                    $consulta->orWhere('codigo_dane', $municipioApi['codigo_dane']);
+                }
+                $municipio = $consulta->first();
 
                 if ($municipio) {
-                    $municipio->update([
-                        'codigo_dane' => $municipioApi['codigo_dane'],
+                    $datos = [
                         'nombre' => $municipioApi['nombre'],
                         'nombre_normalizado' => $normalizado,
-                    ]);
+                    ];
+                    if ($municipioApi['codigo_dane'] !== null) {
+                        $datos['codigo_dane'] = $municipioApi['codigo_dane'];
+                    }
+                    $municipio->update($datos);
                 } else {
                     $municipio = ModulacionMunicipio::create([
                         'codigo_dane' => $municipioApi['codigo_dane'],
@@ -137,20 +149,43 @@ class ModulacionUbicacionesService
                 'error' => $exception->getMessage(),
             ]);
 
-            return $this->municipiosDesdeApi($municipiosApi);
+            return $this->municipiosSinCatalogoLocal($municipiosApi);
         }
     }
 
     /**
-     * @param  array<int, array{codigo_dane: string, nombre: string}>  $municipios
+     * @param  array<int, array{codigo_dane: ?string, nombre: string, id_externo: ?string}>  $municipios
      * @return array<int, array{id: string, nombre: string}>
      */
-    private function municipiosDesdeApi(array $municipios): array
+    private function municipiosSinCatalogoLocal(array $municipios): array
     {
         return collect($municipios)
             ->map(fn (array $municipio) => [
-                'id' => $municipio['codigo_dane'],
+                'id' => $municipio['codigo_dane'] ?? $municipio['id_externo'] ?? $municipio['nombre'],
                 'nombre' => $municipio['nombre'],
+            ])
+            ->all();
+    }
+
+    /**
+     * Uses the same external catalog as the Gente module when DANE is unavailable.
+     *
+     * @return array<int, array{codigo_dane: null, nombre: string, id_externo: string}>
+     */
+    private function municipiosDesdeApiColombia(): array
+    {
+        $departamento = collect($this->ubicacionesColombia->departamentos())
+            ->first(fn (array $item) => $this->normalizar($item['nombre']) === 'narino');
+
+        if (! $departamento) {
+            return [];
+        }
+
+        return collect($this->ubicacionesColombia->ciudades((int) $departamento['id']))
+            ->map(fn (array $municipio) => [
+                'codigo_dane' => null,
+                'nombre' => $municipio['nombre'],
+                'id_externo' => (string) $municipio['id'],
             ])
             ->all();
     }

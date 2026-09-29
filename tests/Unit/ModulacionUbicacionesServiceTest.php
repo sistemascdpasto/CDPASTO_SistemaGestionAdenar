@@ -133,6 +133,29 @@ class ModulacionUbicacionesServiceTest extends TestCase
         $this->assertSame([['id' => '52001', 'nombre' => 'Pasto']], $municipios);
     }
 
+    public function test_usa_el_catalogo_de_gente_si_dane_no_responde(): void
+    {
+        Http::fake([
+            'https://geoportal.dane.gov.co/*' => Http::response(['error' => 'Unavailable'], 503),
+            'https://api-colombia.com/api/v1/Department' => Http::response([
+                ['id' => 22, 'name' => 'Nariño'],
+            ]),
+            'https://api-colombia.com/api/v1/Department/22/cities' => Http::response([
+                ['id' => 52001, 'name' => 'Pasto'],
+                ['id' => 52356, 'name' => 'Ipiales'],
+            ]),
+        ]);
+
+        $municipios = app(ModulacionUbicacionesService::class)->municipios();
+
+        $this->assertCount(2, $municipios);
+        $this->assertSame(['Ipiales', 'Pasto'], array_column($municipios, 'nombre'));
+        $this->assertDatabaseHas('modulacion_municipios', [
+            'nombre_normalizado' => 'pasto',
+            'codigo_dane' => null,
+        ]);
+    }
+
     public function test_endpoint_de_barrios_devuelve_la_lista_sin_anidar_data(): void
     {
         Http::fake([
