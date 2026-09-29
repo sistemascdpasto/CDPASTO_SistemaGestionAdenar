@@ -28,8 +28,12 @@ Route::middleware(['auth', 'active'])
             ->name('modulacion.referencias.departamentos');
         Route::get('/modulacion/referencias/municipios', [ModulacionController::class, 'municipios'])
             ->name('modulacion.referencias.municipios');
+        Route::post('/modulacion/referencias/municipios', [ModulacionController::class, 'registrarMunicipio'])
+            ->name('modulacion.referencias.municipios.registrar');
         Route::get('/modulacion/referencias/barrios', [ModulacionController::class, 'barrios'])
             ->name('modulacion.referencias.barrios');
+        Route::post('/modulacion/referencias/barrios', [ModulacionController::class, 'registrarBarrio'])
+            ->name('modulacion.referencias.barrios.registrar');
         Route::get('/modulacion/check-fecha', [ModulacionController::class, 'checkFecha'])
             ->name('modulacion.checkFecha');
         Route::get('/modulacion/historial', [ModulacionController::class, 'historial'])
@@ -44,6 +48,8 @@ Route::middleware(['auth', 'active'])
             ->name('modulacion.updateItem');
         Route::delete('/modulacion/item/{id}', [ModulacionController::class, 'destroyItem'])
             ->name('modulacion.destroyItem');
+        Route::delete('/modulacion/item/{id}/viaje/{viajeIndex}', [ModulacionController::class, 'destroyViaje'])
+            ->name('modulacion.destroyViaje');
         Route::delete('/modulacion/{id}', [ModulacionController::class, 'destroyModulacion'])
             ->name('modulacion.destroy');
         Route::put('/modulacion/novedad/{id}', [ModulacionController::class, 'updateNovedad'])

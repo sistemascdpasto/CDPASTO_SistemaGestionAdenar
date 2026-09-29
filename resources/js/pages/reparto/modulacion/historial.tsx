@@ -8,8 +8,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
-import { Eye, FileText, Trash2, Truck, Users, X } from 'lucide-react';
+import { Eye, FileSpreadsheet, FileText, Trash2, Truck, Users, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import * as XLSX from 'xlsx-js-style';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
@@ -24,7 +25,6 @@ interface Planeacion {
     despachado_por_nombre: string | null;
     total_rutas: number;
     total_tripulantes: number;
-    total_novedades: number;
     placas: string[];
 }
 
@@ -73,6 +73,7 @@ export default function HistorialModulacion({ planeaciones, filters }: Props) {
     const [fechaDesde, setFechaDesde] = useState(filters.fecha_desde ?? '');
     const [fechaHasta, setFechaHasta] = useState(filters.fecha_hasta ?? '');
     const [placa, setPlaca] = useState(filters.placa ?? '');
+    const [exportUrl, setExportUrl] = useState<string | null>(null);
 
     const debouncedFechaDesde = useDebouncedValue(fechaDesde);
     const debouncedFechaHasta = useDebouncedValue(fechaHasta);
@@ -116,6 +117,51 @@ export default function HistorialModulacion({ planeaciones, filters }: Props) {
         }
     };
 
+    const handleExportExcel = (fecha: string) => {
+        const url = route('reparto.modulacion.index', {
+            fecha,
+            readOnly: 'true',
+            exportExcel: 'true',
+            _export: Date.now(),
+        });
+        setExportUrl(url);
+    };
+
+    const handleExportarHistorial = () => {
+        if (planeaciones.data.length === 0) {
+            alert('No hay planeaciones en la tabla para exportar.');
+            return;
+        }
+
+        const filas = planeaciones.data.map((plan) => [
+            formatFecha(plan.fecha),
+            getDiaSemana(plan.fecha),
+            plan.ud_programado_por ?? '',
+            plan.despachado_por_nombre ?? '',
+            plan.total_rutas,
+            plan.total_tripulantes,
+            plan.placas.join(', '),
+        ]);
+        const worksheet = XLSX.utils.aoa_to_sheet([
+            ['Fecha', 'Día', 'Programado por', 'Despachado por', 'Rutas', 'Tripulantes', 'Vehículos'],
+            ...filas,
+        ]);
+        worksheet['!cols'] = [
+            { wch: 14 },
+            { wch: 16 },
+            { wch: 28 },
+            { wch: 28 },
+            { wch: 10 },
+            { wch: 14 },
+            { wch: 36 },
+        ];
+
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Historial');
+        const fechaArchivo = new Date().toISOString().slice(0, 10);
+        XLSX.writeFile(workbook, `Historial_Planeaciones_${fechaArchivo}.xlsx`);
+    };
+
     const hasActiveFilters = Boolean(fechaDesde || fechaHasta || placa);
 
     return (
@@ -128,12 +174,18 @@ export default function HistorialModulacion({ planeaciones, filters }: Props) {
                         title="Historial de Planeaciones de Ruta"
                         description={`${planeaciones.total} planeación${planeaciones.total !== 1 ? 'es' : ''} registrada${planeaciones.total !== 1 ? 's' : ''}.`}
                     />
-                    <Button asChild>
-                        <Link href={route('reparto.modulacion.index')}>
-                            <Truck className="size-4" />
-                            Nueva planeación
-                        </Link>
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                        <Button type="button" variant="outline" onClick={handleExportarHistorial}>
+                            <FileSpreadsheet className="size-4 text-emerald-600" />
+                            Exportar Excel
+                        </Button>
+                        <Button asChild>
+                            <Link href={route('reparto.modulacion.index')}>
+                                <Truck className="size-4" />
+                                Nueva planeación
+                            </Link>
+                        </Button>
+                    </div>
                 </div>
 
                 <form className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" onSubmit={(e) => e.preventDefault()}>
@@ -175,7 +227,6 @@ export default function HistorialModulacion({ planeaciones, filters }: Props) {
                                 <TableHead>Despachado por</TableHead>
                                 <TableHead className="text-center">Rutas</TableHead>
                                 <TableHead className="text-center">Tripulantes</TableHead>
-                                <TableHead className="text-center">Novedades</TableHead>
                                 <TableHead className="min-w-[200px]">Vehículos</TableHead>
                                 <TableHead className="text-right">Acciones</TableHead>
                             </TableRow>
@@ -183,7 +234,7 @@ export default function HistorialModulacion({ planeaciones, filters }: Props) {
                         <TableBody>
                             {planeaciones.data.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={8} className="py-12 text-center text-muted-foreground">
+                                    <TableCell colSpan={7} className="py-12 text-center text-muted-foreground">
                                         <div className="flex flex-col items-center gap-2">
                                             <FileText className="size-9 text-muted-foreground/50" />
                                             <span>
@@ -219,13 +270,6 @@ export default function HistorialModulacion({ planeaciones, filters }: Props) {
                                                 {plan.total_tripulantes}
                                             </Badge>
                                         </TableCell>
-                                        <TableCell className="text-center">
-                                            {plan.total_novedades > 0 ? (
-                                                <Badge variant="secondary">{plan.total_novedades}</Badge>
-                                            ) : (
-                                                <span className="text-xs text-muted-foreground">—</span>
-                                            )}
-                                        </TableCell>
                                         <TableCell>
                                             <div className="flex flex-wrap gap-1">
                                                 {plan.placas.length === 0 ? (
@@ -241,6 +285,15 @@ export default function HistorialModulacion({ planeaciones, filters }: Props) {
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex justify-end gap-2">
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={() => handleExportExcel(plan.fecha)}
+                                                    aria-label={`Exportar planeación del ${formatFecha(plan.fecha)} a Excel`}
+                                                >
+                                                    <FileSpreadsheet className="size-3.5 text-emerald-600" />
+                                                    Excel
+                                                </Button>
                                                 <Button size="sm" variant="outline" asChild>
                                                     <Link href={route('reparto.modulacion.index', { fecha: plan.fecha, readOnly: 'true' })}>
                                                         <Eye className="size-3.5" />
@@ -283,6 +336,15 @@ export default function HistorialModulacion({ planeaciones, filters }: Props) {
                             ))}
                         </div>
                     </div>
+                )}
+
+                {exportUrl && (
+                    <iframe
+                        key={exportUrl}
+                        src={exportUrl}
+                        title="Exportación de planeación a Excel"
+                        className="hidden"
+                    />
                 )}
             </div>
         </AppLayout>

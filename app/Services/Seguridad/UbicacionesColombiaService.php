@@ -41,16 +41,30 @@ class UbicacionesColombiaService
      */
     private function consultarConCache(string $clave, string $ruta): array
     {
-        $datosEnCache = Cache::get($clave);
+        try {
+            $datosEnCache = Cache::get($clave);
 
-        if (is_array($datosEnCache) && $datosEnCache !== []) {
-            return $datosEnCache;
+            if (is_array($datosEnCache) && $datosEnCache !== []) {
+                return $datosEnCache;
+            }
+        } catch (Throwable $e) {
+            Log::warning('No se pudo leer la caché de ubicaciones externas.', [
+                'clave' => $clave,
+                'error' => $e->getMessage(),
+            ]);
         }
 
         $datos = $this->consultar($ruta);
 
         if ($datos !== []) {
-            Cache::put($clave, $datos, config('seguridad.referencias_externas.cache_ttl_segundos'));
+            try {
+                Cache::put($clave, $datos, config('seguridad.referencias_externas.cache_ttl_segundos'));
+            } catch (Throwable $e) {
+                Log::warning('No se pudo guardar la caché de ubicaciones externas.', [
+                    'clave' => $clave,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
 
         return $datos;

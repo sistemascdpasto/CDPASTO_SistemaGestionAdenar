@@ -15,6 +15,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
@@ -33,6 +34,17 @@ class ModulacionController extends Controller
         return $this->responderUbicaciones(fn () => $ubicaciones->municipios());
     }
 
+    public function registrarMunicipio(Request $request, ModulacionUbicacionesService $ubicaciones): JsonResponse
+    {
+        $validated = $request->validate([
+            'nombre' => ['required', 'string', 'max:100'],
+        ]);
+
+        return response()->json([
+            'data' => $ubicaciones->registrarMunicipio($validated['nombre']),
+        ]);
+    }
+
     public function barrios(Request $request, ModulacionUbicacionesService $ubicaciones): JsonResponse
     {
         $validated = $request->validate([
@@ -43,6 +55,18 @@ class ModulacionController extends Controller
             fn () => $ubicaciones->barrios($validated['municipio_id']),
             incluirSobreData: false
         );
+    }
+
+    public function registrarBarrio(Request $request, ModulacionUbicacionesService $ubicaciones): JsonResponse
+    {
+        $validated = $request->validate([
+            'municipio_id' => ['required', 'string', 'regex:/^\d+$/', 'max:20'],
+            'nombre' => ['required', 'string', 'max:200'],
+        ]);
+
+        return response()->json([
+            'data' => $ubicaciones->registrarBarrio($validated['municipio_id'], $validated['nombre']),
+        ]);
     }
 
     private function responderUbicaciones(callable $consulta, bool $incluirSobreData = true): JsonResponse
@@ -196,6 +220,7 @@ class ModulacionController extends Controller
             'vehiculos'      => $vehiculos,
             'currentUser'    => $request->user()?->name ?? 'Usuario',
             'readOnly'       => $request->boolean('readOnly', false),
+            'exportExcel'    => $request->boolean('exportExcel', false),
         ]);
     }
 
@@ -321,6 +346,9 @@ class ModulacionController extends Controller
             'rutas.*.viajes' => 'nullable|array',
             'rutas.*.viajes.*.lugares' => 'nullable|string|max:255',
             'rutas.*.viajes.*.barrio' => 'nullable|string|max:200',
+            'rutas.*.viajes.*.destinos' => 'nullable|array',
+            'rutas.*.viajes.*.destinos.*.lugares' => 'required|string|max:255',
+            'rutas.*.viajes.*.destinos.*.barrio' => 'required|string|max:200',
             'rutas.*.viajes.*.cliente' => 'nullable|string|max:255',
             'rutas.*.viajes.*.peso' => 'nullable|string|max:100',
             'novedades' => 'nullable|array',
@@ -476,34 +504,88 @@ class ModulacionController extends Controller
         }
 
         return redirect()
-            ->route('reparto.modulacion.index', ['fecha' => $modulacion->fecha])
+            ->route('reparto.modulacion.index', [
+                'fecha' => $modulacion->fecha,
+                'readOnly' => 'true',
+            ])
             ->with('success', 'Planeación de ruta guardada exitosamente.');
     }
 
     public function destroyItem(int $id): RedirectResponse
     {
-        $item = ModulacionItem::findOrFail($id);
-        $modulacionId = $item->modulacion_id;
-        $item->delete();
+        $resultado = DB::transaction(function () use ($id): array {
+            $item = ModulacionItem::findOrFail($id);
+            $modulacion = Modulacion::query()
+                ->lockForUpdate()
+                ->findOrFail($item->modulacion_id);
 
-        // Si no quedan ítems, eliminar la planeación completa
-        $modulacion = Modulacion::withCount('items')->find($modulacionId);
-        if ($modulacion && $modulacion->items_count === 0) {
+            $item->delete();
+
+            if (! $modulacion->items()->exists()) {
+                $modulacion->novedades()->delete();
+                $modulacion->forceDelete();
+
+                return ['planeacionEliminada' => true, 'rutaEliminada' => true];
+            }
+
+            return ['planeacionEliminada' => false, 'rutaEliminada' => true];
+        });
+
+        return redirect()->back()->with(
+            'success',
+            $resultado['planeacionEliminada']
+                ? 'Planeación eliminada porque no tiene rutas.'
+                : 'Ruta eliminada de la modulación.'
+        );
+    }
+
+    public function destroyViaje(int $id, int $viajeIndex): RedirectResponse
+    {
+        $resultado = DB::transaction(function () use ($id, $viajeIndex): array {
+            $item = ModulacionItem::query()->lockForUpdate()->findOrFail($id);
+            $modulacion = Modulacion::query()
+                ->lockForUpdate()
+                ->findOrFail($item->modulacion_id);
+            $viajes = $item->viajes ?? [];
+
+            abort_unless(array_key_exists($viajeIndex, $viajes), 404, 'El viaje solicitado no existe.');
+
+            array_splice($viajes, $viajeIndex, 1);
+            if ($viajes !== []) {
+                $item->update(['viajes' => array_values($viajes)]);
+
+                return ['rutaEliminada' => false, 'planeacionEliminada' => false];
+            }
+
+            $item->delete();
+            if ($modulacion->items()->exists()) {
+                return ['rutaEliminada' => true, 'planeacionEliminada' => false];
+            }
+
             $modulacion->novedades()->delete();
-            $modulacion->delete();
-            return redirect()->route('reparto.modulacion.historial')
-                ->with('success', 'Planeación eliminada porque no tiene rutas.');
-        }
+            $modulacion->forceDelete();
 
-        return redirect()->back()->with('success', 'Ruta eliminada de la modulación.');
+            return ['rutaEliminada' => true, 'planeacionEliminada' => true];
+        });
+
+        return redirect()->back()->with(
+            'success',
+            $resultado['planeacionEliminada']
+                ? 'Planeación eliminada porque no tiene rutas.'
+                : ($resultado['rutaEliminada']
+                    ? 'Ruta eliminada porque ya no tenía viajes.'
+                    : 'Viaje eliminado de la ruta.')
+        );
     }
 
     public function destroyModulacion(int $id): RedirectResponse
     {
-        $modulacion = Modulacion::findOrFail($id);
-        $modulacion->items()->delete();
-        $modulacion->novedades()->delete();
-        $modulacion->delete();
+        DB::transaction(function () use ($id): void {
+            $modulacion = Modulacion::query()->lockForUpdate()->findOrFail($id);
+            $modulacion->items()->delete();
+            $modulacion->novedades()->delete();
+            $modulacion->forceDelete();
+        });
 
         return redirect()->route('reparto.modulacion.historial')
             ->with('success', 'Planeación de ruta eliminada exitosamente.');

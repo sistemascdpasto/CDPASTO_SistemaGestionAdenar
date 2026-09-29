@@ -60,37 +60,7 @@ class ModulacionUbicacionesService
      */
     public function municipios(): array
     {
-        $municipiosApi = [];
-        try {
-            $payload = $this->consultarArcgis(self::DANE_BASE.'/317/query', [
-                'where' => "DPTO_CCDGO = '".self::CODIGO_NARINO."'",
-                'outFields' => 'MPIO_CDPMP,MPIO_CNMBRE,DPTO_CCDGO',
-                'returnGeometry' => 'false',
-                'orderByFields' => 'MPIO_CNMBRE',
-            ], 'municipios de Nariño');
-
-            $municipiosApi = collect($payload['features'])
-                ->map(fn (array $feature) => $feature['attributes'] ?? [])
-                ->filter(fn (array $attributes) => ($attributes['DPTO_CCDGO'] ?? null) === self::CODIGO_NARINO
-                    && ! empty($attributes['MPIO_CDPMP'])
-                    && ! empty($attributes['MPIO_CNMBRE']))
-                ->map(fn (array $attributes) => [
-                    'codigo_dane' => (string) $attributes['MPIO_CDPMP'],
-                    'nombre' => mb_convert_case((string) $attributes['MPIO_CNMBRE'], MB_CASE_TITLE, 'UTF-8'),
-                    'id_externo' => null,
-                ])
-                ->unique('codigo_dane')
-                ->values()
-                ->all();
-        } catch (ConnectionException|RequestException|RuntimeException $exception) {
-            Log::warning('No se pudo actualizar el catálogo de municipios desde DANE.', [
-                'error' => $exception->getMessage(),
-            ]);
-        }
-
-        if ($municipiosApi === []) {
-            $municipiosApi = $this->municipiosDesdeApiColombia();
-        }
+        $municipiosApi = $this->municipiosDesdeApiColombia();
 
         try {
             if (! Schema::hasTable('modulacion_municipios')) {
@@ -119,7 +89,7 @@ class ModulacionUbicacionesService
                         'codigo_dane' => $municipioApi['codigo_dane'],
                         'nombre' => $municipioApi['nombre'],
                         'nombre_normalizado' => $normalizado,
-                        'origen' => 'dane',
+                        'origen' => 'api_colombia',
                     ]);
                 }
 
@@ -145,7 +115,7 @@ class ModulacionUbicacionesService
                 ->values()
                 ->all();
         } catch (\PDOException $exception) {
-            Log::warning('No se pudo acceder al catálogo local de municipios; se usará la respuesta de DANE.', [
+            Log::warning('No se pudo acceder al catálogo local de municipios; se usará la respuesta de api-colombia.com.', [
                 'error' => $exception->getMessage(),
             ]);
 
@@ -168,7 +138,7 @@ class ModulacionUbicacionesService
     }
 
     /**
-     * Uses the same external catalog as the Gente module when DANE is unavailable.
+     * Carga los municipios de Nariño desde el catálogo externo compartido con Gente.
      *
      * @return array<int, array{codigo_dane: null, nombre: string, id_externo: string}>
      */
@@ -218,15 +188,22 @@ class ModulacionUbicacionesService
     {
         foreach ($rutas as $ruta) {
             foreach ($ruta['viajes'] ?? [] as $viaje) {
-                $nombreMunicipio = trim((string) ($viaje['lugares'] ?? ''));
-                if ($nombreMunicipio === '') {
-                    continue;
-                }
+                $destinos = $viaje['destinos'] ?? [[
+                    'lugares' => $viaje['lugares'] ?? '',
+                    'barrio' => $viaje['barrio'] ?? '',
+                ]];
 
-                $municipio = $this->registrarMunicipio($nombreMunicipio);
-                $nombreBarrio = trim((string) ($viaje['barrio'] ?? ''));
-                if ($nombreBarrio !== '') {
-                    $this->registrarBarrio($municipio['id'], $nombreBarrio);
+                foreach ($destinos as $destino) {
+                    $nombreMunicipio = trim((string) ($destino['lugares'] ?? ''));
+                    if ($nombreMunicipio === '') {
+                        continue;
+                    }
+
+                    $municipio = $this->registrarMunicipio($nombreMunicipio);
+                    $nombreBarrio = trim((string) ($destino['barrio'] ?? ''));
+                    if ($nombreBarrio !== '') {
+                        $this->registrarBarrio($municipio['id'], $nombreBarrio);
+                    }
                 }
             }
         }

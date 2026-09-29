@@ -15,6 +15,7 @@ import {
     FileSpreadsheet,
     FileText,
     Filter,
+    LoaderCircle,
     MapPin,
     Pencil,
     Plus,
@@ -22,6 +23,7 @@ import {
     Search,
     Trash2,
     Users,
+    X,
 } from 'lucide-react';
 import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import * as XLSX from 'xlsx-js-style';
@@ -46,9 +48,51 @@ interface Viaje {
     id?: string;
     lugares: string;
     barrio: string;
+    destinos?: DestinoViaje[];
     cliente: string;
     peso: string;
 }
+
+interface DestinoViaje {
+    lugares: string;
+    barrio: string;
+}
+
+interface ViajeRegistrado {
+    viaje: Viaje;
+    indice: number;
+}
+
+const obtenerDestinosViaje = (viaje: Viaje): DestinoViaje[] =>
+    viaje.destinos?.length
+        ? viaje.destinos
+        : viaje.lugares || viaje.barrio
+          ? [{ lugares: viaje.lugares, barrio: viaje.barrio }]
+          : [];
+
+const quitarDestinoDeViaje = (viaje: Viaje, destinoIndex: number): Viaje => {
+    const destinos = obtenerDestinosViaje(viaje).filter((_, index) => index !== destinoIndex);
+
+    return {
+        ...viaje,
+        lugares: destinos[0]?.lugares ?? '',
+        barrio: destinos[0]?.barrio ?? '',
+        destinos: destinos.length > 0 ? destinos : undefined,
+    };
+};
+
+const combinarViajes = (...listas: Viaje[][]): Viaje[] => {
+    const viajes: Viaje[] = [];
+    const ids = new Set<string>();
+
+    listas.flat().forEach((viaje) => {
+        if (viaje.id && ids.has(viaje.id)) return;
+        if (viaje.id) ids.add(viaje.id);
+        viajes.push(viaje);
+    });
+
+    return viajes;
+};
 
 interface RutaFormState {
     id?: number;
@@ -117,8 +161,25 @@ interface Props {
     vehiculos: string[];
     currentUser: string;
     readOnly?: boolean;
+    exportExcel?: boolean;
     fijosIniciales?: FijoInicial[];
 }
+
+const CARGOS_TRIPULACION_OPERATIVA = new Set([
+    'CONDUCTOR',
+    'CONDUCTOR DE REPARTO',
+    'CONDUCTOR MULA',
+    'AUXILIAR DE REPARTO',
+]);
+
+const esPersonalOperativoDeRuta = (cargo: string | null | undefined): boolean =>
+    CARGOS_TRIPULACION_OPERATIVA.has(
+        (cargo ?? '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .trim()
+            .toUpperCase(),
+    );
 
 const mapModulacionItems = (items: ModulacionItemData[]): RutaFormState[] =>
     items.map((item) => ({
@@ -126,7 +187,7 @@ const mapModulacionItems = (items: ModulacionItemData[]): RutaFormState[] =>
         placa: item.placa,
         doc_tras: item.doc_tras ?? '',
         cargo: item.cargo ?? '',
-        tripulacion: item.tripulacion ?? [],
+        tripulacion: (item.tripulacion ?? []).filter((miembro) => esPersonalOperativoDeRuta(miembro.cargo)),
         viajes: (item.viajes ?? []).map((viaje, index) => ({
             ...viaje,
             lugares: viaje.lugares ?? '',
@@ -186,6 +247,30 @@ function parseOpcionesUbicacion(value: unknown): OpcionUbicacion[] {
     });
 }
 
+async function guardarReferenciaUbicacion(
+    url: string,
+    payload: Record<string, string>,
+): Promise<OpcionUbicacion> {
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null)?.content ?? '',
+        },
+        body: JSON.stringify(payload),
+    });
+    const json = (await response.json()) as { data?: unknown; message?: unknown };
+
+    if (!response.ok) {
+        throw new Error(
+            typeof json.message === 'string' ? json.message : `El servidor respondió HTTP ${response.status}.`,
+        );
+    }
+
+    return parseOpcionesUbicacion([json.data])[0];
+}
+
 function NarinoMunicipioInput({
     value,
     onChange,
@@ -193,6 +278,12 @@ function NarinoMunicipioInput({
     onBarrioChange,
     cliente,
     onClienteChange,
+    puedeAgregarViaje,
+    viajesRegistrados,
+    destinosPendientes,
+    onDestinoAgregado,
+    onEliminarDestinoRegistrado,
+    onEliminarDestinoPendiente,
 }: {
     value: string;
     onChange: (val: string) => void;
@@ -200,13 +291,39 @@ function NarinoMunicipioInput({
     onBarrioChange: (val: string) => void;
     cliente: string;
     onClienteChange: (val: string) => void;
+    puedeAgregarViaje: boolean;
+    viajesRegistrados: ViajeRegistrado[];
+    destinosPendientes: DestinoViaje[];
+    onDestinoAgregado: (destino: DestinoViaje) => void;
+    onEliminarDestinoRegistrado: (viajeIndex: number, destinoIndex: number) => void;
+    onEliminarDestinoPendiente: (destinoIndex: number) => void;
 }) {
     const baseId = useId();
+    const [municipioInput, setMunicipioInput] = useState(value);
+    const [barrioInput, setBarrioInput] = useState(barrio);
+    const ultimoMunicipioRef = useRef(value);
+    const ultimoBarrioRef = useRef(barrio);
     const [municipios, setMunicipios] = useState<OpcionUbicacion[]>([]);
     const [barrios, setBarrios] = useState<OpcionUbicacion[]>([]);
     const [municipiosLoading, setMunicipiosLoading] = useState(true);
     const [barriosLoading, setBarriosLoading] = useState(false);
+    const [municipioGuardando, setMunicipioGuardando] = useState(false);
+    const [barrioGuardando, setBarrioGuardando] = useState(false);
     const [ubicacionesError, setUbicacionesError] = useState('');
+
+    useEffect(() => {
+        if (ultimoMunicipioRef.current !== value) {
+            ultimoMunicipioRef.current = value;
+            setMunicipioInput(value);
+        }
+    }, [value]);
+
+    useEffect(() => {
+        if (ultimoBarrioRef.current !== barrio) {
+            ultimoBarrioRef.current = barrio;
+            setBarrioInput(barrio);
+        }
+    }, [barrio]);
 
     useEffect(() => {
         const controller = new AbortController();
@@ -244,9 +361,92 @@ function NarinoMunicipioInput({
     }, []);
 
     const municipioSeleccionado = municipios.find((municipio) =>
-        municipio.nombre.localeCompare(value.trim(), 'es', { sensitivity: 'base' }) === 0,
+        municipio.nombre.localeCompare(municipioInput.trim(), 'es', { sensitivity: 'base' }) === 0,
     );
     const municipioSeleccionadoId = municipioSeleccionado?.id;
+    const municipioNuevo = municipioInput.trim() !== '' && !municipios.some(
+        (municipio) => municipio.nombre.localeCompare(municipioInput.trim(), 'es', { sensitivity: 'base' }) === 0,
+    );
+    const barrioNuevo = barrioInput.trim() !== '' && !barrios.some(
+        (opcion) => opcion.nombre.localeCompare(barrioInput.trim(), 'es', { sensitivity: 'base' }) === 0,
+    );
+
+    const agregarMunicipio = async () => {
+        setMunicipioGuardando(true);
+        setUbicacionesError('');
+        try {
+            const municipio = await guardarReferenciaUbicacion(
+                route('reparto.modulacion.referencias.municipios.registrar'),
+                { nombre: value },
+            );
+            setMunicipios((actuales) => [
+                ...actuales.filter(
+                    (opcion) => opcion.nombre.localeCompare(municipio.nombre, 'es', { sensitivity: 'base' }) !== 0,
+                ),
+                municipio,
+            ]);
+            setMunicipioInput(municipio.nombre);
+            ultimoMunicipioRef.current = municipio.nombre;
+            onChange(municipio.nombre);
+            onBarrioChange('');
+        } catch (error) {
+            setUbicacionesError(error instanceof Error ? error.message : 'No se pudo agregar el municipio.');
+        } finally {
+            setMunicipioGuardando(false);
+        }
+    };
+
+    const agregarBarrio = async () => {
+        const nombreMunicipio = municipioInput.trim();
+        const nombreBarrio = barrioInput.trim();
+        if (!nombreMunicipio || !nombreBarrio) return;
+
+        setBarrioGuardando(true);
+        setUbicacionesError('');
+        try {
+            let municipio = municipioSeleccionado;
+            if (!municipio) {
+                const municipioGuardado = await guardarReferenciaUbicacion(
+                    route('reparto.modulacion.referencias.municipios.registrar'),
+                    { nombre: nombreMunicipio },
+                );
+                setMunicipios((actuales) => [
+                    ...actuales.filter(
+                        (opcion) => opcion.nombre.localeCompare(municipioGuardado.nombre, 'es', { sensitivity: 'base' }) !== 0,
+                    ),
+                    municipioGuardado,
+                ]);
+                municipio = municipioGuardado;
+                setMunicipioInput(municipioGuardado.nombre);
+                ultimoMunicipioRef.current = municipioGuardado.nombre;
+                onChange(municipioGuardado.nombre);
+            }
+
+            const barrioGuardado = await guardarReferenciaUbicacion(
+                route('reparto.modulacion.referencias.barrios.registrar'),
+                { municipio_id: municipio.id, nombre: nombreBarrio },
+            );
+            setBarrios((actuales) => [
+                ...actuales.filter(
+                    (actual) => actual.nombre.localeCompare(barrioGuardado.nombre, 'es', { sensitivity: 'base' }) !== 0,
+                ),
+                barrioGuardado,
+            ]);
+            if (!puedeAgregarViaje) {
+                setUbicacionesError('Barrio guardado en el catálogo. Seleccione una placa y pulse + nuevamente para agregarlo al viaje.');
+                return;
+            }
+
+            setBarrioInput('');
+            ultimoBarrioRef.current = '';
+            onBarrioChange('');
+            onDestinoAgregado({ lugares: municipio.nombre, barrio: barrioGuardado.nombre });
+        } catch (error) {
+            setUbicacionesError(error instanceof Error ? error.message : 'No se pudo agregar el barrio.');
+        } finally {
+            setBarrioGuardando(false);
+        }
+    };
 
     useEffect(() => {
         if (!municipioSeleccionadoId) {
@@ -307,41 +507,150 @@ function NarinoMunicipioInput({
             </div>
             <div>
                 <Label htmlFor={`${baseId}-municipio`} className="text-xs font-medium text-muted-foreground">Municipio / Destino</Label>
-                <Input
-                    id={`${baseId}-municipio`}
-                    name={`${baseId}-municipio`}
-                    list={`${baseId}-municipios-list`}
-                    value={value}
-                    onChange={(event) => {
-                        onChange(event.target.value);
-                        onBarrioChange('');
-                    }}
-                    placeholder={municipiosLoading ? 'Cargando municipios...' : 'Seleccione o escriba un municipio'}
-                    className="mt-0.5 h-10 text-sm"
-                    autoComplete="off"
-                />
+                <div className="mt-0.5 flex gap-2">
+                    <Input
+                        id={`${baseId}-municipio`}
+                        name={`${baseId}-municipio`}
+                        list={`${baseId}-municipios-list`}
+                        value={municipioInput}
+                        onChange={(event) => {
+                            setMunicipioInput(event.target.value);
+                            ultimoMunicipioRef.current = event.target.value;
+                            onChange(event.target.value);
+                            onBarrioChange('');
+                        }}
+                        placeholder={municipiosLoading ? 'Cargando municipios...' : 'Seleccione o escriba un municipio'}
+                        className="h-10 text-sm"
+                        autoComplete="off"
+                    />
+                    {municipioNuevo && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            aria-label="Guardar municipio y seleccionarlo para el viaje"
+                            title="Guardar municipio en el catálogo"
+                            disabled={municipioGuardando}
+                            onClick={() => void agregarMunicipio()}
+                        >
+                            {municipioGuardando ? <LoaderCircle className="size-4 animate-spin" /> : <Plus className="size-4" />}
+                        </Button>
+                    )}
+                </div>
                 <datalist id={`${baseId}-municipios-list`}>
                     {municipios.map((municipio) => (
                         <option key={municipio.id} value={municipio.nombre} />
                     ))}
                 </datalist>
+                {!municipioInput.trim() && value.trim() && (
+                    <p className="mt-1 text-xs text-muted-foreground" aria-live="polite">
+                        Municipio agregado a este viaje: <span className="font-medium text-foreground">{value}</span>
+                    </p>
+                )}
             </div>
             <div className="grid gap-1.5">
                 <Label htmlFor={`${baseId}-barrio`} className="text-xs font-medium text-muted-foreground">Barrio</Label>
-                <Input
-                    id={`${baseId}-barrio`}
-                    name={`${baseId}-barrio`}
-                    list={`${baseId}-barrios-list`}
-                    value={barrio}
-                    onChange={(event) => onBarrioChange(event.target.value)}
-                    disabled={!value.trim()}
-                    placeholder={value.trim() ? 'Seleccione o escriba un barrio' : 'Escriba primero el municipio'}
-                    className="mt-0.5 h-10 text-sm"
-                    autoComplete="off"
-                />
+                <div className="mt-0.5 flex gap-2">
+                    <Input
+                        id={`${baseId}-barrio`}
+                        name={`${baseId}-barrio`}
+                        list={`${baseId}-barrios-list`}
+                        value={barrioInput}
+                        onChange={(event) => {
+                            setBarrioInput(event.target.value);
+                            ultimoBarrioRef.current = event.target.value;
+                            onBarrioChange(event.target.value);
+                        }}
+                        disabled={!municipioInput.trim()}
+                        placeholder={municipioInput.trim() ? 'Seleccione o escriba un barrio' : 'Escriba primero el municipio'}
+                        className="h-10 text-sm"
+                        autoComplete="off"
+                    />
+                    {barrioInput.trim() && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            aria-label="Agregar destino a la planeación"
+                            title={
+                                !municipioInput.trim()
+                                    ? 'Agregue primero el municipio'
+                                    : !puedeAgregarViaje
+                                      ? 'Guardar barrio en catálogo; seleccione una placa para agregarlo al viaje'
+                                      : barrioNuevo
+                                        ? 'Guardar barrio y agregar destino a la planeación'
+                                        : 'Agregar destino a la planeación'
+                            }
+                            disabled={!municipioInput.trim() || barrioGuardando}
+                            onClick={() => void agregarBarrio()}
+                        >
+                            {barrioGuardando ? <LoaderCircle className="size-4 animate-spin" /> : <Plus className="size-4" />}
+                        </Button>
+                    )}
+                </div>
                 <datalist id={`${baseId}-barrios-list`}>
                     {barrios.map((opcion) => <option key={opcion.id} value={opcion.nombre} />)}
                 </datalist>
+                {(viajesRegistrados.length > 0 || destinosPendientes.length > 0) && (
+                    <div className="mt-1 rounded-md border border-border/70 bg-muted/30 p-2 text-xs" aria-live="polite">
+                        <p className="mb-1 font-medium text-foreground">
+                            Destinos de la ruta ({viajesRegistrados.length + (destinosPendientes.length > 0 ? 1 : 0)} viajes)
+                        </p>
+                        <ul className="space-y-0.5 text-muted-foreground">
+                            {viajesRegistrados.map((viaje, viajeIndex) => (
+                                <li key={viaje.viaje.id ?? `viaje-registrado-${viajeIndex}`}>
+                                    <span className="font-medium text-foreground">Viaje {viajeIndex + 1}:</span>
+                                    <span className="ml-1 inline-flex flex-col gap-0.5">
+                                        {obtenerDestinosViaje(viaje.viaje).map((destino, destinoIndex) => (
+                                            <span key={`${destino.lugares}-${destino.barrio}-${destinoIndex}`} className="inline-flex items-center gap-1">
+                                                {destino.lugares} — {destino.barrio}
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="size-4 text-muted-foreground hover:text-destructive"
+                                                    aria-label={`Quitar ${destino.lugares}, ${destino.barrio} del viaje ${viajeIndex + 1}`}
+                                                    title="Quitar destino"
+                                                    onClick={() => onEliminarDestinoRegistrado(viaje.indice, destinoIndex)}
+                                                >
+                                                    <X className="size-3" />
+                                                </Button>
+                                            </span>
+                                        ))}
+                                    </span>
+                                </li>
+                            ))}
+                            {destinosPendientes.length > 0 && (
+                                <li>
+                                    <span className="font-medium text-foreground">Viaje {viajesRegistrados.length + 1} (en edición):</span>
+                                    <span className="ml-1 inline-flex flex-col gap-0.5">
+                                        {destinosPendientes.map((destino, destinoIndex) => (
+                                            <span key={`${destino.lugares}-${destino.barrio}-${destinoIndex}`} className="inline-flex items-center gap-1">
+                                                {destino.lugares} — {destino.barrio}
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="size-4 text-muted-foreground hover:text-destructive"
+                                                    aria-label={`Quitar ${destino.lugares}, ${destino.barrio} del viaje en edición`}
+                                                    title="Quitar destino"
+                                                    onClick={() => onEliminarDestinoPendiente(destinoIndex)}
+                                                >
+                                                    <X className="size-3" />
+                                                </Button>
+                                            </span>
+                                        ))}
+                                    </span>
+                                </li>
+                            )}
+                        </ul>
+                    </div>
+                )}
+                {!barrioInput.trim() && barrio.trim() && (
+                    <p className="text-xs text-muted-foreground" aria-live="polite">
+                        Barrio agregado a este viaje: <span className="font-medium text-foreground">{barrio}</span>
+                    </p>
+                )}
                 <p className="text-xs text-muted-foreground" aria-live="polite">
                     {barriosLoading
                         ? 'Cargando barrios del municipio...'
@@ -387,6 +696,7 @@ export default function ModulacionIndex({
     vehiculos = [],
     currentUser,
     readOnly = false,
+    exportExcel = false,
     fijosIniciales = [],
 }: Props) {
     // Modo edición: false por defecto si se llega en modo lectura
@@ -471,6 +781,7 @@ export default function ModulacionIndex({
         setRutas([]);
         setCurrentRoute(createEmptyRoute());
         setCurrentViajeForm({ lugares: '', barrio: '', cliente: '', peso: '' });
+        setDestinosViajePendientes([]);
         setEditingIndex(null);
         setEditingViajeIndex(null);
         setFilterTablePlaca('todas');
@@ -588,6 +899,7 @@ export default function ModulacionIndex({
         cliente: '',
         peso: '',
     });
+    const [destinosViajePendientes, setDestinosViajePendientes] = useState<DestinoViaje[]>([]);
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
     const [editingViajeIndex, setEditingViajeIndex] = useState<number | null>(null);
 
@@ -602,6 +914,7 @@ export default function ModulacionIndex({
     useEffect(() => {
         setCurrentRoute(createEmptyRoute());
         setCurrentViajeForm({ lugares: '', barrio: '', cliente: '', peso: '' });
+        setDestinosViajePendientes([]);
         setEditingIndex(null);
         setEditingViajeIndex(null);
 
@@ -665,6 +978,7 @@ export default function ModulacionIndex({
             cliente: viajeToEdit.cliente ?? '',
             peso: viajeToEdit.peso ?? '',
         });
+        setDestinosViajePendientes(viajeToEdit.destinos ?? []);
         setEditingIndex(rutaIndex);
         setEditingViajeIndex(viajeIndex); // Establecer índice del viaje específico
         setIsEditing(true);
@@ -693,21 +1007,33 @@ export default function ModulacionIndex({
 
         if (placaUpper === currentPlacaUpper) return;
 
-        setCurrentRoute({
-            placa: placaUpper,
-            doc_tras: '',
-            cargo: '',
-            tripulacion: [],
-            viajes: [],
-        });
-        setEditingIndex(null);
+        const rutaExistenteIndex = rutas.findIndex(
+            (ruta) => ruta.placa.trim().toUpperCase() === placaUpper,
+        );
+        const rutaExistente = rutaExistenteIndex >= 0 ? rutas[rutaExistenteIndex] : null;
+
+        setCurrentRoute(rutaExistente
+            ? {
+                ...rutaExistente,
+                tripulacion: [...rutaExistente.tripulacion],
+                viajes: [...rutaExistente.viajes],
+            }
+            : {
+                placa: placaUpper,
+                doc_tras: '',
+                cargo: '',
+                tripulacion: [],
+                viajes: [],
+            });
+        setEditingIndex(rutaExistente ? rutaExistenteIndex : null);
         setEditingViajeIndex(null);
         setCurrentViajeForm({
-            lugares: '',
-            barrio: '',
-            cliente: '',
-            peso: '',
+            lugares: rutaExistente?.viajes.at(-1)?.lugares ?? '',
+            barrio: rutaExistente?.viajes.at(-1)?.barrio ?? '',
+            cliente: rutaExistente?.viajes.at(-1)?.cliente ?? '',
+            peso: rutaExistente?.viajes.at(-1)?.peso ?? '',
         });
+        setDestinosViajePendientes(rutaExistente?.viajes.at(-1)?.destinos ?? []);
         setSearchQuery('');
         setCargoFilter('todos');
     };
@@ -814,7 +1140,13 @@ export default function ModulacionIndex({
         }
 
         const cv = currentViajeForm;
+        const destinos = destinosViajePendientes.length > 0
+            ? destinosViajePendientes
+            : cv.lugares.trim() && cv.barrio.trim()
+              ? [{ lugares: cv.lugares.trim(), barrio: cv.barrio.trim() }]
+              : [];
         const viajeFormLleno =
+            destinos.length > 0 ||
             (cv.lugares && cv.lugares.trim() !== '') ||
             (cv.barrio && cv.barrio.trim() !== '') ||
             (cv.cliente && cv.cliente.toString().trim() !== '') ||
@@ -834,8 +1166,9 @@ export default function ModulacionIndex({
             if (editingViajeIndex >= 0 && editingViajeIndex < updatedViajes.length) {
                 updatedViajes[editingViajeIndex] = {
                     ...updatedViajes[editingViajeIndex],
-                    lugares: cv.lugares || '',
-                    barrio: cv.barrio || '',
+                    lugares: destinos[0]?.lugares ?? cv.lugares,
+                    barrio: destinos[0]?.barrio ?? cv.barrio,
+                    destinos: destinos.length > 0 ? destinos : undefined,
                     cliente: cv.cliente || '',
                     peso: cv.peso || '',
                 };
@@ -863,6 +1196,7 @@ export default function ModulacionIndex({
                 cliente: '',
                 peso: '',
             });
+            setDestinosViajePendientes([]);
             setEditingViajeIndex(null); // Resetear índice de viaje
             alert('Viaje actualizado correctamente');
             return;
@@ -871,27 +1205,30 @@ export default function ModulacionIndex({
         // Agregar viaje, también cuando la placa ya tiene otros viajes en la tabla.
         const newViaje: Viaje = {
             id: generateId(),
-            lugares: cv.lugares || '',
-            barrio: cv.barrio || '',
+            lugares: destinos[0]?.lugares ?? cv.lugares,
+            barrio: destinos[0]?.barrio ?? cv.barrio,
+            destinos: destinos.length > 0 ? destinos : undefined,
             cliente: cv.cliente || '',
             peso: cv.peso || '',
         };
 
-        const updatedViajes = [...(currentRoute.viajes || []), newViaje];
-        updatedRoute = {
-            ...currentRoute,
-            tripulacion: [...(currentRoute.tripulacion || [])],
-            viajes: updatedViajes,
-        };
-
         const existingRouteIndex = rutas.findIndex(
-            (route) => route.placa.toUpperCase() === currentRoute.placa.toUpperCase(),
+            (route) => route.placa.trim().toUpperCase() === currentRoute.placa.trim().toUpperCase(),
         );
-        const routeIndex = existingRouteIndex >= 0 ? existingRouteIndex : rutas.length;
-
+        const routeIndex = editingIndex ?? (existingRouteIndex >= 0 ? existingRouteIndex : rutas.length);
         setRutas((prev) => {
             const updated = [...prev];
-            const existingIdx = updated.findIndex((route) => route.placa.toUpperCase() === currentRoute.placa.toUpperCase());
+            const existingIdx = updated.findIndex(
+                (route) => route.placa.trim().toUpperCase() === currentRoute.placa.trim().toUpperCase(),
+            );
+            const routeToUpdate = existingIdx >= 0 ? updated[existingIdx] : currentRoute;
+            const updatedRoute: RutaFormState = {
+                ...routeToUpdate,
+                ...currentRoute,
+                tripulacion: [...(currentRoute.tripulacion || routeToUpdate.tripulacion || [])],
+                viajes: combinarViajes(routeToUpdate.viajes ?? [], currentRoute.viajes ?? [], [newViaje]),
+            };
+
             if (existingIdx >= 0) {
                 updated[existingIdx] = updatedRoute;
             } else {
@@ -900,22 +1237,88 @@ export default function ModulacionIndex({
             return updated;
         });
 
-        setCurrentRoute({
-            ...updatedRoute,
-            viajes: updatedViajes,
-        });
+        setCurrentRoute((prev) => ({
+            ...prev,
+            ...currentRoute,
+            viajes: combinarViajes(prev.viajes ?? [], currentRoute.viajes ?? [], [newViaje]),
+        }));
+        setEditingViajeIndex(null);
         setEditingIndex(routeIndex);
     };
 
-    const handleRemoveViajeIndividual = (rutaIndex: number, viajeIndex: number) => {
-        if (confirm('¿Está seguro de eliminar este viaje?')) {
-            setRutas((prev) => {
-                const updated = [...prev];
-                if (updated[rutaIndex]?.viajes) {
-                    updated[rutaIndex].viajes = updated[rutaIndex].viajes.filter((_, i) => i !== viajeIndex);
-                }
-                return updated;
+    const handleRemoveViajeIndividual = (placa: string, viajeId: string | undefined, viajeIndex: number) => {
+        if (!confirm('¿Está seguro de eliminar este viaje?')) return;
+
+        const placaNormalizada = placa.trim().toUpperCase();
+        const ruta = rutas.find((item) => item.placa.trim().toUpperCase() === placaNormalizada);
+        if (!ruta) return;
+
+        const viajeActual = ruta.viajes[viajeIndex];
+        const viajeGuardadoIndex = ruta.id
+            ? (rutasGuardadas.find((item) => item.id === ruta.id)?.viajes ?? [])
+                .findIndex((viaje, index) =>
+                    viajeId
+                        ? viaje.id === viajeId || `srv-${ruta.id}-v${index}` === viajeId
+                        : index === viajeIndex,
+                )
+            : -1;
+
+        if (ruta.id && viajeActual && viajeGuardadoIndex >= 0) {
+            router.delete(route('reparto.modulacion.destroyViaje', {
+                id: ruta.id,
+                viajeIndex: viajeGuardadoIndex,
+            }), {
+                preserveScroll: true,
+                onSuccess: () => {
+                    const viajesActualizados = ruta.viajes.filter((viaje) =>
+                        viajeId ? viaje.id !== viajeId : viaje !== viajeActual,
+                    );
+                    const rutasActualizadas = viajesActualizados.length > 0
+                        ? rutas.map((item) =>
+                            item.placa.trim().toUpperCase() === placaNormalizada
+                                ? { ...item, viajes: viajesActualizados }
+                                : item,
+                        )
+                        : rutas.filter((item) => item.placa.trim().toUpperCase() !== placaNormalizada);
+
+                    setRutas(rutasActualizadas);
+                    if (currentRoute.placa.trim().toUpperCase() === placaNormalizada) {
+                        if (viajesActualizados.length > 0) {
+                            setCurrentRoute((prev) => ({ ...prev, viajes: viajesActualizados }));
+                        } else {
+                            setCurrentRoute(createEmptyRoute());
+                            setEditingIndex(null);
+                            setEditingViajeIndex(null);
+                            setCurrentViajeForm({ lugares: '', barrio: '', cliente: '', peso: '' });
+                            setDestinosViajePendientes([]);
+                        }
+                    }
+                },
             });
+            return;
+        }
+
+        const viajes = ruta.viajes.filter((viaje, index) =>
+            viajeId ? viaje.id !== viajeId : index !== viajeIndex,
+        );
+        const rutasActualizadas = viajes.length > 0
+            ? rutas.map((item) =>
+                item.placa.trim().toUpperCase() === placaNormalizada ? { ...item, viajes } : item,
+            )
+            : rutas.filter((item) => item.placa.trim().toUpperCase() !== placaNormalizada);
+
+        setRutas(rutasActualizadas);
+
+        if (currentRoute.placa.trim().toUpperCase() === placaNormalizada) {
+            if (viajes.length > 0) {
+                setCurrentRoute((prev) => ({ ...prev, viajes }));
+            } else {
+                setCurrentRoute(createEmptyRoute());
+                setEditingIndex(null);
+                setEditingViajeIndex(null);
+                setCurrentViajeForm({ lugares: '', barrio: '', cliente: '', peso: '' });
+                setDestinosViajePendientes([]);
+            }
         }
     };
 
@@ -927,7 +1330,13 @@ export default function ModulacionIndex({
         if (currentRoute.placa && currentRoute.placa.trim() !== '') {
             const viajes = Array.isArray(currentRoute.viajes) ? [...currentRoute.viajes] : [];
             const cv = currentViajeForm;
+            const destinos = destinosViajePendientes.length > 0
+                ? destinosViajePendientes
+                : cv.lugares.trim() && cv.barrio.trim()
+                  ? [{ lugares: cv.lugares.trim(), barrio: cv.barrio.trim() }]
+                  : [];
             const viajeFormTieneDatos =
+                destinos.length > 0 ||
                 (cv.lugares && cv.lugares.trim() !== '') ||
                 (cv.barrio && cv.barrio.trim() !== '') ||
                 (cv.cliente && cv.cliente.toString().trim() !== '') ||
@@ -945,8 +1354,9 @@ export default function ModulacionIndex({
                 if (!yaExisteEnArray) {
                     viajes.push({
                         id: generateId(),
-                        lugares: cv.lugares || '',
-                        barrio: cv.barrio || '',
+                        lugares: destinos[0]?.lugares ?? cv.lugares,
+                        barrio: destinos[0]?.barrio ?? cv.barrio,
+                        destinos: destinos.length > 0 ? destinos : undefined,
                         cliente: cv.cliente || '',
                         peso: cv.peso || '',
                     });
@@ -1207,7 +1617,7 @@ export default function ModulacionIndex({
         const selected: ColaboradorOption[] = [];
         const unselected: ColaboradorOption[] = [];
 
-        colaboradores.forEach((col) => {
+        colaboradores.filter((col) => esPersonalOperativoDeRuta(col.cargo)).forEach((col) => {
             const colIdStr = String(col.id).trim();
             const colCedStr = col.cedula ? String(col.cedula).trim() : '';
 
@@ -1240,7 +1650,7 @@ export default function ModulacionIndex({
             }
         });
 
-        currentRoute.tripulacion.forEach((m) => {
+        currentRoute.tripulacion.filter((miembro) => esPersonalOperativoDeRuta(miembro.cargo)).forEach((m) => {
             const mIdStr = m.colaborador_id ? String(m.colaborador_id).trim() : '';
             const mCedStr = m.cedula ? String(m.cedula).trim() : '';
 
@@ -1265,6 +1675,7 @@ export default function ModulacionIndex({
     }, [colaboradores, cargoFilter, searchQuery, currentRoute.tripulacion, isCollaboratorAlreadyAssigned, isFiltering]);
 
     const allChecklistColaboradores = [...selectedColaboradores, ...unselectedColaboradores];
+    const cargosOperativos = cargos.filter(esPersonalOperativoDeRuta);
 
     // LISTA ÚNICA DE PLACAS
     const uniquePlacasInRutas = useMemo(() => {
@@ -1530,8 +1941,10 @@ export default function ModulacionIndex({
             const viajes = r.viajes || [];
             const r0 = currentRow;
 
-            const totalCliente = viajes.reduce((sum, vj) => sum + (parseInt(vj.cliente) || 0), 0);
-            const totalPeso = viajes.reduce((sum, vj) => sum + (parseFloat(vj.peso) || 0), 0);
+            const clienteSeleccionado = viajes.find((viaje) => viaje.cliente.trim() !== '')?.cliente ?? '';
+            const pesoSeleccionado = viajes.find((viaje) => viaje.peso.trim() !== '')?.peso ?? '';
+            const cantidadClientes = parseInt(clienteSeleccionado, 10) || 0;
+            const pesoRuta = parseFloat(pesoSeleccionado) || 0;
             const numFilasMerge = Math.max(tripulacion.length, 1);
 
             // PLACA (merge sobre todas las filas de tripulantes)
@@ -1641,12 +2054,13 @@ export default function ModulacionIndex({
             for (let v = 0; v < maxViajes; v++) {
                 let contenido = '';
                 if (viajes[v]) {
-                    const lugar = (viajes[v].lugares || '').trim().toUpperCase();
-                    const barrio = (viajes[v].barrio || '').trim().toUpperCase();
-                    const partes: string[] = [];
-                    if (lugar) partes.push(lugar);
-                    if (barrio) partes.push(barrio);
-                    contenido = partes.join('\n');
+                    contenido = obtenerDestinosViaje(viajes[v])
+                        .flatMap((destino) => [
+                            destino.lugares.trim() ? `Municipio: ${destino.lugares.trim()}` : '',
+                            destino.barrio.trim() ? `Barrio: ${destino.barrio.trim()}` : '',
+                        ])
+                        .filter((linea) => linea !== '')
+                        .join('\n');
                 }
                 const colViaje = COL.PRIMER_VIAJE + v;
                 const numFilasMerge = Math.max(tripulacion.length, 1);
@@ -1655,7 +2069,7 @@ export default function ModulacionIndex({
                 for (let fila = 0; fila < numFilasMerge; fila++) {
                     const estiloViaje: XLSX.CellStyle = {
                         font: { ...FONT_BODY, bold: true, sz: 12 },
-                        alignment: ALIGN_CENTER,
+                        alignment: { ...ALIGN_LEFT, wrapText: true },
                         border: BORDER_THIN,
                     };
                     if (fila === 0) {
@@ -1680,8 +2094,8 @@ export default function ModulacionIndex({
                     border: BORDER_THIN,
                 };
                 if (fila === 0) {
-                    setCell(r0 + fila, COL_CLIENTE, cell(totalCliente > 0 ? totalCliente : '', {
-                        t: totalCliente > 0 ? 'n' : 's',
+                    setCell(r0 + fila, COL_CLIENTE, cell(cantidadClientes > 0 ? cantidadClientes : '', {
+                        t: cantidadClientes > 0 ? 'n' : 's',
                         s: estiloCliente,
                     }));
                 } else {
@@ -1701,8 +2115,8 @@ export default function ModulacionIndex({
                     border: BORDER_THIN,
                 };
                 if (fila === 0) {
-                    setCell(r0 + fila, COL_PESO, cell(totalPeso > 0 ? parseFloat(totalPeso.toFixed(1)) : '', {
-                        t: totalPeso > 0 ? 'n' : 's',
+                    setCell(r0 + fila, COL_PESO, cell(pesoRuta > 0 ? parseFloat(pesoRuta.toFixed(1)) : '', {
+                        t: pesoRuta > 0 ? 'n' : 's',
                         s: estiloPeso,
                     }));
                 } else {
@@ -1878,9 +2292,18 @@ export default function ModulacionIndex({
         // Alturas para filas de rutas (múltiples filas por ruta, una por tripulante)
         filteredRutasTable.forEach((r) => {
             const numTrip = Math.max((r.tripulacion || []).length, 1);
-            // altura base por cada fila de tripulante
+            const maxLineasDestino = Math.max(
+                1,
+                ...(r.viajes || []).map((viaje) =>
+                    obtenerDestinosViaje(viaje).reduce(
+                        (total, destino) => total + Number(Boolean(destino.lugares.trim())) + Number(Boolean(destino.barrio.trim())),
+                        0,
+                    ),
+                ),
+            );
+            const alturaFila = Math.min(409, Math.max(22, Math.ceil((maxLineasDestino * 18 + 8) / numTrip)));
             for (let t = 0; t < numTrip; t++) {
-                rowHeights.push({ hpt: 22 });
+                rowHeights.push({ hpt: alturaFila });
             }
         });
         ws['!rows'] = rowHeights;
@@ -1900,7 +2323,17 @@ export default function ModulacionIndex({
         XLSX.writeFile(wb, fileName);
     };
 
-    return (
+        const exportacionAutomaticaRealizada = useRef(false);
+        useEffect(() => {
+            if (exportExcel && !exportacionAutomaticaRealizada.current) {
+                exportacionAutomaticaRealizada.current = true;
+                handleExportExcel();
+            }
+            // La exportación se solicita una sola vez al abrir esta planeación desde Historial.
+            // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [exportExcel]);
+
+        return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Planeación de ruta" />
 
@@ -2153,7 +2586,7 @@ export default function ModulacionIndex({
                                             </SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="todos">-- Todos los Cargos --</SelectItem>
-                                                {cargos.map((cg) => (
+                                                {cargosOperativos.map((cg) => (
                                                     <SelectItem key={cg} value={String(cg)}>{String(cg)}</SelectItem>
                                                 ))}
                                             </SelectContent>
@@ -2249,6 +2682,45 @@ export default function ModulacionIndex({
                                         onBarrioChange={(val) => handleViajeFormChange('barrio', val)}
                                         cliente={String(currentViajeForm.cliente ?? '')}
                                         onClienteChange={(val) => handleViajeFormChange('cliente', val)}
+                                        puedeAgregarViaje={Boolean(currentRoute.placa.trim())}
+                                        viajesRegistrados={
+                                            editingViajeIndex === null
+                                                ? currentRoute.viajes.map((viaje, indice) => ({ viaje, indice }))
+                                                : currentRoute.viajes.flatMap((viaje, indice) =>
+                                                    indice === editingViajeIndex ? [] : [{ viaje, indice }],
+                                                )
+                                        }
+                                        destinosPendientes={destinosViajePendientes}
+                                        onDestinoAgregado={(destino) =>
+                                            setDestinosViajePendientes((actuales) =>
+                                                actuales.some(
+                                                    (actual) =>
+                                                        actual.lugares.localeCompare(destino.lugares, 'es', { sensitivity: 'base' }) === 0 &&
+                                                        actual.barrio.localeCompare(destino.barrio, 'es', { sensitivity: 'base' }) === 0,
+                                                )
+                                                    ? actuales
+                                                    : [...actuales, destino],
+                                            )
+                                        }
+                                        onEliminarDestinoRegistrado={(viajeIndex, destinoIndex) => {
+                                            const viajes = [...currentRoute.viajes];
+                                            const viaje = viajes[viajeIndex];
+                                            if (!viaje) return;
+                                            viajes[viajeIndex] = quitarDestinoDeViaje(viaje, destinoIndex);
+                                            setCurrentRoute((actual) => ({ ...actual, viajes }));
+                                            setRutas((actuales) =>
+                                                actuales.map((ruta) =>
+                                                    ruta.placa.trim().toUpperCase() === currentRoute.placa.trim().toUpperCase()
+                                                        ? { ...ruta, viajes }
+                                                        : ruta,
+                                                ),
+                                            );
+                                        }}
+                                        onEliminarDestinoPendiente={(destinoIndex) =>
+                                            setDestinosViajePendientes((actuales) =>
+                                                actuales.filter((_, index) => index !== destinoIndex),
+                                            )
+                                        }
                                     />
                                 </div>
 
@@ -2289,7 +2761,7 @@ export default function ModulacionIndex({
                                 ) : (
                                     <>
                                         <Plus className="size-4" />
-                                        Agregar viaje
+                                        Agregar viaje{destinosViajePendientes.length > 0 ? ` (${destinosViajePendientes.length} destinos)` : ''}
                                     </>
                                 )}
                             </Button>
@@ -2369,13 +2841,30 @@ export default function ModulacionIndex({
                                                             {viajesList.map((v, vIdx) => (
                                                                 <div key={v.id ?? `viaje-${vIdx}`} className="flex items-center justify-between border-b border-border/50 pb-1 last:border-0">
                                                                     <div className="flex-1">
-                                                                        <span className="font-semibold text-xs" style={{ color: ACCENT }}>Viaje {vIdx + 1}:</span> {v.lugares ? `Nariño - ${v.lugares}` : '—'}{v.barrio ? `, Barrio: ${v.barrio}` : ''}{v.cliente ? `, Cliente: ${v.cliente}` : ''}{v.peso ? `, Peso: ${v.peso} ton` : ''}
+                                                                        <span className="font-semibold text-xs" style={{ color: ACCENT }}>Viaje {vIdx + 1}:</span>{' '}
+                                                                        {obtenerDestinosViaje(v).length > 0 ? (
+                                                                            <span className="inline-flex flex-col">
+                                                                                {obtenerDestinosViaje(v).map((destino, destinoIdx) => (
+                                                                                    <span key={`${destino.lugares}-${destino.barrio}-${destinoIdx}`}>
+                                                                                        Nariño - {destino.lugares || '—'}{destino.barrio ? `, Barrio: ${destino.barrio}` : ''}
+                                                                                    </span>
+                                                                                ))}
+                                                                            </span>
+                                                                        ) : '—'}
+                                                                        {v.cliente ? `, Cliente: ${v.cliente}` : ''}{v.peso ? `, Peso: ${v.peso} ton` : ''}
                                                                     </div>
                                                                     <div className="flex items-center gap-1 ml-2">
                                                                         <Button variant="ghost" size="icon" onClick={() => handleEditViajeIndividual(idx, vIdx)} className="size-6 hover:bg-accent/10" style={{ color: ACCENT }}>
                                                                             <Pencil className="size-3" />
                                                                         </Button>
-                                                                        <Button variant="ghost" size="icon" onClick={() => handleRemoveViajeIndividual(idx, vIdx)} className="size-6 text-destructive hover:text-destructive hover:bg-destructive/10">
+                                                                        <Button
+                                                                            type="button"
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            aria-label={`Eliminar viaje ${vIdx + 1} de la ruta ${item.placa}`}
+                                                                            onClick={() => handleRemoveViajeIndividual(item.placa, v.id, vIdx)}
+                                                                            className="size-6 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                                        >
                                                                             <Trash2 className="size-3" />
                                                                         </Button>
                                                                     </div>

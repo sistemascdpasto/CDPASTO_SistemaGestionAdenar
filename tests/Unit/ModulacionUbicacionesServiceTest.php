@@ -33,11 +33,12 @@ class ModulacionUbicacionesServiceTest extends TestCase
                     ['attributes' => ['DPTO_CCDGO' => '05', 'DPTO_CNMBRE' => 'ANTIOQUIA']],
                 ],
             ]),
-            'https://geoportal.dane.gov.co/*/317/query*' => Http::response([
-                'features' => [
-                    ['attributes' => ['DPTO_CCDGO' => '52', 'MPIO_CDPMP' => '52001', 'MPIO_CNMBRE' => 'PASTO']],
-                    ['attributes' => ['DPTO_CCDGO' => '05', 'MPIO_CDPMP' => '05001', 'MPIO_CNMBRE' => 'MEDELLÍN']],
-                ],
+            'https://api-colombia.com/api/v1/Department' => Http::response([
+                ['id' => 22, 'name' => 'Nariño'],
+                ['id' => 5, 'name' => 'Antioquia'],
+            ]),
+            'https://api-colombia.com/api/v1/Department/22/cities' => Http::response([
+                ['id' => 52001, 'name' => 'Pasto'],
             ]),
             'https://visor.codigopostal.gov.co/*/3/query*' => Http::response([
                 'features' => [
@@ -50,6 +51,13 @@ class ModulacionUbicacionesServiceTest extends TestCase
                     ['attributes' => ['Codigo' => '6798', 'Nombre' => 'Agualongo']],
                 ],
             ]),
+        ]);
+
+        ModulacionMunicipio::create([
+            'codigo_dane' => '52001',
+            'nombre' => 'Pasto',
+            'nombre_normalizado' => 'pasto',
+            'origen' => 'dane',
         ]);
 
         $service = app(ModulacionUbicacionesService::class);
@@ -71,8 +79,7 @@ class ModulacionUbicacionesServiceTest extends TestCase
 
         Http::assertSent(fn (Request $request) => str_contains($request->url(), '/319/query')
             && $request['where'] === "DPTO_CCDGO = '52'");
-        Http::assertSent(fn (Request $request) => str_contains($request->url(), '/317/query')
-            && $request['where'] === "DPTO_CCDGO = '52'");
+        Http::assertSent(fn (Request $request) => $request->url() === 'https://api-colombia.com/api/v1/Department/22/cities');
         Http::assertSent(fn (Request $request) => str_contains($request->url(), '/3/query')
             && $request['where'] === "Codigo_DANE = '52001'");
         Http::assertSent(fn (Request $request) => str_contains($request->url(), '/1/query')
@@ -82,10 +89,11 @@ class ModulacionUbicacionesServiceTest extends TestCase
     public function test_permite_agregar_municipios_y_barrios_faltantes_y_evitar_duplicados(): void
     {
         Http::fake([
-            'https://geoportal.dane.gov.co/*/317/query*' => Http::response([
-                'features' => [
-                    ['attributes' => ['DPTO_CCDGO' => '52', 'MPIO_CDPMP' => '52001', 'MPIO_CNMBRE' => 'PASTO']],
-                ],
+            'https://api-colombia.com/api/v1/Department' => Http::response([
+                ['id' => 22, 'name' => 'Nariño'],
+            ]),
+            'https://api-colombia.com/api/v1/Department/22/cities' => Http::response([
+                ['id' => 52001, 'name' => 'Pasto'],
             ]),
         ]);
 
@@ -114,13 +122,62 @@ class ModulacionUbicacionesServiceTest extends TestCase
         );
     }
 
-    public function test_devuelve_municipios_de_dane_si_falla_el_catalogo_local(): void
+    public function test_registra_municipios_y_barrios_manuales_sin_duplicarlos(): void
+    {
+        $service = app(ModulacionUbicacionesService::class);
+
+        $municipio = $service->registrarMunicipio('  Municipio   Nuevo ');
+        $municipioDuplicado = $service->registrarMunicipio('MUNICIPIO NUEVO');
+        $barrio = $service->registrarBarrio($municipio['id'], '  Barrio   Nuevo ');
+        $barrioDuplicado = $service->registrarBarrio($municipio['id'], 'BARRIO NUEVO');
+
+        $this->assertTrue($municipio['creado']);
+        $this->assertFalse($municipioDuplicado['creado']);
+        $this->assertSame($municipio['id'], $municipioDuplicado['id']);
+        $this->assertSame('Municipio Nuevo', $municipio['nombre']);
+        $this->assertTrue($barrio['creado']);
+        $this->assertFalse($barrioDuplicado['creado']);
+        $this->assertSame($barrio['id'], $barrioDuplicado['id']);
+        $this->assertSame('Barrio Nuevo', $barrio['nombre']);
+        $this->assertDatabaseCount('modulacion_municipios', 1);
+        $this->assertDatabaseCount('modulacion_barrios', 1);
+    }
+
+    public function test_guarda_varios_barrios_del_mismo_municipio_en_un_viaje(): void
+    {
+        app(ModulacionUbicacionesService::class)->guardarUbicacionesDeRutas([
+            [
+                'viajes' => [
+                    [
+                        'lugares' => 'Pasto',
+                        'barrio' => 'Centro',
+                        'destinos' => [
+                            ['lugares' => 'Pasto', 'barrio' => 'Centro'],
+                            ['lugares' => 'Pasto', 'barrio' => 'San Andres'],
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+        $this->assertDatabaseCount('modulacion_municipios', 1);
+        $this->assertDatabaseCount('modulacion_barrios', 2);
+        $this->assertDatabaseHas('modulacion_barrios', [
+            'nombre_normalizado' => 'centro',
+        ]);
+        $this->assertDatabaseHas('modulacion_barrios', [
+            'nombre_normalizado' => 'san andres',
+        ]);
+    }
+
+    public function test_devuelve_municipios_de_api_colombia_si_falla_el_catalogo_local(): void
     {
         Http::fake([
-            'https://geoportal.dane.gov.co/*/317/query*' => Http::response([
-                'features' => [
-                    ['attributes' => ['DPTO_CCDGO' => '52', 'MPIO_CDPMP' => '52001', 'MPIO_CNMBRE' => 'PASTO']],
-                ],
+            'https://api-colombia.com/api/v1/Department' => Http::response([
+                ['id' => 22, 'name' => 'Nariño'],
+            ]),
+            'https://api-colombia.com/api/v1/Department/22/cities' => Http::response([
+                ['id' => 52001, 'name' => 'Pasto'],
             ]),
         ]);
         Schema::shouldReceive('hasTable')
@@ -133,26 +190,43 @@ class ModulacionUbicacionesServiceTest extends TestCase
         $this->assertSame([['id' => '52001', 'nombre' => 'Pasto']], $municipios);
     }
 
-    public function test_usa_el_catalogo_de_gente_si_dane_no_responde(): void
+    public function test_carga_municipios_de_narino_desde_api_colombia_y_conserva_los_locales(): void
     {
         Http::fake([
-            'https://geoportal.dane.gov.co/*' => Http::response(['error' => 'Unavailable'], 503),
             'https://api-colombia.com/api/v1/Department' => Http::response([
                 ['id' => 22, 'name' => 'Nariño'],
+                ['id' => 5, 'name' => 'Antioquia'],
             ]),
             'https://api-colombia.com/api/v1/Department/22/cities' => Http::response([
                 ['id' => 52001, 'name' => 'Pasto'],
                 ['id' => 52356, 'name' => 'Ipiales'],
             ]),
         ]);
+        $municipioLocal = ModulacionMunicipio::create([
+            'codigo_dane' => null,
+            'nombre' => 'Municipio local',
+            'nombre_normalizado' => 'municipio local',
+            'origen' => 'manual',
+        ]);
+        Cache::shouldReceive('get')
+            ->twice()
+            ->andThrow(new \PDOException('Cache table unavailable'));
+        Cache::shouldReceive('put')
+            ->twice()
+            ->andThrow(new \PDOException('Cache table unavailable'));
 
         $municipios = app(ModulacionUbicacionesService::class)->municipios();
 
-        $this->assertCount(2, $municipios);
-        $this->assertSame(['Ipiales', 'Pasto'], array_column($municipios, 'nombre'));
+        $this->assertCount(3, $municipios);
+        $this->assertSame(['Ipiales', 'Municipio local', 'Pasto'], array_column($municipios, 'nombre'));
+        $this->assertContains(
+            ['id' => (string) $municipioLocal->id, 'nombre' => 'Municipio local'],
+            $municipios
+        );
         $this->assertDatabaseHas('modulacion_municipios', [
             'nombre_normalizado' => 'pasto',
             'codigo_dane' => null,
+            'origen' => 'api_colombia',
         ]);
     }
 
