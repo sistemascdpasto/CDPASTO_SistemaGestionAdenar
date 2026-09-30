@@ -39,6 +39,7 @@ class StoreGeovictoriaAsistenciasRequest extends FormRequest
             'registros.*.exceso_jornada' => ['required', 'boolean'],
             'registros.*.horas_descanso_previo' => ['nullable', 'string', 'max:40'],
             'registros.*.descanso_no_efectivo' => ['required', 'boolean'],
+            'registros.*.hora_minima_entrada' => ['nullable', 'date_format:Y-m-d H:i'],
         ];
     }
 }

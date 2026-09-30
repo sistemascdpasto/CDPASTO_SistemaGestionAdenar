@@ -154,6 +154,42 @@ class GeovictoriaAsistenciaTest extends TestCase
         });
     }
 
+    public function test_seguimiento_lists_late_salidas_of_yesterday_and_today_with_estado(): void
+    {
+        $user = $this->actingAsRole('Gente');
+        $hoy = now()->toDateString();
+        $ayer = now()->subDay()->toDateString();
+        $manana = now()->addDay()->toDateString();
+
+        // Ayer salió tarde y hoy entró respetando el descanso -> cumplio.
+        $this->registro(['identificador' => 'B1', 'fecha' => $ayer, 'salida' => '20:00', 'hora_minima_entrada' => "{$hoy} 07:00"]);
+        $this->registro(['identificador' => 'B1', 'fecha' => $hoy, 'entrada' => '07:30', 'descanso_no_efectivo' => false]);
+        // Ayer salió tarde y hoy entró antes de tiempo -> incumplio.
+        $this->registro(['identificador' => 'B2', 'fecha' => $ayer, 'salida' => '21:00', 'hora_minima_entrada' => "{$hoy} 08:00"]);
+        $this->registro(['identificador' => 'B2', 'fecha' => $hoy, 'entrada' => '06:00', 'descanso_no_efectivo' => true]);
+        // Hoy salió tarde, todavía no hay registro de mañana -> pendiente.
+        $this->registro(['identificador' => 'B3', 'fecha' => $hoy, 'salida' => '19:00', 'hora_minima_entrada' => "{$manana} 06:00"]);
+        // Salió antes de las 18:30 -> no entra al seguimiento.
+        $this->registro(['identificador' => 'B4', 'fecha' => $hoy]);
+        // Hace dos días -> fuera del rango ayer/hoy.
+        $this->registro(['identificador' => 'B5', 'fecha' => now()->subDays(2)->toDateString(), 'hora_minima_entrada' => "{$ayer} 07:00"]);
+
+        $response = $this->actingAs($user)->get(route('gente.asistencia-geovictoria.index'));
+
+        $response->assertInertia(function ($page) use ($hoy) {
+            $seguimiento = collect($page->toArray()['props']['seguimiento']);
+
+            $this->assertSame(['B1', 'B2', 'B3'], $seguimiento->pluck('identificador')->all());
+            $porId = $seguimiento->keyBy('identificador');
+            $this->assertSame('cumplio', $porId['B1']['estado']);
+            $this->assertSame('07:30', $porId['B1']['entrada_siguiente']);
+            $this->assertSame("{$hoy} 07:00", $porId['B1']['hora_minima_entrada']);
+            $this->assertSame('incumplio', $porId['B2']['estado']);
+            $this->assertSame('pendiente', $porId['B3']['estado']);
+            $this->assertNull($porId['B3']['entrada_siguiente']);
+        });
+    }
+
     public function test_por_grupo_cargo_and_horas_indicators_are_computed_correctly(): void
     {
         $user = $this->actingAsRole('Gente');

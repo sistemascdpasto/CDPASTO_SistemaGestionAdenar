@@ -40,6 +40,7 @@ class GeovictoriaAsistenciaController extends Controller
             'exceso_jornada' => $registro['exceso_jornada'],
             'horas_descanso_previo' => $registro['horas_descanso_previo'] ?? null,
             'descanso_no_efectivo' => $registro['descanso_no_efectivo'],
+            'hora_minima_entrada' => $registro['hora_minima_entrada'] ?? null,
             'created_at' => $ahora,
             'updated_at' => $ahora,
         ], $registros);
@@ -50,7 +51,7 @@ class GeovictoriaAsistenciaController extends Controller
             [
                 'apellidos', 'nombres', 'cargo', 'grupo', 'permiso', 'turno', 'entrada', 'salida_descanso',
                 'ingreso_descanso', 'salida', 'horas_trabajadas', 'hea', 'hec', 'hnt', 'exceso_jornada',
-                'horas_descanso_previo', 'descanso_no_efectivo', 'updated_at',
+                'horas_descanso_previo', 'descanso_no_efectivo', 'hora_minima_entrada', 'updated_at',
             ]
         );
 
