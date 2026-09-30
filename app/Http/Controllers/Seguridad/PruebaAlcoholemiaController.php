@@ -58,9 +58,8 @@ class PruebaAlcoholemiaController extends Controller
         $pendientes = collect($cobertura['pendientes_pre_ruta'])
             ->concat($cobertura['pendientes_post_ruta']);
         $fechas = $pendientes->pluck('fecha')->filter()->unique()->values();
-        $cedulas = $pendientes->pluck('cedula')->filter()->map(fn ($cedula) => trim((string) $cedula))->unique()->values();
 
-        if ($fechas->isEmpty() || $cedulas->isEmpty()) {
+        if ($fechas->isEmpty()) {
             foreach (['pendientes_pre_ruta', 'pendientes_post_ruta'] as $tipo) {
                 $cobertura[$tipo] = array_map(
                     fn (array $item) => [
@@ -77,13 +76,12 @@ class PruebaAlcoholemiaController extends Controller
 
         $asistencias = GeovictoriaAsistencia::query()
             ->whereIn('fecha', $fechas)
-            ->whereIn('identificador', $cedulas)
             ->get(['identificador', 'fecha', 'entrada', 'salida'])
-            ->keyBy(fn (GeovictoriaAsistencia $asistencia) => $asistencia->fecha->format('Y-m-d') . '|' . trim($asistencia->identificador));
+            ->keyBy(fn (GeovictoriaAsistencia $asistencia) => $asistencia->fecha->format('Y-m-d') . '|' . $this->normalizarIdentificador($asistencia->identificador));
 
         foreach (['pendientes_pre_ruta', 'pendientes_post_ruta'] as $tipo) {
             $cobertura[$tipo] = array_map(function (array $item) use ($asistencias): array {
-                $key = ($item['fecha'] ?? '') . '|' . trim((string) ($item['cedula'] ?? ''));
+                $key = ($item['fecha'] ?? '') . '|' . $this->normalizarIdentificador((string) ($item['cedula'] ?? ''));
                 $asistencia = $asistencias->get($key);
                 $item['entrada_geovictoria'] = $asistencia?->entrada;
                 $item['salida_geovictoria'] = $asistencia?->salida;
@@ -91,6 +89,11 @@ class PruebaAlcoholemiaController extends Controller
                 return $item;
             }, $cobertura[$tipo]);
         }
+    }
+
+    private function normalizarIdentificador(string $identificador): string
+    {
+        return strtoupper((string) preg_replace('/[^a-zA-Z0-9]/', '', trim($identificador)));
     }
 
     public function create(Request $request): Response

@@ -510,7 +510,7 @@ class PruebaAlcoholemiaTest extends TestCase
             'salida' => '18:00',
         ]);
         GeovictoriaAsistencia::create([
-            'identificador' => $soloEntrada->cedula,
+            'identificador' => '900.111.222',
             'fecha' => $fecha,
             'entrada' => '06:10',
             'salida' => '17:50',
