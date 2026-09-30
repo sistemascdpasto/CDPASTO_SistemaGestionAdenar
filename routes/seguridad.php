@@ -32,6 +32,7 @@ use App\Http\Controllers\Seguridad\PublicVerificationController;
 use App\Http\Controllers\Seguridad\RecomendacionCatalogoController;
 use App\Http\Controllers\Seguridad\RecomendacionSeguimientoController;
 use App\Http\Controllers\Seguridad\RutaCriticaController;
+use App\Http\Controllers\Seguridad\RutogramasController;
 use Illuminate\Support\Facades\Route;
 
 // HU037: verificaciÃ³n pÃºblica del QR â€” intencionalmente fuera del grupo `auth`.
@@ -75,6 +76,11 @@ Route::middleware(['auth', 'active', 'role:Administrador|Seguridad'])
 
         Route::get('rutas-criticas', [RutaCriticaController::class, 'index'])
             ->name('rutas-criticas.index');
+        Route::get('rutogramas', [RutogramasController::class, 'index'])
+            ->name('rutogramas.index');
+        Route::get('rutogramas/{vista}', [RutogramasController::class, 'index'])
+            ->whereIn('vista', ['criticidad', 'conductores', 'mapa-calor'])
+            ->name('rutogramas.vista');
 
         // Rutas especÃ­ficas de "acis" antes del resource-like get('acis/{aci}')
         // para que no choquen con la ruta comodÃ­n.
@@ -193,4 +199,3 @@ Route::middleware(['auth', 'active', 'role:Administrador|Seguridad'])
         Route::patch('examenes-medicos/{evaluacion}/egreso/seguimiento', [EvaluacionMedicaController::class, 'actualizarSeguimientoEgreso'])
             ->name('examenes-medicos.egreso.seguimiento');
     });
-

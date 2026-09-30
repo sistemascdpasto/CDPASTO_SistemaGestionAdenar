@@ -72,6 +72,48 @@ class ModulacionDeletionTest extends TestCase
         ]);
     }
 
+    public function test_guardar_varios_municipios_en_un_viaje_sin_barrios(): void
+    {
+        $this->actingAs($this->usuarioReparto())
+            ->post(route('reparto.modulacion.storeBatch'), [
+                'fecha' => '2026-09-29',
+                'rutas' => [
+                    [
+                        'placa' => 'AAA111',
+                        'tripulacion' => [],
+                        'viajes' => [
+                            [
+                                'lugares' => 'Albán',
+                                'barrio' => null,
+                                'destinos' => [
+                                    ['lugares' => 'Albán', 'barrio' => null],
+                                    ['lugares' => 'La Unión', 'barrio' => null],
+                                ],
+                                'cliente' => '125',
+                                'peso' => '12.5',
+                            ],
+                        ],
+                    ],
+                ],
+            ])
+            ->assertRedirect(route('reparto.modulacion.index', [
+                'fecha' => '2026-09-29',
+                'readOnly' => 'true',
+            ]));
+
+        $modulacion = Modulacion::query()->where('fecha', '2026-09-29')->firstOrFail();
+        $ruta = $modulacion->items()->where('placa', 'AAA111')->firstOrFail();
+        $viaje = $ruta->viajes[0];
+
+        $this->assertCount(2, $viaje['destinos']);
+        $this->assertSame('Albán', $viaje['destinos'][0]['lugares']);
+        $this->assertNull($viaje['destinos'][0]['barrio']);
+        $this->assertSame('La Unión', $viaje['destinos'][1]['lugares']);
+        $this->assertNull($viaje['destinos'][1]['barrio']);
+        $this->assertSame('125', $viaje['cliente']);
+        $this->assertSame('12.5', $viaje['peso']);
+    }
+
     public function test_detalles_de_planeacion_acepta_solicitud_de_exportacion_desde_historial(): void
     {
         $modulacion = $this->crearPlaneacion();

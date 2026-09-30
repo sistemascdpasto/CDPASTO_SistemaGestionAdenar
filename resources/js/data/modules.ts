@@ -24,6 +24,7 @@ import {
     ListChecks,
     ListTodo,
     Map,
+    MapPinned,
     QrCode,
     ShieldCheck,
     Stethoscope,
@@ -145,6 +146,17 @@ export const modules: ModuleDef[] = [
             { title: 'Glosario', slug: 'glosario', icon: BookOpen },
 
             { title: 'Mapa de Rutas Críticas', slug: 'rutas-criticas', icon: Map },
+            {
+                title: 'Rutogramas',
+                icon: MapPinned,
+                href: '/modules/seguridad/rutogramas',
+                submodules: [
+                    { title: 'Rutas Diarias', href: '/modules/seguridad/rutogramas', icon: Map },
+                    { title: 'Criticidad', href: '/modules/seguridad/rutogramas/criticidad', icon: AlertTriangle },
+                    { title: 'Conductores', href: '/modules/seguridad/rutogramas/conductores', icon: Users },
+                    { title: 'Mapa de Calor', href: '/modules/seguridad/rutogramas/mapa-calor', icon: MapPinned },
+                ],
+            },
         ],
     },
     {
@@ -161,9 +173,20 @@ export const modules: ModuleDef[] = [
             { title: 'Adherencia al Tiempo', slug: 'indicadores-tiempo', icon: Clock },
             { title: 'Entrega en Rango Ind.', slug: 'indicadores-entrega-rango', icon: Activity },
             { title: 'Resumen Ejecutivo', slug: 'indicadores-resumen', icon: BarChart3 },
-            { title: 'Compensación Variable', slug: 'compensacion-variable', icon: DollarSign, allowedRoles: ['Administrador', 'Colaborador', 'Reparto'] },
+            {
+                title: 'Compensación Variable',
+                slug: 'compensacion-variable',
+                icon: DollarSign,
+                allowedRoles: ['Administrador', 'Colaborador', 'Reparto'],
+            },
             { title: 'Compensación Variable Diaria', slug: 'compensacion-variable-diaria', icon: CalendarDays },
-            { title: 'Medición de Tiempos en Inventario', slug: 'medicion-tiempos-inventario', href: '/modules/reparto/medicion-tiempos-inventario', icon: Clock, allowedRoles: ['Administrador', 'Colaborador', 'Reparto'] },
+            {
+                title: 'Medición de Tiempos en Inventario',
+                slug: 'medicion-tiempos-inventario',
+                href: '/modules/reparto/medicion-tiempos-inventario',
+                icon: Clock,
+                allowedRoles: ['Administrador', 'Colaborador', 'Reparto'],
+            },
             { title: 'Revisión Aleatoria', slug: 'revision-aleatoria', icon: Dices },
             { title: '5 Por Qué', slug: 'cinco-porques', href: '/cinco-porques', icon: ListChecks },
         ],

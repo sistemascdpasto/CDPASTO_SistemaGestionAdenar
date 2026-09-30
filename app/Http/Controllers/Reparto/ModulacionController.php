@@ -342,7 +342,7 @@ class ModulacionController extends Controller
             'rutas.*.viajes.*.barrio' => 'nullable|string|max:200',
             'rutas.*.viajes.*.destinos' => 'nullable|array',
             'rutas.*.viajes.*.destinos.*.lugares' => 'required|string|max:255',
-            'rutas.*.viajes.*.destinos.*.barrio' => 'required|string|max:200',
+            'rutas.*.viajes.*.destinos.*.barrio' => 'nullable|string|max:200',
             'rutas.*.viajes.*.cliente' => 'nullable|string|max:255',
             'rutas.*.viajes.*.peso' => 'nullable|string|max:100',
             'novedades' => 'nullable|array',

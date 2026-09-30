@@ -183,6 +183,10 @@ const mapModulacionItems = (items: ModulacionItemData[]): RutaFormState[] =>
             ...viaje,
             lugares: viaje.lugares ?? '',
             barrio: viaje.barrio ?? '',
+            destinos: viaje.destinos?.map((destino) => ({
+                lugares: destino.lugares ?? '',
+                barrio: destino.barrio ?? '',
+            })),
             cliente: viaje.cliente ?? '',
             peso: viaje.peso ?? '',
             id: viaje.id ?? `srv-${item.id}-v${index}`,
@@ -194,15 +198,11 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Planeación de ruta', href: '/modules/reparto/modulacion' },
 ];
 
-// Opciones de cliente (0 a 60)
-const clienteOptions: number[] = Array.from({ length: 61 }, (_, i) => i);
-
 // Despachador por defecto
 const DESPACHADO_POR_DEFECTO = 'Jhon alexander rojas muñoz 10041925516';
 
 // Acento del módulo Reparto (usado con moderación, igual que en Seguridad)
 const ACCENT = '#D4102A';
-const CLIENTE_CLEAR = '__clear__';
 
 // Generador de IDs con respaldo
 const generateId = () => {
@@ -355,33 +355,40 @@ function NarinoMunicipioInput({
         municipio.nombre.localeCompare(municipioInput.trim(), 'es', { sensitivity: 'base' }) === 0,
     );
     const municipioSeleccionadoId = municipioSeleccionado?.id;
-    const municipioNuevo = municipioInput.trim() !== '' && !municipios.some(
-        (municipio) => municipio.nombre.localeCompare(municipioInput.trim(), 'es', { sensitivity: 'base' }) === 0,
-    );
     const barrioNuevo = barrioInput.trim() !== '' && !barrios.some(
         (opcion) => opcion.nombre.localeCompare(barrioInput.trim(), 'es', { sensitivity: 'base' }) === 0,
     );
 
-    const agregarMunicipio = async () => {
+    const agregarMunicipioAlViaje = async () => {
+        const nombreMunicipio = municipioInput.trim();
+        if (!nombreMunicipio) return;
+
         setMunicipioGuardando(true);
         setUbicacionesError('');
         try {
-            const municipio = await guardarReferenciaUbicacion(
-                route('reparto.modulacion.referencias.municipios.registrar'),
-                { nombre: value },
-            );
-            setMunicipios((actuales) => [
-                ...actuales.filter(
-                    (opcion) => opcion.nombre.localeCompare(municipio.nombre, 'es', { sensitivity: 'base' }) !== 0,
-                ),
-                municipio,
-            ]);
-            setMunicipioInput(municipio.nombre);
-            ultimoMunicipioRef.current = municipio.nombre;
-            onChange(municipio.nombre);
+            let municipio = municipioSeleccionado;
+            if (!municipio) {
+                municipio = await guardarReferenciaUbicacion(
+                    route('reparto.modulacion.referencias.municipios.registrar'),
+                    { nombre: nombreMunicipio },
+                );
+                setMunicipios((actuales) => [
+                    ...actuales.filter(
+                        (opcion) => opcion.nombre.localeCompare(municipio.nombre, 'es', { sensitivity: 'base' }) !== 0,
+                    ),
+                    municipio,
+                ]);
+            }
+
+            onDestinoAgregado({ lugares: municipio.nombre, barrio: '' });
+            setMunicipioInput('');
+            ultimoMunicipioRef.current = '';
+            onChange('');
+            setBarrioInput('');
+            ultimoBarrioRef.current = '';
             onBarrioChange('');
         } catch (error) {
-            setUbicacionesError(error instanceof Error ? error.message : 'No se pudo agregar el municipio.');
+            setUbicacionesError(error instanceof Error ? error.message : 'No se pudo agregar el municipio al viaje.');
         } finally {
             setMunicipioGuardando(false);
         }
@@ -514,15 +521,19 @@ function NarinoMunicipioInput({
                         className="h-10 text-sm"
                         autoComplete="off"
                     />
-                    {municipioNuevo && (
+                    {municipioInput.trim() && (
                         <Button
                             type="button"
                             variant="outline"
                             size="icon"
-                            aria-label="Guardar municipio y seleccionarlo para el viaje"
-                            title="Guardar municipio en el catálogo"
-                            disabled={municipioGuardando}
-                            onClick={() => void agregarMunicipio()}
+                            aria-label="Agregar municipio al viaje"
+                            title={
+                                municipioSeleccionado
+                                    ? 'Agregar municipio existente al viaje'
+                                    : 'Guardar municipio en el catálogo y agregarlo al viaje'
+                            }
+                            disabled={municipioGuardando || municipiosLoading}
+                            onClick={() => void agregarMunicipioAlViaje()}
                         >
                             {municipioGuardando ? <LoaderCircle className="size-4 animate-spin" /> : <Plus className="size-4" />}
                         </Button>
@@ -594,7 +605,7 @@ function NarinoMunicipioInput({
                                     <span className="ml-1 inline-flex flex-col gap-0.5">
                                         {obtenerDestinosViaje(viaje.viaje).map((destino, destinoIndex) => (
                                             <span key={`${destino.lugares}-${destino.barrio}-${destinoIndex}`} className="inline-flex items-center gap-1">
-                                                {destino.lugares} — {destino.barrio}
+                                                {destino.barrio ? `${destino.lugares} — ${destino.barrio}` : destino.lugares}
                                                 <Button
                                                     type="button"
                                                     variant="ghost"
@@ -617,7 +628,7 @@ function NarinoMunicipioInput({
                                     <span className="ml-1 inline-flex flex-col gap-0.5">
                                         {destinosPendientes.map((destino, destinoIndex) => (
                                             <span key={`${destino.lugares}-${destino.barrio}-${destinoIndex}`} className="inline-flex items-center gap-1">
-                                                {destino.lugares} — {destino.barrio}
+                                                {destino.barrio ? `${destino.lugares} — ${destino.barrio}` : destino.lugares}
                                                 <Button
                                                     type="button"
                                                     variant="ghost"
@@ -653,21 +664,18 @@ function NarinoMunicipioInput({
                 </p>
             </div>
             <div className="grid gap-1.5">
-                <Label htmlFor={`${baseId}-cliente`} className="text-xs font-medium text-muted-foreground">Cliente (0 - 60)</Label>
-                <Select
-                            value={cliente !== '' ? String(cliente) : CLIENTE_CLEAR}
-                            onValueChange={(value) => onClienteChange(value === CLIENTE_CLEAR ? '' : value)}
-                >
-                            <SelectTrigger id={`${baseId}-cliente`} className="mt-0.5 h-10 text-sm w-full">
-                                <SelectValue placeholder="-- Seleccionar --" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value={CLIENTE_CLEAR}>-- Seleccionar --</SelectItem>
-                                {clienteOptions.map((option) => (
-                                    <SelectItem key={option} value={String(option)}>{String(option)}</SelectItem>
-                                ))}
-                            </SelectContent>
-                </Select>
+                <Label htmlFor={`${baseId}-cliente`} className="text-xs font-medium text-muted-foreground">Cliente</Label>
+                <Input
+                    id={`${baseId}-cliente`}
+                    name="cliente"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={cliente}
+                    onChange={(event) => onClienteChange(event.target.value)}
+                    placeholder="Ingrese el número de cliente"
+                    className="mt-0.5 h-10 text-sm"
+                />
             </div>
             {ubicacionesError && <p role="alert" className="text-xs text-destructive sm:col-span-2">{ubicacionesError}</p>}
         </div>
@@ -726,6 +734,8 @@ export default function ModulacionIndex({
         cleanString(modulacion?.despachado_por_nombre, DESPACHADO_POR_DEFECTO)
     );
     const [showDespachadorDropdown, setShowDespachadorDropdown] = useState(false);
+    const [placaSearch, setPlacaSearch] = useState('');
+    const [showPlacaDropdown, setShowPlacaDropdown] = useState(false);
 
     // Flag para saber si la consulta de fecha fue iniciada manualmente por el usuario al crear/cambiar fecha
     const userInitiatedDateChange = React.useRef(false);
@@ -1108,21 +1118,17 @@ export default function ModulacionIndex({
 
     // MANEJO DE VIAJE FORMULARIO Y AGREGAR VIAJE
     const handleViajeFormChange = (field: keyof Viaje, value: string) => {
-        let finalVal = value;
-        if (field === 'peso' && value !== '') {
-            const parsed = parseFloat(value);
-            if (!isNaN(parsed) && parsed > 10) {
-                alert('El peso máximo permitido por viaje es de 10 toneladas.');
-                finalVal = '10';
-            }
-        }
-        setCurrentViajeForm((prev) => ({ ...prev, [field]: finalVal }));
+        setCurrentViajeForm((prev) => ({ ...prev, [field]: value }));
     };
 
     const handleAddViaje = (e?: React.FormEvent | React.MouseEvent) => {
         if (e) {
             e.preventDefault();
             if ('stopPropagation' in e) e.stopPropagation();
+        }
+        if (showPlacaDropdown && placaSearch.trim() !== '') {
+            alert('Seleccione una placa existente de la lista.');
+            return;
         }
         if (!currentRoute.placa || currentRoute.placa.trim() === '') {
             alert('Por favor ingrese una Placa para la ruta.');
@@ -1497,6 +1503,8 @@ export default function ModulacionIndex({
         incapacidad: false,
         vacaciones: false,
     });
+    const [novedadColaboradorSearch, setNovedadColaboradorSearch] = useState('');
+    const [showNovedadColaboradorDropdown, setShowNovedadColaboradorDropdown] = useState(false);
 
     const handleNuevaNovedadSelectColaborador = (val: string) => {
         if (!val) {
@@ -1507,9 +1515,10 @@ export default function ModulacionIndex({
                 nombres: '',
                 cargo: '',
             }));
+            setNovedadColaboradorSearch('');
             return;
         }
-        const col = colaboradores.find((c) => String(c.id) === val);
+        const col = colaboradores.find((c) => String(c.id) === val && esPersonalOperativoDeRuta(c.area));
         if (col) {
             setNuevaNovedad((prev) => ({
                 ...prev,
@@ -1518,8 +1527,20 @@ export default function ModulacionIndex({
                 nombres: col.nombre_completo || '',
                 cargo: col.cargo || '',
             }));
+            setNovedadColaboradorSearch(`${col.nombre_completo ?? ''} (${col.cedula ?? ''})`);
+            setShowNovedadColaboradorDropdown(false);
         }
     };
+
+    const colaboradoresOperativosNovedad = colaboradores
+        .filter((col) => esPersonalOperativoDeRuta(col.area))
+        .filter((col) => {
+            const query = novedadColaboradorSearch.trim().toLocaleLowerCase();
+            return !query ||
+                (col.nombre_completo ?? '').toLocaleLowerCase().includes(query) ||
+                (col.cedula ?? '').toLocaleLowerCase().includes(query);
+        })
+        .slice(0, 20);
 
     const handleAgregarNovedadTabla2 = () => {
         if (!nuevaNovedad.nombres || nuevaNovedad.nombres.trim() === '') {
@@ -1674,6 +1695,17 @@ export default function ModulacionIndex({
                 .filter(Boolean),
         ),
     ).sort((a, b) => a.localeCompare(b));
+    const placasDisponibles = vehiculos.filter((vehiculo) => {
+        const placaUpper = String(vehiculo).toUpperCase();
+        if (placaUpper === currentRoute.placa.toUpperCase()) return true;
+        return !rutas.some((ruta, index) => {
+            if (editingIndex !== null && index === editingIndex) return false;
+            return String(ruta.placa).toUpperCase() === placaUpper;
+        });
+    });
+    const placasCoincidentes = placasDisponibles.filter((vehiculo) =>
+        String(vehiculo).toUpperCase().includes(placaSearch.trim().toUpperCase()),
+    );
 
     // LISTA ÚNICA DE PLACAS
     const uniquePlacasInRutas = useMemo(() => {
@@ -1709,7 +1741,7 @@ export default function ModulacionIndex({
         const AZUL_OSCURO = '1F3864';       // Encabezados (fondo azul marino)
         const AZUL_CLARO_NOMBRES = 'B4C6E7'; // Fondo columna NOMBRE en novedades
         const AZUL_CARGO_1 = '4472C4';      // 1er tripulante
-        const AMARILLO_CARGO_2 = 'FFFF00';  // 2do tripulante
+        const AZUL_CLARO_CARGO_2 = '9DC3E6'; // 2do tripulante
         const GRIS_CARGO_3 = 'D9D9D9';      // 3er tripulante
         const BLANCO_CARGO_4 = 'FFFFFF';    // 4to tripulante
         const NEGRO_PLACA = '000000';       // Fondo columna placa
@@ -1991,7 +2023,7 @@ export default function ModulacionIndex({
                 if (t === 0) {
                     colorFondo = AZUL_CARGO_1;
                 } else if (t === 1) {
-                    colorFondo = AMARILLO_CARGO_2;
+                    colorFondo = AZUL_CLARO_CARGO_2;
                 } else if (t === 2) {
                     colorFondo = GRIS_CARGO_3;
                 } else {
@@ -2048,16 +2080,21 @@ export default function ModulacionIndex({
                 });
             }
 
-            // Viajes (municipio + barrio 2 lineas, 1 celda por viaje, merge sobre filas de tripulantes)
+            // Viajes (municipio y barrio, una celda por viaje, merge sobre filas de tripulantes)
             for (let v = 0; v < maxViajes; v++) {
                 let contenido = '';
                 if (viajes[v]) {
                     contenido = obtenerDestinosViaje(viajes[v])
-                        .flatMap((destino) => [
-                            destino.lugares.trim() ? `Municipio: ${destino.lugares.trim()}` : '',
-                            destino.barrio.trim() ? `Barrio: ${destino.barrio.trim()}` : '',
-                        ])
-                        .filter((linea) => linea !== '')
+                        .map((destino) => {
+                            const municipio = destino.lugares.trim().toLocaleUpperCase('es');
+                            const barrio = destino.barrio.trim().toLocaleUpperCase('es');
+                            const esPasto = municipio.normalize('NFD').replace(/[\u0300-\u036f]/g, '') === 'PASTO';
+
+                            if (esPasto) return barrio ? `• ${barrio}` : '';
+                            if (!municipio && !barrio) return '';
+                            return `• ${municipio}${barrio ? `\n  BARRIOS: ${barrio}` : ''}`;
+                        })
+                        .filter(Boolean)
                         .join('\n');
                 }
                 const colViaje = COL.PRIMER_VIAJE + v;
@@ -2129,137 +2166,7 @@ export default function ModulacionIndex({
             currentRow += Math.max(tripulacion.length, 1);
         });
 
-        // ─── Fila separadora ─────────────────────────────────────────
-        currentRow += 1;
-
-        // ─── SECCIÓN 2: NOVEDADES ────────────────────────────────────
-        // OBSERVACIONES ocupa 2 columnas combinadas (B:C)
-        const NOV_COL = {
-            IDENT_NOMB: 0, // [A] 1 sola columna para cédula + nombre (multi-linea)
-            OBSERVACIONES: 1, // [B:C] 2 columnas combinadas
-            FIJO_RESCATE: 3, // [D]
-            FIJO_TALLER: 4, // [E]
-            PERMISO: 5, // [F]
-            NO_ASISTIO: 6, // [G]
-            INCAPACIDAD: 7, // [H]
-            VACACIONES: 8, // [I]
-        };
-
-        // Encabezado novedades
-        setCell(currentRow, NOV_COL.IDENT_NOMB, cell('IDENTIFICACIÓN / NOMBRE', {
-            s: {
-                fill: { patternType: 'solid', fgColor: { rgb: AZUL_OSCURO } },
-                font: FONT_HEADER,
-                alignment: ALIGN_CENTER,
-                border: BORDER_THIN,
-            },
-        }));
-        // OBSERVACIONES con merge de 2 columnas (B:C)
-        setCell(currentRow, NOV_COL.OBSERVACIONES, cell('OBSERVACIONES', {
-            s: {
-                fill: { patternType: 'solid', fgColor: { rgb: AZUL_OSCURO } },
-                font: FONT_HEADER,
-                alignment: ALIGN_CENTER,
-                border: BORDER_THIN,
-            },
-        }));
-        merges.push({
-            s: { r: currentRow, c: NOV_COL.OBSERVACIONES },
-            e: { r: currentRow, c: NOV_COL.OBSERVACIONES + 1 },
-        });
-        const novedadCols: [number, string][] = [
-            [NOV_COL.FIJO_RESCATE, 'FIJO RESCATE'],
-            [NOV_COL.FIJO_TALLER, 'FIJO TALLER'],
-            [NOV_COL.PERMISO, 'PERMISO'],
-            [NOV_COL.NO_ASISTIO, 'NO ASISTIO'],
-            [NOV_COL.INCAPACIDAD, 'INCAPACIDAD'],
-            [NOV_COL.VACACIONES, 'VACACIONES'],
-        ];
-        novedadCols.forEach(([col, label]) => {
-            setCell(currentRow, col, cell(label, {
-                s: {
-                    fill: { patternType: 'solid', fgColor: { rgb: AZUL_OSCURO } },
-                    font: FONT_HEADER,
-                    alignment: ALIGN_CENTER,
-                    border: BORDER_THIN,
-                },
-            }));
-        });
-        // Llenar el resto de columnas de la fila con borde
-        for (let c = 9; c < TOTAL_COLS; c++) {
-            setCell(currentRow, c, cell('', {
-                s: {
-                    font: FONT_BODY,
-                    alignment: ALIGN_CENTER,
-                    border: BORDER_THIN,
-                },
-            }));
-        }
-        currentRow += 1;
-
-        novedadesLocal.forEach((nov) => {
-            // 1 SOLA CELDA: cédula + Nombres (2 líneas con wrapText) — NO hay merge entre cols 0-1
-            const cedula = (nov.cedula || '').trim();
-            const nombres = (nov.nombres || '').trim().toUpperCase();
-            const identContent = [cedula, nombres].filter(Boolean).join('\n');
-
-            setCell(currentRow, NOV_COL.IDENT_NOMB, cell(identContent, {
-                s: {
-                    fill: { patternType: 'solid', fgColor: { rgb: AZUL_CLARO_NOMBRES } },
-                    font: { ...FONT_BODY, bold: true },
-                    alignment: ALIGN_LEFT,
-                    border: BORDER_THIN,
-                },
-            }));
-
-            // OBSERVACIONES (2 columnas combinadas B:C)
-            const estiloObservaciones: XLSX.CellStyle = {
-                fill: { patternType: 'solid', fgColor: { rgb: AZUL_CLARO_NOMBRES } },
-                font: FONT_BODY,
-                alignment: ALIGN_LEFT,
-                border: BORDER_THIN,
-            };
-            setCell(currentRow, NOV_COL.OBSERVACIONES, cell(nov.observaciones || '', { s: estiloObservaciones }));
-            setCell(currentRow, NOV_COL.OBSERVACIONES + 1, cell('', { s: estiloObservaciones }));
-            merges.push({
-                s: { r: currentRow, c: NOV_COL.OBSERVACIONES },
-                e: { r: currentRow, c: NOV_COL.OBSERVACIONES + 1 },
-            });
-
-            // Checkboxes
-            const checks: [number, boolean][] = [
-                [NOV_COL.FIJO_RESCATE, !!nov.fijo_rescate],
-                [NOV_COL.FIJO_TALLER, !!nov.fijo_taller],
-                [NOV_COL.PERMISO, !!nov.permiso],
-                [NOV_COL.NO_ASISTIO, !!nov.no_asitio],
-                [NOV_COL.INCAPACIDAD, !!nov.incapacidad],
-                [NOV_COL.VACACIONES, !!nov.vacaciones],
-            ];
-            checks.forEach(([col, val]) => {
-                setCell(currentRow, col, cell(val ? 'X' : '', {
-                    s: {
-                        font: { ...FONT_BODY_BOLD_BLACK, sz: 14 },
-                        alignment: ALIGN_CENTER,
-                        border: BORDER_THIN,
-                    },
-                }));
-            });
-
-            // Llenar columnas restantes con bordes
-            for (let c = 9; c < TOTAL_COLS; c++) {
-                setCell(currentRow, c, cell('', {
-                    s: {
-                        font: FONT_BODY,
-                        alignment: ALIGN_CENTER,
-                        border: BORDER_THIN,
-                    },
-                }));
-            }
-
-            currentRow += 1;
-        });
-
-        // ─── Merges (solo encabezados, ya NO merges por conductor)
+        // ─── Merges de encabezados de la tabla de rutas
         merges.unshift(mergeRutas, mergeRow0Header, mergeRow1Header);
 
         // ─── Construir worksheet final ───────────────────────────────
@@ -2307,6 +2214,73 @@ export default function ModulacionIndex({
         ws['!rows'] = rowHeights;
 
         XLSX.utils.book_append_sheet(wb, ws, 'Planeación de Ruta');
+
+        const encabezadosNovedades = [
+            'NOMBRE',
+            'OBSERVACIONES',
+            'FIJO RESCATE',
+            'FIJO TALLER',
+            'PERMISO',
+            'NO ASISTIO',
+            'INCAPACIDAD',
+            'VACACIONES',
+        ];
+        const filasNovedades = novedadesLocal.map((novedad) => [
+            (novedad.nombres || '').trim().toLocaleUpperCase('es'),
+            novedad.observaciones || '',
+            novedad.fijo_rescate ? 'X' : '',
+            novedad.fijo_taller ? 'X' : '',
+            novedad.permiso ? 'X' : '',
+            novedad.no_asitio ? 'X' : '',
+            novedad.incapacidad ? 'X' : '',
+            novedad.vacaciones ? 'X' : '',
+        ]);
+        const novedadesSheet = XLSX.utils.aoa_to_sheet([encabezadosNovedades, ...filasNovedades]);
+        const estiloEncabezadoNovedades: XLSX.CellStyle = {
+            fill: { patternType: 'solid', fgColor: { rgb: AZUL_OSCURO } },
+            font: FONT_HEADER,
+            alignment: ALIGN_CENTER,
+            border: BORDER_THIN,
+        };
+        const estiloDatoNovedades: XLSX.CellStyle = {
+            fill: { patternType: 'solid', fgColor: { rgb: AZUL_CLARO_NOMBRES } },
+            font: FONT_BODY,
+            alignment: ALIGN_LEFT,
+            border: BORDER_THIN,
+        };
+        const estiloCheckNovedades: XLSX.CellStyle = {
+            font: { ...FONT_BODY_BOLD_BLACK, sz: 14 },
+            alignment: ALIGN_CENTER,
+            border: BORDER_THIN,
+        };
+
+        encabezadosNovedades.forEach((_, col) => {
+            const headerCell = XLSX.utils.encode_cell({ r: 0, c: col });
+            if (novedadesSheet[headerCell]) novedadesSheet[headerCell].s = estiloEncabezadoNovedades;
+        });
+        filasNovedades.forEach((fila, rowIndex) => {
+            fila.forEach((_, col) => {
+                const address = XLSX.utils.encode_cell({ r: rowIndex + 1, c: col });
+                if (novedadesSheet[address]) {
+                    novedadesSheet[address].s = col < 2 ? estiloDatoNovedades : estiloCheckNovedades;
+                }
+            });
+        });
+
+        novedadesSheet['!cols'] = encabezadosNovedades.map((encabezado, col) => {
+            const maxLength = Math.max(
+                encabezado.length,
+                ...filasNovedades.map((fila) => String(fila[col] ?? '').length),
+            );
+            return { wch: Math.min(Math.max(maxLength + 2, 12), col === 1 ? 50 : 28) };
+        });
+        novedadesSheet['!rows'] = [
+            { hpt: 24 },
+            ...filasNovedades.map((fila) => ({
+                hpt: Math.min(90, Math.max(22, Math.ceil(String(fila[1] ?? '').length / 55) * 18)),
+            })),
+        ];
+        XLSX.utils.book_append_sheet(wb, novedadesSheet, 'Novedades');
 
         // Generar nombre de archivo con FECHA LOCAL (no UTC)
         let fechaNombre: string = fechaTexto || '';
@@ -2455,29 +2429,51 @@ export default function ModulacionIndex({
                                 <Label htmlFor="placa-ruta" className="text-xs font-medium">
                                     Placa <span className="text-red-500">*</span>
                                 </Label>
-                                {vehiculos.length > 0 && (
-                                    <select
+                                <div className="relative">
+                                    <Input
                                         id="placa-ruta"
                                         name="placa"
-                                        value={currentRoute.placa}
-                                        onChange={(e) => handlePlacaChange(e.target.value)}
-                                        className="h-10 w-full rounded-lg border border-input bg-background px-3 py-2 font-mono text-sm uppercase text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                                    >
-                                        <option value="">-- Seleccionar Placa --</option>
-                                        {vehiculos
-                                            .filter((v) => {
-                                                const placaUpper = String(v).toUpperCase();
-                                                if (currentRoute.placa && String(currentRoute.placa).toUpperCase() === placaUpper) return true;
-                                                return !rutas.some((r, idx) => {
-                                                    if (editingIndex !== null && idx === editingIndex) return false;
-                                                    return String(r.placa).toUpperCase() === placaUpper;
-                                                });
-                                            })
-                                            .map((v) => (
-                                                <option key={v} value={String(v)}>{String(v)}</option>
+                                        type="text"
+                                        value={showPlacaDropdown ? placaSearch : currentRoute.placa}
+                                        onFocus={() => {
+                                            setPlacaSearch('');
+                                            setShowPlacaDropdown(true);
+                                        }}
+                                        onChange={(e) => {
+                                            setPlacaSearch(e.target.value);
+                                            setShowPlacaDropdown(true);
+                                        }}
+                                        onBlur={() => setTimeout(() => {
+                                            setShowPlacaDropdown(false);
+                                            setPlacaSearch('');
+                                        }, 150)}
+                                        placeholder="Escriba para buscar una placa..."
+                                        autoComplete="off"
+                                        className="h-10 font-mono text-sm uppercase"
+                                    />
+                                    {showPlacaDropdown && (
+                                        <div className="absolute left-0 right-0 top-full z-20 mt-0.5 max-h-48 overflow-y-auto rounded-lg border border-input bg-popover shadow-lg">
+                                            {placasCoincidentes.map((vehiculo) => (
+                                                <div
+                                                    key={vehiculo}
+                                                    onMouseDown={() => {
+                                                        handlePlacaChange(String(vehiculo));
+                                                        setPlacaSearch('');
+                                                        setShowPlacaDropdown(false);
+                                                    }}
+                                                    className="cursor-pointer border-b border-border px-3 py-2 font-mono text-sm last:border-b-0 hover:bg-muted"
+                                                >
+                                                    {String(vehiculo)}
+                                                </div>
                                             ))}
-                                    </select>
-                                )}
+                                            {placasCoincidentes.length === 0 && (
+                                                <p className="px-3 py-2 text-sm text-muted-foreground">
+                                                    No hay placas existentes que coincidan.
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
                             {/* Documento Transporte */}
@@ -2724,17 +2720,13 @@ export default function ModulacionIndex({
 
                                 {/* Peso (Toneladas) */}
                                 <div className="grid gap-1.5 sm:col-span-2">
-                                    <div className="flex items-center justify-between">
-                                        <Label htmlFor="peso-viaje" className="text-xs font-medium text-muted-foreground">Peso (Toneladas)</Label>
-                                        <span className="text-[10px] font-semibold text-red-600">Máx 10 ton</span>
-                                    </div>
+                                    <Label htmlFor="peso-viaje" className="text-xs font-medium text-muted-foreground">Peso (Toneladas)</Label>
                                     <Input
                                         id="peso-viaje"
                                         name="peso"
                                         type="number"
                                         step="0.01"
                                         min="0"
-                                        max="10"
                                         placeholder="Ej: 1.5"
                                         value={String(currentViajeForm.peso ?? '')}
                                         onChange={(e) => handleViajeFormChange('peso', e.target.value)}
@@ -2823,10 +2815,15 @@ export default function ModulacionIndex({
 
                                                 <TableCell className="text-sm text-foreground">
                                                     {tripMembers.length > 0 ? (
-                                                        <div className="space-y-1">
+                                                        <div className="space-y-2">
                                                             {tripMembers.map((m, mIdx) => (
-                                                                <div key={`trip-${m.colaborador_id ?? m.cedula}-${mIdx}`}>
-                                                                    {m.nombres ?? 'Sin nombre'}{m.cedula ? ` (${m.cedula})` : ''}{m.cargo ? ` - ${m.cargo}` : ''}
+                                                                <div key={`trip-${m.colaborador_id ?? m.cedula}-${mIdx}`} className="flex items-start gap-2">
+                                                                    <span className="mt-1.5 size-2 shrink-0 rounded-full bg-current" aria-hidden="true" />
+                                                                    <div className="space-y-0.5">
+                                                                        <p><span className="font-medium">Identificación:</span> {m.cedula || '—'}</p>
+                                                                        <p><span className="font-medium">Nombre:</span> {m.nombres || 'Sin nombre'}</p>
+                                                                        <p><span className="font-medium">Cargo:</span> {m.cargo || '—'}</p>
+                                                                    </div>
                                                                 </div>
                                                             ))}
                                                         </div>
@@ -2837,34 +2834,41 @@ export default function ModulacionIndex({
                                                     {viajesList.length > 0 ? (
                                                         <div className="space-y-2">
                                                             {viajesList.map((v, vIdx) => (
-                                                                <div key={v.id ?? `viaje-${vIdx}`} className="flex items-center justify-between border-b border-border/50 pb-1 last:border-0">
-                                                                    <div className="flex-1">
-                                                                        <span className="font-semibold text-xs" style={{ color: ACCENT }}>Viaje {vIdx + 1}:</span>{' '}
-                                                                        {obtenerDestinosViaje(v).length > 0 ? (
-                                                                            <span className="inline-flex flex-col">
-                                                                                {obtenerDestinosViaje(v).map((destino, destinoIdx) => (
-                                                                                    <span key={`${destino.lugares}-${destino.barrio}-${destinoIdx}`}>
-                                                                                        Nariño - {destino.lugares || '—'}{destino.barrio ? `, Barrio: ${destino.barrio}` : ''}
-                                                                                    </span>
-                                                                                ))}
-                                                                            </span>
-                                                                        ) : '—'}
-                                                                        {v.cliente ? `, Cliente: ${v.cliente}` : ''}{v.peso ? `, Peso: ${v.peso} ton` : ''}
-                                                                    </div>
-                                                                    <div className="flex items-center gap-1 ml-2">
-                                                                        <Button variant="ghost" size="icon" onClick={() => handleEditViajeIndividual(idx, vIdx)} className="size-6 hover:bg-accent/10" style={{ color: ACCENT }}>
-                                                                            <Pencil className="size-3" />
-                                                                        </Button>
-                                                                        <Button
-                                                                            type="button"
-                                                                            variant="ghost"
-                                                                            size="icon"
-                                                                            aria-label={`Eliminar viaje ${vIdx + 1} de la ruta ${item.placa}`}
-                                                                            onClick={() => handleRemoveViajeIndividual(item.placa, v.id, vIdx)}
-                                                                            className="size-6 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                                                        >
-                                                                            <Trash2 className="size-3" />
-                                                                        </Button>
+                                                                <div key={v.id ?? `viaje-${vIdx}`} className="border-b border-border/50 pb-2 last:border-0">
+                                                                    <p className="mb-1.5 font-semibold text-xs" style={{ color: ACCENT }}>Viaje {vIdx + 1}</p>
+                                                                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,2fr)_minmax(5rem,1fr)_minmax(5rem,1fr)_auto] sm:items-start">
+                                                                        <div className="space-y-1">
+                                                                            {obtenerDestinosViaje(v).length > 0 ? (
+                                                                                obtenerDestinosViaje(v).map((destino, destinoIdx) => (
+                                                                                    <div key={`${destino.lugares}-${destino.barrio}-${destinoIdx}`}>
+                                                                                        <p><span className="font-medium">Municipio:</span> {destino.lugares || '—'}</p>
+                                                                                        <p><span className="font-medium">Barrio:</span> {destino.barrio || '—'}</p>
+                                                                                    </div>
+                                                                                ))
+                                                                            ) : (
+                                                                                <>
+                                                                                    <p><span className="font-medium">Municipio:</span> —</p>
+                                                                                    <p><span className="font-medium">Barrio:</span> —</p>
+                                                                                </>
+                                                                            )}
+                                                                        </div>
+                                                                        <p><span className="font-medium">Cliente:</span> {v.cliente || '—'}</p>
+                                                                        <p><span className="font-medium">Peso:</span> {v.peso ? `${v.peso} ton` : '—'}</p>
+                                                                        <div className="flex items-center gap-1 sm:justify-end">
+                                                                            <Button variant="ghost" size="icon" aria-label={`Editar viaje ${vIdx + 1} de la ruta ${item.placa}`} onClick={() => handleEditViajeIndividual(idx, vIdx)} className="size-6 hover:bg-accent/10" style={{ color: ACCENT }}>
+                                                                                <Pencil className="size-3" />
+                                                                            </Button>
+                                                                            <Button
+                                                                                type="button"
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                aria-label={`Eliminar viaje ${vIdx + 1} de la ruta ${item.placa}`}
+                                                                                onClick={() => handleRemoveViajeIndividual(item.placa, v.id, vIdx)}
+                                                                                className="size-6 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                                            >
+                                                                                <Trash2 className="size-3" />
+                                                                            </Button>
+                                                                        </div>
                                                                     </div>
                                                                 </div>
                                                             ))}
@@ -2896,22 +2900,57 @@ export default function ModulacionIndex({
                         <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
                             <div className="sm:col-span-4 grid gap-1.5">
                                 <Label htmlFor="nueva-novedad-colaborador" className="text-xs text-muted-foreground">Seleccionar Colaborador</Label>
-                                <Select
-                                    value={nuevaNovedad.colaborador_id || undefined}
-                                    onValueChange={(v) => handleNuevaNovedadSelectColaborador(v === CLIENTE_CLEAR ? '' : v)}
-                                >
-                                    <SelectTrigger id="nueva-novedad-colaborador" className="h-10 text-sm w-full">
-                                        <SelectValue placeholder="-- Seleccionar colaborador --" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value={CLIENTE_CLEAR}>-- Seleccionar colaborador --</SelectItem>
-                                        {colaboradores.map((col) => (
-                                            <SelectItem key={col.id} value={String(col.id)}>
-                                                {`${col.nombre_completo ?? ''} (${col.cedula ?? ''})`}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <div className="relative">
+                                    <Input
+                                        id="nueva-novedad-colaborador"
+                                        type="text"
+                                        role="combobox"
+                                        aria-expanded={showNovedadColaboradorDropdown}
+                                        aria-controls="novedad-colaboradores-operativos"
+                                        autoComplete="off"
+                                        placeholder="Escriba nombre o cédula"
+                                        value={novedadColaboradorSearch}
+                                        onFocus={() => setShowNovedadColaboradorDropdown(true)}
+                                        onChange={(event) => {
+                                            setNovedadColaboradorSearch(event.target.value);
+                                            setNuevaNovedad((prev) => ({
+                                                ...prev,
+                                                colaborador_id: '',
+                                                cedula: '',
+                                                nombres: '',
+                                                cargo: '',
+                                            }));
+                                            setShowNovedadColaboradorDropdown(true);
+                                        }}
+                                        onBlur={() => window.setTimeout(() => setShowNovedadColaboradorDropdown(false), 150)}
+                                        className="h-10 text-sm w-full"
+                                    />
+                                    {showNovedadColaboradorDropdown && (
+                                        <div
+                                            id="novedad-colaboradores-operativos"
+                                            role="listbox"
+                                            className="absolute z-50 mt-1 max-h-56 w-full overflow-y-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
+                                        >
+                                            {colaboradoresOperativosNovedad.length > 0 ? colaboradoresOperativosNovedad.map((col) => (
+                                                <button
+                                                    key={col.id}
+                                                    type="button"
+                                                    role="option"
+                                                    aria-selected={nuevaNovedad.colaborador_id === String(col.id)}
+                                                    onMouseDown={(event) => event.preventDefault()}
+                                                    onClick={() => handleNuevaNovedadSelectColaborador(String(col.id))}
+                                                    className="w-full rounded-sm px-2 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                                                >
+                                                    {`${col.nombre_completo ?? ''} (${col.cedula ?? ''})`}
+                                                </button>
+                                            )) : (
+                                                <p className="px-2 py-2 text-sm text-muted-foreground">
+                                                    No se encontraron colaboradores del área Operativa.
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
                             <div className="sm:col-span-5 grid gap-1.5">
