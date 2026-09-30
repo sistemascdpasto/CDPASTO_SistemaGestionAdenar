@@ -199,12 +199,6 @@ class ModulacionController extends Controller
                 ];
             });
 
-        $cargos = Colaborador::whereNotNull('cargo')
-            ->where('cargo', '!=', '')
-            ->distinct()
-            ->orderBy('cargo')
-            ->pluck('cargo');
-
         $vehiculos = Vehiculo::where('is_active', true)
             ->orderBy('placa')
             ->pluck('placa');
@@ -217,7 +211,6 @@ class ModulacionController extends Controller
             'modulacion'     => $modulacion,
             'fijosIniciales' => $fijosIniciales,
             'colaboradores'  => $colaboradores,
-            'cargos'         => $cargos,
             'vehiculos'      => $vehiculos,
             'currentUser'    => $request->user()?->name ?? 'Usuario',
             'readOnly'       => $request->boolean('readOnly', false),

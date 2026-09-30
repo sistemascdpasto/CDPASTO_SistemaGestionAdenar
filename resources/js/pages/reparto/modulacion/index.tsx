@@ -158,7 +158,6 @@ interface Props {
     fecha: string;
     modulacion: ModulacionData | null;
     colaboradores: ColaboradorOption[];
-    cargos: string[];
     vehiculos: string[];
     currentUser: string;
     readOnly?: boolean;
@@ -684,7 +683,6 @@ export default function ModulacionIndex({
     fecha: initialFecha,
     modulacion,
     colaboradores = [],
-    cargos = [],
     vehiculos = [],
     currentUser,
     readOnly = false,
