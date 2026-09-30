@@ -103,6 +103,30 @@ class GeovictoriaAsistenciaApiTest extends TestCase
         ]);
     }
 
+    public function test_it_stores_hora_minima_entrada_and_accepts_payloads_without_it(): void
+    {
+        $payload = [
+            'registros' => [
+                $this->registro(['salida' => '20:00', 'hora_minima_entrada' => '2026-08-25 07:00']),
+                $this->registro(['identificador' => '87654321']),
+            ],
+        ];
+
+        $this->withHeader('Authorization', 'Bearer token-de-prueba')
+            ->postJson('/api/geovictoria/asistencias', $payload)
+            ->assertStatus(201);
+
+        $this->assertSame('2026-08-25 07:00', GeovictoriaAsistencia::where('identificador', '12345678')->first()->hora_minima_entrada->format('Y-m-d H:i'));
+        $this->assertNull(GeovictoriaAsistencia::where('identificador', '87654321')->first()->hora_minima_entrada);
+    }
+
+    public function test_it_rejects_an_invalid_hora_minima_entrada(): void
+    {
+        $this->withHeader('Authorization', 'Bearer token-de-prueba')
+            ->postJson('/api/geovictoria/asistencias', ['registros' => [$this->registro(['hora_minima_entrada' => '07:00'])]])
+            ->assertStatus(422);
+    }
+
     public function test_it_rejects_an_invalid_payload(): void
     {
         $this->withHeader('Authorization', 'Bearer token-de-prueba')

@@ -26,11 +26,13 @@ class GeovictoriaAsistencia extends Model
         'exceso_jornada',
         'horas_descanso_previo',
         'descanso_no_efectivo',
+        'hora_minima_entrada',
     ];
 
     protected $casts = [
         'fecha' => 'date:Y-m-d',
         'exceso_jornada' => 'boolean',
         'descanso_no_efectivo' => 'boolean',
+        'hora_minima_entrada' => 'datetime:Y-m-d H:i',
     ];
 }

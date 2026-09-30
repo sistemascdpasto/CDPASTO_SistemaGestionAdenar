@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
-import { AlertTriangle, BedDouble, CalendarClock, Clock, Search, Timer, Users } from 'lucide-react';
+import { AlertTriangle, BedDouble, CalendarClock, Clock, Moon, Search, Timer, Users } from 'lucide-react';
 import { FormEventHandler, useEffect, useRef, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
@@ -52,6 +52,20 @@ interface RegistroRow {
     exceso_jornada: boolean;
     horas_descanso_previo: string | null;
     descanso_no_efectivo: boolean;
+    hora_minima_entrada: string | null;
+}
+
+interface SeguimientoRow {
+    id: number;
+    fecha: string;
+    identificador: string;
+    nombre: string;
+    cargo: string | null;
+    grupo: string | null;
+    salida: string | null;
+    hora_minima_entrada: string;
+    entrada_siguiente: string | null;
+    estado: 'pendiente' | 'cumplio' | 'incumplio';
 }
 
 interface PaginationLink {
@@ -229,16 +243,103 @@ function RegistroTable({ data, from, emptyMessage }: { data: RegistroRow[]; from
     );
 }
 
+// "2026-10-01 07:00" -> "07:00 (01/10)"
+function formatHoraMinima(valor: string): string {
+    const [fecha, hora] = valor.split(' ');
+    return `${hora} (${formatFechaCorta(fecha)})`;
+}
+
+function EstadoSeguimiento({ estado }: { estado: SeguimientoRow['estado'] }) {
+    if (estado === 'incumplio') {
+        return (
+            <Badge variant="destructive" className="gap-1">
+                <AlertTriangle className="size-3" />
+                Entró antes
+            </Badge>
+        );
+    }
+    if (estado === 'cumplio') {
+        return (
+            <Badge variant="outline" className="border-[#0ca30c] text-[#0ca30c]">
+                Cumplió
+            </Badge>
+        );
+    }
+    return (
+        <Badge variant="outline" className="text-muted-foreground">
+            Pendiente
+        </Badge>
+    );
+}
+
+// Salidas después de las 18:30 de ayer y hoy, con la hora desde la que
+// pueden marcar la siguiente entrada sin caer en descanso no efectivo.
+function SeguimientoTable({ data }: { data: SeguimientoRow[] }) {
+    return (
+        <Card className="border-sidebar-border/70 dark:border-sidebar-border">
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                    <Moon className="size-4" />
+                    Seguimiento de salidas después de las 6:30 pm (ayer y hoy)
+                </CardTitle>
+            </CardHeader>
+            <CardContent>
+                <div className="overflow-x-auto rounded-lg border border-sidebar-border/70 dark:border-sidebar-border">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Fecha</TableHead>
+                                <TableHead>Empleado</TableHead>
+                                <TableHead>Cargo</TableHead>
+                                <TableHead>Grupo</TableHead>
+                                <TableHead>Salida</TableHead>
+                                <TableHead>Puede entrar desde</TableHead>
+                                <TableHead>Entrada siguiente</TableHead>
+                                <TableHead>Estado</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {data.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={8} className="text-muted-foreground py-6 text-center">
+                                        Nadie ha marcado salida después de las 6:30 pm ayer ni hoy.
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                            {data.map((fila) => (
+                                <TableRow key={fila.id} className={fila.estado === 'incumplio' ? 'bg-destructive/5' : undefined}>
+                                    <TableCell>{fila.fecha}</TableCell>
+                                    <TableCell className="font-medium">{fila.nombre}</TableCell>
+                                    <TableCell>{fila.cargo ?? '—'}</TableCell>
+                                    <TableCell>{fila.grupo ?? '—'}</TableCell>
+                                    <TableCell>{fila.salida ?? '—'}</TableCell>
+                                    <TableCell className="font-medium">{formatHoraMinima(fila.hora_minima_entrada)}</TableCell>
+                                    <TableCell>{fila.entrada_siguiente ?? '—'}</TableCell>
+                                    <TableCell>
+                                        <EstadoSeguimiento estado={fila.estado} />
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
+
 export default function GeovictoriaAsistenciaIndex({
     registros,
     indicadores,
     hoy,
+    seguimiento,
     filters,
     opciones,
 }: {
     registros: RegistrosPaginator;
     indicadores: Indicadores;
     hoy: Hoy;
+    seguimiento: SeguimientoRow[];
     filters: Filters;
     opciones: Opciones;
 }) {
@@ -313,6 +414,8 @@ export default function GeovictoriaAsistenciaIndex({
                                 color={COLOR_DESCANSO_NO_EFECTIVO}
                             />
                         </KpiCardGrid>
+
+                        <SeguimientoTable data={seguimiento} />
 
                         <RegistroTable data={hoy.registros} from={1} emptyMessage="Todavía no hay registros de hoy." />
                     </div>

@@ -71,6 +71,7 @@ class GeovictoriaAsistenciaController extends Controller
                     'descanso_no_efectivo' => $registrosHoy->where('descanso_no_efectivo', true)->count(),
                 ],
             ],
+            'seguimiento' => $this->seguimientoSalidasTarde($hoy),
             'indicadores' => [
                 'resumen' => $this->resumen($fechaDesde, $fechaHasta),
                 'tendencia_diaria' => $this->tendenciaDiaria($fechaDesde, $fechaHasta),
@@ -92,6 +93,48 @@ class GeovictoriaAsistenciaController extends Controller
         $query
             ->when($fechaDesde !== '', fn ($q) => $q->whereDate('fecha', '>=', $fechaDesde))
             ->when($fechaHasta !== '', fn ($q) => $q->whereDate('fecha', '<=', $fechaHasta));
+    }
+
+    /**
+     * Salidas después de las 18:30 de ayer y hoy (la automatización solo
+     * llena 'hora_minima_entrada' en esos casos), con el estado de la
+     * siguiente entrada: pendiente si todavía no la marca, y si ya la
+     * marcó, si cumplió el descanso mínimo según 'descanso_no_efectivo' de
+     * ese día.
+     */
+    private function seguimientoSalidasTarde(CarbonImmutable $hoy): array
+    {
+        $registros = GeovictoriaAsistencia::query()
+            ->whereNotNull('hora_minima_entrada')
+            ->whereDate('fecha', '>=', $hoy->subDay()->toDateString())
+            ->whereDate('fecha', '<=', $hoy->toDateString())
+            ->orderBy('hora_minima_entrada')
+            ->get();
+
+        $siguientes = GeovictoriaAsistencia::query()
+            ->whereIn('identificador', $registros->pluck('identificador')->unique())
+            ->whereDate('fecha', '>=', $hoy->toDateString())
+            ->whereDate('fecha', '<=', $hoy->addDay()->toDateString())
+            ->get()
+            ->keyBy(fn (GeovictoriaAsistencia $registro) => $registro->identificador.'|'.$registro->fecha->format('Y-m-d'));
+
+        return $registros->map(function (GeovictoriaAsistencia $registro) use ($siguientes) {
+            $siguiente = $siguientes->get($registro->identificador.'|'.$registro->fecha->copy()->addDay()->format('Y-m-d'));
+            $entradaSiguiente = $siguiente?->entrada;
+
+            return [
+                'id' => $registro->id,
+                'fecha' => $registro->fecha->format('Y-m-d'),
+                'identificador' => $registro->identificador,
+                'nombre' => trim("{$registro->nombres} {$registro->apellidos}") ?: $registro->identificador,
+                'cargo' => $registro->cargo,
+                'grupo' => $registro->grupo,
+                'salida' => $registro->salida,
+                'hora_minima_entrada' => $registro->hora_minima_entrada->format('Y-m-d H:i'),
+                'entrada_siguiente' => $entradaSiguiente,
+                'estado' => ! $entradaSiguiente ? 'pendiente' : ($siguiente->descanso_no_efectivo ? 'incumplio' : 'cumplio'),
+            ];
+        })->all();
     }
 
     private function valoresDistintos(string $columna): array
