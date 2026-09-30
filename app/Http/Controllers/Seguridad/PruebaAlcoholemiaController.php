@@ -15,6 +15,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -45,6 +46,7 @@ class PruebaAlcoholemiaController extends Controller
             ->latest('fecha_hora')
             ->paginate(15)
             ->withQueryString();
+        $this->agregarTipoRequeridoPruebas($pruebas->getCollection());
 
         return Inertia::render('seguridad/pruebas/index', [
             'pruebas' => $pruebas,
@@ -109,6 +111,33 @@ class PruebaAlcoholemiaController extends Controller
     private function normalizarIdentificador(string $identificador): string
     {
         return strtoupper((string) preg_replace('/[^a-zA-Z0-9]/', '', trim($identificador)));
+    }
+
+    private function agregarTipoRequeridoPruebas(Collection $pruebas): void
+    {
+        $colaboradorIds = $pruebas->pluck('colaborador_id')->filter()->unique()->values();
+        $fechas = $pruebas->map(fn (PruebaAlcoholemia $prueba) => $prueba->fecha_hora?->toDateString())
+            ->filter()
+            ->unique()
+            ->values();
+
+        $requisitos = $colaboradorIds->isEmpty() || $fechas->isEmpty()
+            ? collect()
+            : PruebaAlcoholemiaRequisito::query()
+                ->whereIn('colaborador_id', $colaboradorIds)
+                ->whereIn('fecha', $fechas)
+                ->get()
+                ->keyBy(fn (PruebaAlcoholemiaRequisito $requisito) => $requisito->fecha->format('Y-m-d') . '_id_' . $requisito->colaborador_id);
+
+        foreach ($pruebas as $prueba) {
+            $fecha = $prueba->fecha_hora?->toDateString();
+            $requisitoKey = $fecha . '_id_' . $prueba->colaborador_id;
+            $prueba->setAttribute('fecha_prueba', $fecha);
+            $prueba->setAttribute(
+                'tipo_prueba_planeado',
+                $requisitos->get($requisitoKey)?->tipo
+            );
+        }
     }
 
     public function actualizarTipoPlaneacion(

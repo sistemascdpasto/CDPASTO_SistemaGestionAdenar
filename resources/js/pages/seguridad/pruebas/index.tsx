@@ -40,8 +40,11 @@ interface PruebaRow {
     es_positivo: boolean;
     estado: string;
     fecha_hora: string;
+    fecha_prueba: string | null;
     firma_path: string | null;
+    colaborador_id: number | null;
     pertenece_planeacion?: boolean;
+    tipo_prueba_planeado: TipoPrueba | null;
     ruta_asignada?: string | null;
     colaborador: { nombres: string; apellidos: string; cedula: string; cargo?: string } | null;
     alcoholimetro: { codigo: string } | null;
@@ -370,7 +373,6 @@ export default function PruebasIndex({
                                 <TableRow>
                                     <TableHead>Fecha Planeada</TableHead>
                                     <TableHead>Colaborador</TableHead>
-                                    <TableHead>Tipo requerido</TableHead>
                                     <TableHead>Prueba pendiente</TableHead>
                                     <TableHead>Fecha GeoVictoria</TableHead>
                                     <TableHead>Entrada</TableHead>
@@ -385,7 +387,7 @@ export default function PruebasIndex({
                             <TableBody>
                                 {pruebasPendientes.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={12} className="text-muted-foreground py-8 text-center">
+                                        <TableCell colSpan={11} className="text-muted-foreground py-8 text-center">
                                             🎉 ¡Excelente! No hay pruebas Pre Ruta ni Post Ruta pendientes de la planeación.
                                         </TableCell>
                                     </TableRow>
@@ -398,34 +400,6 @@ export default function PruebasIndex({
                                                 </Badge>
                                             </TableCell>
                                             <TableCell className="font-medium text-foreground">{item.nombre_completo}</TableCell>
-                                            <TableCell>
-                                                <Select
-                                                    value={item.tipo_prueba_planeado ?? FLUJO_PRE_POST}
-                                                    onValueChange={(value) => {
-                                                        if (!item.colaborador_id || !item.fecha) return;
-
-                                                        router.patch(
-                                                            route('seguridad.pruebas.planeacion.tipo', {
-                                                                colaborador: item.colaborador_id,
-                                                                fecha: item.fecha,
-                                                            }),
-                                                            { tipo: value === FLUJO_PRE_POST ? null : value },
-                                                            { preserveScroll: true },
-                                                        );
-                                                    }}
-                                                    disabled={!item.colaborador_id || !item.fecha}
-                                                >
-                                                    <SelectTrigger className="min-w-44">
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value={FLUJO_PRE_POST}>Pre y Post Ruta</SelectItem>
-                                                        {(['ruta', 'jl', 'segundo_viaje', 'movilizador', 'administrativo'] as TipoPrueba[]).map((tipo) => (
-                                                            <SelectItem key={tipo} value={tipo}>{TIPO_LABELS[tipo]}</SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            </TableCell>
                                             <TableCell>{item.tipo_pendiente ? TIPO_LABELS[item.tipo_pendiente] : '—'}</TableCell>
                                             <TableCell>{item.fecha_geovictoria || '—'}</TableCell>
                                             <TableCell>{item.entrada_geovictoria || '—'}</TableCell>
@@ -542,6 +516,7 @@ export default function PruebasIndex({
                                         <TableHead>Fecha</TableHead>
                                         <TableHead>Colaborador</TableHead>
                                         <TableHead>Tipo</TableHead>
+                                        <TableHead>Tipo requerido</TableHead>
                                         <TableHead>Planeación / Ruta</TableHead>
                                         <TableHead>Dispositivo</TableHead>
                                         <TableHead>Resultado</TableHead>
@@ -553,7 +528,7 @@ export default function PruebasIndex({
                                 <TableBody>
                                     {pruebas.data.length === 0 && (
                                         <TableRow>
-                                            <TableCell colSpan={9} className="text-muted-foreground py-6 text-center">
+                                            <TableCell colSpan={10} className="text-muted-foreground py-6 text-center">
                                                 No se encontraron pruebas de alcoholemia.
                                             </TableCell>
                                         </TableRow>
@@ -565,6 +540,35 @@ export default function PruebasIndex({
                                                 {prueba.colaborador ? `${prueba.colaborador.nombres} ${prueba.colaborador.apellidos}` : '—'}
                                             </TableCell>
                                             <TableCell>{TIPO_LABELS[prueba.tipo] ?? prueba.tipo}</TableCell>
+                                            <TableCell>
+                                                {prueba.pertenece_planeacion && prueba.colaborador_id && prueba.fecha_prueba ? (
+                                                    <Select
+                                                        value={prueba.tipo_prueba_planeado ?? FLUJO_PRE_POST}
+                                                        onValueChange={(value) => {
+                                                            router.patch(
+                                                                route('seguridad.pruebas.planeacion.tipo', {
+                                                                    colaborador: prueba.colaborador_id,
+                                                                    fecha: prueba.fecha_prueba,
+                                                                }),
+                                                                { tipo: value === FLUJO_PRE_POST ? null : value },
+                                                                { preserveScroll: true },
+                                                            );
+                                                        }}
+                                                    >
+                                                        <SelectTrigger className="min-w-44">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value={FLUJO_PRE_POST}>Pre y Post Ruta</SelectItem>
+                                                            {(['ruta', 'jl', 'segundo_viaje', 'movilizador', 'administrativo'] as TipoPrueba[]).map((tipo) => (
+                                                                <SelectItem key={tipo} value={tipo}>{TIPO_LABELS[tipo]}</SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                ) : (
+                                                    <span className="text-muted-foreground">—</span>
+                                                )}
+                                            </TableCell>
                                             <TableCell>{prueba.ruta_asignada || '—'}</TableCell>
                                             <TableCell>{prueba.alcoholimetro?.codigo ?? '—'}</TableCell>
                                             <TableCell>

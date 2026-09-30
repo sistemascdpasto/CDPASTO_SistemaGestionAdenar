@@ -497,6 +497,15 @@ class PruebaAlcoholemiaTest extends TestCase
         $this->assertSame(0, $resumen['total_pendientes']);
         $this->assertTrue($resumen['planeaciones'][0]['esta_completa']);
         $this->assertCount(0, $resumen['pendientes_otras']);
+
+        $this->actingAs($user)
+            ->get(route('seguridad.pruebas.index', [
+                'fecha_desde' => $fecha,
+                'fecha_hasta' => $fecha,
+            ]))
+            ->assertInertia(fn ($page) => $page
+                ->where('pruebas.data.0.tipo_prueba_planeado', 'movilizador')
+                ->where('pruebas.data.0.fecha_prueba', $fecha));
     }
 
     public function test_lista_pendientes_de_planeacion_muestra_pendientes_pre_y_post_sin_requerir_marcacion(): void

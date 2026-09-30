@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Seguridad;
 use App\Exports\Seguridad\CondicionesSaludExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Seguridad\StoreCondicionSaludRequest;
+use App\Models\GeovictoriaAsistencia;
 use App\Models\Seguridad\CondicionSalud;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
@@ -38,11 +39,64 @@ class CondicionSaludController extends Controller
             $page,
             ['path' => $request->url(), 'query' => $request->query()]
         );
+        $this->agregarMarcacionesGeovictoria($paginado->getCollection());
 
         return Inertia::render('seguridad/condiciones-salud/index', [
             'registros' => $paginado,
             'filters' => $filtros,
         ]);
+    }
+
+    private function agregarMarcacionesGeovictoria(Collection $filas): void
+    {
+        $identificadores = $filas
+            ->pluck('colaborador.cedula')
+            ->filter()
+            ->map(fn ($cedula) => $this->normalizarIdentificador((string) $cedula))
+            ->unique()
+            ->values();
+
+        if ($filas->isEmpty() || $identificadores->isEmpty()) {
+            $filas->transform(fn (array $fila) => [
+                ...$fila,
+                'fecha_geovictoria' => null,
+                'entrada_geovictoria' => null,
+                'salida_geovictoria' => null,
+            ]);
+
+            return;
+        }
+
+        $asistencias = GeovictoriaAsistencia::query()
+            ->whereDate('fecha', '<=', $filas->max('fecha'))
+            ->where(function ($query) use ($identificadores) {
+                $query->whereIn('identificador', $identificadores)
+                    ->orWhereRaw(
+                        "UPPER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(TRIM(identificador), '.', ''), '-', ''), ' ', ''), '/', ''), ',', '')) IN (" . $identificadores->map(fn () => '?')->implode(',') . ')',
+                        $identificadores->all()
+                    );
+            })
+            ->orderByDesc('fecha')
+            ->get(['identificador', 'fecha', 'entrada', 'salida'])
+            ->groupBy(fn (GeovictoriaAsistencia $asistencia) => $this->normalizarIdentificador($asistencia->identificador));
+
+        $filas->transform(function (array $fila) use ($asistencias): array {
+            $identificador = $this->normalizarIdentificador((string) $fila['colaborador']['cedula']);
+            $asistencia = $asistencias->get($identificador, collect())
+                ->first(fn (GeovictoriaAsistencia $registro) => $registro->fecha->format('Y-m-d') <= $fila['fecha']);
+
+            return [
+                ...$fila,
+                'fecha_geovictoria' => $asistencia?->fecha->format('Y-m-d'),
+                'entrada_geovictoria' => $asistencia?->entrada,
+                'salida_geovictoria' => $asistencia?->salida,
+            ];
+        });
+    }
+
+    private function normalizarIdentificador(string $identificador): string
+    {
+        return strtoupper((string) preg_replace('/[^a-zA-Z0-9]/', '', trim($identificador)));
     }
 
     public function exportarPdf(Request $request): \Illuminate\Http\Response
