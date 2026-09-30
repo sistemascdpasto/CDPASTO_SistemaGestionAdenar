@@ -38,7 +38,7 @@ class PruebaAlcoholemiaController extends Controller
             $filtros['fecha_desde'] ?: null,
             $filtros['fecha_hasta'] ?: null
         );
-        $cobertura = $this->filtrarPendientesConMarcaciones($cobertura);
+        $this->agregarHorasMarcacionPendientes($cobertura);
 
         $pruebas = $this->filtrarPruebas($request)
             ->latest('fecha_hora')
@@ -53,44 +53,41 @@ class PruebaAlcoholemiaController extends Controller
         ]);
     }
 
-    private function filtrarPendientesConMarcaciones(array $cobertura): array
+    private function agregarHorasMarcacionPendientes(array &$cobertura): void
     {
         $pendientes = collect($cobertura['pendientes_pre_ruta'])
             ->concat($cobertura['pendientes_post_ruta']);
         $fechas = $pendientes->pluck('fecha')->filter()->unique()->values();
+        $cedulas = $pendientes->pluck('cedula')->filter()->map(fn ($cedula) => trim((string) $cedula))->unique()->values();
 
-        if ($fechas->isEmpty()) {
-            $cobertura['pendientes_pre_ruta'] = [];
-            $cobertura['pendientes_post_ruta'] = [];
+        if ($fechas->isEmpty() || $cedulas->isEmpty()) {
+            foreach (['pendientes_pre_ruta', 'pendientes_post_ruta'] as $tipo) {
+                $cobertura[$tipo] = array_map(
+                    fn (array $item) => [...$item, 'hora_prueba_pendiente' => null],
+                    $cobertura[$tipo]
+                );
+            }
 
-            return $cobertura;
+            return;
         }
 
         $asistencias = GeovictoriaAsistencia::query()
             ->whereIn('fecha', $fechas)
+            ->whereIn('identificador', $cedulas)
             ->get(['identificador', 'fecha', 'entrada', 'salida'])
             ->keyBy(fn (GeovictoriaAsistencia $asistencia) => $asistencia->fecha->format('Y-m-d') . '|' . trim($asistencia->identificador));
 
-        $tieneMarcacion = static function (array $pendiente, string $campo) use ($asistencias): bool {
-            if (empty($pendiente['fecha']) || empty($pendiente['cedula'])) {
-                return false;
-            }
+        foreach ([
+            'pendientes_pre_ruta' => 'entrada',
+            'pendientes_post_ruta' => 'salida',
+        ] as $tipo => $marcacion) {
+            $cobertura[$tipo] = array_map(function (array $item) use ($asistencias, $marcacion): array {
+                $key = ($item['fecha'] ?? '') . '|' . trim((string) ($item['cedula'] ?? ''));
+                $item['hora_prueba_pendiente'] = $asistencias->get($key)?->{$marcacion};
 
-            $key = $pendiente['fecha'] . '|' . trim((string) $pendiente['cedula']);
-
-            return filled($asistencias->get($key)?->{$campo});
-        };
-
-        $cobertura['pendientes_pre_ruta'] = array_values(array_filter(
-            $cobertura['pendientes_pre_ruta'],
-            fn (array $pendiente) => $tieneMarcacion($pendiente, 'entrada')
-        ));
-        $cobertura['pendientes_post_ruta'] = array_values(array_filter(
-            $cobertura['pendientes_post_ruta'],
-            fn (array $pendiente) => $tieneMarcacion($pendiente, 'salida')
-        ));
-
-        return $cobertura;
+                return $item;
+            }, $cobertura[$tipo]);
+        }
     }
 
     public function create(Request $request): Response

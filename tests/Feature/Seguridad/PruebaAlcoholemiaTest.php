@@ -443,7 +443,7 @@ class PruebaAlcoholemiaTest extends TestCase
         $this->assertCount(0, $resumen['pendientes_post_ruta']);
     }
 
-    public function test_lista_pendientes_de_planeacion_solo_incluye_pruebas_con_marcacion_de_entrada_o_salida(): void
+    public function test_lista_pendientes_de_planeacion_muestra_pendientes_pre_y_post_sin_requerir_marcacion(): void
     {
         $fecha = '2026-09-25';
         $user = $this->seguridadUser();
@@ -495,6 +495,14 @@ class PruebaAlcoholemiaTest extends TestCase
             'fecha_hora' => "{$fecha} 06:00:00",
             'estado' => 'realizada',
         ]);
+        PruebaAlcoholemia::create([
+            'colaborador_id' => $soloEntrada->id,
+            'tipo' => 'post_ruta',
+            'resultado' => '0.000',
+            'responsable_id' => $user->id,
+            'fecha_hora' => "{$fecha} 18:00:00",
+            'estado' => 'realizada',
+        ]);
         GeovictoriaAsistencia::create([
             'identificador' => $entradaYSalida->cedula,
             'fecha' => $fecha,
@@ -505,10 +513,7 @@ class PruebaAlcoholemiaTest extends TestCase
             'identificador' => $soloEntrada->cedula,
             'fecha' => $fecha,
             'entrada' => '06:10',
-        ]);
-        GeovictoriaAsistencia::create([
-            'identificador' => $sinMarcacion->cedula,
-            'fecha' => $fecha,
+            'salida' => '17:50',
         ]);
 
         $this->actingAs($user)
@@ -519,21 +524,21 @@ class PruebaAlcoholemiaTest extends TestCase
             ->assertInertia(function ($page) use ($entradaYSalida, $soloEntrada, $sinMarcacion) {
                 $cobertura = $page->toArray()['props']['cobertura'];
 
-                $this->assertSame(
-                    [$soloEntrada->id],
+                $this->assertEqualsCanonicalizing(
+                    [$soloEntrada->id, $sinMarcacion->id],
                     collect($cobertura['pendientes_pre_ruta'])->pluck('colaborador_id')->all()
                 );
-                $this->assertSame(
+                $this->assertEqualsCanonicalizing(
                     [$entradaYSalida->id],
                     collect($cobertura['pendientes_post_ruta'])->pluck('colaborador_id')->all()
                 );
-                $this->assertNotContains(
-                    $sinMarcacion->id,
-                    collect($cobertura['pendientes_pre_ruta'])
-                        ->concat($cobertura['pendientes_post_ruta'])
-                        ->pluck('colaborador_id')
-                        ->all()
-                );
+                $pendientesPre = collect($cobertura['pendientes_pre_ruta'])->keyBy('colaborador_id');
+                $pendientesPost = collect($cobertura['pendientes_post_ruta'])->keyBy('colaborador_id');
+
+                $this->assertSame('06:10', $pendientesPre[$soloEntrada->id]['hora_prueba_pendiente']);
+                $this->assertNull($pendientesPre[$sinMarcacion->id]['hora_prueba_pendiente']);
+                $this->assertSame('18:00', $pendientesPost[$entradaYSalida->id]['hora_prueba_pendiente']);
+                $this->assertArrayNotHasKey($sinMarcacion->id, $pendientesPost);
             });
     }
 

@@ -417,7 +417,8 @@ class CoberturaPlaneacionService
         ));
         $pendientesPostRuta = array_values(array_filter(
             $planeadosArray,
-            fn (array $item) => empty($pruebasPorTipo[$item['key']]['post_ruta']),
+            fn (array $item) => ! empty($pruebasPorTipo[$item['key']]['pre_ruta'])
+                && empty($pruebasPorTipo[$item['key']]['post_ruta']),
         ));
 
         return [

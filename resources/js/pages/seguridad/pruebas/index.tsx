@@ -54,6 +54,7 @@ interface PendingCollaborator {
     nombre_completo: string;
     cargo: string;
     ruta_asignada: string;
+    hora_prueba_pendiente: string | null;
     placa?: string | null;
     ud?: string | null;
     estado_cobertura: string;
@@ -345,7 +346,7 @@ export default function PruebasIndex({
                                     📋 Pruebas pendientes de la Planeación ({pruebasPendientes.length})
                                 </h3>
                                 <p className="text-xs text-amber-700/80 dark:text-amber-400/80 mt-0.5">
-                                    Se listan las pruebas pendientes cuando GeoVictoria registra la entrada (Pre Ruta) o la salida (Post Ruta) del colaborador.
+                                    Primero se realiza Pre Ruta; al completarla, queda pendiente Post Ruta hasta registrarla.
                                 </p>
                             </div>
                         </div>
@@ -355,6 +356,7 @@ export default function PruebasIndex({
                                     <TableHead>Fecha Planeada</TableHead>
                                     <TableHead>Colaborador</TableHead>
                                     <TableHead>Prueba pendiente</TableHead>
+                                    <TableHead>Hora de prueba pendiente</TableHead>
                                     <TableHead>Cédula</TableHead>
                                     <TableHead>Cargo</TableHead>
                                     <TableHead>Asignación de Ruta</TableHead>
@@ -365,7 +367,7 @@ export default function PruebasIndex({
                             <TableBody>
                                 {pruebasPendientes.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={8} className="text-muted-foreground py-8 text-center">
+                                        <TableCell colSpan={9} className="text-muted-foreground py-8 text-center">
                                             🎉 ¡Excelente! No hay pruebas Pre Ruta ni Post Ruta pendientes de la planeación.
                                         </TableCell>
                                     </TableRow>
@@ -379,6 +381,7 @@ export default function PruebasIndex({
                                             </TableCell>
                                             <TableCell className="font-medium text-foreground">{item.nombre_completo}</TableCell>
                                             <TableCell>{item.tipoPendiente === 'pre_ruta' ? 'Pre Ruta' : 'Post Ruta'}</TableCell>
+                                            <TableCell>{item.hora_prueba_pendiente || '—'}</TableCell>
                                             <TableCell>{item.cedula || '—'}</TableCell>
                                             <TableCell>{item.cargo || '—'}</TableCell>
                                             <TableCell>{item.ruta_asignada}</TableCell>
