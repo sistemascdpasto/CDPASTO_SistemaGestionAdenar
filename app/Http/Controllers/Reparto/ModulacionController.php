@@ -183,7 +183,7 @@ class ModulacionController extends Controller
             }
         }
 
-        $colaboradores = Colaborador::select(['id', 'cedula', 'nombres', 'apellidos', 'cargo'])
+        $colaboradores = Colaborador::select(['id', 'cedula', 'nombres', 'apellidos', 'cargo', 'area'])
             ->where('is_active', true)
             ->orderBy('nombres')
             ->get()
@@ -195,6 +195,7 @@ class ModulacionController extends Controller
                     'apellidos' => $c->apellidos,
                     'nombre_completo' => trim("{$c->nombres} {$c->apellidos}"),
                     'cargo' => $c->cargo ?? '',
+                    'area' => $c->area,
                 ];
             });
 

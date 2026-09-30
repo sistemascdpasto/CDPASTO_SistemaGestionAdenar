@@ -35,6 +35,7 @@ interface ColaboradorOption {
     apellidos: string;
     nombre_completo: string;
     cargo: string;
+    area: string | null;
 }
 
 interface MiembroTripulacion {
@@ -165,21 +166,12 @@ interface Props {
     fijosIniciales?: FijoInicial[];
 }
 
-const CARGOS_TRIPULACION_OPERATIVA = new Set([
-    'CONDUCTOR',
-    'CONDUCTOR DE REPARTO',
-    'CONDUCTOR MULA',
-    'AUXILIAR DE REPARTO',
-]);
-
-const esPersonalOperativoDeRuta = (cargo: string | null | undefined): boolean =>
-    CARGOS_TRIPULACION_OPERATIVA.has(
-        (cargo ?? '')
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .trim()
-            .toUpperCase(),
-    );
+const esPersonalOperativoDeRuta = (area: string | null | undefined): boolean =>
+    (area ?? '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .toUpperCase() === 'OPERATIVA';
 
 const mapModulacionItems = (items: ModulacionItemData[]): RutaFormState[] =>
     items.map((item) => ({
@@ -187,7 +179,7 @@ const mapModulacionItems = (items: ModulacionItemData[]): RutaFormState[] =>
         placa: item.placa,
         doc_tras: item.doc_tras ?? '',
         cargo: item.cargo ?? '',
-        tripulacion: (item.tripulacion ?? []).filter((miembro) => esPersonalOperativoDeRuta(miembro.cargo)),
+        tripulacion: item.tripulacion ?? [],
         viajes: (item.viajes ?? []).map((viaje, index) => ({
             ...viaje,
             lugares: viaje.lugares ?? '',
@@ -1617,7 +1609,7 @@ export default function ModulacionIndex({
         const selected: ColaboradorOption[] = [];
         const unselected: ColaboradorOption[] = [];
 
-        colaboradores.filter((col) => esPersonalOperativoDeRuta(col.cargo)).forEach((col) => {
+        colaboradores.filter((col) => esPersonalOperativoDeRuta(col.area)).forEach((col) => {
             const colIdStr = String(col.id).trim();
             const colCedStr = col.cedula ? String(col.cedula).trim() : '';
 
@@ -1650,7 +1642,7 @@ export default function ModulacionIndex({
             }
         });
 
-        currentRoute.tripulacion.filter((miembro) => esPersonalOperativoDeRuta(miembro.cargo)).forEach((m) => {
+        currentRoute.tripulacion.forEach((m) => {
             const mIdStr = m.colaborador_id ? String(m.colaborador_id).trim() : '';
             const mCedStr = m.cedula ? String(m.cedula).trim() : '';
 
@@ -1667,6 +1659,7 @@ export default function ModulacionIndex({
                     apellidos: '',
                     nombre_completo: m.nombres || 'Colaborador',
                     cargo: m.cargo || '',
+                    area: null,
                 });
             }
         });
@@ -1675,7 +1668,14 @@ export default function ModulacionIndex({
     }, [colaboradores, cargoFilter, searchQuery, currentRoute.tripulacion, isCollaboratorAlreadyAssigned, isFiltering]);
 
     const allChecklistColaboradores = [...selectedColaboradores, ...unselectedColaboradores];
-    const cargosOperativos = cargos.filter(esPersonalOperativoDeRuta);
+    const cargosOperativos = Array.from(
+        new Set(
+            colaboradores
+                .filter((col) => esPersonalOperativoDeRuta(col.area))
+                .map((col) => col.cargo)
+                .filter(Boolean),
+        ),
+    ).sort((a, b) => a.localeCompare(b));
 
     // LISTA ÚNICA DE PLACAS
     const uniquePlacasInRutas = useMemo(() => {

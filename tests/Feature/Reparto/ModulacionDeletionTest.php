@@ -5,6 +5,7 @@ namespace Tests\Feature\Reparto;
 use App\Models\Reparto\Modulacion;
 use App\Models\Reparto\ModulacionItem;
 use App\Models\Reparto\ModulacionNovedad;
+use App\Models\Seguridad\Colaborador;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
@@ -85,6 +86,37 @@ class ModulacionDeletionTest extends TestCase
                 ->component('reparto/modulacion/index')
                 ->where('readOnly', true)
                 ->where('exportExcel', true));
+    }
+
+    public function test_tripulacion_recibe_colaboradores_con_su_area_incluyendo_responsable_de_reparto(): void
+    {
+        Colaborador::create([
+                'cedula' => '900111111',
+                'nombres' => 'Ana',
+                'apellidos' => 'Operativa',
+                'cargo' => 'RESPONSABLE DE REPARTO',
+                'area' => 'Operativa',
+                'estado_registro' => 'completo',
+                'is_active' => true,
+        ]);
+
+        Colaborador::create([
+                'cedula' => '900222222',
+                'nombres' => 'Beto',
+                'apellidos' => 'Administrativo',
+                'cargo' => 'AUXILIAR ADMINISTRATIVO',
+                'area' => 'Administrativa',
+                'estado_registro' => 'completo',
+                'is_active' => true,
+        ]);
+
+        $this->actingAs($this->usuarioReparto())
+                ->get(route('reparto.modulacion.index', ['fecha' => '2026-09-29']))
+                ->assertInertia(fn ($page) => $page
+                    ->component('reparto/modulacion/index')
+                    ->has('colaboradores', 2)
+                    ->where('colaboradores.0.cargo', 'RESPONSABLE DE REPARTO')
+                    ->where('colaboradores.0.area', 'Operativa'));
     }
 
     public function test_eliminar_una_ruta_con_otras_rutas_conserva_la_planeacion(): void
