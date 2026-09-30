@@ -390,7 +390,7 @@ export default function CreatePrueba({
     preselectedColaboradorId?: number | null;
     preselectedFecha?: string | null;
     preselectedRutaAsignada?: string | null;
-    preselectedTipo?: 'pre_ruta' | 'post_ruta' | null;
+    preselectedTipo?: 'pre_ruta' | 'ruta' | 'post_ruta' | 'jl' | 'segundo_viaje' | 'movilizador' | 'administrativo' | null;
 }) {
     const breadcrumbs: BreadcrumbItem[] = prueba
         ? [...breadcrumbsBase, { title: 'Editar prueba', href: `/modules/seguridad/pruebas/${prueba.id}/edit` }]

@@ -6,6 +6,7 @@ use App\Models\Reparto\Modulacion;
 use App\Models\Reparto\ModulacionItem;
 use App\Models\Seguridad\Colaborador;
 use App\Models\Seguridad\PruebaAlcoholemia;
+use App\Models\Seguridad\PruebaAlcoholemiaRequisito;
 use Illuminate\Support\Facades\DB;
 
 class CoberturaPlaneacionService
@@ -294,15 +295,29 @@ class CoberturaPlaneacionService
         }
         unset($p);
 
+        $requisitosQuery = PruebaAlcoholemiaRequisito::query()
+            ->whereIn('fecha', array_values(array_unique(array_column($planeadosMap, 'fecha'))));
+        $colaboradorIds = array_values(array_filter(array_column($planeadosMap, 'colaborador_id')));
+        if ($colaboradorIds !== []) {
+            $requisitos = $requisitosQuery
+                ->whereIn('colaborador_id', $colaboradorIds)
+                ->get()
+                ->keyBy(fn (PruebaAlcoholemiaRequisito $requisito) => $requisito->fecha->format('Y-m-d') . '_id_' . $requisito->colaborador_id);
+        } else {
+            $requisitos = collect();
+        }
+
+        foreach ($planeadosMap as $key => &$planeado) {
+            $requisitoKey = $planeado['fecha'] . '_id_' . ($planeado['colaborador_id'] ?? '');
+            $planeado['tipo_prueba_planeado'] = $requisitos->get($requisitoKey)?->tipo;
+        }
+        unset($planeado);
+
         // 5. Cruzar estado de cobertura realizada
-        $realizadosCount = 0;
         $adicionalesCount = 0;
         $pruebasPorTipo = [];
         foreach ($planeadosMap as $key => $item) {
-            $pruebasPorTipo[$key] = [
-                'pre_ruta' => false,
-                'post_ruta' => false,
-            ];
+            $pruebasPorTipo[$key] = [];
         }
 
         foreach ($pruebas as $prueba) {
@@ -324,18 +339,37 @@ class CoberturaPlaneacionService
             }
 
             if ($matchedKey && isset($planeadosMap[$matchedKey])) {
-                if (in_array($prueba->tipo, ['pre_ruta', 'post_ruta'], true)) {
-                    $pruebasPorTipo[$matchedKey][$prueba->tipo] = true;
-                }
-                if ($planeadosMap[$matchedKey]['estado_cobertura'] === 'pendiente') {
-                    $planeadosMap[$matchedKey]['estado_cobertura'] = 'realizada';
-                    $planeadosMap[$matchedKey]['prueba'] = $prueba;
-                    $realizadosCount++;
-                }
+                $pruebasPorTipo[$matchedKey][$prueba->tipo] = true;
+                $planeadosMap[$matchedKey]['ultima_prueba'] = $prueba;
             } else {
                 $adicionalesCount++;
             }
         }
+
+        $realizadosCount = 0;
+        foreach ($planeadosMap as $key => &$planeado) {
+            $tipoAlternativo = $planeado['tipo_prueba_planeado'];
+            if ($tipoAlternativo !== null) {
+                $tipoPendiente = empty($pruebasPorTipo[$key][$tipoAlternativo]) ? $tipoAlternativo : null;
+                $completo = $tipoPendiente === null;
+            } else {
+                $preRutaCompleta = ! empty($pruebasPorTipo[$key]['pre_ruta']);
+                $postRutaCompleta = ! empty($pruebasPorTipo[$key]['post_ruta']);
+                $tipoPendiente = ! $preRutaCompleta
+                    ? 'pre_ruta'
+                    : (! $postRutaCompleta ? 'post_ruta' : null);
+                $completo = $preRutaCompleta && $postRutaCompleta;
+            }
+
+            $planeado['tipo_pendiente'] = $tipoPendiente;
+            $planeado['estado_cobertura'] = $completo ? 'realizada' : 'pendiente';
+            $planeado['prueba'] = $planeado['ultima_prueba'] ?? null;
+            unset($planeado['ultima_prueba']);
+            if ($completo) {
+                $realizadosCount++;
+            }
+        }
+        unset($planeado);
 
         // Convertir a array indexado y ordenar por fecha DESC
         $planeadosArray = array_values($planeadosMap);
@@ -380,17 +414,23 @@ class CoberturaPlaneacionService
             $realizados = 0;
             $preCount = 0;
             $postCount = 0;
+            $preRequired = 0;
+            $postRequired = 0;
 
             foreach ($itemsDelDia as $item) {
                 $pruebasColaborador = $pruebasPorTipo[$item['key']] ?? [];
                 if ($item['estado_cobertura'] === 'realizada') {
                     $realizados++;
                 }
-                if (! empty($pruebasColaborador['pre_ruta'])) {
-                    $preCount++;
-                }
-                if (! empty($pruebasColaborador['post_ruta'])) {
-                    $postCount++;
+                if ($item['tipo_prueba_planeado'] === null) {
+                    $preRequired++;
+                    $postRequired++;
+                    if (! empty($pruebasColaborador['pre_ruta'])) {
+                        $preCount++;
+                    }
+                    if (! empty($pruebasColaborador['post_ruta'])) {
+                        $postCount++;
+                    }
                 }
             }
 
@@ -400,9 +440,11 @@ class CoberturaPlaneacionService
                 'total_realizados' => $realizados,
                 'total_pendientes' => max(0, $total - $realizados),
                 'pre_ruta_realizados' => $preCount,
-                'pre_ruta_completa' => $total > 0 && $preCount >= $total,
+                'pre_ruta_requeridos' => $preRequired,
+                'pre_ruta_completa' => $preCount >= $preRequired,
                 'post_ruta_realizados' => $postCount,
-                'post_ruta_completa' => $total > 0 && $postCount >= $total,
+                'post_ruta_requeridos' => $postRequired,
+                'post_ruta_completa' => $postCount >= $postRequired,
                 'esta_completa' => $total > 0 && $realizados >= $total,
             ];
         }
@@ -413,12 +455,15 @@ class CoberturaPlaneacionService
         $realizadosList = array_values(array_filter($planeadosArray, fn ($item) => $item['estado_cobertura'] === 'realizada'));
         $pendientesPreRuta = array_values(array_filter(
             $planeadosArray,
-            fn (array $item) => empty($pruebasPorTipo[$item['key']]['pre_ruta']),
+            fn (array $item) => $item['tipo_prueba_planeado'] === null && $item['tipo_pendiente'] === 'pre_ruta',
         ));
         $pendientesPostRuta = array_values(array_filter(
             $planeadosArray,
-            fn (array $item) => ! empty($pruebasPorTipo[$item['key']]['pre_ruta'])
-                && empty($pruebasPorTipo[$item['key']]['post_ruta']),
+            fn (array $item) => $item['tipo_prueba_planeado'] === null && $item['tipo_pendiente'] === 'post_ruta',
+        ));
+        $pendientesOtras = array_values(array_filter(
+            $planeadosArray,
+            fn (array $item) => $item['tipo_prueba_planeado'] !== null && $item['tipo_pendiente'] !== null,
         ));
 
         return [
@@ -434,6 +479,7 @@ class CoberturaPlaneacionService
             'pendientes' => $pendientesList,
             'pendientes_pre_ruta' => $pendientesPreRuta,
             'pendientes_post_ruta' => $pendientesPostRuta,
+            'pendientes_otras' => $pendientesOtras,
             'realizados' => $realizadosList,
             'todos_planeados' => $planeadosArray,
             'planeaciones' => $planeacionesResumen,

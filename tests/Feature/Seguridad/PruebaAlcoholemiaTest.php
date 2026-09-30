@@ -363,10 +363,10 @@ class PruebaAlcoholemiaTest extends TestCase
         $resumen = $service->obtenerResumenCobertura($fecha);
 
         $this->assertSame(2, $resumen['total_planeados']);
-        $this->assertSame(1, $resumen['total_realizados']);
-        $this->assertSame(1, $resumen['total_pendientes']);
-        $this->assertSame(50.0, $resumen['porcentaje_cobertura']);
-        $this->assertStringContainsString('2 colaboradores planeados — 1 realizados — 1 pendientes — 50% de cobertura', $resumen['resumen_texto']);
+        $this->assertSame(0, $resumen['total_realizados']);
+        $this->assertSame(2, $resumen['total_pendientes']);
+        $this->assertSame(0.0, $resumen['porcentaje_cobertura']);
+        $this->assertStringContainsString('2 colaboradores planeados — 0 realizados — 2 pendientes — 0% de cobertura', $resumen['resumen_texto']);
     }
 
     public function test_cobertura_de_pre_y_post_ruta_se_calcula_por_separado(): void
@@ -443,9 +443,65 @@ class PruebaAlcoholemiaTest extends TestCase
         $this->assertCount(0, $resumen['pendientes_post_ruta']);
     }
 
+    public function test_cambiar_tipo_requerido_de_un_colaborador_cuenta_su_tipo_alternativo_como_cobertura(): void
+    {
+        $fecha = '2026-09-26';
+        $user = $this->seguridadUser();
+        $colaborador = $this->colaborador();
+        $modulacion = \App\Models\Reparto\Modulacion::create([
+            'fecha' => $fecha,
+            'user_id' => $user->id,
+        ]);
+        $modulacion->items()->create([
+            'placa' => 'ABC-123',
+            'colaborador_id' => $colaborador->id,
+            'cedula' => $colaborador->cedula,
+            'nombres' => $colaborador->nombres,
+            'tripulacion' => [],
+            'viajes' => [],
+        ]);
+
+        $this->actingAs($user)
+            ->patch(route('seguridad.pruebas.planeacion.tipo', [
+                'colaborador' => $colaborador->id,
+                'fecha' => $fecha,
+            ]), ['tipo' => 'movilizador'])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('pruebas_alcoholemia_requisitos', [
+            'colaborador_id' => $colaborador->id,
+            'fecha' => $fecha,
+            'tipo' => 'movilizador',
+        ]);
+
+        $service = app(\App\Services\Seguridad\CoberturaPlaneacionService::class);
+        $resumen = $service->obtenerResumenCobertura($fecha, $fecha);
+
+        $this->assertSame(0, $resumen['planeaciones'][0]['pre_ruta_requeridos']);
+        $this->assertSame(0, $resumen['planeaciones'][0]['post_ruta_requeridos']);
+        $this->assertSame(0, $resumen['total_realizados']);
+        $this->assertCount(1, $resumen['pendientes_otras']);
+        $this->assertSame('movilizador', $resumen['pendientes_otras'][0]['tipo_pendiente']);
+
+        PruebaAlcoholemia::create([
+            'colaborador_id' => $colaborador->id,
+            'tipo' => 'movilizador',
+            'resultado' => '0.000',
+            'responsable_id' => $user->id,
+            'fecha_hora' => "{$fecha} 08:00:00",
+            'estado' => 'realizada',
+        ]);
+
+        $resumen = $service->obtenerResumenCobertura($fecha, $fecha);
+        $this->assertSame(1, $resumen['total_realizados']);
+        $this->assertSame(0, $resumen['total_pendientes']);
+        $this->assertTrue($resumen['planeaciones'][0]['esta_completa']);
+        $this->assertCount(0, $resumen['pendientes_otras']);
+    }
+
     public function test_lista_pendientes_de_planeacion_muestra_pendientes_pre_y_post_sin_requerir_marcacion(): void
     {
-        $fecha = '2026-09-25';
+        $fecha = '2026-09-30';
         $user = $this->seguridadUser();
         $entradaYSalida = $this->colaborador();
         $soloEntrada = Colaborador::create([
@@ -511,9 +567,21 @@ class PruebaAlcoholemiaTest extends TestCase
         ]);
         GeovictoriaAsistencia::create([
             'identificador' => '900.111.222',
-            'fecha' => $fecha,
+            'fecha' => '2026-09-28',
             'entrada' => '06:10',
             'salida' => '17:50',
+        ]);
+        GeovictoriaAsistencia::create([
+            'identificador' => '900.111.222',
+            'fecha' => '2026-09-26',
+            'entrada' => '07:00',
+            'salida' => '17:00',
+        ]);
+        GeovictoriaAsistencia::create([
+            'identificador' => '900.111.222',
+            'fecha' => '2026-10-01',
+            'entrada' => '05:00',
+            'salida' => '19:00',
         ]);
 
         $this->actingAs($user)
@@ -521,7 +589,7 @@ class PruebaAlcoholemiaTest extends TestCase
                 'fecha_desde' => $fecha,
                 'fecha_hasta' => $fecha,
             ]))
-            ->assertInertia(function ($page) use ($entradaYSalida, $soloEntrada, $sinMarcacion) {
+            ->assertInertia(function ($page) use ($entradaYSalida, $soloEntrada, $sinMarcacion, $fecha) {
                 $cobertura = $page->toArray()['props']['cobertura'];
 
                 $this->assertEqualsCanonicalizing(
@@ -535,10 +603,12 @@ class PruebaAlcoholemiaTest extends TestCase
                 $pendientesPre = collect($cobertura['pendientes_pre_ruta'])->keyBy('colaborador_id');
                 $pendientesPost = collect($cobertura['pendientes_post_ruta'])->keyBy('colaborador_id');
 
+                $this->assertSame('2026-09-28', $pendientesPre[$soloEntrada->id]['fecha_geovictoria']);
                 $this->assertSame('06:10', $pendientesPre[$soloEntrada->id]['entrada_geovictoria']);
                 $this->assertSame('17:50', $pendientesPre[$soloEntrada->id]['salida_geovictoria']);
                 $this->assertNull($pendientesPre[$sinMarcacion->id]['entrada_geovictoria']);
                 $this->assertNull($pendientesPre[$sinMarcacion->id]['salida_geovictoria']);
+                $this->assertSame($fecha, $pendientesPost[$entradaYSalida->id]['fecha_geovictoria']);
                 $this->assertSame('06:00', $pendientesPost[$entradaYSalida->id]['entrada_geovictoria']);
                 $this->assertSame('18:00', $pendientesPost[$entradaYSalida->id]['salida_geovictoria']);
                 $this->assertArrayNotHasKey($sinMarcacion->id, $pendientesPost);

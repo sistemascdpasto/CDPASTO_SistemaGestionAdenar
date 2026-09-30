@@ -9,6 +9,7 @@ use App\Models\GeovictoriaAsistencia;
 use App\Models\Seguridad\Alcoholimetro;
 use App\Models\Seguridad\Colaborador;
 use App\Models\Seguridad\PruebaAlcoholemia;
+use App\Models\Seguridad\PruebaAlcoholemiaRequisito;
 use App\Services\Seguridad\QrCodeGenerator;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
@@ -56,14 +57,17 @@ class PruebaAlcoholemiaController extends Controller
     private function agregarHorasMarcacionPendientes(array &$cobertura): void
     {
         $pendientes = collect($cobertura['pendientes_pre_ruta'])
-            ->concat($cobertura['pendientes_post_ruta']);
+            ->concat($cobertura['pendientes_post_ruta'])
+            ->concat($cobertura['pendientes_otras']);
         $fechas = $pendientes->pluck('fecha')->filter()->unique()->values();
+        $cedulas = $pendientes->pluck('cedula')->filter()->map(fn ($cedula) => $this->normalizarIdentificador((string) $cedula))->unique()->values();
 
-        if ($fechas->isEmpty()) {
-            foreach (['pendientes_pre_ruta', 'pendientes_post_ruta'] as $tipo) {
+        if ($fechas->isEmpty() || $cedulas->isEmpty()) {
+            foreach (['pendientes_pre_ruta', 'pendientes_post_ruta', 'pendientes_otras'] as $tipo) {
                 $cobertura[$tipo] = array_map(
                     fn (array $item) => [
                         ...$item,
+                        'fecha_geovictoria' => null,
                         'entrada_geovictoria' => null,
                         'salida_geovictoria' => null,
                     ],
@@ -75,14 +79,25 @@ class PruebaAlcoholemiaController extends Controller
         }
 
         $asistencias = GeovictoriaAsistencia::query()
-            ->whereIn('fecha', $fechas)
+            ->whereDate('fecha', '<=', $fechas->max())
+            ->where(function ($query) use ($cedulas) {
+                $query->whereIn('identificador', $cedulas)
+                    ->orWhereRaw(
+                        "UPPER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(TRIM(identificador), '.', ''), '-', ''), ' ', ''), '/', ''), ',', '')) IN (" . $cedulas->map(fn () => '?')->implode(',') . ')',
+                        $cedulas->all()
+                    );
+            })
+            ->orderByDesc('fecha')
             ->get(['identificador', 'fecha', 'entrada', 'salida'])
-            ->keyBy(fn (GeovictoriaAsistencia $asistencia) => $asistencia->fecha->format('Y-m-d') . '|' . $this->normalizarIdentificador($asistencia->identificador));
+            ->groupBy(fn (GeovictoriaAsistencia $asistencia) => $this->normalizarIdentificador($asistencia->identificador));
 
-        foreach (['pendientes_pre_ruta', 'pendientes_post_ruta'] as $tipo) {
+        foreach (['pendientes_pre_ruta', 'pendientes_post_ruta', 'pendientes_otras'] as $tipo) {
             $cobertura[$tipo] = array_map(function (array $item) use ($asistencias): array {
-                $key = ($item['fecha'] ?? '') . '|' . $this->normalizarIdentificador((string) ($item['cedula'] ?? ''));
-                $asistencia = $asistencias->get($key);
+                $cedula = $this->normalizarIdentificador((string) ($item['cedula'] ?? ''));
+                $fechaPlaneada = $item['fecha'] ?? '';
+                $asistencia = $asistencias->get($cedula, collect())
+                    ->first(fn (GeovictoriaAsistencia $registro) => $registro->fecha->format('Y-m-d') <= $fechaPlaneada);
+                $item['fecha_geovictoria'] = $asistencia?->fecha->format('Y-m-d');
                 $item['entrada_geovictoria'] = $asistencia?->entrada;
                 $item['salida_geovictoria'] = $asistencia?->salida;
 
@@ -94,6 +109,33 @@ class PruebaAlcoholemiaController extends Controller
     private function normalizarIdentificador(string $identificador): string
     {
         return strtoupper((string) preg_replace('/[^a-zA-Z0-9]/', '', trim($identificador)));
+    }
+
+    public function actualizarTipoPlaneacion(
+        Request $request,
+        CoberturaPlaneacionService $coberturaService,
+        int $colaborador,
+        string $fecha
+    ): RedirectResponse {
+        $validated = $request->validate([
+            'tipo' => ['nullable', 'in:ruta,jl,segundo_viaje,movilizador,administrativo'],
+        ]);
+        $planeacion = $coberturaService->resolverPlaneacionRuta($colaborador, $fecha);
+        abort_unless($planeacion['pertenece_planeacion'], 404, 'El colaborador no pertenece a la planeación de esa fecha.');
+
+        if (empty($validated['tipo'])) {
+            PruebaAlcoholemiaRequisito::query()
+                ->where('colaborador_id', $colaborador)
+                ->whereDate('fecha', $fecha)
+                ->delete();
+        } else {
+            PruebaAlcoholemiaRequisito::query()->updateOrCreate(
+                ['colaborador_id' => $colaborador, 'fecha' => $fecha],
+                ['tipo' => $validated['tipo']]
+            );
+        }
+
+        return back()->with('success', 'Tipo de prueba requerido actualizado.');
     }
 
     public function create(Request $request): Response
@@ -128,7 +170,9 @@ class PruebaAlcoholemiaController extends Controller
             'preselectedColaboradorId' => $request->input('colaborador_id') ? (int) $request->input('colaborador_id') : null,
             'preselectedFecha' => $request->input('fecha') ?: null,
             'preselectedRutaAsignada' => $request->input('ruta_asignada') ?: null,
-            'preselectedTipo' => in_array($request->input('tipo'), ['pre_ruta', 'post_ruta'], true)
+            'preselectedTipo' => in_array($request->input('tipo'), [
+                'pre_ruta', 'ruta', 'post_ruta', 'jl', 'segundo_viaje', 'movilizador', 'administrativo',
+            ], true)
                 ? $request->input('tipo')
                 : null,
         ]);

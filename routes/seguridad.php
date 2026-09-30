@@ -56,6 +56,10 @@ Route::middleware(['auth', 'active', 'role:Administrador|Seguridad'])
         Route::get('pruebas/exportar/pdf', [PruebaAlcoholemiaController::class, 'exportarPdf'])->name('pruebas.exportar-pdf');
         Route::get('pruebas/exportar/excel', [PruebaAlcoholemiaController::class, 'exportarExcel'])->name('pruebas.exportar-excel');
         Route::get('pruebas/ultima-firma/{colaborador}', [PruebaAlcoholemiaController::class, 'ultimaFirma'])->name('pruebas.ultima-firma');
+        Route::patch('pruebas/planeacion/{colaborador}/{fecha}/tipo', [PruebaAlcoholemiaController::class, 'actualizarTipoPlaneacion'])
+            ->whereNumber('colaborador')
+            ->where('fecha', '\d{4}-\d{2}-\d{2}')
+            ->name('pruebas.planeacion.tipo');
         Route::resource('pruebas', PruebaAlcoholemiaController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update']);
 
         Route::get('condiciones-salud', [CondicionSaludController::class, 'index'])->name('condiciones-salud.index');
