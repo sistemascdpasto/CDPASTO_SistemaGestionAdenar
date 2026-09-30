@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Seguridad;
 use App\Exports\Seguridad\PruebasExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Seguridad\StorePruebaAlcoholemiaRequest;
+use App\Models\GeovictoriaAsistencia;
 use App\Models\Seguridad\Alcoholimetro;
 use App\Models\Seguridad\Colaborador;
 use App\Models\Seguridad\PruebaAlcoholemia;
@@ -37,6 +38,7 @@ class PruebaAlcoholemiaController extends Controller
             $filtros['fecha_desde'] ?: null,
             $filtros['fecha_hasta'] ?: null
         );
+        $cobertura = $this->filtrarPendientesConMarcaciones($cobertura);
 
         $pruebas = $this->filtrarPruebas($request)
             ->latest('fecha_hora')
@@ -49,6 +51,46 @@ class PruebaAlcoholemiaController extends Controller
             'fechaConsulta' => $fechaConsulta,
             'filters' => array_merge($filtros, ['fecha' => $fechaConsulta]),
         ]);
+    }
+
+    private function filtrarPendientesConMarcaciones(array $cobertura): array
+    {
+        $pendientes = collect($cobertura['pendientes_pre_ruta'])
+            ->concat($cobertura['pendientes_post_ruta']);
+        $fechas = $pendientes->pluck('fecha')->filter()->unique()->values();
+
+        if ($fechas->isEmpty()) {
+            $cobertura['pendientes_pre_ruta'] = [];
+            $cobertura['pendientes_post_ruta'] = [];
+
+            return $cobertura;
+        }
+
+        $asistencias = GeovictoriaAsistencia::query()
+            ->whereIn('fecha', $fechas)
+            ->get(['identificador', 'fecha', 'entrada', 'salida'])
+            ->keyBy(fn (GeovictoriaAsistencia $asistencia) => $asistencia->fecha->format('Y-m-d') . '|' . trim($asistencia->identificador));
+
+        $tieneMarcacion = static function (array $pendiente, string $campo) use ($asistencias): bool {
+            if (empty($pendiente['fecha']) || empty($pendiente['cedula'])) {
+                return false;
+            }
+
+            $key = $pendiente['fecha'] . '|' . trim((string) $pendiente['cedula']);
+
+            return filled($asistencias->get($key)?->{$campo});
+        };
+
+        $cobertura['pendientes_pre_ruta'] = array_values(array_filter(
+            $cobertura['pendientes_pre_ruta'],
+            fn (array $pendiente) => $tieneMarcacion($pendiente, 'entrada')
+        ));
+        $cobertura['pendientes_post_ruta'] = array_values(array_filter(
+            $cobertura['pendientes_post_ruta'],
+            fn (array $pendiente) => $tieneMarcacion($pendiente, 'salida')
+        ));
+
+        return $cobertura;
     }
 
     public function create(Request $request): Response
@@ -83,6 +125,9 @@ class PruebaAlcoholemiaController extends Controller
             'preselectedColaboradorId' => $request->input('colaborador_id') ? (int) $request->input('colaborador_id') : null,
             'preselectedFecha' => $request->input('fecha') ?: null,
             'preselectedRutaAsignada' => $request->input('ruta_asignada') ?: null,
+            'preselectedTipo' => in_array($request->input('tipo'), ['pre_ruta', 'post_ruta'], true)
+                ? $request->input('tipo')
+                : null,
         ]);
     }
 
@@ -338,4 +383,3 @@ class PruebaAlcoholemiaController extends Controller
         ];
     }
 }
-

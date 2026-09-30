@@ -505,8 +505,10 @@ class ModulacionController extends Controller
             ->with('success', 'Planeación de ruta guardada exitosamente.');
     }
 
-    public function destroyItem(int $id): RedirectResponse
+    public function destroyItem(Request $request, int $id): RedirectResponse
     {
+        $redirect = $this->redirectAfterDeletion($request);
+
         $resultado = DB::transaction(function () use ($id): array {
             $item = ModulacionItem::findOrFail($id);
             $modulacion = Modulacion::query()
@@ -525,7 +527,7 @@ class ModulacionController extends Controller
             return ['planeacionEliminada' => false, 'rutaEliminada' => true];
         });
 
-        return redirect()->back()->with(
+        return $redirect->with(
             'success',
             $resultado['planeacionEliminada']
                 ? 'Planeación eliminada porque no tiene rutas.'
@@ -533,8 +535,10 @@ class ModulacionController extends Controller
         );
     }
 
-    public function destroyViaje(int $id, int $viajeIndex): RedirectResponse
+    public function destroyViaje(Request $request, int $id, int $viajeIndex): RedirectResponse
     {
+        $redirect = $this->redirectAfterDeletion($request);
+
         $resultado = DB::transaction(function () use ($id, $viajeIndex): array {
             $item = ModulacionItem::query()->lockForUpdate()->findOrFail($id);
             $modulacion = Modulacion::query()
@@ -562,7 +566,7 @@ class ModulacionController extends Controller
             return ['rutaEliminada' => true, 'planeacionEliminada' => true];
         });
 
-        return redirect()->back()->with(
+        return $redirect->with(
             'success',
             $resultado['planeacionEliminada']
                 ? 'Planeación eliminada porque no tiene rutas.'
@@ -570,6 +574,25 @@ class ModulacionController extends Controller
                     ? 'Ruta eliminada porque ya no tenía viajes.'
                     : 'Viaje eliminado de la ruta.')
         );
+    }
+
+    private function redirectAfterDeletion(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'return_fecha' => ['nullable', 'date_format:Y-m-d'],
+            'return_read_only' => ['nullable', 'boolean'],
+        ]);
+
+        if (empty($validated['return_fecha'])) {
+            return redirect()->back();
+        }
+
+        $parameters = ['fecha' => $validated['return_fecha']];
+        if ($request->boolean('return_read_only')) {
+            $parameters['readOnly'] = 'true';
+        }
+
+        return redirect()->route('reparto.modulacion.index', $parameters);
     }
 
     public function destroyModulacion(int $id): RedirectResponse

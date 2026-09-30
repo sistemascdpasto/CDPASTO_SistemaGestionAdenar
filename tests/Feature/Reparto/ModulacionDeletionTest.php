@@ -196,8 +196,14 @@ class ModulacionDeletionTest extends TestCase
             ->delete(route('reparto.modulacion.destroyViaje', [
                 'id' => $ruta->id,
                 'viajeIndex' => 0,
-            ]))
-            ->assertRedirect();
+            ]), [
+                'return_fecha' => $modulacion->fecha,
+                'return_read_only' => true,
+            ])
+            ->assertRedirect(route('reparto.modulacion.index', [
+                'fecha' => $modulacion->fecha,
+                'readOnly' => 'true',
+            ]));
 
         $this->assertSame([
             ['lugares' => 'Pasto', 'barrio' => 'Centro'],

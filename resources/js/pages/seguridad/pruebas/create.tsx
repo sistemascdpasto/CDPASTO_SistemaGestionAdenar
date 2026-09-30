@@ -382,6 +382,7 @@ export default function CreatePrueba({
     preselectedColaboradorId,
     preselectedFecha,
     preselectedRutaAsignada,
+    preselectedTipo,
 }: {
     colaboradores: ColaboradorOption[];
     dispositivosDisponibles: DispositivoOption[];
@@ -389,6 +390,7 @@ export default function CreatePrueba({
     preselectedColaboradorId?: number | null;
     preselectedFecha?: string | null;
     preselectedRutaAsignada?: string | null;
+    preselectedTipo?: 'pre_ruta' | 'post_ruta' | null;
 }) {
     const breadcrumbs: BreadcrumbItem[] = prueba
         ? [...breadcrumbsBase, { title: 'Editar prueba', href: `/modules/seguridad/pruebas/${prueba.id}/edit` }]
@@ -409,7 +411,7 @@ export default function CreatePrueba({
 
     const { data, setData, post, processing, errors, transform } = useForm<PruebaForm>({
         colaborador_id: prueba?.colaborador_id ? String(prueba.colaborador_id) : (preselectedColaboradorId ? String(preselectedColaboradorId) : ''),
-        tipo: prueba?.tipo ?? 'pre_ruta',
+        tipo: prueba?.tipo ?? preselectedTipo ?? 'pre_ruta',
         es_programacion: prueba ? prueba.estado === 'programada' : false,
         programada_en: prueba?.programada_en ? String(prueba.programada_en) : '',
         fecha_hora: defaultFechaHora(),

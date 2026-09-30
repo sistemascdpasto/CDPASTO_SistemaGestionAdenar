@@ -11,7 +11,7 @@ import AppLayout from '@/layouts/app-layout';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
-import { Eye, FileSpreadsheet, FileText, Pencil, Plus, Truck, UserCheck } from 'lucide-react';
+import { Eye, FileSpreadsheet, FileText, Pencil, Plus, Truck } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -82,6 +82,8 @@ interface CoberturaResumen {
     porcentaje_cobertura: number;
     resumen_texto: string;
     pendientes: PendingCollaborator[];
+    pendientes_pre_ruta: PendingCollaborator[];
+    pendientes_post_ruta: PendingCollaborator[];
     realizados: PendingCollaborator[];
     todos_planeados: PendingCollaborator[];
     planeaciones: PlaneacionResumen[];
@@ -126,6 +128,13 @@ export default function PruebasIndex({
     const isFirstRender = useRef(true);
 
     const planeacionCompleta = cobertura.planeacion_existe && cobertura.total_planeados > 0 && cobertura.total_pendientes === 0;
+    const planeacionFechaSeleccionada = cobertura.planeaciones.find(
+        (planeacion) => planeacion.fecha === (form.fecha || fechaConsulta),
+    );
+    const pruebasPendientes = [
+        ...cobertura.pendientes_pre_ruta.map((item) => ({ ...item, tipoPendiente: 'pre_ruta' as const })),
+        ...cobertura.pendientes_post_ruta.map((item) => ({ ...item, tipoPendiente: 'post_ruta' as const })),
+    ];
 
     useEffect(() => {
         if (isFirstRender.current) {
@@ -184,6 +193,29 @@ export default function PruebasIndex({
                                 style={{ width: `${Math.min(100, cobertura.porcentaje_cobertura)}%` }}
                             />
                         </div>
+                        {planeacionFechaSeleccionada && (
+                            <div className="mt-3 grid gap-2 rounded-md border border-emerald-200 bg-white/70 p-3 text-xs dark:border-emerald-800 dark:bg-slate-950/30 sm:grid-cols-2">
+                                <p>
+                                    <span className="font-semibold">Pre Ruta:</span>{' '}
+                                    {planeacionFechaSeleccionada.pre_ruta_completa
+                                        ? <span className="font-semibold text-emerald-700 dark:text-emerald-400">completa ({planeacionFechaSeleccionada.pre_ruta_realizados}/{planeacionFechaSeleccionada.total_planeados})</span>
+                                        : <span className="text-muted-foreground">pendiente ({planeacionFechaSeleccionada.pre_ruta_realizados}/{planeacionFechaSeleccionada.total_planeados})</span>}
+                                </p>
+                                <p>
+                                    <span className="font-semibold">Post Ruta:</span>{' '}
+                                    {planeacionFechaSeleccionada.post_ruta_completa
+                                        ? <span className="font-semibold text-emerald-700 dark:text-emerald-400">completa ({planeacionFechaSeleccionada.post_ruta_realizados}/{planeacionFechaSeleccionada.total_planeados})</span>
+                                        : <span className="text-muted-foreground">pendiente ({planeacionFechaSeleccionada.post_ruta_realizados}/{planeacionFechaSeleccionada.total_planeados})</span>}
+                                </p>
+                                {planeacionFechaSeleccionada.pre_ruta_completa && (
+                                    <p className="font-medium sm:col-span-2" role="status">
+                                        {planeacionFechaSeleccionada.post_ruta_completa
+                                            ? 'Se realizaron todas las pruebas Post Ruta planeadas.'
+                                            : `Pre Ruta completa. Faltan ${planeacionFechaSeleccionada.total_planeados - planeacionFechaSeleccionada.post_ruta_realizados} pruebas Post Ruta.`}
+                                    </p>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     {/* Filtros de Búsqueda */}
@@ -282,7 +314,7 @@ export default function PruebasIndex({
                     >
                         Pendientes de la Planeación
                         <Badge className="ml-1 text-xs bg-amber-500 text-white hover:bg-amber-600">
-                            {cobertura.total_pendientes}
+                            {pruebasPendientes.length}
                         </Badge>
                     </button>
 
@@ -310,10 +342,10 @@ export default function PruebasIndex({
                         <div className="p-3.5 bg-amber-50/70 dark:bg-amber-950/30 border-b border-sidebar-border/70 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                             <div>
                                 <h3 className="text-sm font-semibold text-amber-900 dark:text-amber-200">
-                                    📋 Histórico de Colaboradores Pendientes ({cobertura.total_pendientes})
+                                    📋 Pruebas pendientes de la Planeación ({pruebasPendientes.length})
                                 </h3>
                                 <p className="text-xs text-amber-700/80 dark:text-amber-400/80 mt-0.5">
-                                    Listado histórico de todos los colaboradores asignados en planeación de ruta que aún no han realizado su prueba de alcoholemia, ordenados por fecha.
+                                    Se listan las pruebas pendientes cuando GeoVictoria registra la entrada (Pre Ruta) o la salida (Post Ruta) del colaborador.
                                 </p>
                             </div>
                         </div>
@@ -322,6 +354,7 @@ export default function PruebasIndex({
                                 <TableRow>
                                     <TableHead>Fecha Planeada</TableHead>
                                     <TableHead>Colaborador</TableHead>
+                                    <TableHead>Prueba pendiente</TableHead>
                                     <TableHead>Cédula</TableHead>
                                     <TableHead>Cargo</TableHead>
                                     <TableHead>Asignación de Ruta</TableHead>
@@ -330,21 +363,22 @@ export default function PruebasIndex({
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {cobertura.pendientes.length === 0 ? (
+                                {pruebasPendientes.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={7} className="text-muted-foreground py-8 text-center">
-                                            🎉 ¡Excelente! No hay colaboradores pendientes de prueba de alcoholemia en el histórico.
+                                        <TableCell colSpan={8} className="text-muted-foreground py-8 text-center">
+                                            🎉 ¡Excelente! No hay pruebas Pre Ruta ni Post Ruta pendientes de la planeación.
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    cobertura.pendientes.map((item) => (
-                                        <TableRow key={item.key}>
+                                    pruebasPendientes.map((item) => (
+                                        <TableRow key={`${item.key}-${item.tipoPendiente}`}>
                                             <TableCell className="whitespace-nowrap font-medium">
                                                 <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-700/50 dark:bg-amber-950/40 dark:text-amber-200 font-mono">
                                                     📅 {item.fecha || form.fecha || fechaConsulta}
                                                 </Badge>
                                             </TableCell>
                                             <TableCell className="font-medium text-foreground">{item.nombre_completo}</TableCell>
+                                            <TableCell>{item.tipoPendiente === 'pre_ruta' ? 'Pre Ruta' : 'Post Ruta'}</TableCell>
                                             <TableCell>{item.cedula || '—'}</TableCell>
                                             <TableCell>{item.cargo || '—'}</TableCell>
                                             <TableCell>{item.ruta_asignada}</TableCell>
@@ -360,6 +394,7 @@ export default function PruebasIndex({
                                                             colaborador_id: item.colaborador_id,
                                                             fecha: item.fecha || form.fecha || fechaConsulta,
                                                             ruta_asignada: item.ruta_asignada,
+                                                            tipo: item.tipoPendiente,
                                                         })}
                                                     >
                                                         <Plus className="size-3.5 mr-1" />

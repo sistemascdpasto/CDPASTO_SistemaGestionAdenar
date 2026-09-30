@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Seguridad;
 
+use App\Models\GeovictoriaAsistencia;
+use App\Models\Reparto\Modulacion;
 use App\Models\Seguridad\Alcoholimetro;
 use App\Models\Seguridad\Colaborador;
 use App\Models\Seguridad\PruebaAlcoholemia;
@@ -53,10 +55,11 @@ class PruebaAlcoholemiaTest extends TestCase
         $user = $this->seguridadUser();
         $this->colaborador();
 
-        $response = $this->actingAs($user)->get(route('seguridad.pruebas.create'));
+        $response = $this->actingAs($user)->get(route('seguridad.pruebas.create', ['tipo' => 'post_ruta']));
 
         $response->assertInertia(fn ($page) => $page
             ->where('colaboradores.0.cargo', 'Conductor')
+            ->where('preselectedTipo', 'post_ruta')
         );
     }
 
@@ -364,6 +367,174 @@ class PruebaAlcoholemiaTest extends TestCase
         $this->assertSame(1, $resumen['total_pendientes']);
         $this->assertSame(50.0, $resumen['porcentaje_cobertura']);
         $this->assertStringContainsString('2 colaboradores planeados — 1 realizados — 1 pendientes — 50% de cobertura', $resumen['resumen_texto']);
+    }
+
+    public function test_cobertura_de_pre_y_post_ruta_se_calcula_por_separado(): void
+    {
+        $fecha = '2026-09-25';
+        $user = $this->seguridadUser();
+        $col1 = $this->colaborador();
+        $col2 = Colaborador::create([
+            'cedula' => '999888777',
+            'nombres' => 'María',
+            'apellidos' => 'Gómez',
+            'cargo' => 'Auxiliar',
+            'is_active' => true,
+            'estado_registro' => 'completo',
+        ]);
+
+        $modulacion = \App\Models\Reparto\Modulacion::create([
+            'fecha' => $fecha,
+            'user_id' => $user->id,
+        ]);
+        $modulacion->items()->create([
+            'placa' => 'ABC-123',
+            'colaborador_id' => $col1->id,
+            'cedula' => $col1->cedula,
+            'nombres' => $col1->nombres,
+            'tripulacion' => [
+                ['colaborador_id' => $col2->id, 'cedula' => $col2->cedula, 'nombres' => $col2->nombres],
+            ],
+        ]);
+
+        foreach ([$col1, $col2] as $colaborador) {
+            PruebaAlcoholemia::create([
+                'colaborador_id' => $colaborador->id,
+                'tipo' => 'pre_ruta',
+                'resultado' => '0.000',
+                'responsable_id' => $user->id,
+                'fecha_hora' => "{$fecha} 08:00:00",
+                'estado' => 'realizada',
+            ]);
+        }
+        PruebaAlcoholemia::create([
+            'colaborador_id' => $col1->id,
+            'tipo' => 'post_ruta',
+            'resultado' => '0.000',
+            'responsable_id' => $user->id,
+            'fecha_hora' => "{$fecha} 17:00:00",
+            'estado' => 'realizada',
+        ]);
+
+        $service = app(\App\Services\Seguridad\CoberturaPlaneacionService::class);
+        $resumen = $service->obtenerResumenCobertura($fecha);
+
+        $this->assertSame(2, $resumen['planeaciones'][0]['pre_ruta_realizados']);
+        $this->assertTrue($resumen['planeaciones'][0]['pre_ruta_completa']);
+        $this->assertSame(1, $resumen['planeaciones'][0]['post_ruta_realizados']);
+        $this->assertFalse($resumen['planeaciones'][0]['post_ruta_completa']);
+        $this->assertCount(0, $resumen['pendientes_pre_ruta']);
+        $this->assertCount(1, $resumen['pendientes_post_ruta']);
+        $this->assertSame($col2->id, $resumen['pendientes_post_ruta'][0]['colaborador_id']);
+
+        PruebaAlcoholemia::create([
+            'colaborador_id' => $col2->id,
+            'tipo' => 'post_ruta',
+            'resultado' => '0.000',
+            'responsable_id' => $user->id,
+            'fecha_hora' => "{$fecha} 17:05:00",
+            'estado' => 'realizada',
+        ]);
+
+        $resumen = $service->obtenerResumenCobertura($fecha);
+
+        $this->assertSame(2, $resumen['planeaciones'][0]['post_ruta_realizados']);
+        $this->assertTrue($resumen['planeaciones'][0]['post_ruta_completa']);
+        $this->assertCount(0, $resumen['pendientes_post_ruta']);
+    }
+
+    public function test_lista_pendientes_de_planeacion_solo_incluye_pruebas_con_marcacion_de_entrada_o_salida(): void
+    {
+        $fecha = '2026-09-25';
+        $user = $this->seguridadUser();
+        $entradaYSalida = $this->colaborador();
+        $soloEntrada = Colaborador::create([
+            'cedula' => '900111222',
+            'nombres' => 'Solo',
+            'apellidos' => 'Entrada',
+            'cargo' => 'Conductor',
+            'estado_registro' => 'completo',
+            'is_active' => true,
+        ]);
+        $sinMarcacion = Colaborador::create([
+            'cedula' => '900333444',
+            'nombres' => 'Sin',
+            'apellidos' => 'Marcacion',
+            'cargo' => 'Conductor',
+            'estado_registro' => 'completo',
+            'is_active' => true,
+        ]);
+        $modulacion = Modulacion::create([
+            'fecha' => $fecha,
+            'user_id' => $user->id,
+        ]);
+        $modulacion->items()->create([
+            'placa' => 'ABC-123',
+            'colaborador_id' => $entradaYSalida->id,
+            'cedula' => $entradaYSalida->cedula,
+            'nombres' => $entradaYSalida->nombres,
+            'tripulacion' => [
+                [
+                    'colaborador_id' => $soloEntrada->id,
+                    'cedula' => $soloEntrada->cedula,
+                    'nombres' => $soloEntrada->nombres,
+                ],
+                [
+                    'colaborador_id' => $sinMarcacion->id,
+                    'cedula' => $sinMarcacion->cedula,
+                    'nombres' => $sinMarcacion->nombres,
+                ],
+            ],
+            'viajes' => [],
+        ]);
+        PruebaAlcoholemia::create([
+            'colaborador_id' => $entradaYSalida->id,
+            'tipo' => 'pre_ruta',
+            'resultado' => '0.000',
+            'responsable_id' => $user->id,
+            'fecha_hora' => "{$fecha} 06:00:00",
+            'estado' => 'realizada',
+        ]);
+        GeovictoriaAsistencia::create([
+            'identificador' => $entradaYSalida->cedula,
+            'fecha' => $fecha,
+            'entrada' => '06:00',
+            'salida' => '18:00',
+        ]);
+        GeovictoriaAsistencia::create([
+            'identificador' => $soloEntrada->cedula,
+            'fecha' => $fecha,
+            'entrada' => '06:10',
+        ]);
+        GeovictoriaAsistencia::create([
+            'identificador' => $sinMarcacion->cedula,
+            'fecha' => $fecha,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('seguridad.pruebas.index', [
+                'fecha_desde' => $fecha,
+                'fecha_hasta' => $fecha,
+            ]))
+            ->assertInertia(function ($page) use ($entradaYSalida, $soloEntrada, $sinMarcacion) {
+                $cobertura = $page->toArray()['props']['cobertura'];
+
+                $this->assertSame(
+                    [$soloEntrada->id],
+                    collect($cobertura['pendientes_pre_ruta'])->pluck('colaborador_id')->all()
+                );
+                $this->assertSame(
+                    [$entradaYSalida->id],
+                    collect($cobertura['pendientes_post_ruta'])->pluck('colaborador_id')->all()
+                );
+                $this->assertNotContains(
+                    $sinMarcacion->id,
+                    collect($cobertura['pendientes_pre_ruta'])
+                        ->concat($cobertura['pendientes_post_ruta'])
+                        ->pluck('colaborador_id')
+                        ->all()
+                );
+            });
     }
 
     public function test_prueba_for_unplanned_collaborator_is_registered_as_evaluacion_adicional_without_blocking(): void

@@ -61,7 +61,7 @@ interface DestinoViaje {
 
 interface ViajeRegistrado {
     viaje: Viaje;
-    indice: number;
+    numero: number;
 }
 
 const obtenerDestinosViaje = (viaje: Viaje): DestinoViaje[] =>
@@ -71,16 +71,10 @@ const obtenerDestinosViaje = (viaje: Viaje): DestinoViaje[] =>
           ? [{ lugares: viaje.lugares, barrio: viaje.barrio }]
           : [];
 
-const quitarDestinoDeViaje = (viaje: Viaje, destinoIndex: number): Viaje => {
-    const destinos = obtenerDestinosViaje(viaje).filter((_, index) => index !== destinoIndex);
-
-    return {
-        ...viaje,
-        lugares: destinos[0]?.lugares ?? '',
-        barrio: destinos[0]?.barrio ?? '',
-        destinos: destinos.length > 0 ? destinos : undefined,
-    };
-};
+const viajeTieneDatos = (viaje: Pick<Viaje, 'cliente' | 'peso'>, destinos: DestinoViaje[]): boolean =>
+    destinos.some((destino) => destino.lugares.trim() !== '' || destino.barrio.trim() !== '') ||
+    viaje.cliente.trim() !== '' ||
+    viaje.peso.trim() !== '';
 
 const combinarViajes = (...listas: Viaje[][]): Viaje[] => {
     const viajes: Viaje[] = [];
@@ -272,8 +266,8 @@ function NarinoMunicipioInput({
     puedeAgregarViaje,
     viajesRegistrados,
     destinosPendientes,
+    numeroViajePendiente,
     onDestinoAgregado,
-    onEliminarDestinoRegistrado,
     onEliminarDestinoPendiente,
 }: {
     value: string;
@@ -285,8 +279,8 @@ function NarinoMunicipioInput({
     puedeAgregarViaje: boolean;
     viajesRegistrados: ViajeRegistrado[];
     destinosPendientes: DestinoViaje[];
+    numeroViajePendiente: number;
     onDestinoAgregado: (destino: DestinoViaje) => void;
-    onEliminarDestinoRegistrado: (viajeIndex: number, destinoIndex: number) => void;
     onEliminarDestinoPendiente: (destinoIndex: number) => void;
 }) {
     const baseId = useId();
@@ -296,6 +290,7 @@ function NarinoMunicipioInput({
     const ultimoBarrioRef = useRef(barrio);
     const [municipios, setMunicipios] = useState<OpcionUbicacion[]>([]);
     const [barrios, setBarrios] = useState<OpcionUbicacion[]>([]);
+    const [barriosReloadToken, setBarriosReloadToken] = useState(0);
     const [municipiosLoading, setMunicipiosLoading] = useState(true);
     const [barriosLoading, setBarriosLoading] = useState(false);
     const [municipioGuardando, setMunicipioGuardando] = useState(false);
@@ -372,18 +367,17 @@ function NarinoMunicipioInput({
                     route('reparto.modulacion.referencias.municipios.registrar'),
                     { nombre: nombreMunicipio },
                 );
-                setMunicipios((actuales) => [
-                    ...actuales.filter(
-                        (opcion) => opcion.nombre.localeCompare(municipio.nombre, 'es', { sensitivity: 'base' }) !== 0,
-                    ),
-                    municipio,
-                ]);
             }
 
+            setMunicipios((actuales) => [
+                ...actuales.filter((opcion) => opcion.id !== municipio.id),
+                municipio,
+            ]);
+            setBarriosReloadToken((token) => token + 1);
             onDestinoAgregado({ lugares: municipio.nombre, barrio: '' });
-            setMunicipioInput('');
-            ultimoMunicipioRef.current = '';
-            onChange('');
+            setMunicipioInput(municipio.nombre);
+            ultimoMunicipioRef.current = municipio.nombre;
+            onChange(municipio.nombre);
             setBarrioInput('');
             ultimoBarrioRef.current = '';
             onBarrioChange('');
@@ -488,7 +482,7 @@ function NarinoMunicipioInput({
 
         void loadBarrios();
         return () => controller.abort();
-    }, [municipioSeleccionadoId]);
+    }, [municipioSeleccionadoId, barriosReloadToken]);
 
     return (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -594,58 +588,67 @@ function NarinoMunicipioInput({
                     {barrios.map((opcion) => <option key={opcion.id} value={opcion.nombre} />)}
                 </datalist>
                 {(viajesRegistrados.length > 0 || destinosPendientes.length > 0) && (
-                    <div className="mt-1 rounded-md border border-border/70 bg-muted/30 p-2 text-xs" aria-live="polite">
-                        <p className="mb-1 font-medium text-foreground">
+                    <div className="mt-1 overflow-hidden rounded-md border border-border/70 bg-muted/30 text-xs" aria-live="polite">
+                        <p className="border-b border-border/70 px-3 py-2 font-medium text-foreground">
                             Destinos de la ruta ({viajesRegistrados.length + (destinosPendientes.length > 0 ? 1 : 0)} viajes)
                         </p>
-                        <ul className="space-y-0.5 text-muted-foreground">
+                        <table className="w-full table-fixed border-collapse">
+                            <thead>
+                                <tr className="bg-muted/60 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                    <th scope="col" className="w-1/4 border-b border-r border-border/70 px-3 py-2">Viaje</th>
+                                    <th scope="col" className="border-b border-border/70 px-3 py-2">Municipio y barrio</th>
+                                </tr>
+                            </thead>
+                            <tbody>
                             {viajesRegistrados.map((viaje, viajeIndex) => (
-                                <li key={viaje.viaje.id ?? `viaje-registrado-${viajeIndex}`}>
-                                    <span className="font-medium text-foreground">Viaje {viajeIndex + 1}:</span>
-                                    <span className="ml-1 inline-flex flex-col gap-0.5">
+                                <tr key={viaje.viaje.id ?? `viaje-registrado-${viajeIndex}`} className="border-b border-border/50 last:border-0">
+                                    <th scope="row" className="border-r border-border/70 px-3 py-2 text-left align-top font-medium text-foreground">
+                                        Viaje {viaje.numero}
+                                    </th>
+                                    <td className="px-3 py-2 text-muted-foreground">
+                                        <ul className="space-y-1">
                                         {obtenerDestinosViaje(viaje.viaje).map((destino, destinoIndex) => (
-                                            <span key={`${destino.lugares}-${destino.barrio}-${destinoIndex}`} className="inline-flex items-center gap-1">
+                                            <li key={`${destino.lugares}-${destino.barrio}-${destinoIndex}`} className="break-words">
+                                                <span className="mr-1 text-foreground" aria-hidden="true">•</span>
                                                 {destino.barrio ? `${destino.lugares} — ${destino.barrio}` : destino.lugares}
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="size-4 text-muted-foreground hover:text-destructive"
-                                                    aria-label={`Quitar ${destino.lugares}, ${destino.barrio} del viaje ${viajeIndex + 1}`}
-                                                    title="Quitar destino"
-                                                    onClick={() => onEliminarDestinoRegistrado(viaje.indice, destinoIndex)}
-                                                >
-                                                    <X className="size-3" />
-                                                </Button>
-                                            </span>
+                                            </li>
                                         ))}
-                                    </span>
-                                </li>
+                                        </ul>
+                                    </td>
+                                </tr>
                             ))}
                             {destinosPendientes.length > 0 && (
-                                <li>
-                                    <span className="font-medium text-foreground">Viaje {viajesRegistrados.length + 1} (en edición):</span>
-                                    <span className="ml-1 inline-flex flex-col gap-0.5">
+                                <tr className="border-b border-border/50 last:border-0 bg-primary/5">
+                                    <th scope="row" className="border-r border-border/70 px-3 py-2 text-left align-top font-medium text-foreground">
+                                        Viaje {numeroViajePendiente} (en edición)
+                                    </th>
+                                    <td className="px-3 py-2 text-muted-foreground">
+                                        <ul className="space-y-1">
                                         {destinosPendientes.map((destino, destinoIndex) => (
-                                            <span key={`${destino.lugares}-${destino.barrio}-${destinoIndex}`} className="inline-flex items-center gap-1">
+                                            <li key={`${destino.lugares}-${destino.barrio}-${destinoIndex}`} className="flex items-center justify-between gap-2">
+                                                <span className="min-w-0 break-words">
+                                                    <span className="mr-1 text-foreground" aria-hidden="true">•</span>
                                                 {destino.barrio ? `${destino.lugares} — ${destino.barrio}` : destino.lugares}
+                                                </span>
                                                 <Button
                                                     type="button"
                                                     variant="ghost"
                                                     size="icon"
-                                                    className="size-4 text-muted-foreground hover:text-destructive"
+                                                    className="size-5 shrink-0 text-muted-foreground hover:text-destructive"
                                                     aria-label={`Quitar ${destino.lugares}, ${destino.barrio} del viaje en edición`}
                                                     title="Quitar destino"
                                                     onClick={() => onEliminarDestinoPendiente(destinoIndex)}
                                                 >
                                                     <X className="size-3" />
                                                 </Button>
-                                            </span>
+                                            </li>
                                         ))}
-                                    </span>
-                                </li>
+                                        </ul>
+                                    </td>
+                                </tr>
                             )}
-                        </ul>
+                            </tbody>
+                        </table>
                     </div>
                 )}
                 {!barrioInput.trim() && barrio.trim() && (
@@ -1028,12 +1031,12 @@ export default function ModulacionIndex({
         setEditingIndex(rutaExistente ? rutaExistenteIndex : null);
         setEditingViajeIndex(null);
         setCurrentViajeForm({
-            lugares: rutaExistente?.viajes.at(-1)?.lugares ?? '',
-            barrio: rutaExistente?.viajes.at(-1)?.barrio ?? '',
-            cliente: rutaExistente?.viajes.at(-1)?.cliente ?? '',
-            peso: rutaExistente?.viajes.at(-1)?.peso ?? '',
+            lugares: '',
+            barrio: '',
+            cliente: '',
+            peso: '',
         });
-        setDestinosViajePendientes(rutaExistente?.viajes.at(-1)?.destinos ?? []);
+        setDestinosViajePendientes([]);
         setSearchQuery('');
         setCargoFilter('todos');
     };
@@ -1138,17 +1141,12 @@ export default function ModulacionIndex({
         const cv = currentViajeForm;
         const destinos = destinosViajePendientes.length > 0
             ? destinosViajePendientes
-            : cv.lugares.trim() && cv.barrio.trim()
+            : cv.lugares.trim() || cv.barrio.trim()
               ? [{ lugares: cv.lugares.trim(), barrio: cv.barrio.trim() }]
               : [];
-        const viajeFormLleno =
-            destinos.length > 0 ||
-            (cv.lugares && cv.lugares.trim() !== '') ||
-            (cv.barrio && cv.barrio.trim() !== '') ||
-            (cv.cliente && cv.cliente.toString().trim() !== '') ||
-            (cv.peso && cv.peso.toString().trim() !== '');
+        const viajeFormLleno = viajeTieneDatos(cv, destinos);
 
-        if (!viajeFormLleno) {
+        if (!viajeFormLleno && editingViajeIndex === null) {
             alert('Por favor ingrese al menos un dato en Destino, Barrio, Cliente o Peso para agregar el viaje.');
             return;
         }
@@ -1159,7 +1157,12 @@ export default function ModulacionIndex({
         if (editingViajeIndex !== null && editingIndex !== null) {
             const updatedViajes = [...(currentRoute.viajes || [])];
 
-            if (editingViajeIndex >= 0 && editingViajeIndex < updatedViajes.length) {
+            if (editingViajeIndex < 0 || editingViajeIndex >= updatedViajes.length) {
+                alert('No se encontró el viaje que está intentando editar.');
+                return;
+            }
+
+            if (viajeFormLleno) {
                 updatedViajes[editingViajeIndex] = {
                     ...updatedViajes[editingViajeIndex],
                     lugares: destinos[0]?.lugares ?? cv.lugares,
@@ -1168,6 +1171,8 @@ export default function ModulacionIndex({
                     cliente: cv.cliente || '',
                     peso: cv.peso || '',
                 };
+            } else {
+                updatedViajes.splice(editingViajeIndex, 1);
             }
 
             updatedRoute = {
@@ -1176,15 +1181,22 @@ export default function ModulacionIndex({
                 viajes: updatedViajes,
             };
 
+            const rutaQuedaSinViajes = updatedViajes.length === 0;
             setRutas((prev) => {
+                if (editingIndex < 0 || editingIndex >= prev.length) return prev;
+                if (rutaQuedaSinViajes) return prev.filter((_, index) => index !== editingIndex);
+
                 const updated = [...prev];
-                if (editingIndex >= 0 && editingIndex < updated.length) {
-                    updated[editingIndex] = updatedRoute;
-                }
+                updated[editingIndex] = updatedRoute;
                 return updated;
             });
 
-            setCurrentRoute(updatedRoute);
+            if (rutaQuedaSinViajes) {
+                setCurrentRoute(createEmptyRoute());
+                setEditingIndex(null);
+            } else {
+                setCurrentRoute(updatedRoute);
+            }
             // Limpiar el formulario de viaje después de actualizar
             setCurrentViajeForm({
                 lugares: '',
@@ -1194,7 +1206,13 @@ export default function ModulacionIndex({
             });
             setDestinosViajePendientes([]);
             setEditingViajeIndex(null); // Resetear índice de viaje
-            alert('Viaje actualizado correctamente');
+            alert(
+                viajeFormLleno
+                    ? 'Viaje actualizado correctamente'
+                    : rutaQuedaSinViajes
+                      ? 'El viaje vacío y su ruta se eliminaron correctamente'
+                      : 'Viaje vacío eliminado correctamente',
+            );
             return;
         }
 
@@ -1238,6 +1256,13 @@ export default function ModulacionIndex({
             ...currentRoute,
             viajes: combinarViajes(prev.viajes ?? [], currentRoute.viajes ?? [], [newViaje]),
         }));
+        setCurrentViajeForm({
+            lugares: '',
+            barrio: '',
+            cliente: '',
+            peso: '',
+        });
+        setDestinosViajePendientes([]);
         setEditingViajeIndex(null);
         setEditingIndex(routeIndex);
     };
@@ -1264,7 +1289,12 @@ export default function ModulacionIndex({
                 id: ruta.id,
                 viajeIndex: viajeGuardadoIndex,
             }), {
+                data: {
+                    return_fecha: fechaTexto,
+                    return_read_only: readOnly,
+                },
                 preserveScroll: true,
+                preserveState: true,
                 onSuccess: () => {
                     const viajesActualizados = ruta.viajes.filter((viaje) =>
                         viajeId ? viaje.id !== viajeId : viaje !== viajeActual,
@@ -1328,17 +1358,26 @@ export default function ModulacionIndex({
             const cv = currentViajeForm;
             const destinos = destinosViajePendientes.length > 0
                 ? destinosViajePendientes
-                : cv.lugares.trim() && cv.barrio.trim()
+                : cv.lugares.trim() || cv.barrio.trim()
                   ? [{ lugares: cv.lugares.trim(), barrio: cv.barrio.trim() }]
                   : [];
-            const viajeFormTieneDatos =
-                destinos.length > 0 ||
-                (cv.lugares && cv.lugares.trim() !== '') ||
-                (cv.barrio && cv.barrio.trim() !== '') ||
-                (cv.cliente && cv.cliente.toString().trim() !== '') ||
-                (cv.peso && cv.peso.toString().trim() !== '');
+            const viajeFormTieneDatos = viajeTieneDatos(cv, destinos);
 
-            if (viajeFormTieneDatos) {
+            if (editingViajeIndex !== null && editingViajeIndex >= 0 && editingViajeIndex < viajes.length) {
+                if (viajeFormTieneDatos) {
+                    const viajeOriginal = viajes[editingViajeIndex];
+                    viajes[editingViajeIndex] = {
+                        ...viajeOriginal,
+                        lugares: destinos[0]?.lugares ?? cv.lugares,
+                        barrio: destinos[0]?.barrio ?? cv.barrio,
+                        destinos: destinos.length > 0 ? destinos : undefined,
+                        cliente: cv.cliente || '',
+                        peso: cv.peso || '',
+                    };
+                } else {
+                    viajes.splice(editingViajeIndex, 1);
+                }
+            } else if (viajeFormTieneDatos) {
                 const yaExisteEnArray = viajes.some((v) => {
                     return (
                         (v.lugares === cv.lugares) &&
@@ -1365,7 +1404,11 @@ export default function ModulacionIndex({
             };
 
             if (editingIndex !== null && editingIndex >= 0 && editingIndex < finalRutas.length) {
-                finalRutas[editingIndex] = currentRouteFinal;
+                if (editingViajeIndex !== null && viajes.length === 0) {
+                    finalRutas.splice(editingIndex, 1);
+                } else {
+                    finalRutas[editingIndex] = currentRouteFinal;
+                }
             } else {
                 finalRutas.push(currentRouteFinal);
             }
@@ -2661,7 +2704,9 @@ export default function ModulacionIndex({
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
                                 <span className="text-xs font-bold uppercase tracking-wider" style={{ color: ACCENT }}>
-                                    Viaje #{(currentRoute.viajes?.length || 0) + 1}
+                                    {editingViajeIndex !== null
+                                        ? `Editando viaje #${editingViajeIndex + 1}`
+                                        : `Nuevo viaje #${(currentRoute.viajes?.length || 0) + 1}`}
                                 </span>
                             </div>
 
@@ -2679,42 +2724,54 @@ export default function ModulacionIndex({
                                         puedeAgregarViaje={Boolean(currentRoute.placa.trim())}
                                         viajesRegistrados={
                                             editingViajeIndex === null
-                                                ? currentRoute.viajes.map((viaje, indice) => ({ viaje, indice }))
+                                                ? currentRoute.viajes.map((viaje, indice) => ({ viaje, numero: indice + 1 }))
                                                 : currentRoute.viajes.flatMap((viaje, indice) =>
-                                                    indice === editingViajeIndex ? [] : [{ viaje, indice }],
+                                                    indice === editingViajeIndex ? [] : [{ viaje, numero: indice + 1 }],
                                                 )
                                         }
                                         destinosPendientes={destinosViajePendientes}
+                                        numeroViajePendiente={
+                                            editingViajeIndex !== null
+                                                ? editingViajeIndex + 1
+                                                : (currentRoute.viajes?.length || 0) + 1
+                                        }
                                         onDestinoAgregado={(destino) =>
-                                            setDestinosViajePendientes((actuales) =>
-                                                actuales.some(
+                                            setDestinosViajePendientes((actuales) => {
+                                                const municipioSinBarrio = destino.barrio
+                                                    ? actuales.findIndex(
+                                                        (actual) =>
+                                                            actual.lugares.localeCompare(destino.lugares, 'es', { sensitivity: 'base' }) === 0 &&
+                                                            actual.barrio.trim() === '',
+                                                    )
+                                                    : -1;
+                                                if (municipioSinBarrio >= 0) {
+                                                    return actuales.map((actual, index) =>
+                                                        index === municipioSinBarrio ? destino : actual,
+                                                    );
+                                                }
+
+                                                return actuales.some(
                                                     (actual) =>
                                                         actual.lugares.localeCompare(destino.lugares, 'es', { sensitivity: 'base' }) === 0 &&
                                                         actual.barrio.localeCompare(destino.barrio, 'es', { sensitivity: 'base' }) === 0,
                                                 )
                                                     ? actuales
-                                                    : [...actuales, destino],
-                                            )
+                                                    : [...actuales, destino];
+                                            })
                                         }
-                                        onEliminarDestinoRegistrado={(viajeIndex, destinoIndex) => {
-                                            const viajes = [...currentRoute.viajes];
-                                            const viaje = viajes[viajeIndex];
-                                            if (!viaje) return;
-                                            viajes[viajeIndex] = quitarDestinoDeViaje(viaje, destinoIndex);
-                                            setCurrentRoute((actual) => ({ ...actual, viajes }));
-                                            setRutas((actuales) =>
-                                                actuales.map((ruta) =>
-                                                    ruta.placa.trim().toUpperCase() === currentRoute.placa.trim().toUpperCase()
-                                                        ? { ...ruta, viajes }
-                                                        : ruta,
-                                                ),
+                                        onEliminarDestinoPendiente={(destinoIndex) => {
+                                            const destinosActualizados = destinosViajePendientes.filter(
+                                                (_, index) => index !== destinoIndex,
                                             );
+                                            setDestinosViajePendientes(destinosActualizados);
+                                            if (destinosActualizados.length === 0 && editingViajeIndex !== null) {
+                                                setCurrentViajeForm((formulario) => ({
+                                                    ...formulario,
+                                                    lugares: '',
+                                                    barrio: '',
+                                                }));
+                                            }
                                         }}
-                                        onEliminarDestinoPendiente={(destinoIndex) =>
-                                            setDestinosViajePendientes((actuales) =>
-                                                actuales.filter((_, index) => index !== destinoIndex),
-                                            )
-                                        }
                                     />
                                 </div>
 
@@ -2798,6 +2855,7 @@ export default function ModulacionIndex({
                                     </TableRow>
                                 ) : (
                                     filteredRutasTable.map((item, idx) => {
+                                        const rutaIndex = rutas.indexOf(item);
                                         const tripMembers = Array.isArray(item.tripulacion) ? item.tripulacion : [];
                                         const viajesList = Array.isArray(item.viajes) ? item.viajes : [];
 
@@ -2855,7 +2913,7 @@ export default function ModulacionIndex({
                                                                         <p><span className="font-medium">Cliente:</span> {v.cliente || '—'}</p>
                                                                         <p><span className="font-medium">Peso:</span> {v.peso ? `${v.peso} ton` : '—'}</p>
                                                                         <div className="flex items-center gap-1 sm:justify-end">
-                                                                            <Button variant="ghost" size="icon" aria-label={`Editar viaje ${vIdx + 1} de la ruta ${item.placa}`} onClick={() => handleEditViajeIndividual(idx, vIdx)} className="size-6 hover:bg-accent/10" style={{ color: ACCENT }}>
+                                                                            <Button variant="ghost" size="icon" aria-label={`Editar viaje ${vIdx + 1} de la ruta ${item.placa}`} onClick={() => handleEditViajeIndividual(rutaIndex, vIdx)} className="size-6 hover:bg-accent/10" style={{ color: ACCENT }}>
                                                                                 <Pencil className="size-3" />
                                                                             </Button>
                                                                             <Button

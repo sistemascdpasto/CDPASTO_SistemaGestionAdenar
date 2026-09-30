@@ -215,7 +215,7 @@ class CoberturaPlaneacionService
 
         // 2. Cargar pruebas de alcoholemia
         $pruebasQuery = PruebaAlcoholemia::with(['colaborador:id,nombres,apellidos,cedula,cargo'])
-            ->where('estado', '!=', 'cancelada');
+            ->where('estado', 'realizada');
 
         if (! empty($fechaDesde) && empty($fechaHasta)) {
             $pruebasQuery->whereDate('fecha_hora', $fechaDesde);
@@ -297,6 +297,13 @@ class CoberturaPlaneacionService
         // 5. Cruzar estado de cobertura realizada
         $realizadosCount = 0;
         $adicionalesCount = 0;
+        $pruebasPorTipo = [];
+        foreach ($planeadosMap as $key => $item) {
+            $pruebasPorTipo[$key] = [
+                'pre_ruta' => false,
+                'post_ruta' => false,
+            ];
+        }
 
         foreach ($pruebas as $prueba) {
             $fechaPrueba = date('Y-m-d', strtotime($prueba->fecha_hora));
@@ -317,6 +324,9 @@ class CoberturaPlaneacionService
             }
 
             if ($matchedKey && isset($planeadosMap[$matchedKey])) {
+                if (in_array($prueba->tipo, ['pre_ruta', 'post_ruta'], true)) {
+                    $pruebasPorTipo[$matchedKey][$prueba->tipo] = true;
+                }
                 if ($planeadosMap[$matchedKey]['estado_cobertura'] === 'pendiente') {
                     $planeadosMap[$matchedKey]['estado_cobertura'] = 'realizada';
                     $planeadosMap[$matchedKey]['prueba'] = $prueba;
@@ -372,15 +382,15 @@ class CoberturaPlaneacionService
             $postCount = 0;
 
             foreach ($itemsDelDia as $item) {
+                $pruebasColaborador = $pruebasPorTipo[$item['key']] ?? [];
                 if ($item['estado_cobertura'] === 'realizada') {
                     $realizados++;
-                    $tipo = $item['prueba']?->tipo;
-                    if ($tipo === 'pre_ruta') {
-                        $preCount++;
-                    }
-                    if ($tipo === 'post_ruta') {
-                        $postCount++;
-                    }
+                }
+                if (! empty($pruebasColaborador['pre_ruta'])) {
+                    $preCount++;
+                }
+                if (! empty($pruebasColaborador['post_ruta'])) {
+                    $postCount++;
                 }
             }
 
@@ -401,6 +411,14 @@ class CoberturaPlaneacionService
 
         $pendientesList = array_values(array_filter($planeadosArray, fn ($item) => $item['estado_cobertura'] === 'pendiente'));
         $realizadosList = array_values(array_filter($planeadosArray, fn ($item) => $item['estado_cobertura'] === 'realizada'));
+        $pendientesPreRuta = array_values(array_filter(
+            $planeadosArray,
+            fn (array $item) => empty($pruebasPorTipo[$item['key']]['pre_ruta']),
+        ));
+        $pendientesPostRuta = array_values(array_filter(
+            $planeadosArray,
+            fn (array $item) => empty($pruebasPorTipo[$item['key']]['post_ruta']),
+        ));
 
         return [
             'fecha' => $fechaDesde ?? date('Y-m-d'),
@@ -413,6 +431,8 @@ class CoberturaPlaneacionService
             'porcentaje_cobertura' => $coberturaPorcentaje,
             'resumen_texto' => $resumenTexto,
             'pendientes' => $pendientesList,
+            'pendientes_pre_ruta' => $pendientesPreRuta,
+            'pendientes_post_ruta' => $pendientesPostRuta,
             'realizados' => $realizadosList,
             'todos_planeados' => $planeadosArray,
             'planeaciones' => $planeacionesResumen,
