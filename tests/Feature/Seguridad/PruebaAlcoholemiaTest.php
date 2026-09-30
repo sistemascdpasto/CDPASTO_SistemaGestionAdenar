@@ -535,9 +535,12 @@ class PruebaAlcoholemiaTest extends TestCase
                 $pendientesPre = collect($cobertura['pendientes_pre_ruta'])->keyBy('colaborador_id');
                 $pendientesPost = collect($cobertura['pendientes_post_ruta'])->keyBy('colaborador_id');
 
-                $this->assertSame('06:10', $pendientesPre[$soloEntrada->id]['hora_prueba_pendiente']);
-                $this->assertNull($pendientesPre[$sinMarcacion->id]['hora_prueba_pendiente']);
-                $this->assertSame('18:00', $pendientesPost[$entradaYSalida->id]['hora_prueba_pendiente']);
+                $this->assertSame('06:10', $pendientesPre[$soloEntrada->id]['entrada_geovictoria']);
+                $this->assertSame('17:50', $pendientesPre[$soloEntrada->id]['salida_geovictoria']);
+                $this->assertNull($pendientesPre[$sinMarcacion->id]['entrada_geovictoria']);
+                $this->assertNull($pendientesPre[$sinMarcacion->id]['salida_geovictoria']);
+                $this->assertSame('06:00', $pendientesPost[$entradaYSalida->id]['entrada_geovictoria']);
+                $this->assertSame('18:00', $pendientesPost[$entradaYSalida->id]['salida_geovictoria']);
                 $this->assertArrayNotHasKey($sinMarcacion->id, $pendientesPost);
             });
     }

@@ -63,7 +63,11 @@ class PruebaAlcoholemiaController extends Controller
         if ($fechas->isEmpty() || $cedulas->isEmpty()) {
             foreach (['pendientes_pre_ruta', 'pendientes_post_ruta'] as $tipo) {
                 $cobertura[$tipo] = array_map(
-                    fn (array $item) => [...$item, 'hora_prueba_pendiente' => null],
+                    fn (array $item) => [
+                        ...$item,
+                        'entrada_geovictoria' => null,
+                        'salida_geovictoria' => null,
+                    ],
                     $cobertura[$tipo]
                 );
             }
@@ -77,13 +81,12 @@ class PruebaAlcoholemiaController extends Controller
             ->get(['identificador', 'fecha', 'entrada', 'salida'])
             ->keyBy(fn (GeovictoriaAsistencia $asistencia) => $asistencia->fecha->format('Y-m-d') . '|' . trim($asistencia->identificador));
 
-        foreach ([
-            'pendientes_pre_ruta' => 'entrada',
-            'pendientes_post_ruta' => 'salida',
-        ] as $tipo => $marcacion) {
-            $cobertura[$tipo] = array_map(function (array $item) use ($asistencias, $marcacion): array {
+        foreach (['pendientes_pre_ruta', 'pendientes_post_ruta'] as $tipo) {
+            $cobertura[$tipo] = array_map(function (array $item) use ($asistencias): array {
                 $key = ($item['fecha'] ?? '') . '|' . trim((string) ($item['cedula'] ?? ''));
-                $item['hora_prueba_pendiente'] = $asistencias->get($key)?->{$marcacion};
+                $asistencia = $asistencias->get($key);
+                $item['entrada_geovictoria'] = $asistencia?->entrada;
+                $item['salida_geovictoria'] = $asistencia?->salida;
 
                 return $item;
             }, $cobertura[$tipo]);

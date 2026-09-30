@@ -54,7 +54,8 @@ interface PendingCollaborator {
     nombre_completo: string;
     cargo: string;
     ruta_asignada: string;
-    hora_prueba_pendiente: string | null;
+    entrada_geovictoria: string | null;
+    salida_geovictoria: string | null;
     placa?: string | null;
     ud?: string | null;
     estado_cobertura: string;
@@ -356,7 +357,8 @@ export default function PruebasIndex({
                                     <TableHead>Fecha Planeada</TableHead>
                                     <TableHead>Colaborador</TableHead>
                                     <TableHead>Prueba pendiente</TableHead>
-                                    <TableHead>Hora de prueba pendiente</TableHead>
+                                    <TableHead>Entrada</TableHead>
+                                    <TableHead>Salida</TableHead>
                                     <TableHead>Cédula</TableHead>
                                     <TableHead>Cargo</TableHead>
                                     <TableHead>Asignación de Ruta</TableHead>
@@ -367,7 +369,7 @@ export default function PruebasIndex({
                             <TableBody>
                                 {pruebasPendientes.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={9} className="text-muted-foreground py-8 text-center">
+                                        <TableCell colSpan={10} className="text-muted-foreground py-8 text-center">
                                             🎉 ¡Excelente! No hay pruebas Pre Ruta ni Post Ruta pendientes de la planeación.
                                         </TableCell>
                                     </TableRow>
@@ -381,7 +383,8 @@ export default function PruebasIndex({
                                             </TableCell>
                                             <TableCell className="font-medium text-foreground">{item.nombre_completo}</TableCell>
                                             <TableCell>{item.tipoPendiente === 'pre_ruta' ? 'Pre Ruta' : 'Post Ruta'}</TableCell>
-                                            <TableCell>{item.hora_prueba_pendiente || '—'}</TableCell>
+                                            <TableCell>{item.entrada_geovictoria || '—'}</TableCell>
+                                            <TableCell>{item.salida_geovictoria || '—'}</TableCell>
                                             <TableCell>{item.cedula || '—'}</TableCell>
                                             <TableCell>{item.cargo || '—'}</TableCell>
                                             <TableCell>{item.ruta_asignada}</TableCell>
