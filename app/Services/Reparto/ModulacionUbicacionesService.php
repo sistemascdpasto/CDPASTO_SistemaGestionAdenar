@@ -58,39 +58,19 @@ class ModulacionUbicacionesService
     /**
      * Retorna la lista de municipios disponibles para la planeación de ruta.
      *
-     * Prioridad:
-     *  1. Si ya hay registros en el catálogo local (modulacion_municipios) → devuelve
-     *     solo el catálogo local, sin llamar a la API externa. Así los datos del
-     *     catálogo de clientes importado quedan disponibles de inmediato.
-     *  2. Si el catálogo local está vacío → usa la API externa y sincroniza en BD
-     *     (comportamiento original).
+     * Cuando el catálogo local (modulacion_municipios) ya tiene datos, los
+     * devuelve directamente sin llamar a la API externa — así los municipios
+     * importados desde el catálogo de clientes quedan disponibles de inmediato.
      *
-     * La lógica de registrarMunicipio() y registrarBarrio() no se modifica: el
-     * usuario puede seguir agregando municipios nuevos desde la planeación.
+     * Si el catálogo local está vacío, usa la API externa y sincroniza los
+     * resultados en BD (comportamiento original de bootstrap).
+     *
+     * En caso de fallo de BD se cae al resultado de la API sin catálogo local.
      *
      * @return array<int, array{id: string, nombre: string}>
      */
     public function municipios(): array
     {
-        try {
-            if (Schema::hasTable('modulacion_municipios') && ModulacionMunicipio::query()->exists()) {
-                // Catálogo local disponible: devolverlo directamente sin API externa
-                return ModulacionMunicipio::query()
-                    ->orderBy('nombre')
-                    ->get(['id', 'nombre'])
-                    ->map(fn (ModulacionMunicipio $municipio) => [
-                        'id'     => (string) $municipio->id,
-                        'nombre' => $municipio->nombre,
-                    ])
-                    ->all();
-            }
-        } catch (\PDOException $exception) {
-            Log::warning('No se pudo acceder al catálogo local de municipios; se usará la API externa.', [
-                'error' => $exception->getMessage(),
-            ]);
-        }
-
-        // Fallback: catálogo local vacío o inaccesible → comportamiento original con API
         $municipiosApi = $this->municipiosDesdeApiColombia();
 
         try {
