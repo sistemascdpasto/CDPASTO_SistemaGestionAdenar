@@ -416,6 +416,8 @@ class CoberturaPlaneacionService
             $postCount = 0;
             $preRequired = 0;
             $postRequired = 0;
+            $otrosRealizados = 0;
+            $otrosRequeridos = 0;
 
             foreach ($itemsDelDia as $item) {
                 $pruebasColaborador = $pruebasPorTipo[$item['key']] ?? [];
@@ -431,8 +433,18 @@ class CoberturaPlaneacionService
                     if (! empty($pruebasColaborador['post_ruta'])) {
                         $postCount++;
                     }
+                } else {
+                    // Tipo alternativo (ruta, jl, segundo_viaje, movilizador, administrativo)
+                    $otrosRequeridos++;
+                    $tipo = $item['tipo_prueba_planeado'];
+                    if (! empty($pruebasColaborador[$tipo])) {
+                        $otrosRealizados++;
+                    }
                 }
             }
+
+            $totalRealizadosSuma = $preCount + $postCount + $otrosRealizados;
+            $totalRequeridosSuma = $preRequired + $postRequired + $otrosRequeridos;
 
             $planeacionesResumen[] = [
                 'fecha' => $f,
@@ -445,6 +457,10 @@ class CoberturaPlaneacionService
                 'post_ruta_realizados' => $postCount,
                 'post_ruta_requeridos' => $postRequired,
                 'post_ruta_completa' => $postCount >= $postRequired,
+                'otros_realizados' => $otrosRealizados,
+                'otros_requeridos' => $otrosRequeridos,
+                'total_realizados_suma' => $totalRealizadosSuma,
+                'total_requeridos_suma' => $totalRequeridosSuma,
                 'esta_completa' => $total > 0 && $realizados >= $total,
             ];
         }

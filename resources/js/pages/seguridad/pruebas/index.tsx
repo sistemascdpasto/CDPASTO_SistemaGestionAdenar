@@ -82,6 +82,10 @@ interface PlaneacionResumen {
     post_ruta_realizados: number;
     post_ruta_requeridos: number;
     post_ruta_completa: boolean;
+    otros_realizados: number;
+    otros_requeridos: number;
+    total_realizados_suma: number;
+    total_requeridos_suma: number;
     esta_completa: boolean;
 }
 
@@ -124,6 +128,7 @@ interface Filters {
     fecha_desde: string;
     fecha_hasta: string;
     colaborador: string;
+    resultado: string;
 }
 
 export default function PruebasIndex({
@@ -280,7 +285,7 @@ export default function PruebasIndex({
             <Head title="Pruebas de Alcoholemia" />
             <div className="flex h-full flex-1 flex-col gap-6 rounded-xl p-4">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <h1 className="text-2xl font-bold tracking-tight text-foreground">Pruebas de Alcoholemia</h1>
+                    <h1 className="text-3xl font-bold tracking-tight text-foreground">Pruebas de Alcoholemia</h1>
                     <div className="flex flex-wrap gap-2">
                         <Button type="button" variant="outline" asChild>
                             <a href={exportUrl('seguridad.pruebas.exportar-pdf')}>
@@ -326,11 +331,16 @@ export default function PruebasIndex({
                                 )}
                             </div>
                         </div>
-                        <div className="h-3 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
-                            <div
-                                className="h-full bg-emerald-600 transition-all duration-500 dark:bg-emerald-500"
-                                style={{ width: `${Math.min(100, cobertura.porcentaje_cobertura)}%` }}
-                            />
+                        <div className="flex items-center gap-3">
+                            <div className="h-3 flex-1 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+                                <div
+                                    className="h-full bg-emerald-600 transition-all duration-500 dark:bg-emerald-500"
+                                    style={{ width: `${Math.min(100, cobertura.porcentaje_cobertura)}%` }}
+                                />
+                            </div>
+                            <span className="shrink-0 text-xs font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/60 px-2.5 py-1 rounded-full">
+                                Cobertura: {Math.round(cobertura.porcentaje_cobertura)}%
+                            </span>
                         </div>
                         {planeacionFechaSeleccionada && (
                             <div className="mt-3 grid gap-2 rounded-md border border-emerald-200 bg-white/70 p-3 text-xs dark:border-emerald-800 dark:bg-slate-950/30 sm:grid-cols-2">
@@ -363,9 +373,7 @@ export default function PruebasIndex({
                             </div>
                         )}
                         {!planeacionFechaSeleccionada && (
-                            <p className="mt-2 text-xs font-bold text-emerald-700 dark:text-emerald-400">
-                                Cobertura: {Math.round(cobertura.porcentaje_cobertura)}%
-                            </p>
+                            <span></span>
                         )}
                     </div>
 
@@ -415,6 +423,19 @@ export default function PruebasIndex({
                                     <SelectItem value="segundo_viaje">Segundo viaje</SelectItem>
                                     <SelectItem value="movilizador">Movilizador</SelectItem>
                                     <SelectItem value="administrativo">Administrativo</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="grid gap-1.5">
+                            <Label>Resultado</Label>
+                            <Select value={form.resultado || 'todos'} onValueChange={(value) => setForm({ ...form, resultado: value === 'todos' ? '' : value })}>
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="todos">Todos</SelectItem>
+                                    <SelectItem value="positivo">Positivo</SelectItem>
+                                    <SelectItem value="negativo">Negativo</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -478,17 +499,17 @@ export default function PruebasIndex({
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Fecha Planeada</TableHead>
-                                    <TableHead>Colaborador</TableHead>
-                                    <TableHead>Prueba pendiente</TableHead>
-                                    <TableHead>Fecha GeoVictoria</TableHead>
-                                    <TableHead>Entrada</TableHead>
-                                    <TableHead>Salida</TableHead>
-                                    <TableHead>Cédula</TableHead>
-                                    <TableHead>Cargo</TableHead>
-                                    <TableHead>Asignación de Ruta</TableHead>
-                                    <TableHead>Estado</TableHead>
-                                    <TableHead className="text-right">Acción</TableHead>
+                                    <TableHead className="text-gray-500 font-bold text-black dark:text-white">Fecha planeada</TableHead>
+                                    <TableHead className="text-gray-500 font-bold text-black dark:text-white">Colaborador</TableHead>
+                                    <TableHead className="text-gray-500 font-bold text-black dark:text-white">Prueba pendiente</TableHead>
+                                    <TableHead className="text-gray-500 font-bold text-black dark:text-white">Fecha Geovictoria</TableHead>
+                                    <TableHead className="text-gray-500 font-bold text-black dark:text-white">Entrada</TableHead>
+                                    <TableHead className="text-gray-500 font-bold text-black dark:text-white">Salida</TableHead>
+                                    <TableHead className="text-gray-500 font-bold text-black dark:text-white">Cédula</TableHead>
+                                    <TableHead className="text-gray-500 font-bold text-black dark:text-white">Cargo</TableHead>
+                                    <TableHead className="text-gray-500 font-bold text-black dark:text-white">Asignación de ruta</TableHead>
+                                    <TableHead className="text-gray-500 font-bold text-black dark:text-white">Estado</TableHead>
+                                    <TableHead className="text-right text-gray-500 font-bold text-black dark:text-white">Acción</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -504,14 +525,14 @@ export default function PruebasIndex({
                                             <TableCell className="whitespace-nowrap font-medium">
                                                 {item.fecha || form.fecha || fechaConsulta}
                                             </TableCell>
-                                            <TableCell className="font-medium text-foreground">{item.nombre_completo}</TableCell>
+                                            <TableCell className="font-medium text-foreground capitalize">{item.nombre_completo.toLowerCase()}</TableCell>
                                             <TableCell>{item.tipo_pendiente ? TIPO_LABELS[item.tipo_pendiente] : '—'}</TableCell>
                                             <TableCell>{item.fecha_geovictoria || '—'}</TableCell>
                                             <TableCell>{item.entrada_geovictoria || '—'}</TableCell>
                                             <TableCell>{item.salida_geovictoria || '—'}</TableCell>
                                             <TableCell>{item.cedula || '—'}</TableCell>
-                                            <TableCell>{item.cargo || '—'}</TableCell>
-                                            <TableCell>{item.ruta_asignada}</TableCell>
+                                            <TableCell className="capitalize">{(item.cargo || '—').toLowerCase()}</TableCell>
+                                            <TableCell className="capitalize">{(item.ruta_asignada || '—').toLowerCase()}</TableCell>
                                             <TableCell>
                                                 <span className="text-sm font-semibold text-red-600 dark:text-red-400">
                                                     Pendiente
@@ -545,18 +566,19 @@ export default function PruebasIndex({
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Fecha de la Ruta</TableHead>
-                                    <TableHead>Población Planeada</TableHead>
-                                    <TableHead>Pre Ruta</TableHead>
-                                    <TableHead>Post Ruta</TableHead>
-                                    <TableHead>Estado Cobertura</TableHead>
-                                    <TableHead className="text-right">Acción</TableHead>
+                                    <TableHead className="font-bold text-black dark:text-white">Fecha de la ruta</TableHead>
+                                    <TableHead className="font-bold text-black dark:text-white">Población planeada</TableHead>
+                                    <TableHead className="font-bold text-black dark:text-white">Pre ruta</TableHead>
+                                    <TableHead className="font-bold text-black dark:text-white">Post ruta</TableHead>
+                                    <TableHead className="font-bold text-black dark:text-white">Otros tipos</TableHead>
+                                    <TableHead className="font-bold text-black dark:text-white">Estado cobertura</TableHead>
+                                    <TableHead className="text-right font-bold text-black dark:text-white">Acción</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {!cobertura.planeaciones || cobertura.planeaciones.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={6} className="text-muted-foreground py-8 text-center">
+                                        <TableCell colSpan={7} className="text-muted-foreground py-8 text-center">
                                             No hay registros de planeación de ruta en el histórico.
                                         </TableCell>
                                     </TableRow>
@@ -573,25 +595,50 @@ export default function PruebasIndex({
                                                 {plan.pre_ruta_requeridos === 0 ? (
                                                     <span className="text-muted-foreground">No requerida</span>
                                                 ) : plan.pre_ruta_completa ? (
-                                                    <span className="font-medium text-emerald-600 dark:text-emerald-400">Completa</span>
+                                                    <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                                                        {plan.pre_ruta_realizados}/{plan.pre_ruta_requeridos} — Completa
+                                                    </span>
                                                 ) : (
-                                                    <span className="text-muted-foreground">Incompleta ({plan.pre_ruta_realizados}/{plan.pre_ruta_requeridos})</span>
+                                                    <span className="text-muted-foreground">
+                                                        {plan.pre_ruta_realizados}/{plan.pre_ruta_requeridos}
+                                                    </span>
                                                 )}
                                             </TableCell>
                                             <TableCell>
                                                 {plan.post_ruta_requeridos === 0 ? (
                                                     <span className="text-muted-foreground">No requerida</span>
                                                 ) : plan.post_ruta_completa ? (
-                                                    <span className="font-medium text-emerald-600 dark:text-emerald-400">Completa</span>
+                                                    <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                                                        {plan.post_ruta_realizados}/{plan.post_ruta_requeridos} — Completa
+                                                    </span>
                                                 ) : (
-                                                    <span className="text-muted-foreground">Incompleta ({plan.post_ruta_realizados}/{plan.post_ruta_requeridos})</span>
+                                                    <span className="text-muted-foreground">
+                                                        {plan.post_ruta_realizados}/{plan.post_ruta_requeridos}
+                                                    </span>
+                                                )}
+                                            </TableCell>
+                                            <TableCell>
+                                                {plan.otros_requeridos === 0 ? (
+                                                    <span className="text-muted-foreground">—</span>
+                                                ) : plan.otros_realizados >= plan.otros_requeridos ? (
+                                                    <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                                                        {plan.otros_realizados}/{plan.otros_requeridos} — Completa
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-muted-foreground">
+                                                        {plan.otros_realizados}/{plan.otros_requeridos}
+                                                    </span>
                                                 )}
                                             </TableCell>
                                             <TableCell>
                                                 {plan.esta_completa ? (
-                                                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">Completa</span>
+                                                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                                                        {plan.total_realizados_suma}/{plan.total_requeridos_suma} — Completa
+                                                    </span>
                                                 ) : (
-                                                    <span className="font-semibold text-red-600 dark:text-red-400">En Proceso ({plan.total_realizados}/{plan.total_planeados})</span>
+                                                    <span className="font-semibold text-red-600 dark:text-red-400">
+                                                        {plan.total_realizados_suma}/{plan.total_requeridos_suma} — En proceso
+                                                    </span>
                                                 )}
                                             </TableCell>
                                             <TableCell className="text-right">
@@ -617,15 +664,15 @@ export default function PruebasIndex({
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Fecha</TableHead>
-                                        <TableHead>Colaborador</TableHead>
-                                        <TableHead>Tipo</TableHead>
-                                        <TableHead>Planeación / Ruta</TableHead>
-                                        <TableHead>Dispositivo</TableHead>
-                                        <TableHead>Resultado</TableHead>
-                                        <TableHead>Responsable</TableHead>
-                                        <TableHead>Firma</TableHead>
-                                        <TableHead className="text-right">Acciones</TableHead>
+                                        <TableHead className="font-bold text-black dark:text-white">Fecha</TableHead>
+                                        <TableHead className="font-bold text-black dark:text-white">Colaborador</TableHead>
+                                        <TableHead className="font-bold text-black dark:text-white">Tipo</TableHead>
+                                        <TableHead className="font-bold text-black dark:text-white">Planeación / Ruta</TableHead>
+                                        <TableHead className="font-bold text-black dark:text-white">Dispositivo</TableHead>
+                                        <TableHead className="font-bold text-black dark:text-white">Resultado</TableHead>
+                                        <TableHead className="font-bold text-black dark:text-white">Responsable</TableHead>
+                                        <TableHead className="font-bold text-black dark:text-white">Firma</TableHead>
+                                        <TableHead className="text-right font-bold text-black dark:text-white">Acciones</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -639,11 +686,11 @@ export default function PruebasIndex({
                                     {pruebas.data.map((prueba) => (
                                         <TableRow key={prueba.id}>
                                             <TableCell className="whitespace-nowrap">{new Date(prueba.fecha_hora).toLocaleString()}</TableCell>
-                                            <TableCell>
-                                                {prueba.colaborador ? `${prueba.colaborador.nombres} ${prueba.colaborador.apellidos}` : '—'}
+                                            <TableCell className="capitalize">
+                                                {prueba.colaborador ? `${prueba.colaborador.nombres} ${prueba.colaborador.apellidos}`.toLowerCase() : '—'}
                                             </TableCell>
                                             <TableCell>{TIPO_LABELS[prueba.tipo] ?? prueba.tipo}</TableCell>
-                                            <TableCell>{prueba.ruta_asignada || '—'}</TableCell>
+                                            <TableCell className="capitalize">{prueba.ruta_asignada ? prueba.ruta_asignada.toLowerCase() : '—'}</TableCell>
                                             <TableCell>{prueba.alcoholimetro?.codigo ?? '—'}</TableCell>
                                             <TableCell>
                                                 {prueba.estado === 'programada' ? (
@@ -653,12 +700,12 @@ export default function PruebasIndex({
                                                         {prueba.resultado} — Positivo
                                                     </span>
                                                 ) : (
-                                                    <span>
-                                                        {prueba.resultado ?? '0.000'} — Negativo
+                                                    <span className="text-emerald-700 dark:text-emerald-400 font-medium">
+                                                        Negativo
                                                     </span>
                                                 )}
                                             </TableCell>
-                                            <TableCell>{prueba.responsable?.name ?? '—'}</TableCell>
+                                            <TableCell className="capitalize">{prueba.responsable?.name ? prueba.responsable.name.toLowerCase() : '—'}</TableCell>
                                             <TableCell>
                                                 {prueba.firma_path ? (
                                                     <SafeImage

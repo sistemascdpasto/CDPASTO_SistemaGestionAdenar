@@ -424,7 +424,9 @@ class PruebaAlcoholemiaController extends Controller
                         ->orWhere('apellidos', 'like', "%{$filtros['colaborador']}%")
                         ->orWhere('cedula', 'like', "%{$filtros['colaborador']}%");
                 });
-            });
+            })
+            ->when($filtros['resultado'] === 'positivo', fn ($query) => $query->where('es_positivo', true))
+            ->when($filtros['resultado'] === 'negativo', fn ($query) => $query->where('es_positivo', false)->where('estado', 'realizada'));
     }
 
     /**
@@ -456,6 +458,7 @@ class PruebaAlcoholemiaController extends Controller
             'fecha_desde' => $request->string('fecha_desde')->trim()->toString(),
             'fecha_hasta' => $request->string('fecha_hasta')->trim()->toString(),
             'colaborador' => $request->string('colaborador')->trim()->toString(),
+            'resultado' => $request->string('resultado')->trim()->toString(),
         ];
     }
 }
