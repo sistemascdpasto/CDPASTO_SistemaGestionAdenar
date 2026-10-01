@@ -1784,7 +1784,8 @@ export default function ModulacionIndex({
         const AZUL_OSCURO = '1F3864';       // Encabezados (fondo azul marino)
         const AZUL_CLARO_NOMBRES = 'B4C6E7'; // Fondo columna NOMBRE en novedades
         const AZUL_CARGO_1 = '4472C4';      // 1er tripulante
-        const AZUL_CLARO_CARGO_2 = '9DC3E6'; // 2do tripulante
+        const AZUL_CLARO_CARGO_2 = 'FFD700'; // 2do tripulante (amarillo)
+        const AZUL_TEXTO_CARGO_2 = '1565C0'; // Texto azul claro fuerte para el 2do tripulante
         const GRIS_CARGO_3 = 'D9D9D9';      // 3er tripulante
         const BLANCO_CARGO_4 = 'FFFFFF';    // 4to tripulante
         const NEGRO_PLACA = '000000';       // Fondo columna placa
@@ -2084,7 +2085,7 @@ export default function ModulacionIndex({
                 // Columna de nombre (al lado)
                 setCell(r0 + t, COL.TRIP_NOMBRE, cell(nombre, {
                     s: {
-                        font: { ...FONT_BODY, bold: true },
+                        font: { ...FONT_BODY, bold: true, ...(t === 1 ? { color: { rgb: AZUL_TEXTO_CARGO_2 } } : {}) },
                         alignment: ALIGN_LEFT,
                         border: BORDER_THIN,
                     },
@@ -2258,6 +2259,7 @@ export default function ModulacionIndex({
 
         XLSX.utils.book_append_sheet(wb, ws, 'Planeación de Ruta');
 
+        // ─── Tabla de NOVEDADES en la misma hoja, separada por 2 filas ───────
         const encabezadosNovedades = [
             'NOMBRE',
             'OBSERVACIONES',
@@ -2278,7 +2280,6 @@ export default function ModulacionIndex({
             novedad.incapacidad ? 'X' : '',
             novedad.vacaciones ? 'X' : '',
         ]);
-        const novedadesSheet = XLSX.utils.aoa_to_sheet([encabezadosNovedades, ...filasNovedades]);
         const estiloEncabezadoNovedades: XLSX.CellStyle = {
             fill: { patternType: 'solid', fgColor: { rgb: AZUL_OSCURO } },
             font: FONT_HEADER,
@@ -2297,33 +2298,42 @@ export default function ModulacionIndex({
             border: BORDER_THIN,
         };
 
-        encabezadosNovedades.forEach((_, col) => {
-            const headerCell = XLSX.utils.encode_cell({ r: 0, c: col });
-            if (novedadesSheet[headerCell]) novedadesSheet[headerCell].s = estiloEncabezadoNovedades;
+        // Posicionar la tabla de novedades 2 filas debajo de la última fila de rutas
+        const rowInicioNovedades = currentRow + 2;
+        const rowDatosNovedades = rowInicioNovedades + 1;
+
+        // Encabezados de la tabla de novedades
+        encabezadosNovedades.forEach((label, col) => {
+            setCell(rowInicioNovedades, col, cell(label, { s: estiloEncabezadoNovedades }));
         });
+
+        // Filas de datos de novedades
         filasNovedades.forEach((fila, rowIndex) => {
-            fila.forEach((_, col) => {
-                const address = XLSX.utils.encode_cell({ r: rowIndex + 1, c: col });
-                if (novedadesSheet[address]) {
-                    novedadesSheet[address].s = col < 2 ? estiloDatoNovedades : estiloCheckNovedades;
-                }
+            fila.forEach((valor, col) => {
+                setCell(rowDatosNovedades + rowIndex, col, cell(valor, {
+                    s: col < 2 ? estiloDatoNovedades : estiloCheckNovedades,
+                }));
             });
         });
 
-        novedadesSheet['!cols'] = encabezadosNovedades.map((encabezado, col) => {
-            const maxLength = Math.max(
-                encabezado.length,
-                ...filasNovedades.map((fila) => String(fila[col] ?? '').length),
-            );
-            return { wch: Math.min(Math.max(maxLength + 2, 12), col === 1 ? 50 : 28) };
+        // Actualizar ref del worksheet para incluir las novedades
+        const lastRowNovedades = rowDatosNovedades + Math.max(filasNovedades.length - 1, 0);
+        const lastColNovedades = encabezadosNovedades.length - 1;
+        ws['!ref'] = XLSX.utils.encode_range({
+            s: { r: 0, c: 0 },
+            e: { r: Math.max(currentRow + 1, lastRowNovedades), c: Math.max(TOTAL_COLS - 1, lastColNovedades) },
         });
-        novedadesSheet['!rows'] = [
-            { hpt: 24 },
-            ...filasNovedades.map((fila) => ({
-                hpt: Math.min(90, Math.max(22, Math.ceil(String(fila[1] ?? '').length / 55) * 18)),
-            })),
-        ];
-        XLSX.utils.book_append_sheet(wb, novedadesSheet, 'Novedades');
+
+        // Añadir alturas para las filas de separación y novedades
+        const rowHeightsActual = ws['!rows'] as { hpt: number }[];
+        while (rowHeightsActual.length < rowInicioNovedades) {
+            rowHeightsActual.push({ hpt: 16 });
+        }
+        rowHeightsActual.push({ hpt: 24 }); // encabezado novedades
+        filasNovedades.forEach((fila) => {
+            rowHeightsActual.push({ hpt: Math.min(90, Math.max(22, Math.ceil(String(fila[1] ?? '').length / 55) * 18)) });
+        });
+        ws['!rows'] = rowHeightsActual;
 
         // Generar nombre de archivo con FECHA LOCAL (no UTC)
         let fechaNombre: string = fechaTexto || '';

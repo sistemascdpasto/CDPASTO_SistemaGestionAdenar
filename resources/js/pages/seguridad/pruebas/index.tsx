@@ -1,4 +1,3 @@
-import HeadingSmall from '@/components/heading-small';
 import { IconActionButton } from '@/components/icon-action-button';
 import { SafeImage } from '@/components/safe-image';
 import { Badge } from '@/components/ui/badge';
@@ -11,7 +10,9 @@ import AppLayout from '@/layouts/app-layout';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
-import { Eye, FileSpreadsheet, FileText, Pencil, Plus, Truck } from 'lucide-react';
+import * as XLSX from 'xlsx-js-style';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Eye, FileSpreadsheet, FileText, ListFilter, Pencil, Plus, Truck } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -149,7 +150,23 @@ export default function PruebasIndex({
         ...cobertura.pendientes_pre_ruta,
         ...cobertura.pendientes_post_ruta,
         ...cobertura.pendientes_otras,
-    ].sort((a, b) => (b.fecha ?? '').localeCompare(a.fecha ?? '') || a.nombre_completo.localeCompare(b.nombre_completo));
+    ].sort((a, b) => (b.fecha ?? '').localeCompare(a.fecha ?? '') || a.nombre_completo.localeCompare(b.nombre_completo))
+    .filter((item) => {
+        // Filtro por colaborador (nombre o cédula) — aplicado en cliente
+        if (form.colaborador) {
+            const q = form.colaborador.toLowerCase();
+            const matchNombre = item.nombre_completo.toLowerCase().includes(q);
+            const matchCedula = (item.cedula ?? '').toLowerCase().includes(q);
+            if (!matchNombre && !matchCedula) return false;
+        }
+        // Filtro por tipo de prueba — aplicado en cliente
+        if (form.tipo) {
+            const tipoPendiente = item.tipo_pendiente ?? item.tipo_prueba_planeado;
+            if (tipoPendiente !== form.tipo) return false;
+        }
+        // Nota: fecha_desde / fecha_hasta ya los filtra el backend en CoberturaPlaneacionService
+        return true;
+    });
 
     useEffect(() => {
         if (isFirstRender.current) {
@@ -161,17 +178,130 @@ export default function PruebasIndex({
 
     const exportUrl = (ruta: string) => route(ruta, { ...form });
 
+    const handleExportPendientes = () => {
+        if (pruebasPendientes.length === 0) {
+            alert('No hay pendientes para exportar con los filtros actuales.');
+            return;
+        }
+
+        const wb = XLSX.utils.book_new();
+        const AZUL_OSCURO = '1F3864';
+        const AZUL_CLARO = 'D9E1F2';
+        const AMARILLO = 'FFF2CC';
+        const BORDE = {
+            top: { style: 'thin', color: { rgb: 'FF000000' } },
+            bottom: { style: 'thin', color: { rgb: 'FF000000' } },
+            left: { style: 'thin', color: { rgb: 'FF000000' } },
+            right: { style: 'thin', color: { rgb: 'FF000000' } },
+        } as const;
+
+        const estiloEncabezado: XLSX.CellStyle = {
+            fill: { patternType: 'solid', fgColor: { rgb: AZUL_OSCURO } },
+            font: { bold: true, color: { rgb: 'FFFFFF' }, sz: 11, name: 'Calibri' },
+            alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+            border: BORDE,
+        };
+        const estiloDato: XLSX.CellStyle = {
+            fill: { patternType: 'solid', fgColor: { rgb: AZUL_CLARO } },
+            font: { sz: 10, name: 'Calibri', color: { rgb: '000000' } },
+            alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
+            border: BORDE,
+        };
+        const estiloPendiente: XLSX.CellStyle = {
+            fill: { patternType: 'solid', fgColor: { rgb: AMARILLO } },
+            font: { sz: 10, name: 'Calibri', color: { rgb: 'B8860B' }, bold: true },
+            alignment: { horizontal: 'center', vertical: 'center' },
+            border: BORDE,
+        };
+
+        const encabezados = [
+            'Fecha Planeada',
+            'Colaborador',
+            'Prueba Pendiente',
+            'Fecha GeoVictoria',
+            'Entrada',
+            'Salida',
+            'Cédula',
+            'Cargo',
+            'Asignación de Ruta',
+            'Estado',
+        ];
+
+        const ws: XLSX.WorkSheet = {};
+        const setCell = (r: number, c: number, v: unknown, s: XLSX.CellStyle) => {
+            const addr = XLSX.utils.encode_cell({ r, c });
+            ws[addr] = { t: 's', v: String(v ?? ''), s };
+        };
+
+        // Encabezados fila 0
+        encabezados.forEach((label, c) => setCell(0, c, label, estiloEncabezado));
+
+        // Filas de datos
+        pruebasPendientes.forEach((item, rowIndex) => {
+            const r = rowIndex + 1;
+            setCell(r, 0, item.fecha || form.fecha || fechaConsulta, estiloDato);
+            setCell(r, 1, item.nombre_completo, estiloDato);
+            setCell(r, 2, item.tipo_pendiente ? (TIPO_LABELS[item.tipo_pendiente] ?? item.tipo_pendiente) : '—', estiloDato);
+            setCell(r, 3, item.fecha_geovictoria || '—', estiloDato);
+            setCell(r, 4, item.entrada_geovictoria || '—', estiloDato);
+            setCell(r, 5, item.salida_geovictoria || '—', estiloDato);
+            setCell(r, 6, item.cedula || '—', estiloDato);
+            setCell(r, 7, item.cargo || '—', estiloDato);
+            setCell(r, 8, item.ruta_asignada || '—', estiloDato);
+            setCell(r, 9, 'Pendiente', estiloPendiente);
+        });
+
+        ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: pruebasPendientes.length, c: encabezados.length - 1 } });
+        ws['!cols'] = [
+            { wch: 14 }, // Fecha Planeada
+            { wch: 32 }, // Colaborador
+            { wch: 18 }, // Prueba Pendiente
+            { wch: 16 }, // Fecha GeoVictoria
+            { wch: 10 }, // Entrada
+            { wch: 10 }, // Salida
+            { wch: 14 }, // Cédula
+            { wch: 22 }, // Cargo
+            { wch: 28 }, // Asignación de Ruta
+            { wch: 12 }, // Estado
+        ];
+        ws['!rows'] = [
+            { hpt: 28 },
+            ...pruebasPendientes.map(() => ({ hpt: 20 })),
+        ];
+
+        XLSX.utils.book_append_sheet(wb, ws, 'Pendientes Planeación');
+
+        const fechaNombre = form.fecha_desde || form.fecha || fechaConsulta;
+        XLSX.writeFile(wb, `Pendientes_Planeacion_${fechaNombre}.xlsx`);
+    };
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Pruebas de Alcoholemia" />
             <div className="flex h-full flex-1 flex-col gap-6 rounded-xl p-4">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <HeadingSmall
-                        title="Pruebas de Alcoholemia"
-                        description="Seguimiento de cobertura de población objetivo (Planeación de Ruta) y registro de evaluaciones."
-                    />
+                    <h1 className="text-2xl font-bold tracking-tight text-foreground">Pruebas de Alcoholemia</h1>
                     <div className="flex flex-wrap gap-2">
-                        <Button asChild>
+                        <Button type="button" variant="outline" asChild>
+                            <a href={exportUrl('seguridad.pruebas.exportar-pdf')}>
+                                <FileText className="size-4" />
+                                Exportar PDF
+                            </a>
+                        </Button>
+                        <Button type="button" variant="outline" asChild={activeTab !== 'pendientes'} onClick={activeTab === 'pendientes' ? handleExportPendientes : undefined}>
+                            {activeTab === 'pendientes' ? (
+                                <>
+                                    <FileSpreadsheet className="size-4" />
+                                    Exportar Excel
+                                </>
+                            ) : (
+                                <a href={exportUrl('seguridad.pruebas.exportar-excel')}>
+                                    <FileSpreadsheet className="size-4" />
+                                    Exportar Excel
+                                </a>
+                            )}
+                        </Button>
+                        <Button asChild className="bg-emerald-600 hover:bg-emerald-700 text-white">
                             <Link href={route('seguridad.pruebas.create')}>
                                 <Plus className="size-4" />
                                 Registrar prueba
@@ -184,10 +314,7 @@ export default function PruebasIndex({
                 <div className="flex flex-col gap-4 rounded-xl border border-sidebar-border/70 p-4 sm:p-5 dark:border-sidebar-border">
                     {/* Barra de Cobertura */}
                     <div className="rounded-lg border border-emerald-300/70 bg-emerald-50/50 p-3.5 shadow-xs dark:border-emerald-700/50 dark:bg-emerald-950/20">
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
-                            <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-200">
-                                {cobertura.resumen_texto}
-                            </p>
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2 mb-2">
                             <div className="flex items-center gap-2">
                                 {planeacionCompleta && (
                                     <Button size="sm" variant="outline" className="h-7 text-xs border-emerald-600 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-500 dark:text-emerald-300" asChild>
@@ -197,9 +324,6 @@ export default function PruebasIndex({
                                         </Link>
                                     </Button>
                                 )}
-                                <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/60 px-2.5 py-1 rounded-full w-fit">
-                                    Cobertura: {Math.round(cobertura.porcentaje_cobertura)}%
-                                </span>
                             </div>
                         </div>
                         <div className="h-3 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
@@ -226,6 +350,9 @@ export default function PruebasIndex({
                                         ? <span className="font-semibold text-emerald-700 dark:text-emerald-400">completa ({planeacionFechaSeleccionada.post_ruta_realizados}/{planeacionFechaSeleccionada.post_ruta_requeridos})</span>
                                         : <span className="text-muted-foreground">pendiente ({planeacionFechaSeleccionada.post_ruta_realizados}/{planeacionFechaSeleccionada.post_ruta_requeridos})</span>}
                                 </p>
+                                <p className="font-bold text-emerald-700 dark:text-emerald-400 sm:col-span-2">
+                                    Cobertura: {Math.round(cobertura.porcentaje_cobertura)}%
+                                </p>
                                 {planeacionFechaSeleccionada.pre_ruta_completa && planeacionFechaSeleccionada.post_ruta_requeridos > 0 && (
                                     <p className="font-medium sm:col-span-2" role="status">
                                         {planeacionFechaSeleccionada.post_ruta_completa
@@ -235,10 +362,15 @@ export default function PruebasIndex({
                                 )}
                             </div>
                         )}
+                        {!planeacionFechaSeleccionada && (
+                            <p className="mt-2 text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                                Cobertura: {Math.round(cobertura.porcentaje_cobertura)}%
+                            </p>
+                        )}
                     </div>
 
                     {/* Filtros de Búsqueda */}
-                    <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                    <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                         <div className="grid gap-1.5">
                             <Label htmlFor="colaborador">Colaborador o cédula</Label>
                             <Input
@@ -249,12 +381,24 @@ export default function PruebasIndex({
                             />
                         </div>
                         <div className="grid gap-1.5">
-                            <Label htmlFor="fecha_desde">Desde</Label>
-                            <Input id="fecha_desde" type="date" value={form.fecha_desde} onChange={(e) => setForm({ ...form, fecha_desde: e.target.value, fecha: e.target.value })} />
-                        </div>
-                        <div className="grid gap-1.5">
-                            <Label htmlFor="fecha_hasta">Hasta</Label>
-                            <Input id="fecha_hasta" type="date" value={form.fecha_hasta} onChange={(e) => setForm({ ...form, fecha_hasta: e.target.value })} />
+                            <Label>Rango de fechas</Label>
+                            <div className="flex items-center gap-1.5">
+                                <Input
+                                    id="fecha_desde"
+                                    type="date"
+                                    value={form.fecha_desde}
+                                    onChange={(e) => setForm({ ...form, fecha_desde: e.target.value, fecha: e.target.value })}
+                                    className="flex-1"
+                                />
+                                <span className="text-muted-foreground text-xs shrink-0">—</span>
+                                <Input
+                                    id="fecha_hasta"
+                                    type="date"
+                                    value={form.fecha_hasta}
+                                    onChange={(e) => setForm({ ...form, fecha_hasta: e.target.value })}
+                                    className="flex-1"
+                                />
+                            </div>
                         </div>
                         <div className="grid gap-1.5">
                             <Label>Tipo de prueba</Label>
@@ -273,34 +417,6 @@ export default function PruebasIndex({
                                     <SelectItem value="administrativo">Administrativo</SelectItem>
                                 </SelectContent>
                             </Select>
-                        </div>
-                        <div className="grid gap-1.5">
-                            <Label>Origen de Planeación</Label>
-                            <Select value={form.origen_planeacion || 'todos'} onValueChange={(value) => setForm({ ...form, origen_planeacion: value === 'todos' ? '' : value })}>
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="todos">Todos</SelectItem>
-                                    <SelectItem value="planeadas">Realizada (Planeada)</SelectItem>
-                                    <SelectItem value="adicionales">Evaluación Adicional</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div className="flex flex-wrap items-end gap-2 sm:col-span-2 lg:col-span-5">
-                            <Button type="button" variant="outline" asChild>
-                                <a href={exportUrl('seguridad.pruebas.exportar-pdf')}>
-                                    <FileText className="size-4" />
-                                    Exportar PDF
-                                </a>
-                            </Button>
-                            <Button type="button" variant="outline" asChild>
-                                <a href={exportUrl('seguridad.pruebas.exportar-excel')}>
-                                    <FileSpreadsheet className="size-4" />
-                                    Exportar Excel
-                                </a>
-                            </Button>
                         </div>
                     </form>
                 </div>
@@ -327,12 +443,12 @@ export default function PruebasIndex({
                         onClick={() => setActiveTab('pendientes')}
                         className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
                             activeTab === 'pendientes'
-                                ? 'border-amber-500 text-amber-600 font-semibold'
+                                ? 'border-red-500 text-red-600 font-semibold'
                                 : 'border-transparent text-muted-foreground hover:text-foreground'
                         }`}
                     >
                         Pendientes de la Planeación
-                        <Badge className="ml-1 text-xs bg-amber-500 text-white hover:bg-amber-600">
+                        <Badge className="ml-1 text-xs bg-red-500 text-white hover:bg-red-600">
                             {pruebasPendientes.length}
                         </Badge>
                     </button>
@@ -358,16 +474,7 @@ export default function PruebasIndex({
                 {/* Vista: Pendientes de la Planeación (Histórico Completo) */}
                 {activeTab === 'pendientes' && (
                     <div className="rounded-lg border border-sidebar-border/70 dark:border-sidebar-border overflow-hidden">
-                        <div className="p-3.5 bg-amber-50/70 dark:bg-amber-950/30 border-b border-sidebar-border/70 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                            <div>
-                                <h3 className="text-sm font-semibold text-amber-900 dark:text-amber-200">
-                                    📋 Pruebas pendientes de la Planeación ({pruebasPendientes.length})
-                                </h3>
-                                <p className="text-xs text-amber-700/80 dark:text-amber-400/80 mt-0.5">
-                                    Primero se realiza Pre Ruta; al completarla, queda pendiente Post Ruta hasta registrarla.
-                                </p>
-                            </div>
-                        </div>
+                        
                         <Table>
                             <TableHeader>
                                 <TableRow>
@@ -395,9 +502,7 @@ export default function PruebasIndex({
                                     pruebasPendientes.map((item) => (
                                         <TableRow key={`${item.key}-${item.tipo_pendiente}`}>
                                             <TableCell className="whitespace-nowrap font-medium">
-                                                <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-700/50 dark:bg-amber-950/40 dark:text-amber-200 font-mono">
-                                                    📅 {item.fecha || form.fecha || fechaConsulta}
-                                                </Badge>
+                                                {item.fecha || form.fecha || fechaConsulta}
                                             </TableCell>
                                             <TableCell className="font-medium text-foreground">{item.nombre_completo}</TableCell>
                                             <TableCell>{item.tipo_pendiente ? TIPO_LABELS[item.tipo_pendiente] : '—'}</TableCell>
@@ -408,24 +513,23 @@ export default function PruebasIndex({
                                             <TableCell>{item.cargo || '—'}</TableCell>
                                             <TableCell>{item.ruta_asignada}</TableCell>
                                             <TableCell>
-                                                <Badge variant="outline" className="border-amber-500 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30">
+                                                <span className="text-sm font-semibold text-red-600 dark:text-red-400">
                                                     Pendiente
-                                                </Badge>
+                                                </span>
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" asChild>
-                                                    <Link
-                                                        href={route('seguridad.pruebas.create', {
-                                                            colaborador_id: item.colaborador_id,
-                                                            fecha: item.fecha || form.fecha || fechaConsulta,
-                                                            ruta_asignada: item.ruta_asignada,
-                                                            tipo: item.tipo_pendiente ?? item.tipo_prueba_planeado ?? 'pre_ruta',
-                                                        })}
-                                                    >
-                                                        <Plus className="size-3.5 mr-1" />
-                                                        Registrar prueba
-                                                    </Link>
-                                                </Button>
+                                                <Link
+                                                    href={route('seguridad.pruebas.create', {
+                                                        colaborador_id: item.colaborador_id,
+                                                        fecha: item.fecha || form.fecha || fechaConsulta,
+                                                        ruta_asignada: item.ruta_asignada,
+                                                        tipo: item.tipo_pendiente ?? item.tipo_prueba_planeado ?? 'pre_ruta',
+                                                    })}
+                                                    className="inline-flex items-center justify-center h-8 w-8 rounded-md border border-input bg-background hover:bg-accent transition-colors text-emerald-600 hover:text-emerald-700"
+                                                    title="Registrar prueba"
+                                                >
+                                                    <Plus className="size-4" />
+                                                </Link>
                                             </TableCell>
                                         </TableRow>
                                     ))
@@ -487,11 +591,11 @@ export default function PruebasIndex({
                                                 {plan.esta_completa ? (
                                                     <span className="font-semibold text-emerald-600 dark:text-emerald-400">Completa</span>
                                                 ) : (
-                                                    <span className="text-amber-600 dark:text-amber-400">En Proceso ({plan.total_realizados}/{plan.total_planeados})</span>
+                                                    <span className="font-semibold text-red-600 dark:text-red-400">En Proceso ({plan.total_realizados}/{plan.total_planeados})</span>
                                                 )}
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                <Button size="sm" variant="outline" className="h-8 text-xs border-emerald-600 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-500 dark:text-emerald-300" asChild>
+                                                <Button size="sm" variant="outline" className="h-8 text-xs border-red-500 text-red-600 hover:bg-red-50 dark:border-red-400 dark:text-red-400" asChild>
                                                     <Link href={route('reparto.modulacion.index', { fecha: plan.fecha, readOnly: true })}>
                                                         <Truck className="size-3.5 mr-1" />
                                                         Ver Detalles de la Ruta
@@ -516,7 +620,6 @@ export default function PruebasIndex({
                                         <TableHead>Fecha</TableHead>
                                         <TableHead>Colaborador</TableHead>
                                         <TableHead>Tipo</TableHead>
-                                        <TableHead>Tipo requerido</TableHead>
                                         <TableHead>Planeación / Ruta</TableHead>
                                         <TableHead>Dispositivo</TableHead>
                                         <TableHead>Resultado</TableHead>
@@ -528,7 +631,7 @@ export default function PruebasIndex({
                                 <TableBody>
                                     {pruebas.data.length === 0 && (
                                         <TableRow>
-                                            <TableCell colSpan={10} className="text-muted-foreground py-6 text-center">
+                                            <TableCell colSpan={9} className="text-muted-foreground py-6 text-center">
                                                 No se encontraron pruebas de alcoholemia.
                                             </TableCell>
                                         </TableRow>
@@ -540,35 +643,6 @@ export default function PruebasIndex({
                                                 {prueba.colaborador ? `${prueba.colaborador.nombres} ${prueba.colaborador.apellidos}` : '—'}
                                             </TableCell>
                                             <TableCell>{TIPO_LABELS[prueba.tipo] ?? prueba.tipo}</TableCell>
-                                            <TableCell>
-                                                {prueba.pertenece_planeacion && prueba.colaborador_id && prueba.fecha_prueba ? (
-                                                    <Select
-                                                        value={prueba.tipo_prueba_planeado ?? FLUJO_PRE_POST}
-                                                        onValueChange={(value) => {
-                                                            router.patch(
-                                                                route('seguridad.pruebas.planeacion.tipo', {
-                                                                    colaborador: prueba.colaborador_id,
-                                                                    fecha: prueba.fecha_prueba,
-                                                                }),
-                                                                { tipo: value === FLUJO_PRE_POST ? null : value },
-                                                                { preserveScroll: true },
-                                                            );
-                                                        }}
-                                                    >
-                                                        <SelectTrigger className="min-w-44">
-                                                            <SelectValue />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value={FLUJO_PRE_POST}>Pre y Post Ruta</SelectItem>
-                                                            {(['ruta', 'jl', 'segundo_viaje', 'movilizador', 'administrativo'] as TipoPrueba[]).map((tipo) => (
-                                                                <SelectItem key={tipo} value={tipo}>{TIPO_LABELS[tipo]}</SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                ) : (
-                                                    <span className="text-muted-foreground">—</span>
-                                                )}
-                                            </TableCell>
                                             <TableCell>{prueba.ruta_asignada || '—'}</TableCell>
                                             <TableCell>{prueba.alcoholimetro?.codigo ?? '—'}</TableCell>
                                             <TableCell>
@@ -598,6 +672,42 @@ export default function PruebasIndex({
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex justify-end gap-1">
+                                                    {prueba.pertenece_planeacion && prueba.colaborador_id && prueba.fecha_prueba && (
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <button
+                                                                    type="button"
+                                                                    title="Tipo requerido"
+                                                                    className="inline-flex items-center justify-center h-8 w-8 rounded-md border border-input bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                                                                >
+                                                                    <ListFilter className="size-4" />
+                                                                    <span className="sr-only">Tipo requerido</span>
+                                                                </button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end" className="w-44">
+                                                                <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">Tipo requerido</DropdownMenuLabel>
+                                                                <DropdownMenuSeparator />
+                                                                <DropdownMenuRadioGroup
+                                                                    value={prueba.tipo_prueba_planeado ?? FLUJO_PRE_POST}
+                                                                    onValueChange={(value) => {
+                                                                        router.patch(
+                                                                            route('seguridad.pruebas.planeacion.tipo', {
+                                                                                colaborador: prueba.colaborador_id,
+                                                                                fecha: prueba.fecha_prueba,
+                                                                            }),
+                                                                            { tipo: value === FLUJO_PRE_POST ? null : value },
+                                                                            { preserveScroll: true },
+                                                                        );
+                                                                    }}
+                                                                >
+                                                                    <DropdownMenuRadioItem value={FLUJO_PRE_POST}>Pre y Post Ruta</DropdownMenuRadioItem>
+                                                                    {(['ruta', 'jl', 'segundo_viaje', 'movilizador', 'administrativo'] as TipoPrueba[]).map((tipo) => (
+                                                                        <DropdownMenuRadioItem key={tipo} value={tipo}>{TIPO_LABELS[tipo]}</DropdownMenuRadioItem>
+                                                                    ))}
+                                                                </DropdownMenuRadioGroup>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    )}
                                                     <IconActionButton icon={Eye} label="Ver" href={route('seguridad.pruebas.show', prueba.id)} />
                                                     <IconActionButton icon={Pencil} label="Editar" href={route('seguridad.pruebas.edit', prueba.id)} />
                                                 </div>
