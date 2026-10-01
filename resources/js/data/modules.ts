@@ -189,7 +189,7 @@ export const modules: ModuleDef[] = [
             },
             { title: 'Revisión Aleatoria', slug: 'revision-aleatoria', icon: Dices },
             { title: '5 Por Qué', slug: 'cinco-porques', href: '/cinco-porques', icon: ListChecks },
-            { title: 'Catálogo de Barrios', slug: 'barrios', icon: Map, allowedRoles: ['Administrador', 'Reparto'] },
+            { title: 'Catálogo de Clientes', slug: 'clientes', icon: Map, allowedRoles: ['Administrador', 'Reparto'] },
         ],
     },
     {

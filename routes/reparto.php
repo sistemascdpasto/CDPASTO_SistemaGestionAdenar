@@ -3,6 +3,7 @@
 use App\Http\Controllers\Reparto\AlertaVelocidadCurvaController;
 use App\Http\Controllers\Reparto\BarrioController;
 use App\Http\Controllers\Reparto\ChecklistImportController;
+use App\Http\Controllers\Reparto\ClienteController;
 use App\Http\Controllers\Reparto\CompensacionVariableController;
 use App\Http\Controllers\Reparto\CompensacionVariableDiariaController;
 use App\Http\Controllers\Reparto\EventosTripulacionController;
@@ -235,4 +236,14 @@ Route::middleware(['auth', 'active'])
             ->name('barrios.update');
         Route::delete('/barrios/{barrio}', [BarrioController::class, 'destroy'])
             ->name('barrios.destroy');
+
+        // Catálogo de Clientes
+        Route::get('/clientes', [ClienteController::class, 'index'])
+            ->name('clientes.index');
+        Route::post('/clientes/importar', [ClienteController::class, 'importar'])
+            ->name('clientes.importar');
+        Route::delete('/clientes/all', [ClienteController::class, 'destroyAll'])
+            ->name('clientes.destroyAll');
+        Route::delete('/clientes/{cliente}', [ClienteController::class, 'destroy'])
+            ->name('clientes.destroy');
     });
