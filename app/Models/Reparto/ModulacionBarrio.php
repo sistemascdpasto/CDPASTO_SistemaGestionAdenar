@@ -12,6 +12,7 @@ class ModulacionBarrio extends Model
     protected $fillable = [
         'municipio_id',
         'nombre',
+        'codigo',
         'nombre_normalizado',
         'origen',
     ];

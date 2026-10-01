@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Reparto\AlertaVelocidadCurvaController;
+use App\Http\Controllers\Reparto\BarrioController;
 use App\Http\Controllers\Reparto\ChecklistImportController;
 use App\Http\Controllers\Reparto\CompensacionVariableController;
 use App\Http\Controllers\Reparto\CompensacionVariableDiariaController;
@@ -224,4 +225,14 @@ Route::middleware(['auth', 'active'])
             Route::delete('/revision-causales/{revisionCausal}', [RevisionCausalController::class, 'destroy'])
                 ->name('revision-causales.destroy');
         });
+
+        // Catálogo de Barrios
+        Route::get('/barrios', [BarrioController::class, 'index'])
+            ->name('barrios.index');
+        Route::post('/barrios', [BarrioController::class, 'store'])
+            ->name('barrios.store');
+        Route::put('/barrios/{barrio}', [BarrioController::class, 'update'])
+            ->name('barrios.update');
+        Route::delete('/barrios/{barrio}', [BarrioController::class, 'destroy'])
+            ->name('barrios.destroy');
     });
