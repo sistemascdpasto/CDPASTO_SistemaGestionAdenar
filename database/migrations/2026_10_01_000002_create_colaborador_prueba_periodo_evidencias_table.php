@@ -8,18 +8,32 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('colaborador_prueba_periodo_evidencias', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('colaborador_prueba_periodo_id')
-                ->constrained('colaborador_pruebas_periodo')
-                ->cascadeOnDelete();
-            $table->string('path');
-            $table->timestamps();
-        });
+        if (Schema::hasTable('colaborador_prueba_periodo_evidencias')) {
+            Schema::table('colaborador_prueba_periodo_evidencias', function (Blueprint $table) {
+                if (!Schema::hasColumn('colaborador_prueba_periodo_evidencias', 'colaborador_prueba_periodo_id')) {
+                    $table->foreignId('colaborador_prueba_periodo_id')
+                        ->nullable()
+                        ->constrained('colaborador_pruebas_periodo')
+                        ->cascadeOnDelete();
+                }
+                if (!Schema::hasColumn('colaborador_prueba_periodo_evidencias', 'path')) {
+                    $table->string('path')->nullable();
+                }
+            });
+        } else {
+            Schema::create('colaborador_prueba_periodo_evidencias', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('colaborador_prueba_periodo_id')
+                    ->constrained('colaborador_pruebas_periodo')
+                    ->cascadeOnDelete();
+                $table->string('path');
+                $table->timestamps();
+            });
+        }
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('colaborador_prueba_periodo_evidencias');
+        // No se elimina la tabla existente para preservar los datos
     }
 };
