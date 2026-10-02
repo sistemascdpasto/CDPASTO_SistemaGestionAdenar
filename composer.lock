@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "49577fa5e7d106c8654b281a2c0c8afe",
+    "content-hash": "0f41067a5e70f5f2961f00f2a4ff2cc7",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -266,6 +266,42 @@
                 }
             ],
             "time": "2024-02-09T16:56:22+00:00"
+        },
+        {
+            "name": "cdpasto/nexus-agent",
+            "version": "1.1.0",
+            "dist": {
+                "type": "path",
+                "url": "packages/nexus-agent",
+                "reference": "4df5e08185ee1f073d638f24518c0211f9220065"
+            },
+            "require": {
+                "illuminate/database": "^11.0|^12.0",
+                "illuminate/http": "^11.0|^12.0",
+                "illuminate/support": "^11.0|^12.0",
+                "php": "^8.2"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Cdpasto\\NexusAgent\\NexusAgentServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Cdpasto\\NexusAgent\\": "src/"
+                }
+            },
+            "license": [
+                "proprietary"
+            ],
+            "description": "Agente de monitoreo y auditoría para el panel Nexus de CD Pasto",
+            "transport-options": {
+                "symlink": false,
+                "relative": true
+            }
         },
         {
             "name": "composer/pcre",
@@ -10358,11 +10394,11 @@
     "prefer-lowest": false,
     "platform": {
         "php": "^8.2",
+        "ext-dom": "*",
         "ext-gd": "*",
-        "ext-zip": "*",
-        "ext-xml": "*",
         "ext-mbstring": "*",
-        "ext-dom": "*"
+        "ext-xml": "*",
+        "ext-zip": "*"
     },
     "platform-dev": {},
     "plugin-api-version": "2.6.0"
