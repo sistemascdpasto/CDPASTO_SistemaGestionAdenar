@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Reparto;
 
 use App\Http\Controllers\Controller;
 use App\Models\Reparto\Cliente;
+use App\Services\Reparto\ModulacionUbicacionesService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -84,7 +85,7 @@ class ClienteController extends Controller
         ]);
     }
 
-    public function importar(Request $request): RedirectResponse
+    public function importar(Request $request, ModulacionUbicacionesService $ubicaciones): RedirectResponse
     {
         $request->validate([
             'archivo' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:10240'],
@@ -170,7 +171,45 @@ class ClienteController extends Controller
             $msg .= " {$errores} filas con error.";
         }
 
+        // Sincronizar municipios y barrios al catálogo de ubicaciones de planeación
+        $this->sincronizarUbicaciones($colMap, array_slice($rows, 1), $ubicaciones);
+
         return back()->with('status', $msg);
+    }
+
+    /**
+     * Registra cada par municipio+barrio del Excel en modulacion_municipios / modulacion_barrios.
+     * Usa registrarMunicipio() y registrarBarrio() del servicio para respetar la lógica
+     * de normalización y deduplicación ya establecida.
+     */
+    private function sincronizarUbicaciones(array $colMap, array $rows, ModulacionUbicacionesService $ubicaciones): void
+    {
+        $colMunicipio = $colMap['municipio'] ?? null;
+        $colBarrio    = $colMap['barrio'] ?? null;
+
+        if ($colMunicipio === null) {
+            return;
+        }
+
+        foreach ($rows as $row) {
+            $nombreMunicipio = trim((string) ($row[$colMunicipio] ?? ''));
+            if ($nombreMunicipio === '') {
+                continue;
+            }
+
+            try {
+                $municipio = $ubicaciones->registrarMunicipio($nombreMunicipio);
+
+                if ($colBarrio !== null) {
+                    $nombreBarrio = trim((string) ($row[$colBarrio] ?? ''));
+                    if ($nombreBarrio !== '') {
+                        $ubicaciones->registrarBarrio($municipio['id'], $nombreBarrio);
+                    }
+                }
+            } catch (\Throwable) {
+                // No interrumpir la importación si falla la sincronización de una fila
+            }
+        }
     }
 
     public function destroy(Cliente $cliente): RedirectResponse
