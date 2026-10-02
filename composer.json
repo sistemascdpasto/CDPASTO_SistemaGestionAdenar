@@ -10,13 +10,14 @@
     "license": "MIT",
     "require": {
         "php": "^8.2",
-        "ext-gd": "*",
-        "ext-zip": "*",
-        "ext-xml": "*",
-        "ext-mbstring": "*",
         "ext-dom": "*",
+        "ext-gd": "*",
+        "ext-mbstring": "*",
+        "ext-xml": "*",
+        "ext-zip": "*",
         "bacon/bacon-qr-code": "^3.1",
         "barryvdh/laravel-dompdf": "^3.1",
+        "cdpasto/nexus-agent": "^1.1",
         "inertiajs/inertia-laravel": "^2.0",
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1",
@@ -42,7 +43,8 @@
         "psr-4": {
             "App\\": "app/",
             "Database\\Factories\\": "database/factories/",
-            "Database\\Seeders\\": "database/seeders/"
+            "Database\\Seeders\\": "database/seeders/",
+            "Cdpasto\\NexusAgent\\": "packages/nexus-agent/src/"
         }
     },
     "autoload-dev": {
@@ -87,5 +89,14 @@
         }
     },
     "minimum-stability": "dev",
-    "prefer-stable": true
+    "prefer-stable": true,
+    "repositories": {
+        "nexus-agent": {
+            "type": "path",
+            "url": "packages/nexus-agent",
+            "options": {
+                "symlink": true
+            }
+        }
+    }
 }
