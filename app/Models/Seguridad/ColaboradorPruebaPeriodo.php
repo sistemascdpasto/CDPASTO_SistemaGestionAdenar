@@ -5,6 +5,7 @@ namespace App\Models\Seguridad;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ColaboradorPruebaPeriodo extends Model
 {
@@ -35,5 +36,10 @@ class ColaboradorPruebaPeriodo extends Model
     public function realizadoPor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'realizado_por_id');
+    }
+
+    public function evidencias(): HasMany
+    {
+        return $this->hasMany(ColaboradorPruebaPeriodoEvidencia::class, 'colaborador_prueba_periodo_id');
     }
 }

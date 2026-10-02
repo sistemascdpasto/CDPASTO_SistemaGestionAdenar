@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Gente;
 use App\Http\Controllers\Controller;
 use App\Models\Seguridad\Colaborador;
 use App\Models\Seguridad\ColaboradorPruebaPeriodo;
+use App\Models\Seguridad\ColaboradorPruebaPeriodoEvidencia;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -31,7 +33,7 @@ class SeguimientoPruebasController extends Controller
                 $q->whereNotNull('fecha_ingreso_empresa')
                   ->orWhereNotNull('contrato_fecha_desde');
             })
-            ->with(['pruebasPeriodo.realizadoPor'])
+            ->with(['pruebasPeriodo.realizadoPor', 'pruebasPeriodo.evidencias'])
             ->orderBy('apellidos')
             ->orderBy('nombres');
 
@@ -96,6 +98,11 @@ class SeguimientoPruebasController extends Controller
                         'fecha_realizacion' => $record->fecha_realizacion?->format('d/m/Y H:i'),
                         'realizado_por' => $record->realizadoPor?->name ?? 'Usuario',
                         'observaciones' => $record->observaciones,
+                        'prueba_periodo_id' => $record->id,
+                        'evidencias' => $record->evidencias->map(fn ($e) => [
+                            'id'  => $e->id,
+                            'url' => '/storage/' . $e->path,
+                        ])->values()->all(),
                     ];
                 } elseif ($aplicaEtapa) {
                     $hasAnyActiveEtapa = true;
@@ -126,6 +133,13 @@ class SeguimientoPruebasController extends Controller
                         'fecha_realizacion' => null,
                         'realizado_por' => null,
                         'observaciones' => null,
+                        'prueba_periodo_id' => $record?->id ?? null,
+                        'evidencias' => $record
+                            ? $record->evidencias->map(fn ($e) => [
+                                'id'  => $e->id,
+                                'url' => '/storage/' . $e->path,
+                            ])->values()->all()
+                            : [],
                     ];
                 } else {
                     $etapasMap[$etapaKey] = [
@@ -137,6 +151,8 @@ class SeguimientoPruebasController extends Controller
                         'fecha_realizacion' => null,
                         'realizado_por' => null,
                         'observaciones' => null,
+                        'prueba_periodo_id' => null,
+                        'evidencias' => [],
                     ];
                 }
             }
@@ -220,6 +236,49 @@ class SeguimientoPruebasController extends Controller
         $record->save();
 
         return back()->with('status', 'Prueba registrada correctamente.');
+    }
+
+    /**
+     * Sube una o varias fotografías de evidencia para una etapa específica.
+     */
+    public function subirEvidencias(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'colaborador_id' => 'required|exists:colaboradores,id',
+            'etapa'          => 'required|in:7_dias,30_dias,90_dias',
+            'evidencias'     => 'required|array|min:1',
+            'evidencias.*'   => 'required|file|mimes:jpg,jpeg,png,webp,heic|max:10240',
+        ]);
+
+        $record = ColaboradorPruebaPeriodo::firstOrCreate(
+            [
+                'colaborador_id' => $request->input('colaborador_id'),
+                'etapa'          => $request->input('etapa'),
+            ],
+            [
+                'realizada'         => false,
+                'fecha_realizacion' => null,
+                'realizado_por_id'  => null,
+            ]
+        );
+
+        foreach ($request->file('evidencias', []) as $archivo) {
+            $path = $archivo->store('plan-padrinos/evidencias', 'public');
+            $record->evidencias()->create(['path' => $path]);
+        }
+
+        return back()->with('status', 'Evidencias subidas correctamente.');
+    }
+
+    /**
+     * Elimina una fotografía de evidencia.
+     */
+    public function eliminarEvidencia(ColaboradorPruebaPeriodoEvidencia $evidencia): RedirectResponse
+    {
+        Storage::disk('public')->delete($evidencia->path);
+        $evidencia->delete();
+
+        return back()->with('status', 'Evidencia eliminada.');
     }
 
     /**

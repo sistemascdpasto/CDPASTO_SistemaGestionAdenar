@@ -7,8 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/react';
-import { AlertCircle, Calendar, CheckCircle2, Clock, Search, ShieldAlert, UserCheck } from 'lucide-react';
-import { useState } from 'react';
+import { AlertCircle, Calendar, Camera, CheckCircle2, Clock, ImageIcon, Search, ShieldAlert, Trash2, Upload, UserCheck, X } from 'lucide-react';
+import { useRef, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
@@ -25,6 +25,8 @@ interface EtapaInfo {
     fecha_realizacion: string | null;
     realizado_por: string | null;
     observaciones: string | null;
+    prueba_periodo_id: number | null;
+    evidencias: { id: number; url: string }[];
 }
 
 interface ColaboradorRow {
@@ -58,6 +60,8 @@ interface Props {
 export default function SeguimientoPruebasIndex({ colaboradores, metrics, filters }: Props) {
     const [search, setSearch] = useState(filters.search || '');
     const [loadingIdEtapa, setLoadingIdEtapa] = useState<string | null>(null);
+    const [uploadingIdEtapa, setUploadingIdEtapa] = useState<string | null>(null);
+    const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
@@ -92,6 +96,29 @@ export default function SeguimientoPruebasIndex({ colaboradores, metrics, filter
                 onFinish: () => setLoadingIdEtapa(null),
             }
         );
+    };
+
+    const handleSubirEvidencias = (colaboradorId: number, etapaKey: string, files: FileList | null) => {
+        if (!files || files.length === 0) return;
+        const key = `${colaboradorId}-${etapaKey}`;
+        setUploadingIdEtapa(key);
+        const formData = new FormData();
+        formData.append('colaborador_id', String(colaboradorId));
+        formData.append('etapa', etapaKey);
+        Array.from(files).forEach((file) => formData.append('evidencias[]', file));
+        router.post(route('gente.plan-padrinos.evidencias.subir'), formData, {
+            preserveScroll: true,
+            onFinish: () => {
+                setUploadingIdEtapa(null);
+                const ref = fileInputRefs.current[key];
+                if (ref) ref.value = '';
+            },
+        });
+    };
+
+    const handleEliminarEvidencia = (evidenciaId: number) => {
+        if (!confirm('¿Eliminar esta evidencia?')) return;
+        router.delete(route('gente.plan-padrinos.evidencias.eliminar', evidenciaId), { preserveScroll: true });
     };
 
     return (
@@ -339,6 +366,70 @@ export default function SeguimientoPruebasIndex({ colaboradores, metrics, filter
                                                                     </Button>
                                                                 </div>
                                                             )}
+
+                                                            {/* Evidencias fotográficas */}
+                                                            <div className="mt-1 border-t border-border/50 pt-2">
+                                                                {/* Fotos existentes */}
+                                                                {etapa.evidencias.length > 0 && (
+                                                                    <div className="flex flex-wrap gap-1.5 mb-2">
+                                                                        {etapa.evidencias.map((ev) => (
+                                                                            <div key={ev.id} className="relative group">
+                                                                                <a href={ev.url} target="_blank" rel="noopener noreferrer">
+                                                                                    <img
+                                                                                        src={ev.url}
+                                                                                        alt="Evidencia"
+                                                                                        className="h-14 w-14 rounded object-cover border border-border/50 hover:opacity-90 transition-opacity"
+                                                                                    />
+                                                                                </a>
+                                                                                <button
+                                                                                    type="button"
+                                                                                    title="Eliminar evidencia"
+                                                                                    onClick={() => handleEliminarEvidencia(ev.id)}
+                                                                                    className="absolute -top-1.5 -right-1.5 hidden group-hover:flex items-center justify-center h-4 w-4 rounded-full bg-red-600 text-white"
+                                                                                >
+                                                                                    <X className="h-2.5 w-2.5" />
+                                                                                </button>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+
+                                                                {/* Botón subir evidencias */}
+                                                                <label className="flex items-center gap-1.5 cursor-pointer w-full">
+                                                                    <input
+                                                                        ref={(el) => { fileInputRefs.current[key] = el; }}
+                                                                        type="file"
+                                                                        accept="image/*"
+                                                                        multiple
+                                                                        className="hidden"
+                                                                        onChange={(e) => handleSubirEvidencias(colaborador.id, etapaKey, e.target.files)}
+                                                                    />
+                                                                    <span className={`flex items-center justify-center gap-1.5 w-full rounded border border-dashed px-2 py-1.5 text-[11px] font-medium transition-colors
+                                                                        ${uploadingIdEtapa === key
+                                                                            ? 'border-muted-foreground/30 text-muted-foreground cursor-wait'
+                                                                            : 'border-emerald-400/60 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-600/50 dark:text-emerald-400 dark:hover:bg-emerald-950/30 cursor-pointer'
+                                                                        }`}
+                                                                    >
+                                                                        {uploadingIdEtapa === key ? (
+                                                                            <>
+                                                                                <Upload className="h-3.5 w-3.5 animate-bounce" />
+                                                                                Subiendo...
+                                                                            </>
+                                                                        ) : (
+                                                                            <>
+                                                                                <Camera className="h-3.5 w-3.5" />
+                                                                                Subir evidencias
+                                                                                {etapa.evidencias.length > 0 && (
+                                                                                    <span className="ml-1 flex items-center gap-0.5 text-muted-foreground">
+                                                                                        <ImageIcon className="h-3 w-3" />
+                                                                                        {etapa.evidencias.length}
+                                                                                    </span>
+                                                                                )}
+                                                                            </>
+                                                                        )}
+                                                                    </span>
+                                                                </label>
+                                                            </div>
                                                         </div>
                                                     </TableCell>
                                                 );

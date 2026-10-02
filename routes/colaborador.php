@@ -18,6 +18,7 @@ Route::middleware(['auth', 'active', 'role:Colaborador|Administrador|Seguridad']
         Route::get('mis-rutas-reparto', [PortalController::class, 'misRutasReparto'])->name('mis-rutas-reparto');
         Route::get('mis-indicadores-reparto', [PortalController::class, 'misIndicadoresReparto'])->name('mis-indicadores-reparto');
         Route::get('mi-plan-premiacion', [PortalController::class, 'miPlanPremiacion'])->name('mi-plan-premiacion');
+        Route::get('mi-plan-padrinos', [PortalController::class, 'miPlanPadrinos'])->name('mi-plan-padrinos');
         Route::get('alertas', [PortalController::class, 'alertas'])->name('alertas');
         Route::get('condicion-salud', [CondicionSaludController::class, 'create'])->name('condicion-salud');
         Route::post('condicion-salud', [CondicionSaludController::class, 'store'])->name('condicion-salud.store');

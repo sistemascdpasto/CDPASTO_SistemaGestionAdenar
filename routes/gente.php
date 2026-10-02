@@ -85,6 +85,10 @@ Route::middleware(['auth', 'active', 'role:Administrador|Gente'])
             ->name('plan-padrinos.index');
         Route::post('plan-padrinos/toggle', [SeguimientoPruebasController::class, 'toggle'])
             ->name('plan-padrinos.toggle');
+        Route::post('plan-padrinos/evidencias', [SeguimientoPruebasController::class, 'subirEvidencias'])
+            ->name('plan-padrinos.evidencias.subir');
+        Route::delete('plan-padrinos/evidencias/{evidencia}', [SeguimientoPruebasController::class, 'eliminarEvidencia'])
+            ->name('plan-padrinos.evidencias.eliminar');
 
         // Calificaciones de Módulos (Escritura: Importar / Limpiar)
         Route::post('calificaciones/importar', [ColaboradorCalificacionController::class, 'importar'])

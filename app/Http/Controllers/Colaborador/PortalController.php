@@ -512,6 +512,54 @@ class PortalController extends Controller
         ]);
     }
 
+    public function miPlanPadrinos(Request $request): Response
+    {
+        $colaborador = $this->colaboradorDeOFallar($request);
+
+        $hoy = \Carbon\Carbon::today();
+        $fechaIngreso = $colaborador->contrato_fecha_desde ?? $colaborador->fecha_ingreso_empresa;
+
+        $etapasConfig = ['7_dias' => 8, '30_dias' => 30, '90_dias' => 90];
+        $etapas = [];
+
+        foreach ($etapasConfig as $etapaKey => $dias) {
+            $fechaPrueba = $fechaIngreso?->copy()->addDays($dias);
+            $record      = $colaborador->pruebasPeriodo()
+                ->with('evidencias')
+                ->where('etapa', $etapaKey)
+                ->first();
+
+            $etapas[$etapaKey] = [
+                'label'                  => str_replace('_', ' ', ucfirst($etapaKey)),
+                'fecha_prueba_formateada' => $fechaPrueba?->format('d/m/Y') ?? '—',
+                'aplica'                 => $fechaIngreso && $hoy->greaterThanOrEqualTo($fechaPrueba),
+                'estado'                 => $record?->realizada ? 'realizada' : ($fechaIngreso && $hoy->greaterThanOrEqualTo($fechaPrueba) ? 'pendiente' : 'no_aplica'),
+                'fecha_realizacion'      => $record?->fecha_realizacion?->format('d/m/Y'),
+                'realizado_por'          => $record?->realizadoPor?->name,
+                'evidencias'             => $record?->evidencias->map(fn ($e) => [
+                    'id'  => $e->id,
+                    'url' => '/storage/' . $e->path,
+                ])->values()->all() ?? [],
+            ];
+        }
+
+        return Inertia::render('colaborador/mi-plan-padrinos/index', [
+            'colaborador' => [
+                'id'              => $colaborador->id,
+                'nombre_completo' => $colaborador->nombre_completo,
+                'cedula'          => $colaborador->cedula,
+                'cargo'           => $colaborador->cargo ?? '—',
+                'area'            => $colaborador->area ?? '—',
+                'turno'           => $colaborador->turno ?? '—',
+                'imagen'          => $colaborador->imagen,
+                'fecha_ingreso'   => $fechaIngreso?->format('d/m/Y') ?? '—',
+                'es_padrino'      => (bool) $colaborador->es_padrino,
+                'tipo_padrino'    => $colaborador->tipo_padrino,
+            ],
+            'etapas' => $etapas,
+        ]);
+    }
+
     private function colaboradorDe(Request $request): ?Colaborador
     {
         return $request->user()->colaborador;
