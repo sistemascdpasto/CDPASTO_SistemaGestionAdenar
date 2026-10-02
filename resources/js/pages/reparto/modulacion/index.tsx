@@ -460,17 +460,12 @@ function NarinoMunicipioInput({
                 if (!response.ok) throw new Error('No se pudieron cargar los barrios del municipio.');
                 const json = (await response.json()) as { data?: unknown; api_disponible?: unknown };
                 let data = json.data;
-                let apiDisponible = json.api_disponible;
                 if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
-                    const respuestaAnidada = data as { data?: unknown; api_disponible?: unknown };
+                    const respuestaAnidada = data as { data?: unknown };
                     data = respuestaAnidada.data;
-                    apiDisponible = respuestaAnidada.api_disponible ?? apiDisponible;
                 }
                 const opcionesBarrios = parseOpcionesUbicacion(data);
                 if (!controller.signal.aborted) setBarrios(opcionesBarrios);
-                if (!controller.signal.aborted && apiDisponible === false) {
-                    setUbicacionesError('No fue posible consultar el catálogo externo; se muestran los barrios guardados localmente.');
-                }
             } catch (error) {
                 if (!controller.signal.aborted) {
                     setUbicacionesError(error instanceof Error ? error.message : 'No se pudieron cargar los barrios.');

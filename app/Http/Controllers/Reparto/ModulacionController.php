@@ -48,7 +48,7 @@ class ModulacionController extends Controller
     public function barrios(Request $request, ModulacionUbicacionesService $ubicaciones): JsonResponse
     {
         $validated = $request->validate([
-            'municipio_id' => ['required', 'string', 'regex:/^\d+$/', 'max:20'],
+            'municipio_id' => ['required', 'string', 'max:200'],
         ]);
 
         return $this->responderUbicaciones(
@@ -60,7 +60,7 @@ class ModulacionController extends Controller
     public function registrarBarrio(Request $request, ModulacionUbicacionesService $ubicaciones): JsonResponse
     {
         $validated = $request->validate([
-            'municipio_id' => ['required', 'string', 'regex:/^\d+$/', 'max:20'],
+            'municipio_id' => ['required', 'string', 'max:200'],
             'nombre' => ['required', 'string', 'max:200'],
         ]);
 

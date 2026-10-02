@@ -44,9 +44,20 @@ class ClienteController extends Controller
 
     public function index(Request $request): Response
     {
-        $search     = $request->string('search')->trim()->toString();
-        $municipio  = $request->string('municipio')->trim()->toString();
-        $barrio     = $request->string('barrio')->trim()->toString();
+        // Si la tabla aún no existe (migración pendiente) mostrar vista vacía
+        if (! \Illuminate\Support\Facades\Schema::hasTable('reparto_clientes')) {
+            return Inertia::render('reparto/clientes/index', [
+                'clientes'   => ['data' => [], 'links' => [], 'total' => 0],
+                'municipios' => [],
+                'barrios'    => [],
+                'filters'    => ['search' => '', 'municipio' => '', 'barrio' => ''],
+                'total'      => 0,
+            ]);
+        }
+
+        $search    = $request->string('search')->trim()->toString();
+        $municipio = $request->string('municipio')->trim()->toString();
+        $barrio    = $request->string('barrio')->trim()->toString();
 
         $clientes = Cliente::query()
             ->when($search !== '', function ($q) use ($search) {
@@ -77,11 +88,11 @@ class ClienteController extends Controller
             ->pluck('barrio');
 
         return Inertia::render('reparto/clientes/index', [
-            'clientes'  => $clientes,
-            'municipios'=> $municipios,
-            'barrios'   => $barrios,
-            'filters'   => ['search' => $search, 'municipio' => $municipio, 'barrio' => $barrio],
-            'total'     => Cliente::count(),
+            'clientes'   => $clientes,
+            'municipios' => $municipios,
+            'barrios'    => $barrios,
+            'filters'    => ['search' => $search, 'municipio' => $municipio, 'barrio' => $barrio],
+            'total'      => Cliente::count(),
         ]);
     }
 

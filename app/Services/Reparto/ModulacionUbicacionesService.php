@@ -2,6 +2,7 @@
 
 namespace App\Services\Reparto;
 
+use App\Models\Reparto\Cliente;
 use App\Models\Reparto\ModulacionBarrio;
 use App\Models\Reparto\ModulacionMunicipio;
 use Illuminate\Support\Facades\Schema;
@@ -9,14 +10,16 @@ use Illuminate\Support\Str;
 
 /**
  * Servicio de ubicaciones para la planeación de ruta.
- * Trabaja exclusivamente con las tablas locales modulacion_municipios
- * y modulacion_barrios — sin ninguna llamada a APIs externas.
+ *
+ * Fuente única de verdad: reparto_clientes.
+ * Los municipios y barrios se leen directamente de esa tabla.
+ * modulacion_municipios / modulacion_barrios solo se usan para
+ * guardar ubicaciones ingresadas manualmente desde la planeación.
  */
 class ModulacionUbicacionesService
 {
     /**
      * Retorna el departamento fijo: Nariño.
-     * Ya no consulta ninguna API externa.
      *
      * @return array<int, array{id: string, nombre: string}>
      */
@@ -26,83 +29,169 @@ class ModulacionUbicacionesService
     }
 
     /**
-     * Lista todos los municipios del catálogo local, ordenados por nombre.
+     * Lista todos los municipios únicos de reparto_clientes,
+     * combinados con los registrados manualmente en modulacion_municipios.
+     *
+     * El `id` de cada municipio es su nombre normalizado (slug), de forma que
+     * el endpoint de barrios pueda recibirlo y buscar directamente en reparto_clientes.
      *
      * @return array<int, array{id: string, nombre: string}>
      */
     public function municipios(): array
     {
-        if (! Schema::hasTable('modulacion_municipios')) {
-            return [];
+        $resultado = collect();
+
+        // 1. Municipios de reparto_clientes
+        if (Schema::hasTable('reparto_clientes')) {
+            Cliente::select('municipio')
+                ->whereNotNull('municipio')
+                ->where('municipio', '!=', '')
+                ->distinct()
+                ->orderBy('municipio')
+                ->get()
+                ->each(function ($row) use (&$resultado) {
+                    $nombre = trim((string) $row->municipio);
+                    if ($nombre === '') return;
+                    $slug = $this->normalizar($nombre);
+                    $resultado->put($slug, [
+                        'id'     => $slug,
+                        'nombre' => mb_convert_case($nombre, MB_CASE_TITLE, 'UTF-8'),
+                    ]);
+                });
         }
 
-        return ModulacionMunicipio::orderBy('nombre')
-            ->get(['id', 'nombre'])
-            ->map(fn (ModulacionMunicipio $m) => [
-                'id'     => (string) $m->id,
-                'nombre' => $m->nombre,
-            ])
-            ->all();
+        // 2. Municipios agregados manualmente en planeaciones anteriores
+        if (Schema::hasTable('modulacion_municipios')) {
+            ModulacionMunicipio::orderBy('nombre')
+                ->get(['id', 'nombre', 'nombre_normalizado'])
+                ->each(function (ModulacionMunicipio $m) use (&$resultado) {
+                    $slug = $m->nombre_normalizado ?? $this->normalizar($m->nombre);
+                    // Solo agregar si no viene ya de reparto_clientes
+                    if (! $resultado->has($slug)) {
+                        $resultado->put($slug, [
+                            'id'     => $slug,
+                            'nombre' => $m->nombre,
+                        ]);
+                    }
+                });
+        }
+
+        return $resultado->sortBy('nombre')->values()->all();
     }
 
     /**
-     * Lista los barrios de un municipio desde el catálogo local.
+     * Lista los barrios únicos de un municipio.
+     * $municipioId es el nombre normalizado (slug) del municipio.
      *
      * @return array{data: array<int, array{id: string, nombre: string}>, api_disponible: bool}
      */
     public function barrios(string $municipioId): array
     {
-        if (! Schema::hasTable('modulacion_municipios')) {
-            return ['data' => [], 'api_disponible' => false];
+        $resultado = collect();
+
+        // 1. Barrios desde reparto_clientes (busca por nombre normalizado del municipio)
+        if (Schema::hasTable('reparto_clientes')) {
+            Cliente::select('barrio')
+                ->whereNotNull('barrio')
+                ->where('barrio', '!=', '')
+                ->whereRaw('LOWER(TRIM(municipio)) LIKE ?', ['%' . $this->normalizar($municipioId) . '%'])
+                ->distinct()
+                ->orderBy('barrio')
+                ->get()
+                ->each(function ($row) use (&$resultado) {
+                    $nombre = trim((string) $row->barrio);
+                    if ($nombre === '') return;
+                    $slug = $this->normalizar($nombre);
+                    $resultado->put($slug, [
+                        'id'     => $slug,
+                        'nombre' => mb_convert_case($nombre, MB_CASE_TITLE, 'UTF-8'),
+                    ]);
+                });
         }
 
-        $municipio = ModulacionMunicipio::query()
-            ->when(
-                ctype_digit($municipioId),
-                fn ($q) => $q->whereKey($municipioId)->orWhere('codigo_dane', $municipioId)
-            )
-            ->firstOrFail();
+        // 2. Barrios manuales de modulacion_barrios para este municipio (por nombre normalizado)
+        if (Schema::hasTable('modulacion_municipios')) {
+            $municipio = ModulacionMunicipio::where('nombre_normalizado', $municipioId)->first();
+            if ($municipio) {
+                $municipio->barrios()
+                    ->orderBy('nombre')
+                    ->get(['id', 'nombre', 'nombre_normalizado'])
+                    ->each(function (ModulacionBarrio $b) use (&$resultado) {
+                        $slug = $b->nombre_normalizado ?? $this->normalizar($b->nombre);
+                        if (! $resultado->has($slug)) {
+                            $resultado->put($slug, [
+                                'id'     => $slug,
+                                'nombre' => $b->nombre,
+                            ]);
+                        }
+                    });
+            }
+        }
 
         return [
-            'data'          => $this->catalogoLocal($municipio),
+            'data'           => $resultado->sortBy('nombre')->values()->all(),
             'api_disponible' => false,
         ];
     }
 
     /**
-     * Crea o recupera un municipio por nombre normalizado.
+     * Crea o recupera un municipio en modulacion_municipios.
+     * Devuelve su nombre normalizado como id (slug).
      *
      * @return array{id: string, nombre: string, creado: bool}
      */
     public function registrarMunicipio(string $nombre): array
     {
-        $nombre           = trim(preg_replace('/\s+/u', ' ', $nombre) ?? $nombre);
-        $nombreNormalizado = $this->normalizar($nombre);
+        $nombre            = trim(preg_replace('/\s+/u', ' ', $nombre) ?? $nombre);
+        $slug              = $this->normalizar($nombre);
+        $nombreTitleCase   = mb_convert_case($nombre, MB_CASE_TITLE, 'UTF-8');
 
         $municipio = ModulacionMunicipio::firstOrCreate(
-            ['nombre_normalizado' => $nombreNormalizado],
-            ['nombre' => mb_convert_case($nombre, MB_CASE_TITLE, 'UTF-8'), 'origen' => 'manual']
+            ['nombre_normalizado' => $slug],
+            ['nombre' => $nombreTitleCase, 'origen' => 'manual']
         );
 
         return [
-            'id'     => (string) $municipio->id,
+            'id'     => $slug,           // el frontend usa este id para pedir barrios
             'nombre' => $municipio->nombre,
             'creado' => $municipio->wasRecentlyCreated,
         ];
     }
 
     /**
-     * Crea o recupera un barrio dentro de un municipio.
+     * Crea o recupera un barrio en modulacion_barrios.
+     * $municipioId es el slug (nombre normalizado) del municipio.
      *
      * @return array{id: string, nombre: string, creado: bool}
      */
     public function registrarBarrio(string $municipioId, string $nombre): array
     {
-        $municipio = ModulacionMunicipio::findOrFail($municipioId);
-        $barrio    = $this->guardarEnCatalogo($municipio, $nombre, 'manual');
+        $slug      = $this->normalizar($nombre);
+        $nombreTC  = mb_convert_case(
+            trim(preg_replace('/\s+/u', ' ', $nombre) ?? $nombre),
+            MB_CASE_TITLE,
+            'UTF-8'
+        );
+
+        // Buscar o crear el municipio en modulacion_municipios por slug
+        $municipio = ModulacionMunicipio::firstOrCreate(
+            ['nombre_normalizado' => $municipioId],
+            [
+                'nombre' => mb_convert_case($municipioId, MB_CASE_TITLE, 'UTF-8'),
+                'origen' => 'manual',
+            ]
+        );
+
+        $barrio = ModulacionBarrio::firstOrCreate(
+            [
+                'municipio_id'       => $municipio->id,
+                'nombre_normalizado' => $slug,
+            ],
+            ['nombre' => $nombreTC, 'origen' => 'manual']
+        );
 
         return [
-            'id'     => (string) $barrio->id,
+            'id'     => $slug,
             'nombre' => $barrio->nombre,
             'creado' => $barrio->wasRecentlyCreated,
         ];
@@ -124,9 +213,7 @@ class ModulacionUbicacionesService
 
                 foreach ($destinos as $destino) {
                     $nombreMunicipio = trim((string) ($destino['lugares'] ?? ''));
-                    if ($nombreMunicipio === '') {
-                        continue;
-                    }
+                    if ($nombreMunicipio === '') continue;
 
                     $municipio    = $this->registrarMunicipio($nombreMunicipio);
                     $nombreBarrio = trim((string) ($destino['barrio'] ?? ''));
@@ -138,38 +225,7 @@ class ModulacionUbicacionesService
         }
     }
 
-    // ─── Helpers privados ────────────────────────────────────────────────────
-
-    private function guardarEnCatalogo(ModulacionMunicipio $municipio, string $nombre, string $origen): ModulacionBarrio
-    {
-        $nombre = trim(preg_replace('/\s+/u', ' ', $nombre) ?? $nombre);
-
-        return ModulacionBarrio::firstOrCreate(
-            [
-                'municipio_id'       => $municipio->id,
-                'nombre_normalizado' => $this->normalizar($nombre),
-            ],
-            [
-                'nombre' => $nombre,
-                'origen' => $origen,
-            ]
-        );
-    }
-
-    /**
-     * @return array<int, array{id: string, nombre: string}>
-     */
-    private function catalogoLocal(ModulacionMunicipio $municipio): array
-    {
-        return $municipio->barrios()
-            ->orderBy('nombre')
-            ->get(['id', 'nombre'])
-            ->map(fn (ModulacionBarrio $b) => [
-                'id'     => (string) $b->id,
-                'nombre' => $b->nombre,
-            ])
-            ->all();
-    }
+    // ─── Helper ──────────────────────────────────────────────────────────────
 
     private function normalizar(string $nombre): string
     {
