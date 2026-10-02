@@ -43,7 +43,8 @@
         "psr-4": {
             "App\\": "app/",
             "Database\\Factories\\": "database/factories/",
-            "Database\\Seeders\\": "database/seeders/"
+            "Database\\Seeders\\": "database/seeders/",
+            "Cdpasto\\NexusAgent\\": "packages/nexus-agent/src/"
         }
     },
     "autoload-dev": {
@@ -94,7 +95,7 @@
             "type": "path",
             "url": "packages/nexus-agent",
             "options": {
-                "symlink": false
+                "symlink": true
             }
         }
     }

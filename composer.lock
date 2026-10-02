@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "0f41067a5e70f5f2961f00f2a4ff2cc7",
+    "content-hash": "67d9ccc201ac7a6c1a0ed97dc75ea5a5",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -273,7 +273,7 @@
             "dist": {
                 "type": "path",
                 "url": "packages/nexus-agent",
-                "reference": "4df5e08185ee1f073d638f24518c0211f9220065"
+                "reference": "cf5f3e1129dc886fb4556918def075bfce571e49"
             },
             "require": {
                 "illuminate/database": "^11.0|^12.0",
@@ -299,7 +299,7 @@
             ],
             "description": "Agente de monitoreo y auditoría para el panel Nexus de CD Pasto",
             "transport-options": {
-                "symlink": false,
+                "symlink": true,
                 "relative": true
             }
         },
