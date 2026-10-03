@@ -89,6 +89,12 @@ Route::middleware(['auth', 'active', 'role:Administrador|Gente'])
             ->name('plan-padrinos.evidencias.subir');
         Route::delete('plan-padrinos/evidencias/{evidencia}', [SeguimientoPruebasController::class, 'eliminarEvidencia'])
             ->name('plan-padrinos.evidencias.eliminar');
+        Route::post('plan-padrinos/criterios/autonomia', [SeguimientoPruebasController::class, 'updateAutonomia'])
+            ->name('plan-padrinos.criterios.autonomia');
+        Route::post('plan-padrinos/criterios/importar', [SeguimientoPruebasController::class, 'importarCriterios'])
+            ->name('plan-padrinos.criterios.importar');
+        Route::post('plan-padrinos/criterios/limpiar', [SeguimientoPruebasController::class, 'limpiarCriterios'])
+            ->name('plan-padrinos.criterios.limpiar');
 
         // Calificaciones de Módulos (Escritura: Importar / Limpiar)
         Route::post('calificaciones/importar', [ColaboradorCalificacionController::class, 'importar'])
@@ -134,6 +140,10 @@ Route::middleware(['auth', 'active', 'role:Administrador|Seguridad|Reparto|Flota
 
         Route::get('plan-padrinos/alertas-bell', [SeguimientoPruebasController::class, 'alertasBell'])
             ->name('plan-padrinos.alertas-bell');
+        Route::get('plan-padrinos/criterios', [SeguimientoPruebasController::class, 'criterios'])
+            ->name('plan-padrinos.criterios');
+        Route::get('plan-padrinos/criterios/plantilla', [SeguimientoPruebasController::class, 'plantillaCriterios'])
+            ->name('plan-padrinos.criterios.plantilla');
 
         // Plan Premiación ACI (32 ACI = 100%)
         Route::get('plan-premiacion', [PlanPremiacionController::class, 'index'])

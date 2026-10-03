@@ -6,8 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, router } from '@inertiajs/react';
-import { AlertCircle, Calendar, Camera, CheckCircle2, Clock, ImageIcon, Search, ShieldAlert, Trash2, Upload, UserCheck, X } from 'lucide-react';
+import { Head, Link, router } from '@inertiajs/react';
+import { AlertCircle, Calendar, Camera, CheckCircle2, Clock, HeartHandshake, ImageIcon, ListChecks, Search, ShieldAlert, Trash2, Upload, UserCheck, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -35,6 +35,7 @@ interface ColaboradorRow {
     nombre_completo: string;
     cargo: string;
     fecha_ingreso: string;
+    imagen: string | null;
     etapas: Record<string, EtapaInfo>;
 }
 
@@ -130,6 +131,24 @@ export default function SeguimientoPruebasIndex({ colaboradores, metrics, filter
                     title="Seguimiento de Pruebas y Plan Padrino"
                     description="Evaluación automática de etapas de prueba (7, 30 y 90 días) para colaboradores activos de la empresa."
                 />
+
+                {/* Navegación por pestañas del submódulo */}
+                <div className="flex items-center gap-2 border-b pb-2">
+                    <Link
+                        href="/modules/gente/plan-padrinos"
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg bg-primary text-primary-foreground shadow-xs"
+                    >
+                        <HeartHandshake className="h-4 w-4" />
+                        Seguimiento de Pruebas (7, 30, 90 días)
+                    </Link>
+                    <Link
+                        href="/modules/gente/plan-padrinos/criterios"
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg text-muted-foreground hover:bg-muted transition-colors"
+                    >
+                        <ListChecks className="h-4 w-4" />
+                        Criterios y Nivel de Autonomía
+                    </Link>
+                </div>
 
                 {/* Tarjetas de Resumen Superior */}
                 <div className="grid gap-4 md:grid-cols-3">
@@ -263,19 +282,33 @@ export default function SeguimientoPruebasIndex({ colaboradores, metrics, filter
                                         <TableRow key={colaborador.id} className="hover:bg-muted/30">
                                             {/* Colaborador Info */}
                                             <TableCell className="align-top font-medium py-4">
-                                                <div className="flex flex-col gap-1">
-                                                    <span className="text-base font-semibold text-foreground">
-                                                        {colaborador.nombre_completo}
-                                                    </span>
-                                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                                        <Badge variant="outline" className="font-medium text-xs">
-                                                            {colaborador.cargo}
-                                                        </Badge>
-                                                        <span>C.C. {colaborador.cedula}</span>
+                                                <div className="flex items-start gap-3">
+                                                    {/* Foto */}
+                                                    {colaborador.imagen ? (
+                                                        <img
+                                                            src={`/storage/${colaborador.imagen}`}
+                                                            alt={colaborador.nombre_completo}
+                                                            className="h-11 w-11 rounded-full object-cover border border-border/50 shrink-0 mt-0.5"
+                                                        />
+                                                    ) : (
+                                                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-muted border border-border/50 mt-0.5">
+                                                            <UserCheck className="h-5 w-5 text-muted-foreground" />
+                                                        </div>
+                                                    )}
+                                                    <div className="flex flex-col gap-1">
+                                                        <span className="text-base font-semibold text-foreground">
+                                                            {colaborador.nombre_completo}
+                                                        </span>
+                                                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                            <Badge variant="outline" className="font-medium text-xs">
+                                                                {colaborador.cargo}
+                                                            </Badge>
+                                                            <span>C.C. {colaborador.cedula}</span>
+                                                        </div>
+                                                        <span className="text-xs text-muted-foreground mt-0.5">
+                                                            Ingreso: <strong className="text-foreground">{colaborador.fecha_ingreso}</strong>
+                                                        </span>
                                                     </div>
-                                                    <span className="text-xs text-muted-foreground mt-0.5">
-                                                        Ingreso: <strong className="text-foreground">{colaborador.fecha_ingreso}</strong>
-                                                    </span>
                                                 </div>
                                             </TableCell>
 

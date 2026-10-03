@@ -13,7 +13,7 @@ return new class extends Migration
                 if (!Schema::hasColumn('colaborador_prueba_periodo_evidencias', 'colaborador_prueba_periodo_id')) {
                     $table->foreignId('colaborador_prueba_periodo_id')
                         ->nullable()
-                        ->constrained('colaborador_pruebas_periodo')
+                        ->constrained('colaborador_pruebas_periodo', indexName: 'fk_cppe_cpp_id')
                         ->cascadeOnDelete();
                 }
                 if (!Schema::hasColumn('colaborador_prueba_periodo_evidencias', 'path')) {
@@ -24,7 +24,7 @@ return new class extends Migration
             Schema::create('colaborador_prueba_periodo_evidencias', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('colaborador_prueba_periodo_id')
-                    ->constrained('colaborador_pruebas_periodo')
+                    ->constrained('colaborador_pruebas_periodo', indexName: 'fk_cppe_cpp_id')
                     ->cascadeOnDelete();
                 $table->string('path');
                 $table->timestamps();
