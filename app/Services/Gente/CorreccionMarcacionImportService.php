@@ -4,9 +4,9 @@ namespace App\Services\Gente;
 
 use App\Models\Gente\CorreccionMarcacion;
 use App\Models\Seguridad\Colaborador;
+use App\Support\HojaCalculo;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 use Throwable;
 
@@ -131,7 +131,7 @@ class CorreccionMarcacionImportService
     public function preview(string $rutaArchivo): array
     {
         try {
-            $spreadsheet = IOFactory::load($rutaArchivo);
+            $spreadsheet = HojaCalculo::cargar($rutaArchivo);
             $worksheet = $spreadsheet->getActiveSheet();
 
             $rows = [];

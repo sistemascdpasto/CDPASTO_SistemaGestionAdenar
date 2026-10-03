@@ -4,10 +4,10 @@ namespace App\Services\Seguridad;
 
 use App\Models\Seguridad\Colaborador;
 use App\Services\Seguridad\Concerns\NormalizaCatalogos;
+use App\Support\HojaCalculo;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use Throwable;
 
@@ -70,7 +70,7 @@ class ColaboradorImportService
             return $resultado;
         }
 
-        $filas = $hoja->toArray(null, true, true, true);
+        $filas = HojaCalculo::filas($hoja, true, true);
         array_shift($filas); // encabezado
 
         foreach ($filas as $numeroFila => $fila) {
@@ -126,7 +126,7 @@ class ColaboradorImportService
 
     private function buscarHojaBaseActualizada(string $rutaArchivo): ?Worksheet
     {
-        $spreadsheet = IOFactory::load($rutaArchivo);
+        $spreadsheet = HojaCalculo::cargar($rutaArchivo);
 
         foreach ($spreadsheet->getSheetNames() as $nombre) {
             if (str(trim($nombre))->upper()->value() === 'BASE ACTUALIZADA') {

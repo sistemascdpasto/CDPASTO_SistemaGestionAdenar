@@ -4,11 +4,11 @@ namespace App\Services\Flota;
 
 use App\Models\Flota\Varada;
 use App\Models\Flota\VaradaUbicacion;
+use App\Support\HojaCalculo;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpSpreadsheet\Cell\Cell;
-use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use Throwable;
@@ -31,7 +31,7 @@ class VaradaImportService
 
         foreach ($rutasArchivos as $path => $nombreOriginal) {
             try {
-                $spreadsheet = IOFactory::load($path);
+                $spreadsheet = HojaCalculo::cargar($path);
 
                 DB::transaction(function () use ($spreadsheet, $userId, &$varadasCreadas, &$varadasActualizadas, &$ubicacionesCargadas) {
                     // Primero las coordenadas: las varadas del mismo archivo

@@ -4,9 +4,9 @@ namespace App\Services\Gente;
 
 use App\Models\Gente\Ausentismo;
 use App\Models\Seguridad\Colaborador;
+use App\Support\HojaCalculo;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
-use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 use Throwable;
 
@@ -14,9 +14,9 @@ class AusentismoImportService
 {
     public function importar(string $rutaArchivo): array
     {
-        $spreadsheet = IOFactory::load($rutaArchivo);
+        $spreadsheet = HojaCalculo::cargar($rutaArchivo);
         $worksheet = $spreadsheet->getActiveSheet();
-        $rows = $worksheet->toArray(null, true, true, true);
+        $rows = HojaCalculo::filas($worksheet, true, true);
 
         if (empty($rows)) {
             return ['procesados' => 0, 'creados' => 0, 'actualizados' => 0, 'errores' => 0];

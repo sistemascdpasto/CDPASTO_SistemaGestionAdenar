@@ -9,10 +9,10 @@ use App\Models\Seguridad\EvaluacionOwdPregunta;
 use App\Models\Seguridad\PlanAccionOwd;
 use App\Models\User;
 use App\Services\Seguridad\Concerns\NormalizaCatalogos;
+use App\Support\HojaCalculo;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use Throwable;
 
@@ -97,7 +97,7 @@ class EvaluacionOwdImportService
 
         $resultado['archivos_procesados']++;
 
-        $filas = $hoja->toArray(null, true, true, true);
+        $filas = HojaCalculo::filas($hoja, true, true);
         $encabezados = array_shift($filas) ?? [];
         $mapaColumnas = $this->resolverMapaColumnas($encabezados);
         $columnasNuevas = collect($mapaColumnas)->filter(fn ($info) => $info['campo'] === null)
@@ -256,7 +256,7 @@ class EvaluacionOwdImportService
 
     private function buscarHojaOwd(string $rutaArchivo): ?Worksheet
     {
-        $spreadsheet = IOFactory::load($rutaArchivo);
+        $spreadsheet = HojaCalculo::cargar($rutaArchivo);
 
         // Primero intentar encontrar la hoja por nombre canónico "Data OWD"
         foreach ($spreadsheet->getSheetNames() as $nombre) {
