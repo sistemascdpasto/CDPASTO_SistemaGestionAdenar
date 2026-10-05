@@ -4,8 +4,9 @@ namespace App\Services\Gente;
 
 use App\Models\Gente\ColaboradorPadrinoCriterio;
 use App\Models\Seguridad\Colaborador;
+use App\Support\HojaCalculo;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use PhpOffice\PhpSpreadsheet\IOFactory;
 use Throwable;
 
 class PlanPadrinoCriteriosImportService
@@ -43,9 +44,9 @@ class PlanPadrinoCriteriosImportService
 
     public function importar(string $rutaArchivo): array
     {
-        $spreadsheet = IOFactory::load($rutaArchivo);
+        $spreadsheet = HojaCalculo::cargar($rutaArchivo);
         $worksheet = $spreadsheet->getActiveSheet();
-        $rows = $worksheet->toArray(null, true, true, true);
+        $rows = HojaCalculo::filas($worksheet, true, true);
 
         if (empty($rows)) {
             return ['procesados' => 0, 'creados' => 0, 'actualizados' => 0, 'errores' => 0];
@@ -75,8 +76,19 @@ class PlanPadrinoCriteriosImportService
         $actualizados = 0;
         $errores = 0;
 
-        // Obtener colaboradores para cruzarlos por QR Safety o Cédula
-        $colaboradores = Colaborador::all();
+        // Índice de colaboradores por QR Safety y por cédula: búsqueda directa por fila en lugar de
+        // recorrer toda la colección (y normalizar cada identificador) en cada fila.
+        $porIdentificador = [];
+        foreach (Colaborador::all() as $colaborador) {
+            foreach ([$colaborador->cedula, $colaborador->codigo_qr_skap] as $identificador) {
+                if (! empty($identificador)) {
+                    $porIdentificador[$this->normalizarIdentificador((string) $identificador)] ??= $colaborador;
+                }
+            }
+        }
+
+        // Una sola transacción: evita un commit (ida y vuelta a la base remota) por cada fila.
+        DB::beginTransaction();
 
         foreach ($rows as $numeroFila => $fila) {
             $datosRow = [];
@@ -97,15 +109,7 @@ class PlanPadrinoCriteriosImportService
                 $normQr = $this->normalizarIdentificador($qrSafety);
 
                 // Buscar colaborador coincidiendo por QR Safety o Cédula
-                $colaboradorMatch = $colaboradores->first(function ($c) use ($normQr) {
-                    if (! empty($c->codigo_qr_skap) && $this->normalizarIdentificador((string) $c->codigo_qr_skap) === $normQr) {
-                        return true;
-                    }
-                    if (! empty($c->cedula) && $this->normalizarIdentificador((string) $c->cedula) === $normQr) {
-                        return true;
-                    }
-                    return false;
-                });
+                $colaboradorMatch = $porIdentificador[$normQr] ?? null;
 
                 $colaboradorId = $colaboradorMatch?->id;
 
@@ -141,7 +145,9 @@ class PlanPadrinoCriteriosImportService
                         $dataToSave['autonomia_4'],
                         $dataToSave['autonomia_total']
                     );
-                    $colaboradorMatch->save();
+                    if ($colaboradorMatch->isDirty('nivel_autonomia')) {
+                        $colaboradorMatch->save();
+                    }
                 }
 
                 if ($record->wasRecentlyCreated) {
@@ -154,6 +160,8 @@ class PlanPadrinoCriteriosImportService
                 $errores++;
             }
         }
+
+        DB::commit();
 
         return [
             'procesados' => $procesados,

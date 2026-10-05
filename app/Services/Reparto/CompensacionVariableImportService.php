@@ -4,9 +4,9 @@ namespace App\Services\Reparto;
 
 use App\Models\Reparto\CompensacionVariable;
 use App\Models\Seguridad\Colaborador;
+use App\Support\HojaCalculo;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use PhpOffice\PhpSpreadsheet\IOFactory;
 use Throwable;
 
 class CompensacionVariableImportService
@@ -100,7 +100,7 @@ class CompensacionVariableImportService
 
         foreach ($rutasArchivos as $path => $originalName) {
             try {
-                $spreadsheet = IOFactory::load($path);
+                $spreadsheet = HojaCalculo::cargar($path);
                 $worksheet = $spreadsheet->getActiveSheet();
 
                 // Read values with formatting / formulas evaluated

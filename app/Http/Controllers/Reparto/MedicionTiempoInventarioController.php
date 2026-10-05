@@ -6,13 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\Reparto\MedicionTiempoInventario;
 use App\Models\Flota\Vehiculo;
 use App\Models\Seguridad\Colaborador;
+use App\Support\HojaCalculo;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Inertia\Inertia;
 use Inertia\Response;
-use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 
 class MedicionTiempoInventarioController extends Controller
@@ -515,10 +515,10 @@ class MedicionTiempoInventarioController extends Controller
         $file = $request->file('archivo');
 
         try {
-            $spreadsheet = IOFactory::load($file->getPathname());
+            $spreadsheet = HojaCalculo::cargar($file->getPathname());
             $worksheet = $spreadsheet->getActiveSheet();
             // false = NO formatear, obtener valores crudos del Excel
-            $rows = $worksheet->toArray(null, true, false, true);
+            $rows = HojaCalculo::filas($worksheet, false, true);
         } catch (\Exception $e) {
             return back()->with('error', 'Error al leer el archivo Excel: ' . $e->getMessage());
         }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Gente;
 use App\Http\Controllers\Controller;
 use App\Models\Gente\Sac;
 use App\Models\Seguridad\Colaborador;
+use App\Support\HojaCalculo;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -12,7 +13,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
-use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -190,9 +190,9 @@ class SacController extends Controller
         $path = $file->getRealPath();
 
         try {
-            $spreadsheet = IOFactory::load($path);
+            $spreadsheet = HojaCalculo::cargar($path);
             $worksheet = $spreadsheet->getActiveSheet();
-            $rows = $worksheet->toArray(null, true, true, true);
+            $rows = HojaCalculo::filas($worksheet, true, true);
         } catch (\Exception $e) {
             Log::error('Error cargando Excel SAC: ' . $e->getMessage());
             return redirect()->back()->withErrors(['archivo' => 'Error al leer el archivo Excel: ' . $e->getMessage()]);

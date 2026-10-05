@@ -5,11 +5,11 @@ namespace App\Http\Controllers\Reparto;
 use App\Http\Controllers\Controller;
 use App\Models\Reparto\Cliente;
 use App\Services\Reparto\ModulacionUbicacionesService;
+use App\Support\HojaCalculo;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
-use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class ClienteController extends Controller
 {
@@ -103,9 +103,9 @@ class ClienteController extends Controller
         ]);
 
         $path        = $request->file('archivo')->getRealPath();
-        $spreadsheet = IOFactory::load($path);
+        $spreadsheet = HojaCalculo::cargar($path);
         $sheet       = $spreadsheet->getActiveSheet();
-        $rows        = $sheet->toArray(null, true, true, false);
+        $rows        = HojaCalculo::filas($sheet, true, false);
 
         if (count($rows) < 2) {
             return back()->with('error', 'El archivo no contiene datos.');

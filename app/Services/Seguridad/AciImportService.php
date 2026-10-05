@@ -5,9 +5,9 @@ namespace App\Services\Seguridad;
 use App\Models\Seguridad\Aci;
 use App\Models\Seguridad\Colaborador;
 use App\Services\Seguridad\Concerns\NormalizaCatalogos;
+use App\Support\HojaCalculo;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
-use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use Throwable;
 
@@ -117,7 +117,7 @@ class AciImportService
 
             $resultado['archivos_procesados']++;
 
-            $filas = $hoja->toArray(null, true, true, true);
+            $filas = HojaCalculo::filas($hoja, true, true);
             $encabezados = array_shift($filas) ?? [];
             $mapaColumnas = $this->resolverMapaColumnas($encabezados);
 
@@ -188,7 +188,7 @@ class AciImportService
 
     private function buscarHojaSios(string $rutaArchivo): ?Worksheet
     {
-        $spreadsheet = IOFactory::load($rutaArchivo);
+        $spreadsheet = HojaCalculo::cargar($rutaArchivo);
 
         foreach ($spreadsheet->getSheetNames() as $nombre) {
             if (str(trim($nombre))->upper()->value() === 'SIOS') {

@@ -7,11 +7,11 @@ use App\Models\Reparto\Modulacion;
 use App\Models\Reparto\ModulacionItem;
 use App\Models\Reparto\EventosTripulacion;
 use App\Models\Flota\Vehiculo;
+use App\Support\HojaCalculo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
-use PhpOffice\PhpSpreadsheet\IOFactory;
 use Carbon\Carbon;
 
 class AlertaVelocidadCurvaController
@@ -68,7 +68,7 @@ class AlertaVelocidadCurvaController
 
         try {
             $file        = $request->file('archivo');
-            $spreadsheet = IOFactory::load($file->getPathname());
+            $spreadsheet = HojaCalculo::cargar($file->getPathname());
             $sheet       = $spreadsheet->getActiveSheet();
 
             $highestRow = $sheet->getHighestDataRow();
