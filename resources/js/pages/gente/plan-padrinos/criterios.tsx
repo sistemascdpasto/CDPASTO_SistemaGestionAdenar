@@ -11,7 +11,6 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
-    Award,
     Calendar,
     CheckCircle2,
     Clock,
@@ -20,6 +19,7 @@ import {
     Filter,
     HeartHandshake,
     ListChecks,
+    Plus,
     QrCode,
     Search,
     Shield,
@@ -28,6 +28,7 @@ import {
     Upload,
     UserCheck,
     Users,
+    X,
 } from 'lucide-react';
 import { useRef, useState } from 'react';
 
@@ -72,7 +73,22 @@ interface ColaboradorOperativoRow {
     es_personalizado: boolean;
     es_padrino: boolean;
     tipo_padrino: string | null;
+    aci_realizadas: number;
+    porcentaje_aci: number;
+    porcentaje_owd_ruta: number | null;
+    porcentaje_owd_ruta_label: string;
+    safety_together: boolean;
+    comunicacion_asertiva: boolean;
+    habilidades: boolean;
+    eventos_seguridad: boolean;
+    columnas_extra_valores: Record<number, boolean>; // columna_id → valor
     criterio_evaluacion: CriterioEvaluacion | null;
+}
+
+interface ColumnaExtra {
+    id: number;
+    nombre: string;
+    orden: number;
 }
 
 interface Metrics {
@@ -86,6 +102,8 @@ interface Filters {
     search: string;
     cargo: string;
     autonomia: string;
+    mes: number;
+    anio: number;
 }
 
 interface Props {
@@ -94,6 +112,36 @@ interface Props {
     cargos: string[];
     filters: Filters;
     nivelesAutonomiaOpciones: string[];
+    columnas_extra: ColumnaExtra[];
+}
+
+// Componente reutilizable para los toggles de indicadores
+function ToggleBadge({
+    activo,
+    disabled,
+    onClick,
+}: {
+    activo: boolean;
+    disabled: boolean;
+    onClick: () => void;
+}) {
+    return (
+        <button
+            type="button"
+            disabled={disabled}
+            onClick={onClick}
+            title={disabled ? undefined : `Cambiar a ${activo ? '0%' : '100%'}`}
+            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold transition-all
+                ${activo
+                    ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50'
+                    : 'bg-rose-100 text-rose-700 hover:bg-rose-200 dark:bg-rose-900/30 dark:text-rose-400 dark:hover:bg-rose-900/50'
+                }
+                ${disabled ? 'cursor-default' : 'cursor-pointer hover:scale-105 shadow-xs'}
+            `}
+        >
+            {activo ? '100%' : '0%'}
+        </button>
+    );
 }
 
 export default function CriteriosPlanPadrinoIndex({
@@ -102,6 +150,7 @@ export default function CriteriosPlanPadrinoIndex({
     cargos,
     filters,
     nivelesAutonomiaOpciones,
+    columnas_extra,
 }: Props) {
     const { auth } = usePage<SharedData>().props;
     const canManage = auth.isAdmin || auth.roles.includes('Gente');
@@ -109,7 +158,13 @@ export default function CriteriosPlanPadrinoIndex({
     const [search, setSearch] = useState(filters.search || '');
     const [cargoFiltro, setCargoFiltro] = useState(filters.cargo || '');
     const [autonomiaFiltro, setAutonomiaFiltro] = useState(filters.autonomia || '');
+    const [mes, setMes] = useState<number>(filters.mes || new Date().getMonth() + 1);
+    const [anio, setAnio] = useState<number>(filters.anio || new Date().getFullYear());
     const [updatingId, setUpdatingId] = useState<number | null>(null);
+
+    // Estado modal Nueva Columna
+    const [nuevaColumnaOpen, setNuevaColumnaOpen] = useState(false);
+    const [nuevaColumnaNombre, setNuevaColumnaNombre] = useState('');
 
     // Modal importación Excel
     const [importDialogOpen, setImportDialogOpen] = useState(false);
@@ -122,7 +177,7 @@ export default function CriteriosPlanPadrinoIndex({
         setSearch(val);
         router.get(
             route('gente.plan-padrinos.criterios'),
-            { search: val, cargo: cargoFiltro, autonomia: autonomiaFiltro },
+            { search: val, cargo: cargoFiltro, autonomia: autonomiaFiltro, mes, anio },
             { preserveState: true, replace: true }
         );
     };
@@ -132,7 +187,7 @@ export default function CriteriosPlanPadrinoIndex({
         setCargoFiltro(val);
         router.get(
             route('gente.plan-padrinos.criterios'),
-            { search, cargo: val, autonomia: autonomiaFiltro },
+            { search, cargo: val, autonomia: autonomiaFiltro, mes, anio },
             { preserveState: true, replace: true }
         );
     };
@@ -142,8 +197,66 @@ export default function CriteriosPlanPadrinoIndex({
         setAutonomiaFiltro(val);
         router.get(
             route('gente.plan-padrinos.criterios'),
-            { search, cargo: cargoFiltro, autonomia: val },
+            { search, cargo: cargoFiltro, autonomia: val, mes, anio },
             { preserveState: true, replace: true }
+        );
+    };
+
+    const handleMesChange = (nuevoMes: string) => {
+        const val = parseInt(nuevoMes, 10);
+        setMes(val);
+        router.get(
+            route('gente.plan-padrinos.criterios'),
+            { search, cargo: cargoFiltro, autonomia: autonomiaFiltro, mes: val, anio },
+            { preserveState: true, replace: true }
+        );
+    };
+
+    const handleAnioChange = (nuevoAnio: string) => {
+        const val = parseInt(nuevoAnio, 10);
+        setAnio(val);
+        router.get(
+            route('gente.plan-padrinos.criterios'),
+            { search, cargo: cargoFiltro, autonomia: autonomiaFiltro, mes, anio: val },
+            { preserveState: true, replace: true }
+        );
+    };
+
+    const handleCrearColumnaExtra = (e: React.FormEvent) => {
+        e.preventDefault();
+        const nombre = nuevaColumnaNombre.trim();
+        if (!nombre) return;
+        router.post(
+            route('gente.plan-padrinos.criterios.columna-extra.crear'),
+            { nombre },
+            {
+                preserveScroll: true,
+                onSuccess: () => { setNuevaColumnaOpen(false); setNuevaColumnaNombre(''); },
+            }
+        );
+    };
+
+    const handleEliminarColumnaExtra = (columnaId: number) => {
+        if (!confirm('¿Eliminar esta columna permanentemente? Se perderán todos sus valores en todos los meses.')) return;
+        router.delete(
+            route('gente.plan-padrinos.criterios.columna-extra.eliminar', columnaId),
+            { preserveScroll: true }
+        );
+    };
+
+    const handleToggleColumnaExtra = (columnaId: number, colaboradorId: number) => {
+        router.post(
+            route('gente.plan-padrinos.criterios.columna-extra.toggle', columnaId),
+            { colaborador_id: colaboradorId, mes, anio },
+            { preserveScroll: true }
+        );
+    };
+
+    const handleToggleIndicador = (colaboradorId: number, campo: string) => {
+        router.post(
+            route('gente.plan-padrinos.criterios.toggle-indicador'),
+            { colaborador_id: colaboradorId, campo, mes, anio },
+            { preserveScroll: true }
         );
     };
 
@@ -220,6 +333,51 @@ export default function CriteriosPlanPadrinoIndex({
 
                     {canManage && (
                         <div className="flex items-center gap-2 shrink-0">
+                            {/* Botón Nueva Columna */}
+                            <Dialog open={nuevaColumnaOpen} onOpenChange={setNuevaColumnaOpen}>
+                                <DialogTrigger asChild>
+                                    <Button variant="outline" className="gap-2 font-semibold border-indigo-400 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-600 dark:text-indigo-300">
+                                        <Plus className="h-4 w-4" />
+                                        Nueva Columna
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent className="sm:max-w-sm">
+                                    <DialogHeader>
+                                        <DialogTitle className="flex items-center gap-2">
+                                            <Plus className="h-5 w-5 text-indigo-600" />
+                                            Nueva Columna
+                                        </DialogTitle>
+                                        <DialogDescription>
+                                            Ingresa el nombre de la nueva columna. Todos los colaboradores iniciarán en <strong>100%</strong>.
+                                        </DialogDescription>
+                                    </DialogHeader>
+                                    <form onSubmit={handleCrearColumnaExtra} className="space-y-4 py-2">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="nombre_columna">Nombre de la columna</Label>
+                                            <Input
+                                                id="nombre_columna"
+                                                placeholder="Ej: Puntualidad, Actitud, Liderazgo..."
+                                                value={nuevaColumnaNombre}
+                                                onChange={(e) => setNuevaColumnaNombre(e.target.value)}
+                                                autoFocus
+                                            />
+                                        </div>
+                                        <DialogFooter>
+                                            <Button type="button" variant="outline" onClick={() => setNuevaColumnaOpen(false)}>
+                                                Cancelar
+                                            </Button>
+                                            <Button
+                                                type="submit"
+                                                disabled={!nuevaColumnaNombre.trim()}
+                                                className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2"
+                                            >
+                                                <Plus className="h-4 w-4" />
+                                                Crear
+                                            </Button>
+                                        </DialogFooter>
+                                    </form>
+                                </DialogContent>
+                            </Dialog>
                             <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
                                 <DialogTrigger asChild>
                                     <Button className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2 font-semibold">
@@ -445,6 +603,30 @@ export default function CriteriosPlanPadrinoIndex({
                                 </SelectContent>
                             </Select>
                         </div>
+
+                        {/* Selector de Mes */}
+                        <Select value={String(mes)} onValueChange={handleMesChange}>
+                            <SelectTrigger className="w-[130px] h-9 text-xs">
+                                <SelectValue placeholder="Mes" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'].map((label, i) => (
+                                    <SelectItem key={i + 1} value={String(i + 1)} className="text-xs">{label}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+
+                        {/* Selector de Año */}
+                        <Select value={String(anio)} onValueChange={handleAnioChange}>
+                            <SelectTrigger className="w-[90px] h-9 text-xs">
+                                <SelectValue placeholder="Año" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {[2024, 2025, 2026, 2027].map((a) => (
+                                    <SelectItem key={a} value={String(a)} className="text-xs">{a}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
                 </div>
 
@@ -457,29 +639,59 @@ export default function CriteriosPlanPadrinoIndex({
                                     <TableHead className="w-[280px] font-bold text-foreground">COLABORADOR OPERATIVO</TableHead>
                                     <TableHead className="w-[140px] font-bold text-foreground">FECHA INGRESO</TableHead>
                                     <TableHead className="w-[180px] font-bold text-foreground">ANTIGÜEDAD</TableHead>
-                                    <TableHead className="w-[130px] text-center font-bold text-blue-700 dark:text-blue-400 bg-blue-500/5">
-                                        FUNCIONAL
+                                    <TableHead className="w-[160px] text-center font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-500/5">
+                                        % ACI
                                     </TableHead>
-                                    <TableHead className="w-[150px] text-center font-bold text-purple-700 dark:text-purple-400 bg-purple-500/5">
-                                        HAB. TÉCNICAS
+                                    <TableHead className="w-[160px] text-center font-bold text-blue-700 dark:text-blue-400 bg-blue-500/5">
+                                        % OWD RUTA
                                     </TableHead>
-                                    <TableHead className="w-[130px] text-center font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-500/5">
-                                        AUTONOMÍA %
+                                    <TableHead className="w-[130px] text-center font-bold text-orange-700 dark:text-orange-400 bg-orange-500/5">
+                                        SAFETY TOGETHER
+                                    </TableHead>
+                                    <TableHead className="w-[150px] text-center font-bold text-teal-700 dark:text-teal-400 bg-teal-500/5">
+                                        COM. ASERTIVA
+                                    </TableHead>
+                                    <TableHead className="w-[130px] text-center font-bold text-violet-700 dark:text-violet-400 bg-violet-500/5">
+                                        HABILIDADES
+                                    </TableHead>
+                                    <TableHead className="w-[140px] text-center font-bold text-rose-700 dark:text-rose-400 bg-rose-500/5">
+                                        EVENTOS SEG.
                                     </TableHead>
                                     <TableHead className="w-[200px] text-center font-bold text-foreground">NIVEL DE AUTONOMÍA</TableHead>
+                                    {columnas_extra.map((col) => (
+                                        <TableHead key={col.id} className="w-[130px] text-center font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-500/5">
+                                            <div className="flex items-center justify-center gap-1">
+                                                <span className="truncate max-w-[90px]" title={col.nombre}>
+                                                    {col.nombre.toUpperCase()}
+                                                </span>
+                                                {canManage && (
+                                                    <button
+                                                        type="button"
+                                                        title="Eliminar columna"
+                                                        onClick={() => handleEliminarColumnaExtra(col.id)}
+                                                        className="ml-1 flex items-center justify-center h-4 w-4 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
+                                                    >
+                                                        <X className="h-3 w-3" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </TableHead>
+                                    ))}
+                                    <TableHead className="w-[150px] text-center font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-500/10">
+                                        DESEMPEÑO
+                                    </TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {colaboradores.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
+                                        <TableCell colSpan={11 + columnas_extra.length} className="h-32 text-center text-muted-foreground">
                                             No se encontraron colaboradores operativos activos que coincidan con los criterios de búsqueda.
                                         </TableCell>
                                     </TableRow>
                                 ) : (
                                     colaboradores.map((colaborador) => {
                                         const isUpdating = updatingId === colaborador.id;
-                                        const crit = colaborador.criterio_evaluacion;
 
                                         return (
                                             <TableRow key={colaborador.id} className="hover:bg-muted/30">
@@ -543,59 +755,99 @@ export default function CriteriosPlanPadrinoIndex({
                                                     </div>
                                                 </TableCell>
 
-                                                {/* Funcional (%) */}
-                                                <TableCell className="align-middle text-center bg-blue-500/5">
-                                                    {crit?.funcional_total !== null && crit?.funcional_total !== undefined ? (
-                                                        <div className="flex flex-col items-center gap-0.5">
-                                                            <span className="text-sm font-extrabold text-blue-700 dark:text-blue-300">
-                                                                {crit.funcional_total}%
-                                                            </span>
-                                                            <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                                                                {crit.funcional_7_dias !== null && <span>7d: {crit.funcional_7_dias}%</span>}
-                                                                {crit.funcional_30_dias !== null && <span>30d: {crit.funcional_30_dias}%</span>}
-                                                                {crit.funcional_90_dias !== null && <span>90d: {crit.funcional_90_dias}%</span>}
-                                                            </div>
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-xs text-muted-foreground/50">—</span>
-                                                    )}
-                                                </TableCell>
-
-                                                {/* Habilidades Técnicas (%) */}
-                                                <TableCell className="align-middle text-center bg-purple-500/5">
-                                                    {crit?.habilidades_tecnicas_total !== null && crit?.habilidades_tecnicas_total !== undefined ? (
-                                                        <div className="flex flex-col items-center gap-0.5">
-                                                            <span className="text-sm font-extrabold text-purple-700 dark:text-purple-300">
-                                                                {crit.habilidades_tecnicas_total}%
-                                                            </span>
-                                                            <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                                                                {crit.hab_tecnicas_1 !== null && <span>H1: {crit.hab_tecnicas_1}%</span>}
-                                                                {crit.hab_tecnicas_2 !== null && <span>H2: {crit.hab_tecnicas_2}%</span>}
-                                                                {crit.hab_tecnicas_3 !== null && <span>H3: {crit.hab_tecnicas_3}%</span>}
-                                                            </div>
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-xs text-muted-foreground/50">—</span>
-                                                    )}
-                                                </TableCell>
-
-                                                {/* Autonomía (%) */}
+                                                {/* % ACI */}
                                                 <TableCell className="align-middle text-center bg-emerald-500/5">
-                                                    {crit?.autonomia_total !== null && crit?.autonomia_total !== undefined ? (
-                                                        <div className="flex flex-col items-center gap-0.5">
-                                                            <span className="text-sm font-extrabold text-emerald-700 dark:text-emerald-300">
-                                                                {crit.autonomia_total}%
-                                                            </span>
-                                                            <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                                                                {crit.autonomia_1 !== null && <span>A1: {crit.autonomia_1}%</span>}
-                                                                {crit.autonomia_2 !== null && <span>A2: {crit.autonomia_2}%</span>}
-                                                                {crit.autonomia_3 !== null && <span>A3: {crit.autonomia_3}%</span>}
-                                                                {crit.autonomia_4 !== null && <span>A4: {crit.autonomia_4}%</span>}
+                                                    <div className="flex flex-col items-center gap-1">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-16 overflow-hidden rounded-full bg-muted h-2">
+                                                                <div
+                                                                    className={`h-full rounded-full transition-all duration-300 ${
+                                                                        colaborador.porcentaje_aci >= 100
+                                                                            ? 'bg-emerald-500'
+                                                                            : colaborador.porcentaje_aci >= 50
+                                                                              ? 'bg-amber-500'
+                                                                              : colaborador.porcentaje_aci > 0
+                                                                                ? 'bg-blue-500'
+                                                                                : 'bg-muted-foreground/30'
+                                                                    }`}
+                                                                    style={{ width: `${Math.min(100, colaborador.porcentaje_aci)}%` }}
+                                                                />
                                                             </div>
+                                                            <span className="font-bold text-sm text-foreground min-w-[40px]">
+                                                                {colaborador.porcentaje_aci}%
+                                                            </span>
+                                                        </div>
+                                                        <span className="text-[10px] text-muted-foreground">
+                                                            {colaborador.aci_realizadas} / 32 realizadas
+                                                        </span>
+                                                    </div>
+                                                </TableCell>
+
+                                                {/* % OWD Ruta */}
+                                                <TableCell className="align-middle text-center bg-blue-500/5">
+                                                    {colaborador.porcentaje_owd_ruta !== null ? (
+                                                        <div className="flex items-center justify-center gap-2">
+                                                            <div className="w-16 overflow-hidden rounded-full bg-muted h-2">
+                                                                <div
+                                                                    className={`h-full rounded-full transition-all duration-300 ${
+                                                                        colaborador.porcentaje_owd_ruta >= 100
+                                                                            ? 'bg-emerald-500'
+                                                                            : colaborador.porcentaje_owd_ruta >= 50
+                                                                              ? 'bg-amber-500'
+                                                                              : 'bg-rose-500'
+                                                                    }`}
+                                                                    style={{ width: `${Math.min(100, colaborador.porcentaje_owd_ruta)}%` }}
+                                                                />
+                                                            </div>
+                                                            <span className={`font-bold text-sm min-w-[40px] ${
+                                                                colaborador.porcentaje_owd_ruta >= 100
+                                                                    ? 'text-emerald-600 dark:text-emerald-400'
+                                                                    : colaborador.porcentaje_owd_ruta >= 50
+                                                                      ? 'text-amber-600 dark:text-amber-400'
+                                                                      : 'text-rose-600 dark:text-rose-400'
+                                                            }`}>
+                                                                {colaborador.porcentaje_owd_ruta_label}
+                                                            </span>
                                                         </div>
                                                     ) : (
-                                                        <span className="text-xs text-muted-foreground/50">—</span>
+                                                        <Badge variant="outline" className="text-muted-foreground border-input">N/A</Badge>
                                                     )}
+                                                </TableCell>
+
+                                                {/* Safety Together */}
+                                                <TableCell className="align-middle text-center bg-orange-500/5" onClick={(e) => e.stopPropagation()}>
+                                                    <ToggleBadge
+                                                        activo={colaborador.safety_together}
+                                                        disabled={!canManage}
+                                                        onClick={() => handleToggleIndicador(colaborador.id, 'safety_together')}
+                                                    />
+                                                </TableCell>
+
+                                                {/* Comunicación Asertiva */}
+                                                <TableCell className="align-middle text-center bg-teal-500/5" onClick={(e) => e.stopPropagation()}>
+                                                    <ToggleBadge
+                                                        activo={colaborador.comunicacion_asertiva}
+                                                        disabled={!canManage}
+                                                        onClick={() => handleToggleIndicador(colaborador.id, 'comunicacion_asertiva')}
+                                                    />
+                                                </TableCell>
+
+                                                {/* Habilidades */}
+                                                <TableCell className="align-middle text-center bg-violet-500/5" onClick={(e) => e.stopPropagation()}>
+                                                    <ToggleBadge
+                                                        activo={colaborador.habilidades}
+                                                        disabled={!canManage}
+                                                        onClick={() => handleToggleIndicador(colaborador.id, 'habilidades')}
+                                                    />
+                                                </TableCell>
+
+                                                {/* Eventos de Seguridad */}
+                                                <TableCell className="align-middle text-center bg-rose-500/5" onClick={(e) => e.stopPropagation()}>
+                                                    <ToggleBadge
+                                                        activo={colaborador.eventos_seguridad}
+                                                        disabled={!canManage}
+                                                        onClick={() => handleToggleIndicador(colaborador.id, 'eventos_seguridad')}
+                                                    />
                                                 </TableCell>
 
                                                 {/* Nivel de Autonomía (Select e indicador) */}
@@ -630,6 +882,62 @@ export default function CriteriosPlanPadrinoIndex({
                                                         </div>
                                                     </div>
                                                 </TableCell>
+
+                                                {/* Columnas extra dinámicas */}
+                                                {columnas_extra.map((col) => {
+                                                    const val = colaborador.columnas_extra_valores[col.id] ?? true;
+                                                    return (
+                                                        <TableCell key={col.id} className="align-middle text-center bg-indigo-500/5" onClick={(e) => e.stopPropagation()}>
+                                                            <ToggleBadge
+                                                                activo={val}
+                                                                disabled={!canManage}
+                                                                onClick={() => handleToggleColumnaExtra(col.id, colaborador.id)}
+                                                            />
+                                                        </TableCell>
+                                                    );
+                                                })}
+
+                                                {/* DESEMPEÑO — promedio de todas las columnas métricas */}
+                                                {(() => {
+                                                    const valores: number[] = [];
+                                                    valores.push(Math.min(100, colaborador.porcentaje_aci));
+                                                    if (colaborador.porcentaje_owd_ruta !== null) {
+                                                        valores.push(colaborador.porcentaje_owd_ruta);
+                                                    }
+                                                    valores.push(colaborador.safety_together ? 100 : 0);
+                                                    valores.push(colaborador.comunicacion_asertiva ? 100 : 0);
+                                                    valores.push(colaborador.habilidades ? 100 : 0);
+                                                    valores.push(colaborador.eventos_seguridad ? 100 : 0);
+                                                    // Columnas extra
+                                                    columnas_extra.forEach((col) => {
+                                                        const val = colaborador.columnas_extra_valores[col.id] ?? true;
+                                                        valores.push(val ? 100 : 0);
+                                                    });
+
+                                                    const desempeno = Math.round(
+                                                        valores.reduce((a, b) => a + b, 0) / valores.length
+                                                    );
+
+                                                    const colorClass =
+                                                        desempeno >= 80
+                                                            ? 'text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/30 border-emerald-400/50'
+                                                            : desempeno >= 60
+                                                              ? 'text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/30 border-amber-400/50'
+                                                              : 'text-rose-700 dark:text-rose-300 bg-rose-100 dark:bg-rose-900/30 border-rose-400/50';
+
+                                                    return (
+                                                        <TableCell className="align-middle text-center bg-indigo-500/10">
+                                                            <div className="flex flex-col items-center gap-1">
+                                                                <span className={`inline-flex items-center rounded-full border px-3 py-0.5 text-sm font-extrabold ${colorClass}`}>
+                                                                    {desempeno}%
+                                                                </span>
+                                                                <span className="text-[10px] text-muted-foreground">
+                                                                    {valores.length} indicadores
+                                                                </span>
+                                                            </div>
+                                                        </TableCell>
+                                                    );
+                                                })()}
                                             </TableRow>
                                         );
                                     })

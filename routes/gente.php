@@ -95,6 +95,14 @@ Route::middleware(['auth', 'active', 'role:Administrador|Gente'])
             ->name('plan-padrinos.criterios.importar');
         Route::post('plan-padrinos/criterios/limpiar', [SeguimientoPruebasController::class, 'limpiarCriterios'])
             ->name('plan-padrinos.criterios.limpiar');
+        Route::post('plan-padrinos/criterios/toggle-indicador', [SeguimientoPruebasController::class, 'toggleIndicador'])
+            ->name('plan-padrinos.criterios.toggle-indicador');
+        Route::post('plan-padrinos/criterios/columna-extra', [SeguimientoPruebasController::class, 'crearColumnaExtra'])
+            ->name('plan-padrinos.criterios.columna-extra.crear');
+        Route::delete('plan-padrinos/criterios/columna-extra/{columna}', [SeguimientoPruebasController::class, 'eliminarColumnaExtra'])
+            ->name('plan-padrinos.criterios.columna-extra.eliminar');
+        Route::post('plan-padrinos/criterios/columna-extra/{columna}/toggle', [SeguimientoPruebasController::class, 'toggleColumnaExtraValor'])
+            ->name('plan-padrinos.criterios.columna-extra.toggle');
 
         // Calificaciones de Módulos (Escritura: Importar / Limpiar)
         Route::post('calificaciones/importar', [ColaboradorCalificacionController::class, 'importar'])

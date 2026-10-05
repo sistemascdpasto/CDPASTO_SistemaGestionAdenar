@@ -5,6 +5,10 @@ namespace App\Http\Controllers\Gente;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Gente\ImportarPlanPadrinoCriteriosRequest;
 use App\Models\Gente\ColaboradorPadrinoCriterio;
+use App\Models\Gente\ColaboradorPadrinoColumnaExtra;
+use App\Models\Gente\ColaboradorPadrinoColumnaExtraValor;
+use App\Models\Gente\ColaboradorPadrinoIndicador;
+use App\Models\Seguridad\Aci;
 use App\Models\Seguridad\Colaborador;
 use App\Models\Seguridad\ColaboradorPruebaPeriodo;
 use App\Models\Seguridad\ColaboradorPruebaPeriodoEvidencia;
@@ -12,6 +16,7 @@ use App\Services\Gente\PlanPadrinoCriteriosImportService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -394,8 +399,14 @@ class SeguimientoPruebasController extends Controller
         $search = $request->string('search')->trim()->toString();
         $cargoFiltro = $request->string('cargo')->trim()->toString();
         $autonomiaFiltro = $request->string('autonomia')->trim()->toString();
+        $mes = $request->integer('mes') ?: (int) now()->month;
+        $anio = $request->integer('anio') ?: (int) now()->year;
 
         $hoy = Carbon::today();
+        $isSqlite = DB::connection()->getDriverName() === 'sqlite';
+        $monthExpr = fn (string $col) => $isSqlite
+            ? DB::raw("cast(strftime('%m', {$col}) as integer)")
+            : DB::raw("MONTH({$col})");
 
         // 1. Filtrar solo colaboradores con area Operativa (case-insensitive) y activos
         $query = Colaborador::query()
@@ -419,6 +430,65 @@ class SeguimientoPruebasController extends Controller
         }
 
         $colaboradoresDb = $query->get();
+
+        // 2. Indicadores toggle (Safety Together, Comunicación Asertiva, Habilidades, Eventos de Seguridad)
+        // Indexados por colaborador_id para O(1) lookup
+        $indicadoresPorColaborador = ColaboradorPadrinoIndicador::where('mes', $mes)
+            ->where('anio', $anio)
+            ->whereIn('colaborador_id', $colaboradoresDb->pluck('id'))
+            ->get()
+            ->keyBy('colaborador_id');
+
+        // 2b. Columnas extra globales (persisten hasta eliminación) + valores del mes/año actual
+        $columnasExtra = ColaboradorPadrinoColumnaExtra::orderBy('orden')->get();
+
+        // valores mensuales: [ columna_id => [ colaborador_id => bool ] ]
+        $valoresExtra = [];
+        if ($columnasExtra->isNotEmpty()) {
+            ColaboradorPadrinoColumnaExtraValor::whereIn('columna_extra_id', $columnasExtra->pluck('id'))
+                ->where('mes', $mes)
+                ->where('anio', $anio)
+                ->get()
+                ->each(function ($v) use (&$valoresExtra) {
+                    $valoresExtra[$v->columna_extra_id][$v->colaborador_id] = (bool) $v->valor;
+                });
+        }
+
+        // 3. Conteo de ACI por colaborador en el mes/año seleccionado
+        $conteoAcisPorColaborador = Aci::where($monthExpr('fecha_incidente'), $mes)
+            ->whereYear('fecha_incidente', $anio)
+            ->whereNotNull('colaborador_id')
+            ->select('colaborador_id', DB::raw('count(*) as total'))
+            ->groupBy('colaborador_id')
+            ->pluck('total', 'colaborador_id');
+
+        // 3. Evaluaciones OWD Ruta: preguntas con actividad exactamente "Ruta"
+        $preguntasRutaRaw = DB::table('evaluacion_owd_preguntas')
+            ->join('evaluaciones_owd', 'evaluacion_owd_preguntas.evaluacion_owd_id', '=', 'evaluaciones_owd.id')
+            ->where($monthExpr('evaluaciones_owd.fecha_evaluacion'), $mes)
+            ->whereYear('evaluaciones_owd.fecha_evaluacion', $anio)
+            ->where(function ($q) {
+                $q->whereRaw("LOWER(TRIM(evaluacion_owd_preguntas.actividad)) = 'ruta'")
+                  ->orWhereRaw("LOWER(TRIM(evaluacion_owd_preguntas.actividad)) = '\"ruta\"'")
+                  ->orWhereRaw("LOWER(TRIM(evaluacion_owd_preguntas.actividad)) = '[\"ruta\"]'");
+            })
+            ->select('evaluaciones_owd.colaborador_id', 'evaluaciones_owd.qr_safety', 'evaluacion_owd_preguntas.puntuacion')
+            ->get();
+
+        // Indexar colaboradores por qr_safety para resolver los que tienen colaborador_id = null
+        $colaboradoresPorQrOwd = Colaborador::whereNotNull('codigo_qr_skap')
+            ->select(['id', 'codigo_qr_skap'])
+            ->get()
+            ->keyBy('codigo_qr_skap');
+
+        $preguntasRutaPorColaborador = $preguntasRutaRaw->groupBy(function ($p) use ($colaboradoresPorQrOwd) {
+            if ($p->colaborador_id) {
+                return $p->colaborador_id;
+            }
+            $colab = $colaboradoresPorQrOwd->get($p->qr_safety);
+
+            return $colab ? $colab->id : null;
+        })->filter(fn ($grupo, $key) => $key !== null);
 
         $rows = [];
         $metrics = [
@@ -480,6 +550,31 @@ class SeguimientoPruebasController extends Controller
                 $metrics['total_evaluados_excel']++;
             }
 
+            // ── ACIS ────────────────────────────────────────────────────────────
+            $aciRealizadas = (int) ($conteoAcisPorColaborador[$colaborador->id] ?? 0);
+            $porcentajeAci = round(($aciRealizadas / 32) * 100, 1);
+
+            // ── OWD Ruta (binario: 100% si cero NO OK, 0% si hay alguno, null si sin datos) ──
+            $preguntasRuta = $preguntasRutaPorColaborador->get($colaborador->id, collect());
+            $okRuta = $preguntasRuta->filter(fn ($p) =>
+                str_contains(strtolower((string) $p->puntuacion), 'ok') &&
+                ! str_contains(strtolower((string) $p->puntuacion), 'no ok') &&
+                ! str_contains(strtolower((string) $p->puntuacion), 'not')
+            )->count();
+            $noOkRuta = $preguntasRuta->filter(fn ($p) =>
+                str_contains(strtolower((string) $p->puntuacion), 'no ok') ||
+                str_contains(strtolower((string) $p->puntuacion), 'nook')
+            )->count();
+            $totalAplicablesRuta = $okRuta + $noOkRuta;
+
+            if ($totalAplicablesRuta > 0) {
+                $porcentajeOwdRuta = $noOkRuta > 0 ? 0.0 : 100.0;
+                $porcentajeOwdRutaLabel = "{$porcentajeOwdRuta}%";
+            } else {
+                $porcentajeOwdRuta = null;
+                $porcentajeOwdRutaLabel = 'N/A';
+            }
+
             $rows[] = [
                 'id' => $colaborador->id,
                 'cedula' => $colaborador->cedula,
@@ -497,6 +592,22 @@ class SeguimientoPruebasController extends Controller
                 'es_personalizado' => $esPersonalizado,
                 'es_padrino' => (bool) $colaborador->es_padrino,
                 'tipo_padrino' => $colaborador->tipo_padrino,
+                // ACIS
+                'aci_realizadas' => $aciRealizadas,
+                'porcentaje_aci' => $porcentajeAci,
+                // OWD
+                'porcentaje_owd_ruta'       => $porcentajeOwdRuta,
+                'porcentaje_owd_ruta_label' => $porcentajeOwdRutaLabel,
+                // Indicadores toggle (default true = 100% si no existe registro)
+                'safety_together'           => (bool) ($indicadoresPorColaborador[$colaborador->id]->safety_together ?? true),
+                'comunicacion_asertiva'     => (bool) ($indicadoresPorColaborador[$colaborador->id]->comunicacion_asertiva ?? true),
+                'habilidades'               => (bool) ($indicadoresPorColaborador[$colaborador->id]->habilidades ?? true),
+                'eventos_seguridad'         => (bool) ($indicadoresPorColaborador[$colaborador->id]->eventos_seguridad ?? true),
+                // Valores de columnas extra: [ columna_id => bool ]
+                'columnas_extra_valores'    => $columnasExtra->mapWithKeys(function ($col) use ($colaborador, $valoresExtra) {
+                    // Si no existe registro en BD → default true (100%)
+                    return [$col->id => $valoresExtra[$col->id][$colaborador->id] ?? true];
+                })->toArray(),
                 'criterio_evaluacion' => $criterio ? [
                     'qr_safety' => $criterio->qr_safety,
                     'funcional_7_dias' => $criterio->funcional_7_dias,
@@ -523,9 +634,11 @@ class SeguimientoPruebasController extends Controller
             'metrics' => $metrics,
             'cargos' => $cargosUnicos,
             'filters' => [
-                'search' => $search,
-                'cargo' => $cargoFiltro,
+                'search'   => $search,
+                'cargo'    => $cargoFiltro,
                 'autonomia' => $autonomiaFiltro,
+                'mes'      => $mes,
+                'anio'     => $anio,
             ],
             'nivelesAutonomiaOpciones' => [
                 'Nivel 0',
@@ -535,6 +648,11 @@ class SeguimientoPruebasController extends Controller
                 'Nivel 4',
                 'Padrino',
             ],
+            'columnas_extra' => $columnasExtra->map(fn ($c) => [
+                'id'     => $c->id,
+                'nombre' => $c->nombre,
+                'orden'  => $c->orden,
+            ])->values()->toArray(),
         ]);
     }
 
@@ -567,6 +685,111 @@ class SeguimientoPruebasController extends Controller
         return redirect()->route('gente.plan-padrinos.criterios')->with('status', [
             'message' => 'Todas las evaluaciones de criterios importadas fueron eliminadas.',
             'type' => 'success',
+        ]);
+    }
+
+    /**
+     * Alterna (toggle) un indicador de Plan Padrino para un colaborador en un mes/año.
+     * Los 4 campos posibles son: safety_together, comunicacion_asertiva, habilidades, eventos_seguridad.
+     * Si no existe registro para ese colaborador+mes+año se crea con todos en true (100%),
+     * luego se invierte el campo solicitado.
+     */
+    public function toggleIndicador(Request $request): RedirectResponse
+    {
+        $colaboradorId = $request->integer('colaborador_id');
+        $mes           = $request->integer('mes');
+        $anio          = $request->integer('anio');
+        $campo         = $request->string('campo')->toString();
+
+        $camposValidos = ['safety_together', 'comunicacion_asertiva', 'habilidades', 'eventos_seguridad'];
+
+        abort_unless(in_array($campo, $camposValidos, true), 422, 'Campo no válido.');
+        abort_unless($colaboradorId > 0 && $mes >= 1 && $mes <= 12 && $anio >= 2024, 422, 'Parámetros inválidos.');
+
+        $indicador = ColaboradorPadrinoIndicador::firstOrCreate(
+            ['colaborador_id' => $colaboradorId, 'mes' => $mes, 'anio' => $anio],
+            [
+                'safety_together'       => true,
+                'comunicacion_asertiva' => true,
+                'habilidades'           => true,
+                'eventos_seguridad'     => true,
+            ]
+        );
+
+        $indicador->$campo = ! $indicador->$campo;
+        $indicador->save();
+
+        return redirect()->back()->with('status', [
+            'message' => 'Indicador actualizado.',
+            'type'    => 'success',
+        ]);
+    }
+
+    /**
+     * Crea una nueva columna extra global (sin mes/año).
+     * La columna persiste en todos los meses hasta que el usuario la elimine.
+     */
+    public function crearColumnaExtra(Request $request): RedirectResponse
+    {
+        $nombre = $request->string('nombre')->trim()->toString();
+
+        abort_if($nombre === '', 422, 'El nombre de la columna es obligatorio.');
+
+        $orden = ColaboradorPadrinoColumnaExtra::max('orden') ?? 0;
+
+        ColaboradorPadrinoColumnaExtra::create([
+            'nombre' => $nombre,
+            'orden'  => $orden + 1,
+        ]);
+
+        return redirect()->back()->with('status', [
+            'message' => "Columna \"{$nombre}\" creada.",
+            'type'    => 'success',
+        ]);
+    }
+
+    /**
+     * Elimina una columna extra (cascade elimina también sus valores).
+     */
+    public function eliminarColumnaExtra(ColaboradorPadrinoColumnaExtra $columna): RedirectResponse
+    {
+        $nombre = $columna->nombre;
+        $columna->delete();
+
+        return redirect()->back()->with('status', [
+            'message' => "Columna \"{$nombre}\" eliminada.",
+            'type'    => 'success',
+        ]);
+    }
+
+    /**
+     * Alterna el valor mensual de una celda en una columna extra para un colaborador.
+     * La columna es global pero el valor (true/false) es específico por mes/año.
+     */
+    public function toggleColumnaExtraValor(ColaboradorPadrinoColumnaExtra $columna, Request $request): RedirectResponse
+    {
+        $colaboradorId = $request->integer('colaborador_id');
+        $mes           = $request->integer('mes');
+        $anio          = $request->integer('anio');
+
+        abort_unless($colaboradorId > 0 && $mes >= 1 && $mes <= 12 && $anio >= 2024, 422, 'Parámetros inválidos.');
+
+        $valor = ColaboradorPadrinoColumnaExtraValor::firstOrCreate(
+            [
+                'columna_extra_id' => $columna->id,
+                'colaborador_id'   => $colaboradorId,
+                'mes'              => $mes,
+                'anio'             => $anio,
+            ],
+            ['valor' => true]  // primera vez → empieza en true, luego lo invertimos
+        );
+
+        $valor->valor = ! $valor->valor;
+        $valor->save();
+
+        return redirect()->back()->with('status', [
+            'message' => 'Valor actualizado.',
+            'type'    => 'success',
         ]);
     }
 
