@@ -135,6 +135,9 @@ class PlanPremiacionController extends Controller
             return preg_replace('/[^A-Z0-9]/', '', $str) ?? $str;
         };
 
+        // Busca registros DPO del período (mes+año explícito en el registro, o
+        // bien importados sin mes/año donde created_at cae en el período).
+        // Si no hay registros para el período → colecciones vacías → todos 100%.
         $registrosDpo = DB::table('dpo_academy')
             ->where(function ($q) use ($mesesSeleccionados, $anio, $monthExpr) {
                 $q->where(function ($q2) use ($mesesSeleccionados, $anio) {

@@ -36,14 +36,10 @@ class DpoAcademy extends Model
 
     protected static function booted(): void
     {
-        static::creating(function (DpoAcademy $model) {
-            if (empty($model->mes)) {
-                $model->mes = (int) now()->month;
-            }
-            if (empty($model->anio)) {
-                $model->anio = (int) now()->year;
-            }
-        });
+        // mes y anio se establecen explícitamente en la importación cuando el
+        // archivo los contiene. Si no vienen en los datos se dejan null para
+        // que el controlador los resuelva por created_at — no forzamos el mes
+        // del sistema porque rompería el filtrado por período.
     }
 
     public function colaborador(): BelongsTo
