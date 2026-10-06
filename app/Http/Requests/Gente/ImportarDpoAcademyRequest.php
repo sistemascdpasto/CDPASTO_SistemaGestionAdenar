@@ -20,6 +20,8 @@ class ImportarDpoAcademyRequest extends FormRequest
                 'mimes:xlsx,xls,csv,txt',
                 'max:10240', // Max 10MB
             ],
+            'mes' => ['nullable', 'integer', 'between:1,12'],
+            'anio' => ['nullable', 'integer', 'between:2000,2100'],
         ];
     }
 

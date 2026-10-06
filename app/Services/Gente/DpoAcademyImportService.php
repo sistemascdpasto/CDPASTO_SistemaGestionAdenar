@@ -29,10 +29,16 @@ class DpoAcademyImportService
         'PUNTUACION' => 'calificacion',
         'STATUS' => 'status',
         'ESTADO' => 'status',
+        'MES' => 'mes',
+        'ANIO' => 'anio',
+        'ANO' => 'anio',
     ];
 
-    public function importar(string $rutaArchivo): array
+    public function importar(string $rutaArchivo, ?int $mes = null, ?int $anio = null): array
     {
+        $targetMes = ($mes && $mes >= 1 && $mes <= 12) ? $mes : (int) now()->month;
+        $targetAnio = ($anio && $anio >= 2000) ? $anio : (int) now()->year;
+
         $spreadsheet = HojaCalculo::cargar($rutaArchivo);
         $worksheet = $spreadsheet->getActiveSheet();
         $rows = HojaCalculo::filas($worksheet, true, true);
@@ -95,6 +101,10 @@ class DpoAcademyImportService
             try {
                 $procesados++;
 
+                // Mes y año para esta fila
+                $rowMes = !empty($datosRow['mes']) && is_numeric($datosRow['mes']) ? (int) $datosRow['mes'] : $targetMes;
+                $rowAnio = !empty($datosRow['anio']) && is_numeric($datosRow['anio']) ? (int) $datosRow['anio'] : $targetAnio;
+
                 // Buscar colaborador id priorizando QR Safety (codigo_qr_skap), luego cédula o nombre
                 $colaboradorId = null;
                 $normQrSafety = $qrSafety !== '' ? $this->normalizar($qrSafety) : '';
@@ -136,9 +146,11 @@ class DpoAcademyImportService
                 $region = $datosRow['region'] ?? null;
                 $centro = $datosRow['centro'] ?? null;
 
-                // Criterio de búsqueda para updateOrCreate
+                // Criterio de búsqueda para updateOrCreate (incluyendo mes y anio)
                 $keys = [
                     'nombre' => $nombre,
+                    'mes' => $rowMes,
+                    'anio' => $rowAnio,
                 ];
                 if ($qrSafety) {
                     $keys['qr_safety'] = $qrSafety;
@@ -151,6 +163,8 @@ class DpoAcademyImportService
                     $keys,
                     [
                         'colaborador_id' => $colaboradorId,
+                        'mes' => $rowMes,
+                        'anio' => $rowAnio,
                         'region' => $region,
                         'centro' => $centro,
                         'negocio' => $datosRow['negocio'] ?? null,

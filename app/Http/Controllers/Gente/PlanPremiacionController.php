@@ -136,6 +136,16 @@ class PlanPremiacionController extends Controller
         };
 
         $registrosDpo = DB::table('dpo_academy')
+            ->where(function ($q) use ($mesesSeleccionados, $anio, $monthExpr) {
+                $q->where(function ($q2) use ($mesesSeleccionados, $anio) {
+                    $q2->whereIn('mes', $mesesSeleccionados)
+                       ->where('anio', $anio);
+                })->orWhere(function ($q2) use ($mesesSeleccionados, $anio, $monthExpr) {
+                    $q2->whereNull('mes')
+                       ->whereIn($monthExpr('created_at'), $mesesSeleccionados)
+                       ->whereYear('created_at', $anio);
+                });
+            })
             ->select(['colaborador_id', 'qr_safety', 'nombre'])
             ->get();
 
@@ -688,7 +698,22 @@ class PlanPremiacionController extends Controller
             ->groupBy('identificacion')
             ->pluck('promedio_nota', 'identificacion');
 
-        $registrosDpo = DB::table('dpo_academy')->select(['colaborador_id','qr_safety','nombre'])->get();
+        $isSqlite = DB::connection()->getDriverName() === 'sqlite';
+        $monthExpr = fn (string $col) => $isSqlite ? DB::raw("cast(strftime('%m', {$col}) as integer)") : DB::raw("MONTH({$col})");
+
+        $registrosDpo = DB::table('dpo_academy')
+            ->where(function ($q) use ($mes, $anio, $monthExpr) {
+                $q->where(function ($q2) use ($mes, $anio) {
+                    $q2->where('mes', $mes)
+                       ->where('anio', $anio);
+                })->orWhere(function ($q2) use ($mes, $anio, $monthExpr) {
+                    $q2->whereNull('mes')
+                       ->where($monthExpr('created_at'), $mes)
+                       ->whereYear('created_at', $anio);
+                });
+            })
+            ->select(['colaborador_id','qr_safety','nombre'])
+            ->get();
         $dpoColaboradorIds = $registrosDpo->pluck('colaborador_id')->filter()->unique()->flip()->toArray();
         $dpoQrSafetySet = []; $dpoNombresSet = [];
         foreach ($registrosDpo as $r) {
@@ -1111,6 +1136,16 @@ class PlanPremiacionController extends Controller
 
         // ── DPO Academy ───────────────────────────────────────────────────
         $estaEnDpo = DB::table('dpo_academy')
+            ->where(function ($q) use ($mes, $anio, $monthExpr) {
+                $q->where(function ($q2) use ($mes, $anio) {
+                    $q2->where('mes', $mes)
+                       ->where('anio', $anio);
+                })->orWhere(function ($q2) use ($mes, $anio, $monthExpr) {
+                    $q2->whereNull('mes')
+                       ->whereIn($monthExpr('created_at'), [$mes])
+                       ->whereYear('created_at', $anio);
+                });
+            })
             ->get(['colaborador_id', 'qr_safety', 'nombre'])
             ->contains(function ($r) use ($colaborador, $normStr) {
                 if ($r->colaborador_id && $r->colaborador_id == $colaborador->id) return true;

@@ -1,20 +1,45 @@
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useForm } from '@inertiajs/react';
-import { BookOpen, LoaderCircle, Upload } from 'lucide-react';
+import { BookOpen, Calendar, LoaderCircle, Upload } from 'lucide-react';
 import { FormEventHandler, useState } from 'react';
 
 interface ImportarForm {
     archivo: File | null;
-    [key: string]: File | null;
+    mes: number;
+    anio: number;
+    [key: string]: File | null | number;
 }
+
+const MESES = [
+    { value: 1, label: 'Enero' },
+    { value: 2, label: 'Febrero' },
+    { value: 3, label: 'Marzo' },
+    { value: 4, label: 'Abril' },
+    { value: 5, label: 'Mayo' },
+    { value: 6, label: 'Junio' },
+    { value: 7, label: 'Julio' },
+    { value: 8, label: 'Agosto' },
+    { value: 9, label: 'Septiembre' },
+    { value: 10, label: 'Octubre' },
+    { value: 11, label: 'Noviembre' },
+    { value: 12, label: 'Diciembre' },
+];
 
 export function ImportarDpoAcademyDialog({ trigger }: { trigger: React.ReactNode }) {
     const [open, setOpen] = useState(false);
+    const now = new Date();
     const { data, setData, post, processing, errors, reset } = useForm<ImportarForm>({
         archivo: null,
+        mes: now.getMonth() + 1,
+        anio: now.getFullYear(),
     });
+
+    const currentYear = now.getFullYear();
+    const aniosDisponibles = [currentYear - 1, currentYear, currentYear + 1];
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
@@ -37,15 +62,48 @@ export function ImportarDpoAcademyDialog({ trigger }: { trigger: React.ReactNode
                         Importar DPO Academy desde Excel
                     </DialogTitle>
                     <DialogDescription className="text-xs text-muted-foreground">
-                        Selecciona el archivo Excel (.xlsx, .xls) o CSV con las columnas:
-                        <br />
-                        <span className="font-semibold text-foreground">
-                            Region, Centro, Negocio, QR Safety, Nombre, Cargo, Coronita, Calificación, Status
-                        </span>
+                        Selecciona el periodo mensual al que corresponden los datos y el archivo Excel (.xlsx, .xls) o CSV.
                     </DialogDescription>
                 </DialogHeader>
 
                 <form className="space-y-4 pt-2" onSubmit={submit}>
+                    <div className="grid grid-cols-2 gap-3 rounded-lg border border-border p-3 bg-muted/20">
+                        <div>
+                            <Label className="text-xs font-semibold flex items-center gap-1">
+                                <Calendar className="h-3.5 w-3.5 text-amber-600" /> Mes del Periodo
+                            </Label>
+                            <Select value={String(data.mes)} onValueChange={(val) => setData('mes', Number(val))}>
+                                <SelectTrigger className="mt-1 h-8 text-xs">
+                                    <SelectValue placeholder="Mes" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {MESES.map((m) => (
+                                        <SelectItem key={m.value} value={String(m.value)} className="text-xs">
+                                            {m.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div>
+                            <Label className="text-xs font-semibold flex items-center gap-1">
+                                <Calendar className="h-3.5 w-3.5 text-amber-600" /> Año
+                            </Label>
+                            <Select value={String(data.anio)} onValueChange={(val) => setData('anio', Number(val))}>
+                                <SelectTrigger className="mt-1 h-8 text-xs">
+                                    <SelectValue placeholder="Año" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {aniosDisponibles.map((y) => (
+                                        <SelectItem key={y} value={String(y)} className="text-xs">
+                                            {y}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+
                     <div className="rounded-lg border border-dashed border-border p-4 text-center">
                         <BookOpen className="mx-auto h-8 w-8 text-amber-500" />
                         <div className="mt-2 text-xs text-muted-foreground">Formato aceptado: .xlsx, .xls, .csv</div>

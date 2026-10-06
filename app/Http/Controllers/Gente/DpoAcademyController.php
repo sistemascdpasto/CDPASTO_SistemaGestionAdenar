@@ -22,6 +22,8 @@ class DpoAcademyController extends Controller
         $centro = trim($request->input('centro', ''));
         $negocio = trim($request->input('negocio', ''));
         $status = trim($request->input('status', ''));
+        $mes = $request->input('mes') !== null && $request->input('mes') !== '' ? (int) $request->input('mes') : null;
+        $anio = $request->input('anio') !== null && $request->input('anio') !== '' ? (int) $request->input('anio') : null;
 
         $query = DpoAcademy::query();
 
@@ -50,24 +52,38 @@ class DpoAcademyController extends Controller
             $query->where('status', $status);
         }
 
+        if ($mes) {
+            $query->where('mes', $mes);
+        }
+
+        if ($anio) {
+            $query->where('anio', $anio);
+        }
+
         $registros = $query->orderBy('nombre')
             ->paginate(15)
             ->withQueryString();
 
-        // KPIs generales
-        $totalRegistros = DpoAcademy::count();
-        $promedioCalificacion = round((float) (DpoAcademy::avg('calificacion') ?? 0), 2);
-        $totalCoronitas = DpoAcademy::whereNotNull('coronita')
+        // KPIs generales (afectados por los mismos filtros de mes/año)
+        $kpiQuery = DpoAcademy::query();
+        if ($mes) $kpiQuery->where('mes', $mes);
+        if ($anio) $kpiQuery->where('anio', $anio);
+
+        $totalRegistros = $kpiQuery->count();
+        $promedioCalificacion = round((float) ((clone $kpiQuery)->avg('calificacion') ?? 0), 2);
+        $totalCoronitas = (clone $kpiQuery)->whereNotNull('coronita')
             ->where('coronita', '!=', '')
             ->where('coronita', '!=', '0')
             ->count();
-        $totalCompletados = DpoAcademy::whereIn(DB::raw('LOWER(status)'), ['completado', 'completed', 'aprobado', 'ok', 'activo', 'active'])->count();
+        $totalCompletados = (clone $kpiQuery)->whereIn(DB::raw('LOWER(status)'), ['completado', 'completed', 'aprobado', 'ok', 'activo', 'active'])->count();
 
         // Opciones de filtro
         $regiones = DpoAcademy::whereNotNull('region')->distinct()->pluck('region')->filter()->values();
         $centros = DpoAcademy::whereNotNull('centro')->distinct()->pluck('centro')->filter()->values();
         $negocios = DpoAcademy::whereNotNull('negocio')->distinct()->pluck('negocio')->filter()->values();
         $statuses = DpoAcademy::whereNotNull('status')->distinct()->pluck('status')->filter()->values();
+        $mesesDisponibles = DpoAcademy::whereNotNull('mes')->distinct()->pluck('mes')->sort()->values();
+        $aniosDisponibles = DpoAcademy::whereNotNull('anio')->distinct()->pluck('anio')->sort()->values();
 
         return Inertia::render('gente/dpo-academy/index', [
             'registros' => $registros,
@@ -77,12 +93,16 @@ class DpoAcademyController extends Controller
                 'centro' => $centro,
                 'negocio' => $negocio,
                 'status' => $status,
+                'mes' => $mes ? (string)$mes : '',
+                'anio' => $anio ? (string)$anio : '',
             ],
             'options' => [
                 'regiones' => $regiones,
                 'centros' => $centros,
                 'negocios' => $negocios,
                 'statuses' => $statuses,
+                'meses' => $mesesDisponibles,
+                'anios' => $aniosDisponibles,
             ],
             'kpis' => [
                 'total' => $totalRegistros,
@@ -96,9 +116,12 @@ class DpoAcademyController extends Controller
     public function importar(ImportarDpoAcademyRequest $request, DpoAcademyImportService $service): RedirectResponse
     {
         $archivo = $request->file('archivo');
-        $resultado = $service->importar($archivo->getRealPath());
+        $mes = $request->input('mes') ? (int) $request->input('mes') : (int) now()->month;
+        $anio = $request->input('anio') ? (int) $request->input('anio') : (int) now()->year;
 
-        $msg = "Importación DPO Academy completada: {$resultado['creados']} creados, {$resultado['actualizados']} actualizados, {$resultado['procesados']} procesados en total.";
+        $resultado = $service->importar($archivo->getRealPath(), $mes, $anio);
+
+        $msg = "Importación DPO Academy completada (Periodo {$mes}/{$anio}): {$resultado['creados']} creados, {$resultado['actualizados']} actualizados, {$resultado['procesados']} procesados en total.";
         if ($resultado['errores'] > 0) {
             $msg .= " Se presentaron {$resultado['errores']} errores.";
         }
@@ -113,6 +136,8 @@ class DpoAcademyController extends Controller
         $centro = trim($request->input('centro', ''));
         $negocio = trim($request->input('negocio', ''));
         $status = trim($request->input('status', ''));
+        $mes = $request->input('mes') !== null && $request->input('mes') !== '' ? (int) $request->input('mes') : null;
+        $anio = $request->input('anio') !== null && $request->input('anio') !== '' ? (int) $request->input('anio') : null;
 
         $query = DpoAcademy::query();
 

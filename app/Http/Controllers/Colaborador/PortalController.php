@@ -418,7 +418,20 @@ class PortalController extends Controller
             ->first();
 
         // ── DPO Academy ───────────────────────────────────────────────────
+        $isSqlite = DB::connection()->getDriverName() === 'sqlite';
+        $monthExpr = fn (string $col) => $isSqlite ? DB::raw("cast(strftime('%m', {$col}) as integer)") : DB::raw("MONTH({$col})");
+
         $estaEnDpo = DB::table('dpo_academy')
+            ->where(function ($q) use ($mes, $anio, $monthExpr) {
+                $q->where(function ($q2) use ($mes, $anio) {
+                    $q2->where('mes', $mes)
+                       ->where('anio', $anio);
+                })->orWhere(function ($q2) use ($mes, $anio, $monthExpr) {
+                    $q2->whereNull('mes')
+                       ->whereIn($monthExpr('created_at'), [$mes])
+                       ->whereYear('created_at', $anio);
+                });
+            })
             ->get(['colaborador_id', 'qr_safety', 'nombre'])
             ->contains(function ($r) use ($colaborador, $normStr) {
                 if ($r->colaborador_id && $r->colaborador_id == $colaborador->id) return true;

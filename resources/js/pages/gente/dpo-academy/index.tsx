@@ -20,6 +20,8 @@ const breadcrumbs: BreadcrumbItem[] = [
 interface DpoAcademyRow {
     id: number;
     colaborador_id: number | null;
+    mes: number | null;
+    anio: number | null;
     region: string | null;
     centro: string | null;
     negocio: string | null;
@@ -44,6 +46,8 @@ interface Options {
     centros: string[];
     negocios: string[];
     statuses: string[];
+    meses?: number[];
+    anios?: number[];
 }
 
 interface Filters {
@@ -52,6 +56,8 @@ interface Filters {
     centro: string;
     negocio: string;
     status: string;
+    mes?: string;
+    anio?: string;
 }
 
 interface PaginatedData<T> {
@@ -70,12 +76,19 @@ interface Props {
     filters: Filters;
 }
 
+const NOMBRES_MESES: Record<number, string> = {
+    1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril', 5: 'Mayo', 6: 'Junio',
+    7: 'Julio', 8: 'Agosto', 9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
+};
+
 export default function DpoAcademyIndex({ registros, kpis, options, filters }: Props) {
     const [search, setSearch] = useState(filters?.search || '');
     const [region, setRegion] = useState(filters?.region || 'todos');
     const [centro, setCentro] = useState(filters?.centro || 'todos');
     const [negocio, setNegocio] = useState(filters?.negocio || 'todos');
     const [status, setStatus] = useState(filters?.status || 'todos');
+    const [mes, setMes] = useState(filters?.mes || 'todos');
+    const [anio, setAnio] = useState(filters?.anio || 'todos');
 
     const safeKpis = {
         total: kpis?.total ?? 0,
@@ -89,6 +102,8 @@ export default function DpoAcademyIndex({ registros, kpis, options, filters }: P
         centros: options?.centros || [],
         negocios: options?.negocios || [],
         statuses: options?.statuses || [],
+        meses: options?.meses || [],
+        anios: options?.anios || [],
     };
 
     const safeRegistros = registros?.data || [];
@@ -99,6 +114,8 @@ export default function DpoAcademyIndex({ registros, kpis, options, filters }: P
         newCentro = centro,
         newNegocio = negocio,
         newStatus = status,
+        newMes = mes,
+        newAnio = anio,
     ) => {
         router.get(
             '/modules/gente/dpo-academy',
@@ -108,6 +125,8 @@ export default function DpoAcademyIndex({ registros, kpis, options, filters }: P
                 centro: newCentro === 'todos' ? '' : newCentro,
                 negocio: newNegocio === 'todos' ? '' : newNegocio,
                 status: newStatus === 'todos' ? '' : newStatus,
+                mes: newMes === 'todos' ? '' : newMes,
+                anio: newAnio === 'todos' ? '' : newAnio,
             },
             { preserveState: true, replace: true },
         );
@@ -116,27 +135,37 @@ export default function DpoAcademyIndex({ registros, kpis, options, filters }: P
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
         setSearch(val);
-        handleFilter(val, region, centro, negocio, status);
+        handleFilter(val, region, centro, negocio, status, mes, anio);
     };
 
     const handleRegionChange = (val: string) => {
         setRegion(val);
-        handleFilter(search, val, centro, negocio, status);
+        handleFilter(search, val, centro, negocio, status, mes, anio);
     };
 
     const handleCentroChange = (val: string) => {
         setCentro(val);
-        handleFilter(search, region, val, negocio, status);
+        handleFilter(search, region, val, negocio, status, mes, anio);
     };
 
     const handleNegocioChange = (val: string) => {
         setNegocio(val);
-        handleFilter(search, region, centro, val, status);
+        handleFilter(search, region, centro, val, status, mes, anio);
     };
 
     const handleStatusChange = (val: string) => {
         setStatus(val);
-        handleFilter(search, region, centro, negocio, val);
+        handleFilter(search, region, centro, negocio, val, mes, anio);
+    };
+
+    const handleMesChange = (val: string) => {
+        setMes(val);
+        handleFilter(search, region, centro, negocio, status, val, anio);
+    };
+
+    const handleAnioChange = (val: string) => {
+        setAnio(val);
+        handleFilter(search, region, centro, negocio, status, mes, val);
     };
 
     const handleLimpiar = () => {
@@ -145,7 +174,7 @@ export default function DpoAcademyIndex({ registros, kpis, options, filters }: P
         }
     };
 
-    const exportUrl = `/modules/gente/dpo-academy/exportar?search=${encodeURIComponent(search)}&region=${region === 'todos' ? '' : encodeURIComponent(region)}&centro=${centro === 'todos' ? '' : encodeURIComponent(centro)}&negocio=${negocio === 'todos' ? '' : encodeURIComponent(negocio)}&status=${status === 'todos' ? '' : encodeURIComponent(status)}`;
+    const exportUrl = `/modules/gente/dpo-academy/exportar?search=${encodeURIComponent(search)}&region=${region === 'todos' ? '' : encodeURIComponent(region)}&centro=${centro === 'todos' ? '' : encodeURIComponent(centro)}&negocio=${negocio === 'todos' ? '' : encodeURIComponent(negocio)}&status=${status === 'todos' ? '' : encodeURIComponent(status)}&mes=${mes === 'todos' ? '' : encodeURIComponent(mes)}&anio=${anio === 'todos' ? '' : encodeURIComponent(anio)}`;
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -243,7 +272,7 @@ export default function DpoAcademyIndex({ registros, kpis, options, filters }: P
                         <CardTitle className="text-base font-semibold">Filtros de Búsqueda</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7">
                             <div>
                                 <label className="mb-1 block text-xs font-medium text-muted-foreground">Buscar</label>
                                 <div className="relative">
@@ -256,6 +285,46 @@ export default function DpoAcademyIndex({ registros, kpis, options, filters }: P
                                         className="pl-9"
                                     />
                                 </div>
+                            </div>
+
+                            <div>
+                                <label className="mb-1 block text-xs font-medium text-muted-foreground">Mes Periodo</label>
+                                <Select value={mes} onValueChange={handleMesChange}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Todos los Meses" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="todos">Todos los Meses</SelectItem>
+                                        {(safeOptions.meses && safeOptions.meses.length > 0
+                                            ? safeOptions.meses
+                                            : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+                                        ).map((m) => (
+                                            <SelectItem key={m} value={String(m)}>
+                                                {NOMBRES_MESES[m] ?? `Mes ${m}`}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div>
+                                <label className="mb-1 block text-xs font-medium text-muted-foreground">Año</label>
+                                <Select value={anio} onValueChange={handleAnioChange}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Todos los Años" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="todos">Todos los Años</SelectItem>
+                                        {(safeOptions.anios && safeOptions.anios.length > 0
+                                            ? safeOptions.anios
+                                            : [2024, 2025, 2026, 2027]
+                                        ).map((y) => (
+                                            <SelectItem key={y} value={String(y)}>
+                                                {y}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
 
                             <div>

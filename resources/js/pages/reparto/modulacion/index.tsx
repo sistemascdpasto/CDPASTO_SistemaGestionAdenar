@@ -242,15 +242,26 @@ async function guardarReferenciaUbicacion(
             Accept: 'application/json',
             'Content-Type': 'application/json',
             'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null)?.content ?? '',
+            'X-Requested-With': 'XMLHttpRequest',
         },
         body: JSON.stringify(payload),
     });
-    const json = (await response.json()) as { data?: unknown; message?: unknown };
+
+    const isJson = response.headers.get('content-type')?.includes('application/json');
+    const json = isJson ? ((await response.json()) as { data?: unknown; message?: unknown }) : null;
 
     if (!response.ok) {
         throw new Error(
-            typeof json.message === 'string' ? json.message : `El servidor respondió HTTP ${response.status}.`,
+            typeof json?.message === 'string'
+                ? json.message
+                : response.status === 419
+                  ? 'La sesión ha expirado. Por favor recargue la página.'
+                  : `El servidor respondió HTTP ${response.status}.`,
         );
+    }
+
+    if (!json || !json.data) {
+        throw new Error('El servidor devolvió una respuesta sin datos.');
     }
 
     return parseOpcionesUbicacion([json.data])[0];
@@ -316,11 +327,15 @@ function NarinoMunicipioInput({
         const loadUbicaciones = async () => {
             try {
                 const municipiosResponse = await fetch(route('reparto.modulacion.referencias.municipios'), {
-                    headers: { Accept: 'application/json' },
+                    headers: {
+                        Accept: 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
                     signal: controller.signal,
                 });
-                if (!municipiosResponse.ok) {
-                    const respuestaError = municipiosResponse.headers.get('content-type')?.includes('application/json')
+                const isJson = municipiosResponse.headers.get('content-type')?.includes('application/json');
+                if (!municipiosResponse.ok || !isJson) {
+                    const respuestaError = isJson
                         ? ((await municipiosResponse.json()) as { message?: unknown })
                         : null;
                     const detalle =
@@ -363,10 +378,18 @@ function NarinoMunicipioInput({
         try {
             let municipio = municipioSeleccionado;
             if (!municipio) {
-                municipio = await guardarReferenciaUbicacion(
-                    route('reparto.modulacion.referencias.municipios.registrar'),
-                    { nombre: nombreMunicipio },
-                );
+                try {
+                    municipio = await guardarReferenciaUbicacion(
+                        route('reparto.modulacion.referencias.municipios.registrar'),
+                        { nombre: nombreMunicipio },
+                    );
+                } catch (err) {
+                    console.warn('No se pudo registrar la referencia del municipio en el catálogo:', err);
+                    municipio = {
+                        id: nombreMunicipio.toLowerCase().replace(/\s+/g, '-'),
+                        nombre: nombreMunicipio,
+                    };
+                }
             }
 
             setMunicipios((actuales) => [
@@ -398,41 +421,56 @@ function NarinoMunicipioInput({
         try {
             let municipio = municipioSeleccionado;
             if (!municipio) {
-                const municipioGuardado = await guardarReferenciaUbicacion(
-                    route('reparto.modulacion.referencias.municipios.registrar'),
-                    { nombre: nombreMunicipio },
-                );
-                setMunicipios((actuales) => [
-                    ...actuales.filter(
-                        (opcion) => opcion.nombre.localeCompare(municipioGuardado.nombre, 'es', { sensitivity: 'base' }) !== 0,
-                    ),
-                    municipioGuardado,
-                ]);
-                municipio = municipioGuardado;
-                setMunicipioInput(municipioGuardado.nombre);
-                ultimoMunicipioRef.current = municipioGuardado.nombre;
-                onChange(municipioGuardado.nombre);
+                try {
+                    const municipioGuardado = await guardarReferenciaUbicacion(
+                        route('reparto.modulacion.referencias.municipios.registrar'),
+                        { nombre: nombreMunicipio },
+                    );
+                    setMunicipios((actuales) => [
+                        ...actuales.filter(
+                            (opcion) => opcion.nombre.localeCompare(municipioGuardado.nombre, 'es', { sensitivity: 'base' }) !== 0,
+                        ),
+                        municipioGuardado,
+                    ]);
+                    municipio = municipioGuardado;
+                    setMunicipioInput(municipioGuardado.nombre);
+                    ultimoMunicipioRef.current = municipioGuardado.nombre;
+                    onChange(municipioGuardado.nombre);
+                } catch (err) {
+                    console.warn('No se pudo registrar el municipio:', err);
+                    municipio = {
+                        id: nombreMunicipio.toLowerCase().replace(/\s+/g, '-'),
+                        nombre: nombreMunicipio,
+                    };
+                }
             }
 
-            const barrioGuardado = await guardarReferenciaUbicacion(
-                route('reparto.modulacion.referencias.barrios.registrar'),
-                { municipio_id: municipio.id, nombre: nombreBarrio },
-            );
-            setBarrios((actuales) => [
-                ...actuales.filter(
-                    (actual) => actual.nombre.localeCompare(barrioGuardado.nombre, 'es', { sensitivity: 'base' }) !== 0,
-                ),
-                barrioGuardado,
-            ]);
+            let barrioNombreFinal = nombreBarrio;
+            try {
+                const barrioGuardado = await guardarReferenciaUbicacion(
+                    route('reparto.modulacion.referencias.barrios.registrar'),
+                    { municipio_id: municipio.id, nombre: nombreBarrio },
+                );
+                setBarrios((actuales) => [
+                    ...actuales.filter(
+                        (actual) => actual.nombre.localeCompare(barrioGuardado.nombre, 'es', { sensitivity: 'base' }) !== 0,
+                    ),
+                    barrioGuardado,
+                ]);
+                barrioNombreFinal = barrioGuardado.nombre;
+            } catch (err) {
+                console.warn('No se pudo registrar la referencia del barrio en el catálogo:', err);
+            }
+
             if (!puedeAgregarViaje) {
-                setUbicacionesError('Barrio guardado en el catálogo. Seleccione una placa y pulse + nuevamente para agregarlo al viaje.');
+                setUbicacionesError('Barrio procesado. Seleccione una placa y pulse + nuevamente para agregarlo al viaje.');
                 return;
             }
 
             setBarrioInput('');
             ultimoBarrioRef.current = '';
             onBarrioChange('');
-            onDestinoAgregado({ lugares: municipio.nombre, barrio: barrioGuardado.nombre });
+            onDestinoAgregado({ lugares: municipio.nombre, barrio: barrioNombreFinal });
         } catch (error) {
             setUbicacionesError(error instanceof Error ? error.message : 'No se pudo agregar el barrio.');
         } finally {
@@ -455,9 +493,16 @@ function NarinoMunicipioInput({
             try {
                 const response = await fetch(
                     route('reparto.modulacion.referencias.barrios', { municipio_id: municipioSeleccionadoId }),
-                    { headers: { Accept: 'application/json' }, signal: controller.signal },
+                    {
+                        headers: {
+                            Accept: 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                        signal: controller.signal,
+                    },
                 );
-                if (!response.ok) throw new Error('No se pudieron cargar los barrios del municipio.');
+                const isJson = response.headers.get('content-type')?.includes('application/json');
+                if (!response.ok || !isJson) throw new Error('No se pudieron cargar los barrios del municipio.');
                 const json = (await response.json()) as { data?: unknown; api_disponible?: unknown };
                 let data = json.data;
                 if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
