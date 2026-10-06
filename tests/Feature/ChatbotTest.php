@@ -57,6 +57,41 @@ class ChatbotTest extends TestCase
         });
     }
 
+    public function test_el_limite_de_tokens_enviado_a_groq_es_generoso(): void
+    {
+        Http::fake([
+            'https://api.groq.com/*' => Http::response([
+                'choices' => [['message' => ['content' => 'Respuesta corta.'], 'finish_reason' => 'stop']],
+            ]),
+        ]);
+
+        $user = $this->usuarioConRol('Reparto');
+
+        $this->actingAs($user)->postJson(route('chatbot.send'), ['mensaje' => 'Hola']);
+
+        Http::assertSent(fn ($request) => $request['max_tokens'] >= 1500);
+    }
+
+    public function test_si_groq_corta_la_respuesta_por_longitud_se_avisa_al_usuario(): void
+    {
+        Http::fake([
+            'https://api.groq.com/*' => Http::response([
+                'choices' => [[
+                    'message' => ['content' => 'Esta respuesta quedó a mi'],
+                    'finish_reason' => 'length',
+                ]],
+            ]),
+        ]);
+
+        $user = $this->usuarioConRol('Reparto');
+
+        $response = $this->actingAs($user)->postJson(route('chatbot.send'), ['mensaje' => 'Explícame todo el modelo DPO']);
+
+        $response->assertOk();
+        $this->assertStringContainsString('Esta respuesta quedó a mi', $response->json('message'));
+        $this->assertStringContainsString('recortada por longitud', $response->json('message'));
+    }
+
     public function test_un_usuario_no_autenticado_no_puede_usar_el_chatbot(): void
     {
         $response = $this->postJson(route('chatbot.send'), ['mensaje' => 'Hola']);

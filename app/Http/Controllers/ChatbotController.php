@@ -87,7 +87,11 @@ class ChatbotController extends Controller
             'model' => $modelo,
             'messages' => $mensajes,
             'temperature' => 0.4,
-            'max_tokens' => 900,
+            // Los modelos "gpt-oss" gastan parte de este presupuesto en
+            // razonamiento interno antes de escribir la respuesta visible
+            // (ver reasoning_effort abajo), así que un límite bajo cortaba
+            // respuestas a mitad de frase incluso para preguntas normales.
+            'max_tokens' => 1536,
         ];
 
         // Los modelos de razonamiento "gpt-oss" de Groq soportan (y sin esto
@@ -101,7 +105,7 @@ class ChatbotController extends Controller
 
         try {
             $respuesta = Http::withToken($apiKey)
-                ->timeout(30)
+                ->timeout(45)
                 ->post(self::GROQ_ENDPOINT, $payload);
         } catch (\Throwable $e) {
             Log::error('Chatbot: error al conectar con Groq.', ['error' => $e->getMessage()]);
@@ -128,6 +132,13 @@ class ChatbotController extends Controller
             return response()->json([
                 'message' => 'No obtuve una respuesta clara. ¿Puedes reformular tu pregunta?',
             ], 502);
+        }
+
+        // Si aun con el límite de arriba la respuesta se corta (pregunta
+        // que pedía algo excepcionalmente extenso), que quede explícito en
+        // vez de dejar una frase a medias sin avisar.
+        if ($respuesta->json('choices.0.finish_reason') === 'length') {
+            $texto .= "\n\n_(Respuesta recortada por longitud — escribe \"continúa\" para seguir.)_";
         }
 
         return response()->json(['message' => $texto]);
