@@ -4,6 +4,7 @@ use App\Http\Middleware\EnsureAccountIsActive;
 use App\Http\Middleware\EnsureGeovictoriaApiToken;
 use App\Http\Middleware\EnsureModuleAccess;
 use App\Http\Middleware\EnsureSimitApiToken;
+use App\Http\Middleware\EnsureSubmoduleAccess;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\PreventSearchIndexing;
 use App\Http\Middleware\SecurityHeaders;
@@ -49,6 +50,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'active' => EnsureAccountIsActive::class,
             'module.access' => EnsureModuleAccess::class,
+            'submodule.access' => EnsureSubmoduleAccess::class,
             'role' => RoleMiddleware::class,
             'permission' => PermissionMiddleware::class,
             'role_or_permission' => RoleOrPermissionMiddleware::class,

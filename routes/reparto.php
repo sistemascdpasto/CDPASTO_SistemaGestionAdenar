@@ -19,7 +19,7 @@ use App\Http\Controllers\Reparto\RevisionCausalController;
 use App\Http\Controllers\Reparto\RevisionResponsableController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth', 'active'])
+Route::middleware(['auth', 'active', 'submodule.access'])
     ->prefix('modules/reparto')
     ->name('reparto.')
     ->group(function () {

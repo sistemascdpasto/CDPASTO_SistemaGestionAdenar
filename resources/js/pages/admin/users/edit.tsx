@@ -6,7 +6,7 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, Di
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
-import { UserFormData, UserFormFields } from '@/pages/admin/users/user-form-fields';
+import { ModuleRegistry, UserFormData, UserFormFields } from '@/pages/admin/users/user-form-fields';
 import { type BreadcrumbItem } from '@/types';
 import { Head, useForm } from '@inertiajs/react';
 import { CheckCircle2, LoaderCircle } from 'lucide-react';
@@ -20,9 +20,11 @@ interface EditableUser {
     email: string | null;
     is_active: boolean;
     roles: string[];
+    modulos_personalizados: boolean;
+    submodulos_actuales: Record<string, string[]>;
 }
 
-export default function EditUser({ user, roles }: { user: EditableUser; roles: string[] }) {
+export default function EditUser({ user, roles, moduleRegistry }: { user: EditableUser; roles: string[]; moduleRegistry: ModuleRegistry }) {
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Dashboard', href: '/dashboard' },
         { title: 'Gestión de Usuarios', href: '/admin/users' },
@@ -38,6 +40,8 @@ export default function EditUser({ user, roles }: { user: EditableUser; roles: s
         password_confirmation: '',
         roles: user.roles,
         is_active: user.is_active,
+        modulos_personalizados: user.modulos_personalizados,
+        submodulos: user.submodulos_actuales,
     });
 
     const submit: FormEventHandler = (e) => {
@@ -80,6 +84,7 @@ export default function EditUser({ user, roles }: { user: EditableUser; roles: s
                             setData={setData}
                             errors={errors}
                             availableRoles={roles}
+                            moduleRegistry={moduleRegistry}
                             showPassword={false}
                             processing={processing}
                         />

@@ -22,6 +22,7 @@ interface UserRow {
     email: string | null;
     is_active: boolean;
     roles: string[];
+    modulos_personalizados: boolean;
 }
 
 interface PaginationLink {
@@ -114,6 +115,11 @@ export default function UsersIndex({ users, filters }: { users: UsersPaginator; 
                                                     {role}
                                                 </Badge>
                                             ))}
+                                            {user.modulos_personalizados && (
+                                                <Badge variant="outline" className="border-amber-400 text-amber-700 dark:text-amber-400">
+                                                    Acceso personalizado
+                                                </Badge>
+                                            )}
                                         </div>
                                     </TableCell>
                                     <TableCell>

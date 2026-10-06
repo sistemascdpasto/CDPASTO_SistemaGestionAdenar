@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Route;
 // Colaborador y Reparto; Reparto y Administrador además ven el historial de
 // todos los colaboradores (Colaborador solo ve el suyo) y el dashboard de
 // indicadores (Colaborador no lo ve, por eso va en un grupo aparte).
-Route::middleware(['auth', 'active', 'role:Colaborador|Reparto|Administrador'])
+Route::middleware(['auth', 'active', 'role:Colaborador|Reparto|Administrador', 'submodule.access'])
     ->prefix('cinco-porques')
     ->name('cinco-porques.')
     ->group(function () {
@@ -22,14 +22,14 @@ Route::middleware(['auth', 'active', 'role:Colaborador|Reparto|Administrador'])
 
 // Registrado antes del wildcard {cincoPorque} de abajo para que "indicadores"
 // no sea interpretado como un id de registro.
-Route::middleware(['auth', 'active', 'role:Reparto|Administrador'])
+Route::middleware(['auth', 'active', 'role:Reparto|Administrador', 'submodule.access'])
     ->prefix('cinco-porques')
     ->name('cinco-porques.')
     ->group(function () {
         Route::get('indicadores', [CincoPorqueController::class, 'indicadores'])->name('indicadores');
     });
 
-Route::middleware(['auth', 'active', 'role:Colaborador|Reparto|Administrador'])
+Route::middleware(['auth', 'active', 'role:Colaborador|Reparto|Administrador', 'submodule.access'])
     ->prefix('cinco-porques')
     ->name('cinco-porques.')
     ->group(function () {

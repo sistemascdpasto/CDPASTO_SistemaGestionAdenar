@@ -3,8 +3,11 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Models\Capacitaciones\CapacitacionRevision;
 use App\Models\Seguridad\Colaborador;
+use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -13,7 +16,7 @@ use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
+    /** @use HasFactory<UserFactory> */
     use HasFactory, HasRoles, Notifiable, SoftDeletes;
 
     /**
@@ -29,6 +32,7 @@ class User extends Authenticatable
         'email',
         'password',
         'is_active',
+        'modulos_personalizados',
     ];
 
     /**
@@ -54,6 +58,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'modulos_personalizados' => 'boolean',
         ];
     }
 
@@ -71,8 +76,13 @@ class User extends Authenticatable
         return $this->hasOne(Colaborador::class);
     }
 
-    public function capacitacionRevisiones(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function submoduleAccess(): HasMany
     {
-        return $this->hasMany(\App\Models\Capacitaciones\CapacitacionRevision::class);
+        return $this->hasMany(UserSubmoduleAccess::class);
+    }
+
+    public function capacitacionRevisiones(): HasMany
+    {
+        return $this->hasMany(CapacitacionRevision::class);
     }
 }
