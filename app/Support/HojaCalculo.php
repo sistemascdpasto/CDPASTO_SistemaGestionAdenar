@@ -2,8 +2,11 @@
 
 namespace App\Support;
 
+use PhpOffice\PhpSpreadsheet\Calculation\Exception as CalculationException;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\RichText\RichText;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 /**
@@ -41,6 +44,50 @@ class HojaCalculo
         $ultimaFila = $hoja->getHighestDataRow();
         $ultimaColumna = $hoja->getHighestDataColumn();
 
-        return $hoja->rangeToArray("A1:{$ultimaColumna}{$ultimaFila}", null, true, $formatear, $referencias);
+        try {
+            return $hoja->rangeToArray("A1:{$ultimaColumna}{$ultimaFila}", null, true, $formatear, $referencias);
+        } catch (CalculationException) {
+            // Fórmulas que PhpSpreadsheet no sabe evaluar (p. ej. referencias a tablas de Excel
+            // como Tabla1[@Columna]): se usa el resultado que Excel guardó en el archivo.
+            return self::filasConValoresGuardados($hoja, $ultimaFila, $ultimaColumna, $formatear, $referencias);
+        }
+    }
+
+    /**
+     * @return array<int|string, array<int|string, mixed>>
+     */
+    private static function filasConValoresGuardados(Worksheet $hoja, int $ultimaFila, string $ultimaColumna, bool $formatear, bool $referencias): array
+    {
+        $filas = [];
+
+        foreach ($hoja->getRowIterator(1, $ultimaFila) as $fila) {
+            $valores = [];
+
+            foreach ($fila->getCellIterator('A', $ultimaColumna) as $celda) {
+                $valor = $celda->isFormula() ? $celda->getOldCalculatedValue() : $celda->getValue();
+
+                if ($valor instanceof RichText) {
+                    $valor = $valor->getPlainText();
+                }
+
+                if ($formatear && $valor !== null && $valor !== '') {
+                    $valor = NumberFormat::toFormattedString($valor, $celda->getStyle()->getNumberFormat()->getFormatCode());
+                }
+
+                if ($referencias) {
+                    $valores[$celda->getColumn()] = $valor;
+                } else {
+                    $valores[] = $valor;
+                }
+            }
+
+            if ($referencias) {
+                $filas[$fila->getRowIndex()] = $valores;
+            } else {
+                $filas[] = $valores;
+            }
+        }
+
+        return $filas;
     }
 }

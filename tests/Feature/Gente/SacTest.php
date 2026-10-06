@@ -117,6 +117,32 @@ class SacTest extends TestCase
         }
     }
 
+    public function test_sac_import_does_not_fail_with_ambiguous_headers_or_long_values(): void
+    {
+        $user = $this->genteUser();
+
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->fromArray([
+            // «CASO» (texto largo de respuesta) aparece DESPUÉS del número de caso: no debe pisarlo.
+            ['AÑO', 'NUMERO DE CASO ESTANDAR', 'CASO', 'PLACA'],
+            ['2026', 'CASO-777', str_repeat('Para nosotros lo más importante es tu tranquilidad. ', 10), 'ABC123'],
+            ['2026', null, null, str_repeat('X', 300)],
+        ]);
+
+        $tempPath = tempnam(sys_get_temp_dir(), 'sac_test_').'.xlsx';
+        (new Xlsx($spreadsheet))->save($tempPath);
+
+        $this->actingAs($user)->post(route('gente.sac.importar'), [
+            'archivo' => new UploadedFile($tempPath, 'sac.xlsx', null, null, true),
+        ])->assertSessionHas('success');
+
+        $this->assertDatabaseHas('sac', ['numero_caso_estandar' => 'CASO-777', 'placa' => 'ABC123']);
+        $this->assertSame(255, mb_strlen(Sac::whereNull('numero_caso_estandar')->value('placa')));
+
+        @unlink($tempPath);
+    }
+
     public function test_sac_plantilla_download(): void
     {
         $user = $this->genteUser();

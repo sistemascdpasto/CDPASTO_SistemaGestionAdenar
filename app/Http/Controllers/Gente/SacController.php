@@ -97,6 +97,9 @@ class SacController extends Controller
         'hora'                     => 'hora',
     ];
 
+    /** Columnas TEXT de la tabla sac (sin límite de 255 caracteres). */
+    private const TEXT_FIELDS = ['descripcion', 'comentario', 'plan_accion'];
+
     public function index(Request $request): Response
     {
         $search = trim($request->input('search', ''));
@@ -206,16 +209,24 @@ class SacController extends Controller
         $headerRow = array_shift($rows);
         $columnIndexMap = [];
 
-        foreach ($headerRow as $colLetter => $headerName) {
-            $normHeader = $this->normalizeHeader((string) $headerName);
-            if (isset(self::COLUMN_MAP[$normHeader])) {
-                $columnIndexMap[$colLetter] = self::COLUMN_MAP[$normHeader];
-            } else {
-                // Intento fuzzy match
-                $fuzzy = $this->fuzzyMatchHeader($normHeader);
-                if ($fuzzy) {
-                    $columnIndexMap[$colLetter] = $fuzzy;
-                }
+        // Primero las coincidencias exactas y después las aproximadas, y cada campo se asigna a una
+        // sola columna: así una columna como «Comentario del caso» no pisa al «Número de caso».
+        $normHeaders = array_map(fn ($h) => $this->normalizeHeader((string) $h), $headerRow);
+
+        foreach ($normHeaders as $colLetter => $normHeader) {
+            $field = self::COLUMN_MAP[$normHeader] ?? null;
+            if ($field && ! in_array($field, $columnIndexMap, true)) {
+                $columnIndexMap[$colLetter] = $field;
+            }
+        }
+
+        foreach ($normHeaders as $colLetter => $normHeader) {
+            if (isset($columnIndexMap[$colLetter]) || $normHeader === '') {
+                continue;
+            }
+            $fuzzy = $this->fuzzyMatchHeader($normHeader);
+            if ($fuzzy && ! in_array($fuzzy, $columnIndexMap, true)) {
+                $columnIndexMap[$colLetter] = $fuzzy;
             }
         }
 
@@ -568,6 +579,14 @@ class SacController extends Controller
             } catch (\Exception $e) {
                 return null;
             }
+        }
+
+        // Las columnas de texto corto son VARCHAR(255): un valor más largo hacía fallar toda la
+        // importación («Data too long»). Se recorta y queda registro.
+        if (! in_array($field, self::TEXT_FIELDS, true) && mb_strlen($valStr) > 255) {
+            Log::warning("SAC import: valor recortado a 255 caracteres en '{$field}'.");
+
+            return mb_substr($valStr, 0, 255);
         }
 
         return $valStr;
