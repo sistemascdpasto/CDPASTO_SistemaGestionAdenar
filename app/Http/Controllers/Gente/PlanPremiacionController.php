@@ -135,9 +135,14 @@ class PlanPremiacionController extends Controller
             return preg_replace('/[^A-Z0-9]/', '', $str) ?? $str;
         };
 
-        // Busca registros DPO del período (mes+año explícito en el registro, o
-        // bien importados sin mes/año donde created_at cae en el período).
-        // Si no hay registros para el período → colecciones vacías → todos 100%.
+        // DPO Academy: filtra por el mes/año del período cuando los registros
+        // traen esos campos explícitos. Si no hay registros con mes/año para
+        // ese período, usa los que tienen mes/año nulo (importados sin período)
+        // que correspondan al año seleccionado por created_at.
+        // Si tampoco hay de esos, cae al total de la tabla sin filtro de período
+        // (el listado DPO es un estado del colaborador — si está en la última
+        // importación disponible, sigue siendo 0%).
+        // Si la tabla está completamente vacía → todos 100%.
         $registrosDpo = DB::table('dpo_academy')
             ->where(function ($q) use ($mesesSeleccionados, $anio, $monthExpr) {
                 $q->where(function ($q2) use ($mesesSeleccionados, $anio) {
@@ -147,10 +152,22 @@ class PlanPremiacionController extends Controller
                     $q2->whereNull('mes')
                        ->whereIn($monthExpr('created_at'), $mesesSeleccionados)
                        ->whereYear('created_at', $anio);
+                })->orWhere(function ($q2) use ($anio) {
+                    // Fallback: registros del año seleccionado sin mes explícito
+                    // y sin coincidencia por created_at en el mes exacto.
+                    $q2->whereNull('mes')
+                       ->where('anio', $anio);
                 });
             })
             ->select(['colaborador_id', 'qr_safety', 'nombre'])
             ->get();
+
+        // Si no hay registros para el año, usar toda la tabla disponible.
+        if ($registrosDpo->isEmpty()) {
+            $registrosDpo = DB::table('dpo_academy')
+                ->select(['colaborador_id', 'qr_safety', 'nombre'])
+                ->get();
+        }
 
         $dpoColaboradorIds = $registrosDpo->pluck('colaborador_id')->filter()->unique()->flip()->toArray();
         $dpoQrSafetySet = [];
