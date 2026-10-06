@@ -200,79 +200,81 @@ export default function GraficoBarrasMes({ colaboradores, mes, anio }: Props) {
             </CardHeader>
 
             <CardContent>
-                <ResponsiveContainer width="100%" height={chartHeight}>
-                    <BarChart
-                        data={data}
-                        margin={{ top: 8, right: 16, left: 0, bottom: 48 }}
-                        barCategoryGap="18%"
-                    >
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                        <XAxis
-                            dataKey="nombre"
-                            tick={{ fontSize: 10, fill: '#64748b' }}
-                            angle={-35}
-                            textAnchor="end"
-                            interval={0}
-                            height={52}
-                        />
-                        <YAxis
-                            domain={[0, 100]}
-                            tickFormatter={(v) => `${v}%`}
-                            tick={{ fontSize: 10, fill: '#64748b' }}
-                            width={42}
-                        />
-                        <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(148,163,184,0.1)' }} />
-                        <Legend
-                            wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
-                            formatter={(value) => <span style={{ color: '#475569' }}>{value}</span>}
-                        />
+                <div className="overflow-x-auto">
+                    <ResponsiveContainer width="100%" minWidth={Math.max(480, slice.length * 48)} height={chartHeight}>
+                        <BarChart
+                            data={data}
+                            margin={{ top: 8, right: 16, left: 0, bottom: 48 }}
+                            barCategoryGap="18%"
+                        >
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                            <XAxis
+                                dataKey="nombre"
+                                tick={{ fontSize: 10, fill: '#64748b' }}
+                                angle={-35}
+                                textAnchor="end"
+                                interval={0}
+                                height={52}
+                            />
+                            <YAxis
+                                domain={[0, 100]}
+                                tickFormatter={(v) => `${v}%`}
+                                tick={{ fontSize: 10, fill: '#64748b' }}
+                                width={42}
+                            />
+                            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(148,163,184,0.1)' }} />
+                            <Legend
+                                wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
+                                formatter={(value) => <span style={{ color: '#475569' }}>{value}</span>}
+                            />
 
-                        {/* Promedio de la página visible */}
-                        <ReferenceLine
-                            y={promedioPagina}
-                            stroke="#a855f7"
-                            strokeDasharray="4 3"
-                            strokeWidth={1.5}
-                            label={{ value: `Prom. ${promedioPagina.toFixed(1)}%`, position: 'insideTopRight', fontSize: 10, fill: '#a855f7' }}
-                        />
-                        {/* Meta 70% */}
-                        <ReferenceLine
-                            y={70}
-                            stroke="#10b981"
-                            strokeDasharray="4 3"
-                            strokeWidth={1.5}
-                            label={{ value: 'Meta 70%', position: 'insideTopLeft', fontSize: 10, fill: '#10b981' }}
-                        />
+                            {/* Promedio de la página visible */}
+                            <ReferenceLine
+                                y={promedioPagina}
+                                stroke="#a855f7"
+                                strokeDasharray="4 3"
+                                strokeWidth={1.5}
+                                label={{ value: `Prom. ${promedioPagina.toFixed(1)}%`, position: 'insideTopRight', fontSize: 10, fill: '#a855f7' }}
+                            />
+                            {/* Meta 70% */}
+                            <ReferenceLine
+                                y={70}
+                                stroke="#10b981"
+                                strokeDasharray="4 3"
+                                strokeWidth={1.5}
+                                label={{ value: 'Meta 70%', position: 'insideTopLeft', fontSize: 10, fill: '#10b981' }}
+                            />
 
-                        {PILARES.map((p) => (
-                            <Bar
-                                key={p.key}
-                                dataKey={p.key}
-                                name={p.label}
-                                stackId="a"
-                                fill={p.color}
-                                isAnimationActive={true}
-                                animationDuration={400}
-                                radius={p.key === 'resultado_flota' ? [3, 3, 0, 0] : [0, 0, 0, 0]}
-                            >
-                                {data.map((entry, index) => {
-                                    const total =
-                                        entry.resultado +
-                                        entry.resultado_asistencia +
-                                        entry.resultado_reparto +
-                                        entry.resultado_flota;
-                                    return (
-                                        <Cell
-                                            key={`cell-${p.key}-${index}`}
-                                            fill={p.color}
-                                            fillOpacity={total >= 70 ? 1 : 0.6}
-                                        />
-                                    );
-                                })}
-                            </Bar>
-                        ))}
-                    </BarChart>
-                </ResponsiveContainer>
+                            {PILARES.map((p) => (
+                                <Bar
+                                    key={p.key}
+                                    dataKey={p.key}
+                                    name={p.label}
+                                    stackId="a"
+                                    fill={p.color}
+                                    isAnimationActive={true}
+                                    animationDuration={400}
+                                    radius={p.key === 'resultado_flota' ? [3, 3, 0, 0] : [0, 0, 0, 0]}
+                                >
+                                    {data.map((entry, index) => {
+                                        const total =
+                                            entry.resultado +
+                                            entry.resultado_asistencia +
+                                            entry.resultado_reparto +
+                                            entry.resultado_flota;
+                                        return (
+                                            <Cell
+                                                key={`cell-${p.key}-${index}`}
+                                                fill={p.color}
+                                                fillOpacity={total >= 70 ? 1 : 0.6}
+                                            />
+                                        );
+                                    })}
+                                </Bar>
+                            ))}
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
 
                 {/* Mini resumen — promedios de la página visible */}
                 <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 border-t border-border pt-3">
