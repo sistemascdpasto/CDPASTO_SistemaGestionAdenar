@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Support\ModuleAccessRegistry;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class UpdateUserRequest extends FormRequest
 {
@@ -31,6 +33,23 @@ class UpdateUserRequest extends FormRequest
             'roles' => ['required', 'array', 'min:1'],
             'roles.*' => ['string', Rule::exists('roles', 'name')],
             'is_active' => ['boolean'],
+            'modulos_personalizados' => ['boolean'],
+            'submodulos' => ['nullable', 'array'],
+            'submodulos.*' => ['array'],
+            'submodulos.*.*' => ['string'],
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator) {
+            foreach ((array) $this->input('submodulos', []) as $moduleSlug => $keys) {
+                foreach ((array) $keys as $key) {
+                    if (! ModuleAccessRegistry::exists((string) $moduleSlug, (string) $key)) {
+                        $validator->errors()->add('submodulos', "Submódulo inválido: {$moduleSlug}.{$key}.");
+                    }
+                }
+            }
+        });
     }
 }

@@ -7,8 +7,11 @@ use App\Http\Requests\Admin\ResetPasswordRequest;
 use App\Http\Requests\Admin\StoreUserRequest;
 use App\Http\Requests\Admin\UpdateUserRequest;
 use App\Models\User;
+use App\Models\UserSubmoduleAccess;
+use App\Support\ModuleAccessRegistry;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 use Spatie\Permission\Models\Role;
@@ -38,6 +41,7 @@ class UserController extends Controller
                 'email' => $user->email,
                 'is_active' => $user->is_active,
                 'roles' => $user->roles->pluck('name'),
+                'modulos_personalizados' => $user->modulos_personalizados,
             ]);
 
         return Inertia::render('admin/users/index', [
@@ -50,17 +54,20 @@ class UserController extends Controller
     {
         return Inertia::render('admin/users/create', [
             'roles' => Role::orderBy('name')->pluck('name'),
+            'moduleRegistry' => $this->moduleRegistryForFrontend(),
         ]);
     }
 
     public function store(StoreUserRequest $request): RedirectResponse
     {
         $user = User::create([
-            ...$request->safe()->except('roles'),
+            ...$request->safe()->except(['roles', 'submodulos']),
             'is_active' => $request->boolean('is_active', true),
+            'modulos_personalizados' => $request->boolean('modulos_personalizados'),
         ]);
 
         $user->syncRoles($request->validated('roles'));
+        $this->syncSubmoduleAccess($user, $request->validated('submodulos', []));
 
         return to_route('admin.users.index')->with('status', 'Usuario creado correctamente.');
     }
@@ -76,21 +83,73 @@ class UserController extends Controller
                 'email' => $user->email,
                 'is_active' => $user->is_active,
                 'roles' => $user->roles->pluck('name'),
+                'modulos_personalizados' => $user->modulos_personalizados,
+                // Acceso efectivo actual (ya sea derivado del rol o la
+                // personalización previa): es con lo que arranca marcado el
+                // selector de submódulos al activar la personalización.
+                'submodulos_actuales' => ModuleAccessRegistry::accessibleSubmodules($user),
             ],
             'roles' => Role::orderBy('name')->pluck('name'),
+            'moduleRegistry' => $this->moduleRegistryForFrontend(),
         ]);
     }
 
     public function update(UpdateUserRequest $request, User $user): RedirectResponse
     {
         $user->update([
-            ...$request->safe()->except(['roles']),
+            ...$request->safe()->except(['roles', 'submodulos']),
             'is_active' => $request->boolean('is_active', true),
+            'modulos_personalizados' => $request->boolean('modulos_personalizados'),
         ]);
 
         $user->syncRoles($request->validated('roles'));
+        $this->syncSubmoduleAccess($user, $request->validated('submodulos', []));
 
         return to_route('admin.users.index')->with('status', 'Usuario actualizado correctamente.');
+    }
+
+    /**
+     * @return array<string, array<int, array{key: string, label: string}>>
+     */
+    private function moduleRegistryForFrontend(): array
+    {
+        $registry = [];
+
+        foreach (ModuleAccessRegistry::all() as $moduleSlug => $submodules) {
+            $registry[$moduleSlug] = collect($submodules)
+                ->map(fn (array $def, string $key) => ['key' => $key, 'label' => $def['label']])
+                ->values()
+                ->all();
+        }
+
+        return $registry;
+    }
+
+    /**
+     * @param  array<string, array<int, string>>  $submodulos
+     */
+    private function syncSubmoduleAccess(User $user, array $submodulos): void
+    {
+        DB::transaction(function () use ($user, $submodulos) {
+            $user->submoduleAccess()->delete();
+
+            $rows = [];
+            foreach ($submodulos as $moduleSlug => $keys) {
+                foreach (array_unique($keys) as $key) {
+                    $rows[] = [
+                        'user_id' => $user->id,
+                        'module_slug' => $moduleSlug,
+                        'submodule_key' => $key,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                }
+            }
+
+            if ($rows !== []) {
+                UserSubmoduleAccess::insert($rows);
+            }
+        });
     }
 
     public function resetPassword(ResetPasswordRequest $request, User $user): RedirectResponse

@@ -1,7 +1,7 @@
 import HeadingSmall from '@/components/heading-small';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
-import { UserFormData, UserFormFields } from '@/pages/admin/users/user-form-fields';
+import { ModuleRegistry, UserFormData, UserFormFields } from '@/pages/admin/users/user-form-fields';
 import { type BreadcrumbItem } from '@/types';
 import { Head, useForm } from '@inertiajs/react';
 import { LoaderCircle } from 'lucide-react';
@@ -13,7 +13,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Nuevo usuario', href: '/admin/users/create' },
 ];
 
-export default function CreateUser({ roles }: { roles: string[] }) {
+export default function CreateUser({ roles, moduleRegistry }: { roles: string[]; moduleRegistry: ModuleRegistry }) {
     const { data, setData, post, processing, errors } = useForm<UserFormData>({
         first_name: '',
         last_name: '',
@@ -23,6 +23,8 @@ export default function CreateUser({ roles }: { roles: string[] }) {
         password_confirmation: '',
         roles: [],
         is_active: true,
+        modulos_personalizados: false,
+        submodulos: {},
     });
 
     const submit: FormEventHandler = (e) => {
@@ -37,7 +39,15 @@ export default function CreateUser({ roles }: { roles: string[] }) {
                 <HeadingSmall title="Nuevo usuario" description="Crea una cuenta y asígnale un rol para definir a qué módulos podrá acceder." />
 
                 <form onSubmit={submit} className="max-w-2xl space-y-6">
-                    <UserFormFields data={data} setData={setData} errors={errors} availableRoles={roles} showPassword processing={processing} />
+                    <UserFormFields
+                        data={data}
+                        setData={setData}
+                        errors={errors}
+                        availableRoles={roles}
+                        moduleRegistry={moduleRegistry}
+                        showPassword
+                        processing={processing}
+                    />
 
                     <Button type="submit" disabled={processing}>
                         {processing && <LoaderCircle className="size-4 animate-spin" />}

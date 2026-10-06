@@ -42,7 +42,7 @@ Route::get('verificar-prueba/{prueba}/{token}', [PublicVerificationController::c
 // propiedad de Gente (crear/importar/editar/eliminar), con acceso de solo
 // lectura para Administrador, Seguridad, Reparto y Flota.
 
-Route::middleware(['auth', 'active', 'role:Administrador|Seguridad'])
+Route::middleware(['auth', 'active', 'role:Administrador|Seguridad', 'submodule.access'])
     ->prefix('modules/seguridad')
     ->name('seguridad.')
     ->group(function () {

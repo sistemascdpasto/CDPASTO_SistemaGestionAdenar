@@ -6,6 +6,8 @@ export interface Auth {
     isAdmin: boolean;
     isColaborador: boolean;
     accessibleModules: string[];
+    /** module_slug -> submodule keys accesibles, ya resueltos (rol + personalización). */
+    accessibleSubmodules: Record<string, string[]>;
 }
 
 export interface BreadcrumbItem {

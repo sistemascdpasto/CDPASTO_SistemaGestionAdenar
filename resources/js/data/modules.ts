@@ -280,6 +280,44 @@ export function findModule(moduleSlug: string): ModuleDef | undefined {
 }
 
 /**
+ * Clave estable de un submódulo "hoja" para cruzar contra `auth.accessibleSubmodules`
+ * (ver App\Support\ModuleAccessRegistry / config/modulos.php en el backend).
+ * Normalmente es `slug`; para los que solo tienen `href` (ej. las vistas de
+ * Rutogramas o Plan Padrinos, que son una sola función con varias páginas)
+ * se deriva del primer segmento tras `/modules/{modulo}/`, así que todas las
+ * vistas de una misma función comparten la misma clave.
+ */
+export function submoduleKey(sub: SubModuleDef): string | null {
+    if (sub.slug) return sub.slug;
+    if (sub.href) {
+        const match = sub.href.match(/^\/modules\/[^/]+\/([^/]+)/);
+        if (match) return match[1];
+    }
+    return null;
+}
+
+/**
+ * ¿Puede verse este submódulo "hoja" según la personalización por usuario?
+ * Los submódulos `shared` (inyectados transversalmente, ej. Capacitaciones)
+ * no son personalizables y siempre pasan — ver ModuleAccessRegistry en el
+ * backend, que tampoco los incluye en el catálogo.
+ */
+export function isSubmoduleAccessible(
+    sub: SubModuleDef,
+    moduleSlug: string,
+    isAdmin: boolean,
+    accessibleSubmodules: Record<string, string[]>,
+): boolean {
+    if (isAdmin || sub.shared) return true;
+
+    const key = submoduleKey(sub);
+    if (!key) return true;
+
+    const effectiveModule = sub.moduleSlugOverride ?? moduleSlug;
+    return (accessibleSubmodules[effectiveModule] ?? []).includes(key);
+}
+
+/**
  * URL a la que navega un submódulo "hoja" desde la vista del módulo o el
  * sidebar: respeta `href` (ruta propia fuera del prefijo del módulo) y
  * `moduleSlugOverride` (submódulo inyectado que vive bajo otro pilar).
@@ -300,10 +338,18 @@ export interface ModuleSection {
  * Reorganiza los submódulos de un pilar en secciones para la vista del módulo:
  * primero los submódulos sueltos y luego cada grupo afín (ACIS, OWD, Exámenes
  * Médicos, ...) con su propio encabezado, en vez de una única grilla plana.
- * Respeta `allowedRoles` de cada submódulo (Administrador siempre puede ver).
+ * Respeta `allowedRoles` de cada submódulo y la personalización por usuario
+ * en `accessibleSubmodules` (Administrador siempre puede ver todo).
  */
-export function buildModuleSections(mod: ModuleDef, userRoles: string[], isAdmin: boolean): ModuleSection[] {
-    const puedeVer = (sub: SubModuleDef) => isAdmin || !sub.allowedRoles || sub.allowedRoles.some((r) => userRoles.includes(r));
+export function buildModuleSections(
+    mod: ModuleDef,
+    userRoles: string[],
+    isAdmin: boolean,
+    accessibleSubmodules: Record<string, string[]> = {},
+): ModuleSection[] {
+    const puedeVer = (sub: SubModuleDef) =>
+        (isAdmin || !sub.allowedRoles || sub.allowedRoles.some((r) => userRoles.includes(r))) &&
+        isSubmoduleAccessible(sub, mod.slug, isAdmin, accessibleSubmodules);
 
     const sueltos: SubModuleDef[] = [];
     const grupos: ModuleSection[] = [];

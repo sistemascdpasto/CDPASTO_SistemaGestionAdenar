@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Enums\Role;
+use App\Support\ModuleAccessRegistry;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -49,6 +50,7 @@ class HandleInertiaRequests extends Middleware
                 ->values()
                 ->all()
             : [];
+        $accessibleSubmodules = $user ? ModuleAccessRegistry::accessibleSubmodules($user) : [];
 
         return array_merge(parent::share($request), [
             ...parent::share($request),
@@ -63,7 +65,7 @@ class HandleInertiaRequests extends Middleware
             // y llegará al frontend aunque la página no pase 'flash' explícitamente.
             'flash' => fn () => [
                 'success' => $request->session()->get('success'),
-                'error'   => $request->session()->get('error'),
+                'error' => $request->session()->get('error'),
             ],
             'auth' => [
                 'user' => $user,
@@ -71,6 +73,7 @@ class HandleInertiaRequests extends Middleware
                 'isAdmin' => $isAdmin,
                 'isColaborador' => $isColaborador,
                 'accessibleModules' => $accessibleModules,
+                'accessibleSubmodules' => $accessibleSubmodules,
             ],
         ]);
     }

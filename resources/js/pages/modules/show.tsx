@@ -14,7 +14,7 @@ export default function ModuleShow({ module }: { module: string }) {
         { title: mod?.title ?? 'Módulo', href: `/modules/${module}` },
     ];
 
-    const secciones = mod ? buildModuleSections(mod, auth.roles, auth.isAdmin) : [];
+    const secciones = mod ? buildModuleSections(mod, auth.roles, auth.isAdmin, auth.accessibleSubmodules) : [];
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>

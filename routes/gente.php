@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\Route;
 // El grupo con "create" se registra ANTES que el de solo lectura (que trae
 // "show", ruta comodín colaboradores/{colaborador}) para que Laravel no
 // intente resolver GET colaboradores/create como si "create" fuera un id.
-Route::middleware(['auth', 'active', 'role:Administrador|Gente'])
+Route::middleware(['auth', 'active', 'role:Administrador|Gente', 'submodule.access'])
     ->prefix('modules/gente')
     ->name('gente.')
     ->group(function () {
@@ -135,7 +135,7 @@ Route::middleware(['auth', 'active', 'role:Administrador|Gente'])
             ->name('responsable-ruta.finalizacion');
     });
 
-Route::middleware(['auth', 'active', 'role:Administrador|Seguridad|Reparto|Flota|Gente'])
+Route::middleware(['auth', 'active', 'role:Administrador|Seguridad|Reparto|Flota|Gente', 'submodule.access'])
     ->prefix('modules/gente')
     ->name('gente.')
     ->group(function () {
@@ -192,7 +192,7 @@ Route::middleware(['auth', 'active', 'role:Administrador|Seguridad|Reparto|Flota
             ->name('sac.plantilla');
     });
 
-Route::middleware(['auth', 'active', 'role:Administrador|Gente|Reparto'])
+Route::middleware(['auth', 'active', 'role:Administrador|Gente|Reparto', 'submodule.access'])
     ->prefix('modules/gente')
     ->name('gente.')
     ->group(function () {
@@ -206,23 +206,23 @@ Route::middleware(['auth', 'active', 'role:Administrador|Gente|Reparto'])
 // ─────────── Corrección de Marcaciones ────────────────────────────────────
 // Escritura: solo Administrador / Gente pueden subir, confirmar la
 // importación, eliminar registros y limpiar la tabla.
-Route::middleware(['auth', 'active', 'role:Administrador|Gente|Seguridad'])
+Route::middleware(['auth', 'active', 'role:Administrador|Gente|Seguridad', 'submodule.access'])
     ->prefix('modules/gente')
     ->name('gente.')
     ->group(function () {
-        Route::post('correccion-marcaciones/preview',   [CorreccionMarcacionController::class, 'preview'])   ->name('correccion-marcaciones.preview');
-        Route::post('correccion-marcaciones/importar',  [CorreccionMarcacionController::class, 'importar'])  ->name('correccion-marcaciones.importar');
-        Route::post('correccion-marcaciones/limpiar',   [CorreccionMarcacionController::class, 'limpiar'])   ->name('correccion-marcaciones.limpiar');
-        Route::delete('correccion-marcaciones/{id}',    [CorreccionMarcacionController::class, 'destroy'])   ->name('correccion-marcaciones.destroy');
+        Route::post('correccion-marcaciones/preview', [CorreccionMarcacionController::class, 'preview'])->name('correccion-marcaciones.preview');
+        Route::post('correccion-marcaciones/importar', [CorreccionMarcacionController::class, 'importar'])->name('correccion-marcaciones.importar');
+        Route::post('correccion-marcaciones/limpiar', [CorreccionMarcacionController::class, 'limpiar'])->name('correccion-marcaciones.limpiar');
+        Route::delete('correccion-marcaciones/{id}', [CorreccionMarcacionController::class, 'destroy'])->name('correccion-marcaciones.destroy');
     });
 
 // Lectura + plantilla + exportación: visible para Gente, Reparto (ya que
 // afecta nóminas del reparto), Administrador y Seguridad.
-Route::middleware(['auth', 'active', 'role:Administrador|Seguridad|Reparto|Gente'])
+Route::middleware(['auth', 'active', 'role:Administrador|Seguridad|Reparto|Gente', 'submodule.access'])
     ->prefix('modules/gente')
     ->name('gente.')
     ->group(function () {
-        Route::get('correccion-marcaciones',                    [CorreccionMarcacionController::class, 'index'])      ->name('correccion-marcaciones.index');
-        Route::get('correccion-marcaciones/exportar.csv',       [CorreccionMarcacionController::class, 'exportar'])   ->name('correccion-marcaciones.exportar');
-        Route::get('correccion-marcaciones/plantilla.csv',      [CorreccionMarcacionController::class, 'plantilla'])  ->name('correccion-marcaciones.plantilla');
+        Route::get('correccion-marcaciones', [CorreccionMarcacionController::class, 'index'])->name('correccion-marcaciones.index');
+        Route::get('correccion-marcaciones/exportar.csv', [CorreccionMarcacionController::class, 'exportar'])->name('correccion-marcaciones.exportar');
+        Route::get('correccion-marcaciones/plantilla.csv', [CorreccionMarcacionController::class, 'plantilla'])->name('correccion-marcaciones.plantilla');
     });
