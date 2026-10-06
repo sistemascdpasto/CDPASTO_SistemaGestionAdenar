@@ -225,11 +225,15 @@ class PlanPremiacionTest extends TestCase
             'is_active' => true,
         ]);
 
-        // Registrar $colabEnDpo en dpo_academy usando su QR Safety
+        // Registrar $colabEnDpo en dpo_academy con el mes/año de la importación.
+        // En producción la importación siempre guarda mes y anio desde el
+        // selector de fecha del dialog — el test replica ese comportamiento.
         \App\Models\Gente\DpoAcademy::create([
             'colaborador_id' => $colabEnDpo->id,
-            'qr_safety' => 'S0KGTNLE',
-            'nombre' => 'Sponge Bob',
+            'qr_safety'      => 'S0KGTNLE',
+            'nombre'         => 'Sponge Bob',
+            'mes'            => 9,
+            'anio'           => 2026,
         ]);
 
         $response = $this->actingAs($user)->get(route('gente.plan-premiacion.index', [

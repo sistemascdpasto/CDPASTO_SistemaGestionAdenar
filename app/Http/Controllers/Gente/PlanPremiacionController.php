@@ -135,39 +135,14 @@ class PlanPremiacionController extends Controller
             return preg_replace('/[^A-Z0-9]/', '', $str) ?? $str;
         };
 
-        // DPO Academy: filtra por el mes/año del período cuando los registros
-        // traen esos campos explícitos. Si no hay registros con mes/año para
-        // ese período, usa los que tienen mes/año nulo (importados sin período)
-        // que correspondan al año seleccionado por created_at.
-        // Si tampoco hay de esos, cae al total de la tabla sin filtro de período
-        // (el listado DPO es un estado del colaborador — si está en la última
-        // importación disponible, sigue siendo 0%).
-        // Si la tabla está completamente vacía → todos 100%.
+        // Filtra por el mes/año que el usuario está viendo.
+        // Si no hay registros DPO para ese período → todos quedan en 100%
+        // (no se penaliza un mes sin importación).
         $registrosDpo = DB::table('dpo_academy')
-            ->where(function ($q) use ($mesesSeleccionados, $anio, $monthExpr) {
-                $q->where(function ($q2) use ($mesesSeleccionados, $anio) {
-                    $q2->whereIn('mes', $mesesSeleccionados)
-                       ->where('anio', $anio);
-                })->orWhere(function ($q2) use ($mesesSeleccionados, $anio, $monthExpr) {
-                    $q2->whereNull('mes')
-                       ->whereIn($monthExpr('created_at'), $mesesSeleccionados)
-                       ->whereYear('created_at', $anio);
-                })->orWhere(function ($q2) use ($anio) {
-                    // Fallback: registros del año seleccionado sin mes explícito
-                    // y sin coincidencia por created_at en el mes exacto.
-                    $q2->whereNull('mes')
-                       ->where('anio', $anio);
-                });
-            })
+            ->whereIn('mes', $mesesSeleccionados)
+            ->where('anio', $anio)
             ->select(['colaborador_id', 'qr_safety', 'nombre'])
             ->get();
-
-        // Si no hay registros para el año, usar toda la tabla disponible.
-        if ($registrosDpo->isEmpty()) {
-            $registrosDpo = DB::table('dpo_academy')
-                ->select(['colaborador_id', 'qr_safety', 'nombre'])
-                ->get();
-        }
 
         $dpoColaboradorIds = $registrosDpo->pluck('colaborador_id')->filter()->unique()->flip()->toArray();
         $dpoQrSafetySet = [];
@@ -182,15 +157,12 @@ class PlanPremiacionController extends Controller
         }
 
         // 6. Registros Malas Marcaciones (Correcciones Marcaciones)
+        // Solo usa registros del período seleccionado.
+        // Sin datos para ese período → todos en 100% (sin fallback a otros meses).
         $correccionesQuery = DB::table('correcciones_marcaciones')
             ->whereIn($monthExpr('fecha'), $mesesSeleccionados)
             ->whereYear('fecha', $anio)
             ->get(['identificacion', 'nombre_completo']);
-
-        if ($correccionesQuery->isEmpty()) {
-            $correccionesQuery = DB::table('correcciones_marcaciones')
-                ->get(['identificacion', 'nombre_completo']);
-        }
 
         $malasMarcacionesIdentificacionesSet = [];
         $malasMarcacionesNombresSet = [];
@@ -204,7 +176,8 @@ class PlanPremiacionController extends Controller
         }
 
         // 8. Registros Eventos Tripulación (Rechazos, Adherencia Tiempo, RMD, Checklist Pre y Post)
-        // El checklist puede consultarse en meses distintos al mes principal
+        // Solo usa registros del período seleccionado.
+        // Sin datos para ese período → métricas quedan en N/A (sin fallback a otros meses).
         $eventosTripulacionRaw = DB::table('eventos_tripulacion')
             ->when(
                 !empty($mesesChecklist),
@@ -220,19 +193,6 @@ class PlanPremiacionController extends Controller
                 'adherencia_checklist_pre',
                 'adherencia_checklist_post',
             ]);
-
-        if ($eventosTripulacionRaw->isEmpty()) {
-            $eventosTripulacionRaw = DB::table('eventos_tripulacion')
-                ->get([
-                    'documento',
-                    'nombre',
-                    'rechazos',
-                    'adherencia_tiempo',
-                    'rmd',
-                    'adherencia_checklist_pre',
-                    'adherencia_checklist_post',
-                ]);
-        }
 
         $rechazosPorDocumento = [];
         $rechazosPorNombre = [];
@@ -281,14 +241,12 @@ class PlanPremiacionController extends Controller
         }
 
         // 9. Registros SAC (Servicio al Cliente)
+        // Solo usa registros del período seleccionado.
+        // Sin datos para ese período → SAC queda en 100% (sin casos = sin penalización).
         $sacRaw = DB::table('sac')
             ->whereIn($monthExpr('fecha'), $mesesSeleccionados)
             ->whereYear('fecha', $anio)
             ->get(['colaborador_id', 'responsable', 'cumplimiento_cierre', 'aplica']);
-
-        if ($sacRaw->isEmpty()) {
-            $sacRaw = DB::table('sac')->get(['colaborador_id', 'responsable', 'cumplimiento_cierre', 'aplica']);
-        }
 
         $sacPorColaboradorId = [];
         $sacPorResponsable = [];
@@ -745,9 +703,6 @@ class PlanPremiacionController extends Controller
         $correcciones = DB::table('correcciones_marcaciones')
             ->whereMonth('fecha',$mes)->whereYear('fecha',$anio)
             ->get(['identificacion','nombre_completo']);
-        if ($correcciones->isEmpty()) {
-            $correcciones = DB::table('correcciones_marcaciones')->get(['identificacion','nombre_completo']);
-        }
         $marcacionesIdSet = []; $marcacionesNomSet = [];
         foreach ($correcciones as $r) {
             if (!empty($r->identificacion)) $marcacionesIdSet[$normStr($r->identificacion)] = true;
@@ -757,10 +712,6 @@ class PlanPremiacionController extends Controller
         $eventosRaw = DB::table('eventos_tripulacion')
             ->whereMonth('fecha',$mes)->whereYear('fecha',$anio)
             ->get(['documento','nombre','rechazos','adherencia_tiempo','rmd','adherencia_checklist_pre','adherencia_checklist_post']);
-        if ($eventosRaw->isEmpty()) {
-            $eventosRaw = DB::table('eventos_tripulacion')
-                ->get(['documento','nombre','rechazos','adherencia_tiempo','rmd','adherencia_checklist_pre','adherencia_checklist_post']);
-        }
 
         $rechazosPorDoc=[]; $rechazosPorNom=[];
         $adTiempoPorDoc=[]; $adTiempoPorNom=[];
@@ -786,7 +737,6 @@ class PlanPremiacionController extends Controller
 
         $sacRaw = DB::table('sac')->whereMonth('fecha',$mes)->whereYear('fecha',$anio)
             ->get(['colaborador_id','responsable','cumplimiento_cierre','aplica']);
-        if ($sacRaw->isEmpty()) $sacRaw = DB::table('sac')->get(['colaborador_id','responsable','cumplimiento_cierre','aplica']);
         $sacPorColId=[]; $sacPorResp=[];
         foreach ($sacRaw as $row) {
             $c = mb_strtoupper(trim((string)($row->cumplimiento_cierre??'')), 'UTF-8');

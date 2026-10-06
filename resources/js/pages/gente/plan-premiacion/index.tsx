@@ -42,6 +42,9 @@ const MESES = [
 
 const ANIOS = [2024, 2025, 2026, 2027];
 
+const ANIO_ACTUAL = new Date().getFullYear();
+const MES_ACTUAL  = new Date().getMonth() + 1; // 1-based
+
 interface ColaboradorItem {
     id: number;
     cedula: string;
@@ -273,7 +276,11 @@ export default function PlanPremiacionIndex({ colaboradores, top3, peores2 = [],
     const handleAnioChange = (val: string) => {
         const a = parseInt(val, 10);
         setAnio(a);
-        handleFilter(mes, a, search, estado, selectedCargos);
+        // Si el año seleccionado es el actual y el mes actual supera el mes actual,
+        // lo recortamos al mes actual para no mostrar meses futuros.
+        const mesFinal = (a === ANIO_ACTUAL && mes > MES_ACTUAL) ? MES_ACTUAL : mes;
+        if (mesFinal !== mes) setMes(mesFinal);
+        handleFilter(mesFinal, a, search, estado, selectedCargos);
     };
 
     const handleToggleCargo = (cargoItem: string) => {
@@ -432,7 +439,7 @@ export default function PlanPremiacionIndex({ colaboradores, top3, peores2 = [],
                                             <SelectValue placeholder="Seleccionar Mes" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {MESES.map((m) => (
+                                            {MESES.filter((m) => anio < ANIO_ACTUAL || m.value <= MES_ACTUAL).map((m) => (
                                                 <SelectItem key={m.value} value={String(m.value)}>
                                                     {m.label}
                                                 </SelectItem>
