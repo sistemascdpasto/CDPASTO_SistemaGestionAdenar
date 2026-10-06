@@ -2,18 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import {
-    Bar,
-    BarChart,
-    CartesianGrid,
-    Cell,
-    Legend,
-    ReferenceLine,
-    ResponsiveContainer,
-    Tooltip,
-    XAxis,
-    YAxis,
-} from 'recharts';
+import { Bar, BarChart, CartesianGrid, Cell, Legend, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 interface ColaboradorItem {
     nombre_completo: string;
@@ -31,19 +20,16 @@ interface Props {
     anio: number;
 }
 
-const MESES = [
-    '', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
-];
+const MESES = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
 const PILARES = [
-    { key: 'resultado',            label: 'Seguridad', max: 35, color: '#10b981' },
-    { key: 'resultado_asistencia', label: 'Gente',     max: 15, color: '#f59e0b' },
-    { key: 'resultado_reparto',    label: 'Reparto',   max: 35, color: '#f43f5e' },
-    { key: 'resultado_flota',      label: 'Flota',     max: 15, color: '#3b82f6' },
+    { key: 'resultado', label: 'Seguridad', max: 35, color: '#10b981' },
+    { key: 'resultado_asistencia', label: 'Gente', max: 15, color: '#f59e0b' },
+    { key: 'resultado_reparto', label: 'Reparto', max: 35, color: '#f43f5e' },
+    { key: 'resultado_flota', label: 'Flota', max: 15, color: '#3b82f6' },
 ] as const;
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 10;
 
 interface TooltipPayload {
     value?: number;
@@ -56,11 +42,11 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
     if (!active || !payload?.length) return null;
     const total = payload.reduce((acc: number, p) => acc + (p.value ?? 0), 0);
     return (
-        <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-lg min-w-[200px]">
-            <p className="mb-2 text-xs font-bold text-foreground leading-tight">{label}</p>
+        <div className="border-border bg-card min-w-[200px] rounded-lg border px-3 py-2 shadow-lg">
+            <p className="text-foreground mb-2 text-xs leading-tight font-bold">{label}</p>
             {payload.map((p) => (
                 <div key={p.dataKey} className="flex items-center justify-between gap-4 text-xs">
-                    <span className="flex items-center gap-1.5 text-muted-foreground">
+                    <span className="text-muted-foreground flex items-center gap-1.5">
                         <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: p.color }} />
                         {p.name}
                     </span>
@@ -69,13 +55,19 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
                     </span>
                 </div>
             ))}
-            <div className="mt-1.5 border-t border-border pt-1.5 flex items-center justify-between text-xs">
+            <div className="border-border mt-1.5 flex items-center justify-between border-t pt-1.5 text-xs">
                 <span className="text-muted-foreground">Total</span>
-                <span className={`font-black tabular-nums ${
-                    total >= 70 ? 'text-emerald-600 dark:text-emerald-400'
-                    : total >= 50 ? 'text-amber-600 dark:text-amber-400'
-                    : 'text-rose-600 dark:text-rose-400'
-                }`}>{total.toFixed(1)}%</span>
+                <span
+                    className={`font-black tabular-nums ${
+                        total >= 70
+                            ? 'text-emerald-600 dark:text-emerald-400'
+                            : total >= 50
+                              ? 'text-amber-600 dark:text-amber-400'
+                              : 'text-rose-600 dark:text-rose-400'
+                    }`}
+                >
+                    {total.toFixed(1)}%
+                </span>
             </div>
         </div>
     );
@@ -111,25 +103,22 @@ export default function GraficoBarrasMes({ colaboradores, mes, anio }: Props) {
     const slice = sorted.slice(paginaSegura * PAGE_SIZE, (paginaSegura + 1) * PAGE_SIZE);
 
     const data = slice.map((c) => ({
-        nombre:               abreviarNombre(c.nombre_completo),
-        nombreCompleto:       c.nombre_completo,
-        resultado:            Math.max(0, c.resultado ?? 0),
+        nombre: abreviarNombre(c.nombre_completo),
+        nombreCompleto: c.nombre_completo,
+        resultado: Math.max(0, c.resultado ?? 0),
         resultado_asistencia: Math.max(0, c.resultado_asistencia ?? 0),
-        resultado_reparto:    Math.max(0, c.resultado_reparto ?? 0),
-        resultado_flota:      Math.max(0, c.resultado_flota ?? 0),
+        resultado_reparto: Math.max(0, c.resultado_reparto ?? 0),
+        resultado_flota: Math.max(0, c.resultado_flota ?? 0),
     }));
 
     // Promedio de la página visible → línea de referencia del gráfico
-    const promedioPagina = data.length > 0
-        ? data.reduce((acc, c) =>
-            acc + c.resultado + c.resultado_asistencia + c.resultado_reparto + c.resultado_flota, 0
-          ) / data.length
-        : 0;
+    const promedioPagina =
+        data.length > 0
+            ? data.reduce((acc, c) => acc + c.resultado + c.resultado_asistencia + c.resultado_reparto + c.resultado_flota, 0) / data.length
+            : 0;
 
     // Promedio global de todos → subtítulo informativo
-    const promedioGlobal = sorted.length > 0
-        ? sorted.reduce((acc, c) => acc + c.calificacion_total, 0) / sorted.length
-        : 0;
+    const promedioGlobal = sorted.length > 0 ? sorted.reduce((acc, c) => acc + c.calificacion_total, 0) / sorted.length : 0;
 
     const chartHeight = Math.max(200, Math.min(320, slice.length * 10 + 80));
 
@@ -138,33 +127,32 @@ export default function GraficoBarrasMes({ colaboradores, mes, anio }: Props) {
             <CardHeader className="pb-2">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="flex items-center gap-2">
-                        <BarChart2 className="h-5 w-5 text-muted-foreground" />
+                        <BarChart2 className="text-muted-foreground h-5 w-5" />
                         <div>
                             <CardTitle className="text-base font-semibold">
                                 Resultados por Pilar — {MESES[mes]} {anio}
                             </CardTitle>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                                {sorted.length} colaborador{sorted.length !== 1 ? 'es' : ''}{' '}
-                                · prom. global{' '}
-                                <span className="font-semibold text-purple-600 dark:text-purple-400">
-                                    {promedioGlobal.toFixed(1)}%
-                                </span>
+                            <p className="text-muted-foreground mt-0.5 text-xs">
+                                {sorted.length} colaborador{sorted.length !== 1 ? 'es' : ''} · prom. global{' '}
+                                <span className="font-semibold text-purple-600 dark:text-purple-400">{promedioGlobal.toFixed(1)}%</span>
                                 {totalPaginas > 1 && (
-                                    <> · mostrando{' '}
-                                        <span className="font-medium text-foreground">
+                                    <>
+                                        {' '}
+                                        · mostrando{' '}
+                                        <span className="text-foreground font-medium">
                                             {paginaSegura * PAGE_SIZE + 1}–{Math.min((paginaSegura + 1) * PAGE_SIZE, sorted.length)}
-                                        </span>
-                                        {' '}de {sorted.length}
+                                        </span>{' '}
+                                        de {sorted.length}
                                     </>
                                 )}
                             </p>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-3 flex-wrap">
+                    <div className="flex flex-wrap items-center gap-3">
                         {/* Leyenda pilares */}
-                        <div className="flex flex-wrap gap-3 text-[11px] text-muted-foreground">
-                            {PILARES.map(p => (
+                        <div className="text-muted-foreground flex flex-wrap gap-3 text-[11px]">
+                            {PILARES.map((p) => (
                                 <span key={p.key} className="flex items-center gap-1">
                                     <span className="inline-block h-2 w-2 rounded-sm" style={{ backgroundColor: p.color }} />
                                     {p.label}
@@ -177,19 +165,23 @@ export default function GraficoBarrasMes({ colaboradores, mes, anio }: Props) {
                         {totalPaginas > 1 && (
                             <div className="flex items-center gap-1">
                                 <Button
-                                    variant="outline" size="icon" className="h-7 w-7"
+                                    variant="outline"
+                                    size="icon"
+                                    className="h-7 w-7"
                                     disabled={paginaSegura === 0}
-                                    onClick={() => setPagina(p => Math.max(0, p - 1))}
+                                    onClick={() => setPagina((p) => Math.max(0, p - 1))}
                                 >
                                     <ChevronLeft className="h-3.5 w-3.5" />
                                 </Button>
-                                <span className="text-xs text-muted-foreground tabular-nums px-1">
+                                <span className="text-muted-foreground px-1 text-xs tabular-nums">
                                     {paginaSegura + 1} / {totalPaginas}
                                 </span>
                                 <Button
-                                    variant="outline" size="icon" className="h-7 w-7"
+                                    variant="outline"
+                                    size="icon"
+                                    className="h-7 w-7"
                                     disabled={paginaSegura >= totalPaginas - 1}
-                                    onClick={() => setPagina(p => Math.min(totalPaginas - 1, p + 1))}
+                                    onClick={() => setPagina((p) => Math.min(totalPaginas - 1, p + 1))}
                                 >
                                     <ChevronRight className="h-3.5 w-3.5" />
                                 </Button>
@@ -200,98 +192,81 @@ export default function GraficoBarrasMes({ colaboradores, mes, anio }: Props) {
             </CardHeader>
 
             <CardContent>
-                <div className="overflow-x-auto">
-                    <ResponsiveContainer width="100%" minWidth={Math.max(480, slice.length * 48)} height={chartHeight}>
-                        <BarChart
-                            data={data}
-                            margin={{ top: 8, right: 16, left: 0, bottom: 48 }}
-                            barCategoryGap="18%"
-                        >
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                            <XAxis
-                                dataKey="nombre"
-                                tick={{ fontSize: 10, fill: '#64748b' }}
-                                angle={-35}
-                                textAnchor="end"
-                                interval={0}
-                                height={52}
-                            />
-                            <YAxis
-                                domain={[0, 100]}
-                                tickFormatter={(v) => `${v}%`}
-                                tick={{ fontSize: 10, fill: '#64748b' }}
-                                width={42}
-                            />
-                            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(148,163,184,0.1)' }} />
-                            <Legend
-                                wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
-                                formatter={(value) => <span style={{ color: '#475569' }}>{value}</span>}
-                            />
+                <ResponsiveContainer width="100%" height={chartHeight}>
+                    <BarChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 48 }} barCategoryGap="18%">
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                        <XAxis
+                            dataKey="nombre"
+                            tick={{ fontSize: 10, fill: '#64748b' }}
+                            angle={-35}
+                            textAnchor="end"
+                            interval="preserveStartEnd"
+                            height={52}
+                        />
+                        <YAxis domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 10, fill: '#64748b' }} width={42} />
+                        <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(148,163,184,0.1)' }} />
+                        <Legend
+                            wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
+                            formatter={(value) => <span style={{ color: '#475569' }}>{value}</span>}
+                        />
 
-                            {/* Promedio de la página visible */}
-                            <ReferenceLine
-                                y={promedioPagina}
-                                stroke="#a855f7"
-                                strokeDasharray="4 3"
-                                strokeWidth={1.5}
-                                label={{ value: `Prom. ${promedioPagina.toFixed(1)}%`, position: 'insideTopRight', fontSize: 10, fill: '#a855f7' }}
-                            />
-                            {/* Meta 70% */}
-                            <ReferenceLine
-                                y={70}
-                                stroke="#10b981"
-                                strokeDasharray="4 3"
-                                strokeWidth={1.5}
-                                label={{ value: 'Meta 70%', position: 'insideTopLeft', fontSize: 10, fill: '#10b981' }}
-                            />
+                        {/* Promedio de la página visible */}
+                        <ReferenceLine
+                            y={promedioPagina}
+                            stroke="#a855f7"
+                            strokeDasharray="4 3"
+                            strokeWidth={1.5}
+                            label={{ value: `Prom. ${promedioPagina.toFixed(1)}%`, position: 'insideTopRight', fontSize: 10, fill: '#a855f7' }}
+                        />
+                        {/* Meta 70% */}
+                        <ReferenceLine
+                            y={70}
+                            stroke="#10b981"
+                            strokeDasharray="4 3"
+                            strokeWidth={1.5}
+                            label={{ value: 'Meta 70%', position: 'insideTopLeft', fontSize: 10, fill: '#10b981' }}
+                        />
 
-                            {PILARES.map((p) => (
-                                <Bar
-                                    key={p.key}
-                                    dataKey={p.key}
-                                    name={p.label}
-                                    stackId="a"
-                                    fill={p.color}
-                                    isAnimationActive={true}
-                                    animationDuration={400}
-                                    radius={p.key === 'resultado_flota' ? [3, 3, 0, 0] : [0, 0, 0, 0]}
-                                >
-                                    {data.map((entry, index) => {
-                                        const total =
-                                            entry.resultado +
-                                            entry.resultado_asistencia +
-                                            entry.resultado_reparto +
-                                            entry.resultado_flota;
-                                        return (
-                                            <Cell
-                                                key={`cell-${p.key}-${index}`}
-                                                fill={p.color}
-                                                fillOpacity={total >= 70 ? 1 : 0.6}
-                                            />
-                                        );
-                                    })}
-                                </Bar>
-                            ))}
-                        </BarChart>
-                    </ResponsiveContainer>
-                </div>
+                        {PILARES.map((p) => (
+                            <Bar
+                                key={p.key}
+                                dataKey={p.key}
+                                name={p.label}
+                                stackId="a"
+                                fill={p.color}
+                                isAnimationActive={true}
+                                animationDuration={400}
+                                radius={p.key === 'resultado_flota' ? [3, 3, 0, 0] : [0, 0, 0, 0]}
+                            >
+                                {data.map((entry, index) => {
+                                    const total = entry.resultado + entry.resultado_asistencia + entry.resultado_reparto + entry.resultado_flota;
+                                    return <Cell key={`cell-${p.key}-${index}`} fill={p.color} fillOpacity={total >= 70 ? 1 : 0.6} />;
+                                })}
+                            </Bar>
+                        ))}
+                    </BarChart>
+                </ResponsiveContainer>
 
                 {/* Mini resumen — promedios de la página visible */}
-                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 border-t border-border pt-3">
+                <div className="border-border mt-3 grid grid-cols-2 gap-2 border-t pt-3 sm:grid-cols-4">
                     {PILARES.map((p) => {
-                        const avg = data.reduce((acc, c) => {
-                            const val =
-                                p.key === 'resultado'              ? c.resultado
-                                : p.key === 'resultado_asistencia' ? c.resultado_asistencia
-                                : p.key === 'resultado_reparto'    ? c.resultado_reparto
-                                : c.resultado_flota;
-                            return acc + val;
-                        }, 0) / Math.max(1, data.length);
+                        const avg =
+                            data.reduce((acc, c) => {
+                                const val =
+                                    p.key === 'resultado'
+                                        ? c.resultado
+                                        : p.key === 'resultado_asistencia'
+                                          ? c.resultado_asistencia
+                                          : p.key === 'resultado_reparto'
+                                            ? c.resultado_reparto
+                                            : c.resultado_flota;
+                                return acc + val;
+                            }, 0) / Math.max(1, data.length);
                         const pct = (avg / p.max) * 100;
                         return (
                             <div key={p.key} className="flex flex-col gap-1">
                                 <div className="flex items-center justify-between text-[11px]">
-                                    <span className="font-medium text-muted-foreground flex items-center gap-1">
+                                    <span className="text-muted-foreground flex items-center gap-1 font-medium">
                                         <span className="inline-block h-2 w-2 rounded-sm" style={{ backgroundColor: p.color }} />
                                         {p.label}
                                     </span>
@@ -299,7 +274,7 @@ export default function GraficoBarrasMes({ colaboradores, mes, anio }: Props) {
                                         {avg.toFixed(1)}/{p.max}%
                                     </span>
                                 </div>
-                                <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                                <div className="bg-muted h-1.5 w-full overflow-hidden rounded-full">
                                     <div
                                         className="h-full rounded-full transition-all duration-500"
                                         style={{ width: `${Math.min(100, pct)}%`, backgroundColor: p.color }}
