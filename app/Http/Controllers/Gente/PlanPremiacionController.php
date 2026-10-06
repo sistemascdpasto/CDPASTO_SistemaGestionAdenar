@@ -22,27 +22,12 @@ class PlanPremiacionController extends Controller
 
     public function index(Request $request): Response
     {
-        $mes = $request->integer('mes') ?: (int) now()->month;
+        $mes  = $request->integer('mes')  ?: (int) now()->month;
         $anio = $request->integer('anio') ?: (int) now()->year;
-        $search = $request->string('search')->trim()->toString();
+        $search      = $request->string('search')->trim()->toString();
         $filtroCargo = $request->string('cargo')->trim()->toString();
-        $cargosSeleccionados = array_values(array_filter(array_map('trim', explode(',', $filtroCargo)), fn ($c) => $c !== '' && $c !== 'todos'));
         $filtroEstado = $request->string('estado')->trim()->toString();
-
-        // Meses seleccionados en el dropdown multi-mes (vacío = mes actual)
         $mesesChecklistStr = $request->string('meses_checklist')->trim()->toString();
-        $mesesSeleccionados = array_values(array_filter(
-            array_map('intval', explode(',', $mesesChecklistStr)),
-            fn ($m) => $m >= 1 && $m <= 12
-        ));
-
-        // Si no hay meses seleccionados, usar el mes actual como defecto
-        if (empty($mesesSeleccionados)) {
-            $mesesSeleccionados = [$mes];
-        }
-
-        // Meses para el checklist (puede ser distinto — usa los mismos por defecto)
-        $mesesChecklist = $mesesSeleccionados;
 
         $cargosDisponibles = Colaborador::query()
             ->where('is_active', true)
@@ -55,13 +40,86 @@ class PlanPremiacionController extends Controller
             ->values()
             ->toArray();
 
-        // 1. Obtener colaboradores activos del área Operativa
+        ['todosCalculados' => $todosCalculados, 'totalAcisMes' => $totalAcisMes] =
+            $this->buildFilasFinales($mes, $anio, $search, $filtroCargo, $mesesChecklistStr);
+
+        $totalPoblacion        = $todosCalculados->count();
+        $cumplenMetaCount      = $todosCalculados->where('cumple', true)->count();
+        $enProgresoCount       = $todosCalculados->where('estado', 'en_progreso')->count();
+        $sinParticipacionCount = $todosCalculados->where('estado', 'sin_participacion')->count();
+        $promedioPorcentaje    = $totalPoblacion > 0 ? round($todosCalculados->avg('porcentaje'), 1) : 0.0;
+
+        $top3    = $todosCalculados->sortByDesc('calificacion_total')->values()->take(3)->all();
+        $peores2 = $todosCalculados->sortBy('calificacion_total')->values()->take(2)->all();
+
+        $filasFiltradas = $todosCalculados;
+        if (in_array($filtroEstado, ['meta_alcanzada', 'en_progreso', 'sin_participacion'], true)) {
+            $filasFiltradas = $filasFiltradas->where('estado', $filtroEstado)->values();
+        }
+
+        $filasFinales = $filasFiltradas->sortByDesc('calificacion_total')->values()->all();
+
+        return Inertia::render('gente/plan-premiacion/index', [
+            'colaboradores' => $filasFinales,
+            'resumen' => [
+                'meta_base'            => self::META_BASE,
+                'total_colaboradores'  => $totalPoblacion,
+                'total_acis_mes'       => $totalAcisMes,
+                'cumplen_meta'         => $cumplenMetaCount,
+                'en_progreso'          => $enProgresoCount,
+                'sin_participacion'    => $sinParticipacionCount,
+                'promedio_porcentaje'  => $promedioPorcentaje,
+            ],
+            'top3'    => $top3,
+            'peores2' => $peores2,
+            'cargos'  => $cargosDisponibles,
+            'umbral_checklist' => self::UMBRAL_CHECKLIST,
+            'puede_editar' => $request->user()?->hasAnyRole(['Administrador', 'Gente']) ?? false,
+            'filters' => [
+                'mes'             => $mes,
+                'anio'            => $anio,
+                'search'          => $search,
+                'estado'          => $filtroEstado,
+                'cargo'           => $filtroCargo,
+                'meses_checklist' => $mesesChecklistStr,
+            ],
+        ]);
+    }
+
+    /**
+     * Calcula todas las filas del Plan Premiación para un período dado.
+     * Usado tanto por index() (vista web) como por exportar() (Excel),
+     * garantizando que ambos muestren exactamente los mismos datos.
+     *
+     * @return array{todosCalculados: \Illuminate\Support\Collection, totalAcisMes: int}
+     */
+    private function buildFilasFinales(
+        int $mes,
+        int $anio,
+        string $search = '',
+        string $filtroCargo = '',
+        string $mesesChecklistStr = ''
+    ): array {
+        $cargosSeleccionados = array_values(array_filter(
+            array_map('trim', explode(',', $filtroCargo)),
+            fn ($c) => $c !== '' && $c !== 'todos'
+        ));
+
+        $mesesSeleccionados = array_values(array_filter(
+            array_map('intval', explode(',', $mesesChecklistStr)),
+            fn ($m) => $m >= 1 && $m <= 12
+        ));
+        if (empty($mesesSeleccionados)) {
+            $mesesSeleccionados = [$mes];
+        }
+        $mesesChecklist = $mesesSeleccionados;
+
+        // 1. Colaboradores activos del área Operativa
         $queryColaboradores = Colaborador::query()
             ->where('is_active', true)
             ->whereRaw("LOWER(TRIM(area)) = 'operativa'")
             ->select(['id', 'cedula', 'nombres', 'apellidos', 'cargo', 'area', 'codigo_qr_skap']);
 
-        // Filtro adicional por cargo seleccionado
         if (!empty($cargosSeleccionados)) {
             $queryColaboradores->whereIn('cargo', $cargosSeleccionados);
         }
@@ -80,10 +138,12 @@ class PlanPremiacionController extends Controller
 
         $colaboradores = $queryColaboradores->get();
 
-        $isSqlite = DB::connection()->getDriverName() === 'sqlite';
-        $monthExpr = fn (string $col) => $isSqlite ? DB::raw("cast(strftime('%m', {$col}) as integer)") : DB::raw("MONTH({$col})");
+        $isSqlite   = DB::connection()->getDriverName() === 'sqlite';
+        $monthExpr  = fn (string $col) => $isSqlite
+            ? DB::raw("cast(strftime('%m', {$col}) as integer)")
+            : DB::raw("MONTH({$col})");
 
-        // 2. Conteo de ACI por colaborador en los meses seleccionados
+        // 2. Conteo de ACIs
         $conteosPorColaborador = Aci::whereIn($monthExpr('fecha_incidente'), $mesesSeleccionados)
             ->whereYear('fecha_incidente', $anio)
             ->whereNotNull('colaborador_id')
@@ -91,13 +151,12 @@ class PlanPremiacionController extends Controller
             ->groupBy('colaborador_id')
             ->pluck('total', 'colaborador_id');
 
-        // 3. Evaluaciones OWD - Preguntas con actividad exactamente "Ruta"
+        // 3. OWD Ruta
         $preguntasRutaRaw = DB::table('evaluacion_owd_preguntas')
             ->join('evaluaciones_owd', 'evaluacion_owd_preguntas.evaluacion_owd_id', '=', 'evaluaciones_owd.id')
             ->whereIn($monthExpr('evaluaciones_owd.fecha_evaluacion'), $mesesSeleccionados)
             ->whereYear('evaluaciones_owd.fecha_evaluacion', $anio)
             ->where(function ($q) {
-                // Coincide con: Ruta / "Ruta" / ["Ruta"] — nunca Pre Ruta ni Post Ruta
                 $q->whereRaw("LOWER(TRIM(evaluacion_owd_preguntas.actividad)) = 'ruta'")
                   ->orWhereRaw("LOWER(TRIM(evaluacion_owd_preguntas.actividad)) = '\"ruta\"'")
                   ->orWhereRaw("LOWER(TRIM(evaluacion_owd_preguntas.actividad)) = '[\"ruta\"]'");
@@ -105,39 +164,29 @@ class PlanPremiacionController extends Controller
             ->select('evaluaciones_owd.colaborador_id', 'evaluaciones_owd.qr_safety', 'evaluacion_owd_preguntas.puntuacion')
             ->get();
 
-        // Indexar colaboradores por qr_safety para resolver los que tienen colaborador_id = null
         $colaboradoresPorQrOwd = Colaborador::whereNotNull('codigo_qr_skap')
-            ->select(['id', 'codigo_qr_skap'])
-            ->get()
-            ->keyBy('codigo_qr_skap');
+            ->select(['id', 'codigo_qr_skap'])->get()->keyBy('codigo_qr_skap');
 
-        // Agrupar por colaborador_id (resolviendo por qr_safety si colaborador_id es null)
         $preguntasRutaPorColaborador = $preguntasRutaRaw->groupBy(function ($p) use ($colaboradoresPorQrOwd) {
-            if ($p->colaborador_id) {
-                return $p->colaborador_id;
-            }
-            // Fallback: resolver por qr_safety
+            if ($p->colaborador_id) return $p->colaborador_id;
             $colab = $colaboradoresPorQrOwd->get($p->qr_safety);
             return $colab ? $colab->id : null;
         })->filter(fn ($grupo, $key) => $key !== null);
 
-        // 4. Promedio de Calificaciones de Módulos por Cédula (Identificación)
+        // 4. Calificaciones
         $promediosCalificaciones = DB::table('colaborador_calificaciones')
             ->whereNotNull('nota_modulo')
             ->select('identificacion', DB::raw('AVG(nota_modulo) as promedio_nota'))
             ->groupBy('identificacion')
             ->pluck('promedio_nota', 'identificacion');
 
-        // 5. Registros DPO Academy (Estar en listado = 0%, No estar = 100%)
+        // 5. DPO Academy — solo datos del período
         $normStr = function ($txt) {
             $str = mb_strtoupper(trim((string) $txt), 'UTF-8');
-            $str = str_replace(['Á', 'É', 'Í', 'Ó', 'Ú', 'Ü', 'Ñ'], ['A', 'E', 'I', 'O', 'U', 'U', 'N'], $str);
+            $str = str_replace(['Á','É','Í','Ó','Ú','Ü','Ñ'], ['A','E','I','O','U','U','N'], $str);
             return preg_replace('/[^A-Z0-9]/', '', $str) ?? $str;
         };
 
-        // Filtra por el mes/año que el usuario está viendo.
-        // Si no hay registros DPO para ese período → todos quedan en 100%
-        // (no se penaliza un mes sin importación).
         $registrosDpo = DB::table('dpo_academy')
             ->whereIn('mes', $mesesSeleccionados)
             ->where('anio', $anio)
@@ -146,111 +195,79 @@ class PlanPremiacionController extends Controller
 
         $dpoColaboradorIds = $registrosDpo->pluck('colaborador_id')->filter()->unique()->flip()->toArray();
         $dpoQrSafetySet = [];
-        $dpoNombresSet = [];
+        $dpoNombresSet  = [];
         foreach ($registrosDpo as $r) {
-            if ($r->qr_safety) {
-                $dpoQrSafetySet[$normStr($r->qr_safety)] = true;
-            }
-            if ($r->nombre) {
-                $dpoNombresSet[$normStr($r->nombre)] = true;
-            }
+            if ($r->qr_safety) $dpoQrSafetySet[$normStr($r->qr_safety)] = true;
+            if ($r->nombre)    $dpoNombresSet[$normStr($r->nombre)]      = true;
         }
 
-        // 6. Registros Malas Marcaciones (Correcciones Marcaciones)
-        // Solo usa registros del período seleccionado.
-        // Sin datos para ese período → todos en 100% (sin fallback a otros meses).
+        // 6. Malas Marcaciones — solo datos del período
         $correccionesQuery = DB::table('correcciones_marcaciones')
             ->whereIn($monthExpr('fecha'), $mesesSeleccionados)
             ->whereYear('fecha', $anio)
             ->get(['identificacion', 'nombre_completo']);
 
         $malasMarcacionesIdentificacionesSet = [];
-        $malasMarcacionesNombresSet = [];
+        $malasMarcacionesNombresSet          = [];
         foreach ($correccionesQuery as $r) {
-            if (!empty($r->identificacion)) {
-                $malasMarcacionesIdentificacionesSet[$normStr($r->identificacion)] = true;
-            }
-            if (!empty($r->nombre_completo)) {
-                $malasMarcacionesNombresSet[$normStr($r->nombre_completo)] = true;
-            }
+            if (!empty($r->identificacion))  $malasMarcacionesIdentificacionesSet[$normStr($r->identificacion)]  = true;
+            if (!empty($r->nombre_completo)) $malasMarcacionesNombresSet[$normStr($r->nombre_completo)]          = true;
         }
 
-        // 8. Registros Eventos Tripulación (Rechazos, Adherencia Tiempo, RMD, Checklist Pre y Post)
-        // Solo usa registros del período seleccionado.
-        // Sin datos para ese período → métricas quedan en N/A (sin fallback a otros meses).
+        // 8. Eventos Tripulación — solo datos del período
         $eventosTripulacionRaw = DB::table('eventos_tripulacion')
             ->when(
                 !empty($mesesChecklist),
                 fn ($q) => $q->whereIn($monthExpr('fecha'), $mesesChecklist)->whereYear('fecha', $anio),
                 fn ($q) => $q->whereYear('fecha', $anio)
             )
-            ->get([
-                'documento',
-                'nombre',
-                'rechazos',
-                'adherencia_tiempo',
-                'rmd',
-                'adherencia_checklist_pre',
-                'adherencia_checklist_post',
-            ]);
+            ->get(['documento','nombre','rechazos','adherencia_tiempo','rmd','adherencia_checklist_pre','adherencia_checklist_post']);
 
-        $rechazosPorDocumento = [];
-        $rechazosPorNombre = [];
-        $adherenciaTiempoPorDocumento = [];
-        $adherenciaTiempoPorNombre = [];
-        $rmdPorDocumento = [];
-        $rmdPorNombre = [];
-        $checklistPrePorDocumento = [];
-        $checklistPrePorNombre = [];
-        $checklistPostPorDocumento = [];
-        $checklistPostPorNombre = [];
+        $rechazosPorDocumento = []; $rechazosPorNombre = [];
+        $adherenciaTiempoPorDocumento = []; $adherenciaTiempoPorNombre = [];
+        $rmdPorDocumento = []; $rmdPorNombre = [];
+        $checklistPrePorDocumento = []; $checklistPrePorNombre = [];
+        $checklistPostPorDocumento = []; $checklistPostPorNombre = [];
 
         foreach ($eventosTripulacionRaw as $row) {
             $docKey = !empty($row->documento) ? $normStr($row->documento) : null;
-            $nomKey = !empty($row->nombre) ? $normStr($row->nombre) : null;
+            $nomKey = !empty($row->nombre)    ? $normStr($row->nombre)    : null;
 
             if ($row->rechazos !== null) {
                 $val = (float) $row->rechazos;
                 if ($docKey) $rechazosPorDocumento[$docKey][] = $val;
-                if ($nomKey) $rechazosPorNombre[$nomKey][] = $val;
+                if ($nomKey) $rechazosPorNombre[$nomKey][]    = $val;
             }
-
             if ($row->adherencia_tiempo !== null) {
                 $val = (float) $row->adherencia_tiempo;
                 if ($docKey) $adherenciaTiempoPorDocumento[$docKey][] = $val;
-                if ($nomKey) $adherenciaTiempoPorNombre[$nomKey][] = $val;
+                if ($nomKey) $adherenciaTiempoPorNombre[$nomKey][]    = $val;
             }
-
             if ($row->rmd !== null && is_numeric($row->rmd)) {
                 $val = (float) $row->rmd;
                 if ($docKey) $rmdPorDocumento[$docKey][] = $val;
-                if ($nomKey) $rmdPorNombre[$nomKey][] = $val;
+                if ($nomKey) $rmdPorNombre[$nomKey][]    = $val;
             }
-
             if ($row->adherencia_checklist_pre !== null) {
                 $val = (float) $row->adherencia_checklist_pre;
                 if ($docKey) $checklistPrePorDocumento[$docKey][] = $val;
-                if ($nomKey) $checklistPrePorNombre[$nomKey][] = $val;
+                if ($nomKey) $checklistPrePorNombre[$nomKey][]    = $val;
             }
-
             if ($row->adherencia_checklist_post !== null) {
                 $val = (float) $row->adherencia_checklist_post;
                 if ($docKey) $checklistPostPorDocumento[$docKey][] = $val;
-                if ($nomKey) $checklistPostPorNombre[$nomKey][] = $val;
+                if ($nomKey) $checklistPostPorNombre[$nomKey][]    = $val;
             }
         }
 
-        // 9. Registros SAC (Servicio al Cliente)
-        // Solo usa registros del período seleccionado.
-        // Sin datos para ese período → SAC queda en 100% (sin casos = sin penalización).
+        // 9. SAC — solo datos del período
         $sacRaw = DB::table('sac')
             ->whereIn($monthExpr('fecha'), $mesesSeleccionados)
             ->whereYear('fecha', $anio)
             ->get(['colaborador_id', 'responsable', 'cumplimiento_cierre', 'aplica']);
 
         $sacPorColaboradorId = [];
-        $sacPorResponsable = [];
-
+        $sacPorResponsable   = [];
         foreach ($sacRaw as $row) {
             $cumplio = false;
             if (!empty($row->cumplimiento_cierre)) {
@@ -260,21 +277,15 @@ class PlanPremiacionController extends Controller
                 }
             }
             $val = $cumplio ? 100.0 : 0.0;
-
-            if (!empty($row->colaborador_id)) {
-                $sacPorColaboradorId[$row->colaborador_id][] = $val;
-            }
-            if (!empty($row->responsable)) {
-                $sacPorResponsable[$normStr($row->responsable)][] = $val;
-            }
+            if (!empty($row->colaborador_id)) $sacPorColaboradorId[$row->colaborador_id][] = $val;
+            if (!empty($row->responsable))    $sacPorResponsable[$normStr($row->responsable)][] = $val;
         }
 
-        // Total de ACIs reportados en el mes
         $totalAcisMes = Aci::whereMonth('fecha_incidente', $mes)
             ->whereYear('fecha_incidente', $anio)
             ->count();
 
-        // 10. Registros Estado Manual Checklist (Pre y Post)
+        // 10. Checklists manuales
         $checklistsManuales = ChecklistPlanPremiacion::whereIn('colaborador_id', $colaboradores->pluck('id'))
             ->where('mes', $mes)
             ->where('anio', $anio)
@@ -282,502 +293,267 @@ class PlanPremiacionController extends Controller
             ->keyBy('colaborador_id');
 
         // 11. Procesar datos por colaborador
-        $todosCalculados = $colaboradores->map(function ($colaborador) use ($conteosPorColaborador, $preguntasRutaPorColaborador, $promediosCalificaciones, $dpoColaboradorIds, $dpoQrSafetySet, $dpoNombresSet, $malasMarcacionesIdentificacionesSet, $malasMarcacionesNombresSet, $rechazosPorDocumento, $rechazosPorNombre, $adherenciaTiempoPorDocumento, $adherenciaTiempoPorNombre, $rmdPorDocumento, $rmdPorNombre, $checklistPrePorDocumento, $checklistPrePorNombre, $checklistPostPorDocumento, $checklistPostPorNombre, $sacPorColaboradorId, $sacPorResponsable, $checklistsManuales, $normStr) {
+        $todosCalculados = $colaboradores->map(function ($colaborador) use (
+            $conteosPorColaborador, $preguntasRutaPorColaborador, $promediosCalificaciones,
+            $dpoColaboradorIds, $dpoQrSafetySet, $dpoNombresSet,
+            $malasMarcacionesIdentificacionesSet, $malasMarcacionesNombresSet,
+            $rechazosPorDocumento, $rechazosPorNombre,
+            $adherenciaTiempoPorDocumento, $adherenciaTiempoPorNombre,
+            $rmdPorDocumento, $rmdPorNombre,
+            $checklistPrePorDocumento, $checklistPrePorNombre,
+            $checklistPostPorDocumento, $checklistPostPorNombre,
+            $sacPorColaboradorId, $sacPorResponsable,
+            $checklistsManuales, $normStr
+        ) {
             $aciRealizadas = (int) ($conteosPorColaborador[$colaborador->id] ?? 0);
-            $porcentaje = round(($aciRealizadas / self::META_BASE) * 100, 1);
-            $faltantes = max(0, self::META_BASE - $aciRealizadas);
-            $cumple = $aciRealizadas >= self::META_BASE;
+            $porcentaje    = min(100.0, round(($aciRealizadas / self::META_BASE) * 100, 1));
+            $faltantes     = max(0, self::META_BASE - $aciRealizadas);
+            $cumple        = $aciRealizadas >= self::META_BASE;
+            $estadoStr     = $cumple ? 'meta_alcanzada' : ($aciRealizadas > 0 ? 'en_progreso' : 'sin_participacion');
 
-            $estadoStr = 'sin_participacion';
-            if ($cumple) {
-                $estadoStr = 'meta_alcanzada';
-            } elseif ($aciRealizadas > 0) {
-                $estadoStr = 'en_progreso';
-            }
+            // OWD Ruta — binario
+            $preguntasRuta   = $preguntasRutaPorColaborador->get($colaborador->id, collect());
+            $okRuta          = $preguntasRuta->filter(fn ($p) => str_contains(strtolower((string) $p->puntuacion), 'ok') && !str_contains(strtolower((string) $p->puntuacion), 'no ok') && !str_contains(strtolower((string) $p->puntuacion), 'not'))->count();
+            $noOkRuta        = $preguntasRuta->filter(fn ($p) => str_contains(strtolower((string) $p->puntuacion), 'no ok') || str_contains(strtolower((string) $p->puntuacion), 'nook'))->count();
+            $totalAplicables = $okRuta + $noOkRuta;
 
-            // Cálculo OWD Ruta: Si tiene al menos 1 NO OK -> 0%, si todos son OK -> 100%
-            $preguntasRuta = $preguntasRutaPorColaborador->get($colaborador->id, collect());
-            $okRuta = $preguntasRuta->filter(fn ($p) => str_contains(strtolower((string) $p->puntuacion), 'ok') && !str_contains(strtolower((string) $p->puntuacion), 'no ok') && !str_contains(strtolower((string) $p->puntuacion), 'not'))->count();
-            $noOkRuta = $preguntasRuta->filter(fn ($p) => str_contains(strtolower((string) $p->puntuacion), 'no ok') || str_contains(strtolower((string) $p->puntuacion), 'nook'))->count();
-            $totalAplicablesRuta = $okRuta + $noOkRuta;
-
-            if ($totalAplicablesRuta > 0) {
-                $porcentajeOwdRuta = $noOkRuta > 0 ? 0.0 : 100.0;
+            if ($totalAplicables > 0) {
+                $porcentajeOwdRuta      = $noOkRuta > 0 ? 0.0 : 100.0;
                 $porcentajeOwdRutaLabel = "{$porcentajeOwdRuta}%";
             } else {
-                $porcentajeOwdRuta = null;
+                $porcentajeOwdRuta      = null;
                 $porcentajeOwdRutaLabel = 'N/A';
             }
 
-            // Cálculo Promedio Calificaciones Módulos
+            // Calificaciones
             $promedioCalificacionRaw = $promediosCalificaciones[$colaborador->cedula] ?? null;
             if ($promedioCalificacionRaw !== null) {
-                $promedioCalificacion = round((float) $promedioCalificacionRaw, 1);
+                $promedioCalificacion      = round((float) $promedioCalificacionRaw, 1);
                 $promedioCalificacionLabel = "{$promedioCalificacion}%";
             } else {
-                $promedioCalificacion = null;
+                $promedioCalificacion      = null;
                 $promedioCalificacionLabel = 'N/A';
             }
 
-            // Cálculo % DPO Academy: Si está en listado dpo_academy -> 0%, si no -> 100%
+            // DPO
             $estaEnDpo = isset($dpoColaboradorIds[$colaborador->id]);
-            if (!$estaEnDpo && !empty($colaborador->codigo_qr_skap)) {
-                $estaEnDpo = isset($dpoQrSafetySet[$normStr($colaborador->codigo_qr_skap)]);
-            }
-            if (!$estaEnDpo && !empty($colaborador->cedula)) {
-                $estaEnDpo = isset($dpoQrSafetySet[$normStr($colaborador->cedula)]) || isset($dpoNombresSet[$normStr($colaborador->cedula)]);
-            }
-            if (!$estaEnDpo && !empty($colaborador->nombre_completo)) {
-                $estaEnDpo = isset($dpoNombresSet[$normStr($colaborador->nombre_completo)]);
-            }
-
-            $porcentajeDpo = $estaEnDpo ? 0.0 : 100.0;
+            if (!$estaEnDpo && !empty($colaborador->codigo_qr_skap)) $estaEnDpo = isset($dpoQrSafetySet[$normStr($colaborador->codigo_qr_skap)]);
+            if (!$estaEnDpo && !empty($colaborador->cedula))          $estaEnDpo = isset($dpoQrSafetySet[$normStr($colaborador->cedula)]) || isset($dpoNombresSet[$normStr($colaborador->cedula)]);
+            if (!$estaEnDpo && !empty($colaborador->nombre_completo)) $estaEnDpo = isset($dpoNombresSet[$normStr($colaborador->nombre_completo)]);
+            $porcentajeDpo      = $estaEnDpo ? 0.0 : 100.0;
             $porcentajeDpoLabel = $estaEnDpo ? '0%' : '100%';
 
-            // % Ausentismo: toggle manual (ausentismo_ok en checklist_plan_premiacion, default 100%)
-            $manualAusentismo = $checklistsManuales->get($colaborador->id);
-            $ausentismoAprobado = $manualAusentismo ? (bool) $manualAusentismo->ausentismo_ok : true;
-            $porcentajeAusentismo = $ausentismoAprobado ? 100.0 : 0.0;
+            // Ausentismo
+            $manualAusentismo       = $checklistsManuales->get($colaborador->id);
+            $ausentismoAprobado     = $manualAusentismo ? (bool) $manualAusentismo->ausentismo_ok : true;
+            $porcentajeAusentismo   = $ausentismoAprobado ? 100.0 : 0.0;
             $porcentajeAusentismoLabel = $ausentismoAprobado ? '100%' : '0%';
 
-            // Cálculo % Malas Marcaciones: Si está en el listado de correcciones_marcaciones -> 0%, si no -> 100%
+            // Malas Marcaciones
             $estaEnMalasMarcaciones = false;
-            if (!empty($colaborador->cedula)) {
-                $estaEnMalasMarcaciones = isset($malasMarcacionesIdentificacionesSet[$normStr($colaborador->cedula)]);
-            }
-            if (!$estaEnMalasMarcaciones && !empty($colaborador->codigo_qr_skap)) {
-                $estaEnMalasMarcaciones = isset($malasMarcacionesIdentificacionesSet[$normStr($colaborador->codigo_qr_skap)]);
-            }
-            if (!$estaEnMalasMarcaciones && !empty($colaborador->nombre_completo)) {
-                $estaEnMalasMarcaciones = isset($malasMarcacionesNombresSet[$normStr($colaborador->nombre_completo)]);
-            }
-
-            $porcentajeMalasMarcaciones = $estaEnMalasMarcaciones ? 0.0 : 100.0;
+            if (!empty($colaborador->cedula))           $estaEnMalasMarcaciones = isset($malasMarcacionesIdentificacionesSet[$normStr($colaborador->cedula)]);
+            if (!$estaEnMalasMarcaciones && !empty($colaborador->codigo_qr_skap)) $estaEnMalasMarcaciones = isset($malasMarcacionesIdentificacionesSet[$normStr($colaborador->codigo_qr_skap)]);
+            if (!$estaEnMalasMarcaciones && !empty($colaborador->nombre_completo)) $estaEnMalasMarcaciones = isset($malasMarcacionesNombresSet[$normStr($colaborador->nombre_completo)]);
+            $porcentajeMalasMarcaciones      = $estaEnMalasMarcaciones ? 0.0 : 100.0;
             $porcentajeMalasMarcacionesLabel = $estaEnMalasMarcaciones ? '0%' : '100%';
 
-            // Helper de coincidencia de arreglos de valores para un colaborador
+            // Helper de coincidencia
             $getMetricVals = function ($docMap, $nomMap) use ($colaborador, $normStr) {
                 $vals = !empty($colaborador->cedula) ? ($docMap[$normStr($colaborador->cedula)] ?? null) : null;
-                if ($vals === null && !empty($colaborador->codigo_qr_skap)) {
-                    $vals = $docMap[$normStr($colaborador->codigo_qr_skap)] ?? null;
-                }
-                if ($vals === null && !empty($colaborador->nombre_completo)) {
-                    $vals = $nomMap[$normStr($colaborador->nombre_completo)] ?? null;
-                }
+                if ($vals === null && !empty($colaborador->codigo_qr_skap)) $vals = $docMap[$normStr($colaborador->codigo_qr_skap)] ?? null;
+                if ($vals === null && !empty($colaborador->nombre_completo)) $vals = $nomMap[$normStr($colaborador->nombre_completo)] ?? null;
                 return $vals;
             };
 
-            // % Rechazos
+            // Rechazos
             $valsRechazos = $getMetricVals($rechazosPorDocumento, $rechazosPorNombre);
             if (!empty($valsRechazos)) {
-                $porcentajeRechazos = round(array_sum($valsRechazos) / count($valsRechazos), 1);
+                $porcentajeRechazos      = round(array_sum($valsRechazos) / count($valsRechazos), 1);
                 $porcentajeRechazosLabel = "{$porcentajeRechazos}%";
             } else {
-                $porcentajeRechazos = null;
+                $porcentajeRechazos      = null;
                 $porcentajeRechazosLabel = 'N/A';
             }
 
-            // % Adherencia Tiempo
+            // Adherencia Tiempo
             $valsAdherenciaTiempo = $getMetricVals($adherenciaTiempoPorDocumento, $adherenciaTiempoPorNombre);
             if (!empty($valsAdherenciaTiempo)) {
-                $porcentajeAdherenciaTiempo = round(array_sum($valsAdherenciaTiempo) / count($valsAdherenciaTiempo), 1);
+                $porcentajeAdherenciaTiempo      = round(array_sum($valsAdherenciaTiempo) / count($valsAdherenciaTiempo), 1);
                 $porcentajeAdherenciaTiempoLabel = "{$porcentajeAdherenciaTiempo}%";
             } else {
-                $porcentajeAdherenciaTiempo = null;
+                $porcentajeAdherenciaTiempo      = null;
                 $porcentajeAdherenciaTiempoLabel = 'N/A';
             }
 
             // RMD
             $valsRmd = $getMetricVals($rmdPorDocumento, $rmdPorNombre);
             if (!empty($valsRmd)) {
-                $promedioRmd = round(array_sum($valsRmd) / count($valsRmd), 1);
+                $promedioRmd      = round(array_sum($valsRmd) / count($valsRmd), 1);
                 $promedioRmdLabel = "{$promedioRmd}";
             } else {
-                $promedioRmd = null;
+                $promedioRmd      = null;
                 $promedioRmdLabel = 'N/A';
             }
 
-            // % Adherencia CL Pre/Post — solo aplica para cargo Conductor (Default 100% / Aprobado, manual toggle)
+            // Checklist Pre/Post — solo Conductores
             $esConductor = str_contains(strtoupper((string) ($colaborador->cargo ?? '')), 'CONDUCTOR');
-
             if ($esConductor) {
-                $manualCheck = $checklistsManuales->get($colaborador->id);
-                $clPreAprobado = $manualCheck ? (bool) $manualCheck->cl_pre : true;
-                $clPostAprobado = $manualCheck ? (bool) $manualCheck->cl_post : true;
-
-                $porcentajeChecklistPre = $clPreAprobado ? 100.0 : 0.0;
-                $porcentajeChecklistPreLabel = $clPreAprobado ? 'Aprobado' : 'No Aprobado';
-                $promedioClPre = null;
-
-                $porcentajeChecklistPost = $clPostAprobado ? 100.0 : 0.0;
+                $manualCheck      = $checklistsManuales->get($colaborador->id);
+                $clPreAprobado    = $manualCheck ? (bool) $manualCheck->cl_pre  : true;
+                $clPostAprobado   = $manualCheck ? (bool) $manualCheck->cl_post : true;
+                $porcentajeChecklistPre      = $clPreAprobado  ? 100.0 : 0.0;
+                $porcentajeChecklistPreLabel = $clPreAprobado  ? 'Aprobado' : 'No Aprobado';
+                $porcentajeChecklistPost      = $clPostAprobado ? 100.0 : 0.0;
                 $porcentajeChecklistPostLabel = $clPostAprobado ? 'Aprobado' : 'No Aprobado';
+                $promedioClPre  = null;
                 $promedioClPost = null;
             } else {
-                $promedioClPre = null;
-                $porcentajeChecklistPre = null;
-                $porcentajeChecklistPreLabel = 'N/A';
-                $promedioClPost = null;
-                $porcentajeChecklistPost = null;
-                $porcentajeChecklistPostLabel = 'N/A';
+                $promedioClPre  = null; $porcentajeChecklistPre  = null; $porcentajeChecklistPreLabel  = 'N/A';
+                $promedioClPost = null; $porcentajeChecklistPost = null; $porcentajeChecklistPostLabel = 'N/A';
             }
 
-            // Cálculo Resultado Ponderado SEGURIDAD (ACI=10%, OWD=15%, Calificaciones=10% = 35%)
-            // Si un componente es N/A no resta: se calcula sobre el peso que sí aplica.
-            $calAci = $porcentaje !== null ? min((float)$porcentaje, 100) / 100 : null;
-            $calOwd = $porcentajeOwdRuta !== null ? min((float)$porcentajeOwdRuta, 100) / 100 : null;
-            $calCapacitaciones = $promedioCalificacion !== null ? min((float)$promedioCalificacion, 100) / 100 : null;
-
-            // Peso de cada componente
+            // Resultado Seguridad (35 pts)
+            $calAci            = min((float) $porcentaje, 100) / 100;
+            $calOwd            = $porcentajeOwdRuta      !== null ? min((float) $porcentajeOwdRuta, 100)      / 100 : null;
+            $calCapacitaciones = $promedioCalificacion   !== null ? min((float) $promedioCalificacion, 100)   / 100 : null;
             $pesoAci = 10; $pesoOwd = 15; $pesoCal = 10;
-
-            // Suma ponderada solo con los componentes que tienen dato
-            $puntosSeg  = ($calAci !== null ? $calAci * $pesoAci : 0)
-                        + ($calOwd !== null ? $calOwd * $pesoOwd : 0)
-                        + ($calCapacitaciones !== null ? $calCapacitaciones * $pesoCal : 0);
-
-            // Peso máximo alcanzable (solo los que aplican)
-            $pesoMaxSeg = ($calAci !== null ? $pesoAci : 0)
-                        + ($calOwd !== null ? $pesoOwd : 0)
-                        + ($calCapacitaciones !== null ? $pesoCal : 0);
-
-            // Resultado escalado a 35 puntos siempre
-            $resultadoVal = $pesoMaxSeg > 0
-                ? round(($puntosSeg / $pesoMaxSeg) * 35, 1)
-                : 0.0;
+            $puntosSeg  = ($calAci * $pesoAci) + ($calOwd !== null ? $calOwd * $pesoOwd : 0) + ($calCapacitaciones !== null ? $calCapacitaciones * $pesoCal : 0);
+            $pesoMaxSeg = $pesoAci + ($calOwd !== null ? $pesoOwd : 0) + ($calCapacitaciones !== null ? $pesoCal : 0);
+            $resultadoVal   = $pesoMaxSeg > 0 ? round(($puntosSeg / $pesoMaxSeg) * 35, 1) : 0.0;
             $resultadoLabel = "{$resultadoVal}%";
 
-            // Cálculo Resultado Ponderado GENTE (DPO=5%, Marcaciones=5%, Ausentismo=5% = 15%)
-            $calDpo = $porcentajeDpo !== null ? min((float)$porcentajeDpo, 100) / 100 : 0;
-            $calAusentismo = $porcentajeAusentismo !== null ? min((float)$porcentajeAusentismo, 100) / 100 : 0;
-            $calMarcaciones = $porcentajeMalasMarcaciones !== null ? min((float)$porcentajeMalasMarcaciones, 100) / 100 : 0;
-
-            $resultadoAsistenciaVal = round(($calDpo * 5) + ($calAusentismo * 5) + ($calMarcaciones * 5), 1);
+            // Resultado Gente (15 pts)
+            $calDpo       = min((float) $porcentajeDpo, 100) / 100;
+            $calAusentism = min((float) $porcentajeAusentismo, 100) / 100;
+            $calMarc      = min((float) $porcentajeMalasMarcaciones, 100) / 100;
+            $resultadoAsistenciaVal   = round(($calDpo * 5) + ($calAusentism * 5) + ($calMarc * 5), 1);
             $resultadoAsistenciaLabel = "{$resultadoAsistenciaVal}%";
 
-            // % SAC (Servicio al Cliente)
-            $valsSac = $getMetricVals($sacPorColaboradorId, $sacPorResponsable);
+            // SAC
+            $valsSac       = $getMetricVals($sacPorColaboradorId, $sacPorResponsable);
             $tieneCasosSac = !empty($valsSac);
-            if (!empty($valsSac)) {
-                $porcentajeSac = round(array_sum($valsSac) / count($valsSac), 1);
+            if ($tieneCasosSac) {
+                $porcentajeSac      = round(array_sum($valsSac) / count($valsSac), 1);
                 $porcentajeSacLabel = "{$porcentajeSac}%";
             } else {
-                $porcentajeSac = 100.0;
+                $porcentajeSac      = 100.0;
                 $porcentajeSacLabel = '100%';
             }
 
-            // Calificación REPARTO
-            $calRechazos = $porcentajeRechazos !== null ? (int)($porcentajeRechazos <= 2.4) : 0;
-
-            // SAC: 0 casos = 100% (calSac=1), 1+ casos = 0% (calSac=0) (peso 8%)
-            $calSac = $tieneCasosSac ? 0 : 1;
-
-            $calAdherenciaTiempo = $porcentajeAdherenciaTiempo !== null ? (int)($porcentajeAdherenciaTiempo >= 83) : 0;
-
-            $calRmd = $promedioRmd !== null ? (int)($promedioRmd >= 4) : 0;
-
-            $resultadoRepartoVal = round(($calRechazos * 11) + ($calSac * 8) + ($calAdherenciaTiempo * 8) + ($calRmd * 8), 1);
+            // Resultado Reparto (35 pts)
+            $calRechazos       = $porcentajeRechazos        !== null ? (int) ($porcentajeRechazos <= 2.4)       : 0;
+            $calSac            = $tieneCasosSac ? 0 : 1;
+            $calAdherenciaTiempo = $porcentajeAdherenciaTiempo !== null ? (int) ($porcentajeAdherenciaTiempo >= 83) : 0;
+            $calRmd            = $promedioRmd                !== null ? (int) ($promedioRmd >= 4)                : 0;
+            $resultadoRepartoVal   = round(($calRechazos * 11) + ($calSac * 8) + ($calAdherenciaTiempo * 8) + ($calRmd * 8), 1);
             $resultadoRepartoLabel = "{$resultadoRepartoVal}%";
 
-            // Cálculo Resultado Ponderado FLOTA (15%)
-            // Solo aplica para Conductores. Ambos checklist (Pre y Post) deben estar Aprobados para obtener 15%, si alguno es No Aprobado -> 0%.
+            // Resultado Flota (15 pts — solo Conductores)
             if ($esConductor) {
-                $clPreOk  = $porcentajeChecklistPre !== null && $porcentajeChecklistPre >= 100;
+                $clPreOk  = $porcentajeChecklistPre  !== null && $porcentajeChecklistPre  >= 100;
                 $clPostOk = $porcentajeChecklistPost !== null && $porcentajeChecklistPost >= 100;
-                $resultadoFlotaVal = ($clPreOk && $clPostOk) ? 15.0 : 0.0;
+                $resultadoFlotaVal   = ($clPreOk && $clPostOk) ? 15.0 : 0.0;
                 $resultadoFlotaLabel = "{$resultadoFlotaVal}%";
             } else {
-                $resultadoFlotaVal = null;
+                $resultadoFlotaVal   = null;
                 $resultadoFlotaLabel = 'N/A';
             }
 
-            // Calificación Total (suma de los 4 pilares = 100%)
-            // Para conductores: Seguridad(35%) + Gente(15%) + Reparto(35%) + Flota(15%) = 100%
-            // Para otros cargos: Seguridad(35%) + Gente(15%) + Reparto(35%) escalado a 100%
+            // Total
             if ($esConductor) {
                 $calificacionTotalVal = round($resultadoVal + $resultadoAsistenciaVal + $resultadoRepartoVal + $resultadoFlotaVal, 1);
             } else {
-                $sumaBase = $resultadoVal + $resultadoAsistenciaVal + $resultadoRepartoVal;
-                $calificacionTotalVal = round(($sumaBase / 85) * 100, 1);
+                $calificacionTotalVal = round((($resultadoVal + $resultadoAsistenciaVal + $resultadoRepartoVal) / 85) * 100, 1);
             }
             $calificacionTotalLabel = "{$calificacionTotalVal}%";
 
             return [
-                'id' => $colaborador->id,
-                'cedula' => $colaborador->cedula,
-                'nombre_completo' => $colaborador->nombre_completo,
-                'nombres' => $colaborador->nombres,
-                'apellidos' => $colaborador->apellidos,
-                'cargo' => $colaborador->cargo ?? 'Sin cargo',
-                'area' => $colaborador->area ?? 'General',
-                'aci_realizadas' => $aciRealizadas,
-                'meta' => self::META_BASE,
-                'porcentaje' => $porcentaje,
-                'porcentaje_owd_ruta' => $porcentajeOwdRuta,
-                'porcentaje_owd_ruta_label' => $porcentajeOwdRutaLabel,
-                'promedio_calificaciones' => $promedioCalificacion,
-                'promedio_calificaciones_label' => $promedioCalificacionLabel,
-                'resultado' => $resultadoVal,
-                'resultado_label' => $resultadoLabel,
-                'porcentaje_dpo' => $porcentajeDpo,
-                'porcentaje_dpo_label' => $porcentajeDpoLabel,
-                'porcentaje_ausentismo' => $porcentajeAusentismo,
-                'porcentaje_ausentismo_label' => $porcentajeAusentismoLabel,
+                'id'                           => $colaborador->id,
+                'cedula'                       => $colaborador->cedula,
+                'nombre_completo'              => $colaborador->nombre_completo,
+                'nombres'                      => $colaborador->nombres,
+                'apellidos'                    => $colaborador->apellidos,
+                'cargo'                        => $colaborador->cargo ?? 'Sin cargo',
+                'area'                         => $colaborador->area  ?? 'General',
+                'aci_realizadas'               => $aciRealizadas,
+                'meta'                         => self::META_BASE,
+                'porcentaje'                   => $porcentaje,
+                'porcentaje_owd_ruta'          => $porcentajeOwdRuta,
+                'porcentaje_owd_ruta_label'    => $porcentajeOwdRutaLabel,
+                'promedio_calificaciones'      => $promedioCalificacion,
+                'promedio_calificaciones_label'=> $promedioCalificacionLabel,
+                'resultado'                    => $resultadoVal,
+                'resultado_label'              => $resultadoLabel,
+                'porcentaje_dpo'               => $porcentajeDpo,
+                'porcentaje_dpo_label'         => $porcentajeDpoLabel,
+                'porcentaje_ausentismo'        => $porcentajeAusentismo,
+                'porcentaje_ausentismo_label'  => $porcentajeAusentismoLabel,
                 'porcentaje_malas_marcaciones' => $porcentajeMalasMarcaciones,
                 'porcentaje_malas_marcaciones_label' => $porcentajeMalasMarcacionesLabel,
-                'resultado_asistencia' => $resultadoAsistenciaVal,
-                'resultado_asistencia_label' => $resultadoAsistenciaLabel,
-                'porcentaje_rechazos' => $porcentajeRechazos,
-                'porcentaje_rechazos_label' => $porcentajeRechazosLabel,
-                'porcentaje_sac' => $porcentajeSac,
-                'porcentaje_sac_label' => $porcentajeSacLabel,
+                'resultado_asistencia'         => $resultadoAsistenciaVal,
+                'resultado_asistencia_label'   => $resultadoAsistenciaLabel,
+                'porcentaje_rechazos'          => $porcentajeRechazos,
+                'porcentaje_rechazos_label'    => $porcentajeRechazosLabel,
+                'porcentaje_sac'               => $porcentajeSac,
+                'porcentaje_sac_label'         => $porcentajeSacLabel,
                 'porcentaje_adherencia_tiempo' => $porcentajeAdherenciaTiempo,
                 'porcentaje_adherencia_tiempo_label' => $porcentajeAdherenciaTiempoLabel,
-                'promedio_rmd' => $promedioRmd,
-                'promedio_rmd_label' => $promedioRmdLabel,
-                'porcentaje_checklist_pre' => $porcentajeChecklistPre,
+                'promedio_rmd'                 => $promedioRmd,
+                'promedio_rmd_label'           => $promedioRmdLabel,
+                'porcentaje_checklist_pre'     => $porcentajeChecklistPre,
                 'porcentaje_checklist_pre_label' => $porcentajeChecklistPreLabel,
-                'promedio_checklist_pre' => $promedioClPre,
-                'porcentaje_checklist_post' => $porcentajeChecklistPost,
+                'promedio_checklist_pre'       => $promedioClPre,
+                'porcentaje_checklist_post'    => $porcentajeChecklistPost,
                 'porcentaje_checklist_post_label' => $porcentajeChecklistPostLabel,
-                'promedio_checklist_post' => $promedioClPost,
-                'resultado_reparto' => $resultadoRepartoVal,
-                'resultado_reparto_label' => $resultadoRepartoLabel,
-                'resultado_flota' => $resultadoFlotaVal,
-                'resultado_flota_label' => $resultadoFlotaLabel,
-                'calificacion_total' => $calificacionTotalVal,
-                'calificacion_total_label' => $calificacionTotalLabel,
-                'faltantes' => $faltantes,
-                'cumple' => $cumple,
-                'estado' => $estadoStr,
+                'promedio_checklist_post'      => $promedioClPost,
+                'resultado_reparto'            => $resultadoRepartoVal,
+                'resultado_reparto_label'      => $resultadoRepartoLabel,
+                'resultado_flota'              => $resultadoFlotaVal,
+                'resultado_flota_label'        => $resultadoFlotaLabel,
+                'calificacion_total'           => $calificacionTotalVal,
+                'calificacion_total_label'     => $calificacionTotalLabel,
+                'faltantes'                    => $faltantes,
+                'cumple'                       => $cumple,
+                'estado'                       => $estadoStr,
             ];
         });
 
-        // Métricas globales para las KPI cards
-        $totalPoblacion = $todosCalculados->count();
-        $cumplenMetaCount = $todosCalculados->where('cumple', true)->count();
-        $enProgresoCount = $todosCalculados->where('estado', 'en_progreso')->count();
-        $sinParticipacionCount = $todosCalculados->where('estado', 'sin_participacion')->count();
-        $promedioPorcentaje = $totalPoblacion > 0
-            ? round($todosCalculados->avg('porcentaje'), 1)
-            : 0.0;
-
-        // Top 3 — los 3 mejores por calificación total
-        $top3 = $todosCalculados
-            ->sortByDesc('calificacion_total')
-            ->values()
-            ->take(3)
-            ->all();
-
-        // 2 colaboradores con peor calificación total
-        $peores2 = $todosCalculados
-            ->sortBy('calificacion_total')
-            ->values()
-            ->take(2)
-            ->all();
-
-        // Filtrado secundario por estado si aplica
-        $filasFiltradas = $todosCalculados;
-        if (in_array($filtroEstado, ['meta_alcanzada', 'en_progreso', 'sin_participacion'], true)) {
-            $filasFiltradas = $filasFiltradas->where('estado', $filtroEstado)->values();
-        }
-
-        // Ordenamiento principal por Calificación Total desc
-        $filasFinales = $filasFiltradas->sortByDesc('calificacion_total')->values()->all();
-
-        return Inertia::render('gente/plan-premiacion/index', [
-            'colaboradores' => $filasFinales,
-            'resumen' => [
-                'meta_base' => self::META_BASE,
-                'total_colaboradores' => $totalPoblacion,
-                'total_acis_mes' => $totalAcisMes,
-                'cumplen_meta' => $cumplenMetaCount,
-                'en_progreso' => $enProgresoCount,
-                'sin_participacion' => $sinParticipacionCount,
-                'promedio_porcentaje' => $promedioPorcentaje,
-            ],
-            'top3' => $top3,
-            'peores2' => $peores2,
-            'cargos' => $cargosDisponibles,
-            'umbral_checklist' => self::UMBRAL_CHECKLIST,
-            'puede_editar' => $request->user()?->hasAnyRole(['Administrador', 'Gente']) ?? false,
-            'filters' => [
-                'mes' => $mes,
-                'anio' => $anio,
-                'search' => $search,
-                'estado' => $filtroEstado,
-                'cargo' => $filtroCargo,
-                'meses_checklist' => $mesesChecklistStr,
-            ],
-        ]);
+        return ['todosCalculados' => $todosCalculados, 'totalAcisMes' => $totalAcisMes];
     }
 
     public function exportar(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse
     {
         set_time_limit(300);
 
-        $mes  = $request->integer('mes')  ?: (int) now()->month;
-        $anio = $request->integer('anio') ?: (int) now()->year;
-        $filtroCargo = $request->string('cargo')->trim()->toString();
-        $cargosSeleccionados = array_values(array_filter(
-            array_map('trim', explode(',', $filtroCargo)),
-            fn ($c) => $c !== '' && $c !== 'todos'
-        ));
+        $mes             = $request->integer('mes')  ?: (int) now()->month;
+        $anio            = $request->integer('anio') ?: (int) now()->year;
+        $filtroCargo     = $request->string('cargo')->trim()->toString();
+        $mesesChecklistStr = $request->string('meses_checklist')->trim()->toString();
 
-        // ── Colaboradores ────────────────────────────────────────────────────
-        $queryCol = Colaborador::query()
-            ->where('is_active', true)
-            ->whereRaw("LOWER(TRIM(area)) = 'operativa'")
-            ->select(['id', 'cedula', 'nombres', 'apellidos', 'cargo', 'area', 'codigo_qr_skap']);
+        // Reutiliza exactamente el mismo pipeline del index() — sin recalcular nada.
+        ['todosCalculados' => $todosCalculados] =
+            $this->buildFilasFinales($mes, $anio, '', $filtroCargo, $mesesChecklistStr);
 
-        if (!empty($cargosSeleccionados)) {
-            $queryCol->whereIn('cargo', $cargosSeleccionados);
-        }
-
-        $colaboradores = $queryCol->get();
-
-        // ── Datos del mes ─────────────────────────────────────────────────────
-        $normStr = function ($txt): string {
-            $str = mb_strtoupper(trim((string) $txt), 'UTF-8');
-            $str = str_replace(['Á','É','Í','Ó','Ú','Ü','Ñ'], ['A','E','I','O','U','U','N'], $str);
-            return preg_replace('/[^A-Z0-9]/', '', $str) ?? $str;
-        };
-
-        $conteosPorColaborador = Aci::whereMonth('fecha_incidente', $mes)
-            ->whereYear('fecha_incidente', $anio)
-            ->whereNotNull('colaborador_id')
-            ->select('colaborador_id', DB::raw('count(*) as total'))
-            ->groupBy('colaborador_id')
-            ->pluck('total', 'colaborador_id');
-
-        $colaboradoresPorQrOwd = Colaborador::whereNotNull('codigo_qr_skap')
-            ->select(['id', 'codigo_qr_skap'])->get()->keyBy('codigo_qr_skap');
-
-        $preguntasRutaRaw = DB::table('evaluacion_owd_preguntas')
-            ->join('evaluaciones_owd', 'evaluacion_owd_preguntas.evaluacion_owd_id', '=', 'evaluaciones_owd.id')
-            ->whereMonth('evaluaciones_owd.fecha_evaluacion', $mes)
-            ->whereYear('evaluaciones_owd.fecha_evaluacion', $anio)
-            ->where(function ($q) {
-                $q->whereRaw("LOWER(TRIM(evaluacion_owd_preguntas.actividad)) = 'ruta'")
-                  ->orWhereRaw("LOWER(TRIM(evaluacion_owd_preguntas.actividad)) = '\"ruta\"'")
-                  ->orWhereRaw("LOWER(TRIM(evaluacion_owd_preguntas.actividad)) = '[\"ruta\"]'");
-            })
-            ->select('evaluaciones_owd.colaborador_id', 'evaluaciones_owd.qr_safety', 'evaluacion_owd_preguntas.puntuacion')
-            ->get();
-
-        $preguntasRutaPorColaborador = $preguntasRutaRaw->groupBy(function ($p) use ($colaboradoresPorQrOwd) {
-            if ($p->colaborador_id) return $p->colaborador_id;
-            $c = $colaboradoresPorQrOwd->get($p->qr_safety);
-            return $c ? $c->id : null;
-        })->filter(fn ($g, $k) => $k !== null);
-
-        $promediosCalificaciones = DB::table('colaborador_calificaciones')
-            ->whereNotNull('nota_modulo')
-            ->select('identificacion', DB::raw('AVG(nota_modulo) as promedio_nota'))
-            ->groupBy('identificacion')
-            ->pluck('promedio_nota', 'identificacion');
-
-        $isSqlite = DB::connection()->getDriverName() === 'sqlite';
-        $monthExpr = fn (string $col) => $isSqlite ? DB::raw("cast(strftime('%m', {$col}) as integer)") : DB::raw("MONTH({$col})");
-
-        $registrosDpo = DB::table('dpo_academy')
-            ->where(function ($q) use ($mes, $anio, $monthExpr) {
-                $q->where(function ($q2) use ($mes, $anio) {
-                    $q2->where('mes', $mes)
-                       ->where('anio', $anio);
-                })->orWhere(function ($q2) use ($mes, $anio, $monthExpr) {
-                    $q2->whereNull('mes')
-                       ->where($monthExpr('created_at'), $mes)
-                       ->whereYear('created_at', $anio);
-                });
-            })
-            ->select(['colaborador_id','qr_safety','nombre'])
-            ->get();
-        $dpoColaboradorIds = $registrosDpo->pluck('colaborador_id')->filter()->unique()->flip()->toArray();
-        $dpoQrSafetySet = []; $dpoNombresSet = [];
-        foreach ($registrosDpo as $r) {
-            if ($r->qr_safety) $dpoQrSafetySet[$normStr($r->qr_safety)] = true;
-            if ($r->nombre)    $dpoNombresSet[$normStr($r->nombre)] = true;
-        }
-
-
-        $correcciones = DB::table('correcciones_marcaciones')
-            ->whereMonth('fecha',$mes)->whereYear('fecha',$anio)
-            ->get(['identificacion','nombre_completo']);
-        $marcacionesIdSet = []; $marcacionesNomSet = [];
-        foreach ($correcciones as $r) {
-            if (!empty($r->identificacion)) $marcacionesIdSet[$normStr($r->identificacion)] = true;
-            if (!empty($r->nombre_completo)) $marcacionesNomSet[$normStr($r->nombre_completo)] = true;
-        }
-
-        $eventosRaw = DB::table('eventos_tripulacion')
-            ->whereMonth('fecha',$mes)->whereYear('fecha',$anio)
-            ->get(['documento','nombre','rechazos','adherencia_tiempo','rmd','adherencia_checklist_pre','adherencia_checklist_post']);
-
-        $rechazosPorDoc=[]; $rechazosPorNom=[];
-        $adTiempoPorDoc=[]; $adTiempoPorNom=[];
-        $rmdPorDoc=[]; $rmdPorNom=[];
-        $clPrePorDoc=[]; $clPrePorNom=[];
-        $clPostPorDoc=[]; $clPostPorNom=[];
-
-        foreach ($eventosRaw as $row) {
-            $dk = !empty($row->documento) ? $normStr($row->documento) : null;
-            $nk = !empty($row->nombre)    ? $normStr($row->nombre)    : null;
-            if ($row->rechazos !== null)                               { $v=(float)$row->rechazos;                if($dk) $rechazosPorDoc[$dk][]=$v; if($nk) $rechazosPorNom[$nk][]=$v; }
-            if ($row->adherencia_tiempo !== null)                      { $v=(float)$row->adherencia_tiempo;      if($dk) $adTiempoPorDoc[$dk][]=$v; if($nk) $adTiempoPorNom[$nk][]=$v; }
-            if ($row->rmd !== null && is_numeric($row->rmd))           { $v=(float)$row->rmd;                    if($dk) $rmdPorDoc[$dk][]=$v;      if($nk) $rmdPorNom[$nk][]=$v; }
-            if ($row->adherencia_checklist_pre !== null)               { $v=(float)$row->adherencia_checklist_pre;  if($dk) $clPrePorDoc[$dk][]=$v;  if($nk) $clPrePorNom[$nk][]=$v; }
-            if ($row->adherencia_checklist_post !== null)              { $v=(float)$row->adherencia_checklist_post; if($dk) $clPostPorDoc[$dk][]=$v; if($nk) $clPostPorNom[$nk][]=$v; }
-        }
-
-        $checklistsManuales = ChecklistPlanPremiacion::whereIn('colaborador_id', $colaboradores->pluck('id'))
-            ->where('mes', $mes)
-            ->where('anio', $anio)
-            ->get()
-            ->keyBy('colaborador_id');
-
-        $sacRaw = DB::table('sac')->whereMonth('fecha',$mes)->whereYear('fecha',$anio)
-            ->get(['colaborador_id','responsable','cumplimiento_cierre','aplica']);
-        $sacPorColId=[]; $sacPorResp=[];
-        foreach ($sacRaw as $row) {
-            $c = mb_strtoupper(trim((string)($row->cumplimiento_cierre??'')), 'UTF-8');
-            $v = (str_contains($c,'TIEMPO')||str_contains($c,'SI')||str_contains($c,'100')) ? 100.0 : 0.0;
-            if (!empty($row->colaborador_id)) $sacPorColId[$row->colaborador_id][] = $v;
-            if (!empty($row->responsable))    $sacPorResp[$normStr($row->responsable)][] = $v;
-        }
-
-        $getVals = function ($docMap, $nomMap) use ($normStr) {
-            return function ($colaborador) use ($docMap, $nomMap, $normStr) {
-                $v = !empty($colaborador->cedula)       ? ($docMap[$normStr($colaborador->cedula)] ?? null) : null;
-                if ($v === null && !empty($colaborador->codigo_qr_skap)) $v = $docMap[$normStr($colaborador->codigo_qr_skap)] ?? null;
-                if ($v === null && !empty($colaborador->nombre_completo)) $v = $nomMap[$normStr($colaborador->nombre_completo)] ?? null;
-                return $v;
-            };
-        };
-
-        $getRechazos    = $getVals($rechazosPorDoc, $rechazosPorNom);
-        $getAdTiempo    = $getVals($adTiempoPorDoc, $adTiempoPorNom);
-        $getRmd         = $getVals($rmdPorDoc, $rmdPorNom);
-        $getClPre       = $getVals($clPrePorDoc, $clPrePorNom);
-        $getClPost      = $getVals($clPostPorDoc, $clPostPorNom);
+        // Mismo orden que la vista: mayor calificación total primero
+        $filas = $todosCalculados->sortByDesc('calificacion_total')->values()->all();
 
         // ── Construir el libro Excel ──────────────────────────────────────────
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Plan Premiación');
 
-        // Colores de pilares
         $colores = [
-            'seguridad' => 'D1FAE5', // verde claro
-            'gente'     => 'FEF3C7', // ámbar claro
-            'reparto'   => 'FFE4E6', // rosa claro
-            'flota'     => 'DBEAFE', // azul claro
-            'total'     => 'EDE9FE', // violeta claro
-            'header'    => '1E293B', // slate oscuro
+            'seguridad' => 'D1FAE5',
+            'gente'     => 'FEF3C7',
+            'reparto'   => 'FFE4E6',
+            'flota'     => 'DBEAFE',
+            'total'     => 'EDE9FE',
+            'header'    => '1E293B',
         ];
 
         $mN = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
         $sheet->setCellValue('A1', "Plan Premiación — {$mN[$mes]} {$anio}");
-        $sheet->mergeCells('A1:X1');
+        $sheet->mergeCells('A1:S1');
         $sheet->getStyle('A1')->applyFromArray([
             'font'      => ['bold'=>true,'size'=>13,'color'=>['rgb'=>'FFFFFF']],
             'fill'      => ['fillType'=>'solid','startColor'=>['rgb'=>$colores['header']]],
@@ -786,21 +562,20 @@ class PlanPremiacionController extends Controller
         $sheet->getRowDimension(1)->setRowHeight(22);
 
         // Fila 2: grupos de pilares
-        $grupos = [
-            ['col'=>'C','span'=>4,'label'=>'SEGURIDAD  35%','color'=>'059669'],
-            ['col'=>'G','span'=>4,'label'=>'GENTE  15%',    'color'=>'D97706'],
-            ['col'=>'K','span'=>5,'label'=>'REPARTO  35%',  'color'=>'E11D48'],
-            ['col'=>'P','span'=>3,'label'=>'FLOTA  15%',    'color'=>'2563EB'],
-            ['col'=>'S','span'=>1,'label'=>'TOTAL  100%',   'color'=>'7C3AED'],
+        $pilarCols = [
+            'C'=>['C','D','E','F'], 'G'=>['G','H','I','J'],
+            'K'=>['K','L','M','N','O'], 'P'=>['P','Q','R'], 'S'=>['S'],
         ];
-
-        // Letras de columna A..S
-        $colLetras = range('A','S');
-        // Fila 2 etiquetas de pilar
-        $pilarCols = ['C'=>['C','D','E','F'],'G'=>['G','H','I','J'],'K'=>['K','L','M','N','O'],'P'=>['P','Q','R'],'S'=>['S']];
+        $grupos = [
+            ['col'=>'C','label'=>'SEGURIDAD  35%','color'=>'059669'],
+            ['col'=>'G','label'=>'GENTE  15%',    'color'=>'D97706'],
+            ['col'=>'K','label'=>'REPARTO  35%',  'color'=>'E11D48'],
+            ['col'=>'P','label'=>'FLOTA  15%',    'color'=>'2563EB'],
+            ['col'=>'S','label'=>'TOTAL  100%',   'color'=>'7C3AED'],
+        ];
         foreach ($grupos as $g) {
-            $lastCol = $pilarCols[$g['col']][count($pilarCols[$g['col']])-1];
-            $rango = $g['col'].'2:'.$lastCol.'2';
+            $cols   = $pilarCols[$g['col']];
+            $rango  = $g['col'].'2:'.end($cols).'2';
             $sheet->mergeCells($rango);
             $sheet->setCellValue($g['col'].'2', $g['label']);
             $sheet->getStyle($rango)->applyFromArray([
@@ -809,20 +584,18 @@ class PlanPremiacionController extends Controller
                 'alignment' => ['horizontal'=>'center','vertical'=>'center'],
             ]);
         }
-        // A2:B2 vacíos pero con fondo header
         $sheet->getStyle('A2:B2')->applyFromArray(['fill'=>['fillType'=>'solid','startColor'=>['rgb'=>$colores['header']]]]);
         $sheet->getRowDimension(2)->setRowHeight(18);
 
         // Fila 3: sub-encabezados
         $subHeaders = [
-            'A'=>'Cédula','B'=>'Colaborador / Cargo',
-            'C'=>'% ACI (10%)','D'=>'% OWD Ruta (15%)','E'=>'% Calificaciones (10%)','F'=>'Resultado Seg.',
-            'G'=>'% DPO Academy (5%)','H'=>'% Ausentismo (5%)','I'=>'% Malas Marc. (5%)','J'=>'Resultado Gente',
-            'K'=>'% Rechazos (11%)','L'=>'% SAC (8%)','M'=>'% Ad. Tiempo (8%)','N'=>'RMD (8%)','O'=>'Resultado Rep.',
-            'P'=>'% CL Pre (7.5%)','Q'=>'% CL Post (7.5%)','R'=>'Resultado Flota',
+            'A'=>'Cédula', 'B'=>'Colaborador / Cargo',
+            'C'=>'% ACI (10%)', 'D'=>'% OWD Ruta (15%)', 'E'=>'% Calificaciones (10%)', 'F'=>'Resultado Seg.',
+            'G'=>'% DPO Academy (5%)', 'H'=>'% Ausentismo (5%)', 'I'=>'% Malas Marc. (5%)', 'J'=>'Resultado Gente',
+            'K'=>'% Rechazos (11%)', 'L'=>'% SAC (8%)', 'M'=>'% Ad. Tiempo (8%)', 'N'=>'RMD (8%)', 'O'=>'Resultado Rep.',
+            'P'=>'% CL Pre (7.5%)', 'Q'=>'% CL Post (7.5%)', 'R'=>'Resultado Flota',
             'S'=>'TOTAL 100%',
         ];
-
         $pilarBg = [
             'C'=>$colores['seguridad'],'D'=>$colores['seguridad'],'E'=>$colores['seguridad'],'F'=>$colores['seguridad'],
             'G'=>$colores['gente'],    'H'=>$colores['gente'],    'I'=>$colores['gente'],    'J'=>$colores['gente'],
@@ -830,7 +603,6 @@ class PlanPremiacionController extends Controller
             'P'=>$colores['flota'],    'Q'=>$colores['flota'],    'R'=>$colores['flota'],
             'S'=>$colores['total'],
         ];
-
         foreach ($subHeaders as $col => $label) {
             $sheet->setCellValue($col.'3', $label);
             $bg = $pilarBg[$col] ?? 'E2E8F0';
@@ -843,187 +615,70 @@ class PlanPremiacionController extends Controller
         }
         $sheet->getRowDimension(3)->setRowHeight(30);
 
-        // Anchos de columnas
         $anchos = ['A'=>14,'B'=>30,'C'=>12,'D'=>13,'E'=>14,'F'=>12,'G'=>14,'H'=>13,'I'=>14,'J'=>12,'K'=>12,'L'=>10,'M'=>15,'N'=>10,'O'=>12,'P'=>13,'Q'=>13,'R'=>13,'S'=>12];
         foreach ($anchos as $col => $ancho) {
             $sheet->getColumnDimension($col)->setWidth($ancho);
         }
 
-        // ── Filas de datos (calcular + ordenar por total desc + escribir) ───
-        $fmt = fn($v) => $v !== null ? $v.'%' : 'N/A';
-        $filasProcesadas = [];
+        // ── Filas de datos — escritura directa de los valores ya calculados ──
+        $na  = fn ($v) => $v !== null ? $v.'%' : 'N/A';
+        $fila = 4;
 
-        foreach ($colaboradores as $colab) {
-            // ACI
-            $aciRealizadas  = (int) ($conteosPorColaborador[$colab->id] ?? 0);
-            $pAci           = round(($aciRealizadas / self::META_BASE) * 100, 1);
-
-            // OWD Ruta
-            $pregRuta       = $preguntasRutaPorColaborador->get($colab->id, collect());
-            $okR  = $pregRuta->filter(fn($p)=>str_contains(strtolower((string)$p->puntuacion),'ok')&&!str_contains(strtolower((string)$p->puntuacion),'no ok')&&!str_contains(strtolower((string)$p->puntuacion),'not'))->count();
-            $noOkR= $pregRuta->filter(fn($p)=>str_contains(strtolower((string)$p->puntuacion),'no ok')||str_contains(strtolower((string)$p->puntuacion),'nook'))->count();
-            $totR = $okR + $noOkR;
-            $pOwd = $totR > 0 ? round(($okR / $totR) * 100, 1) : null;
-
-            // Calificaciones
-            $pCal = isset($promediosCalificaciones[$colab->cedula]) ? round((float)$promediosCalificaciones[$colab->cedula], 1) : null;
-
-            // Resultado Seguridad — si un componente es N/A no resta
-            $cAci  = min($pAci, 100) / 100;
-            $cOwd  = $pOwd !== null ? min($pOwd, 100) / 100 : null;
-            $cCal  = $pCal !== null ? min($pCal, 100) / 100 : null;
-
-            $puntosSeg  = $cAci * 10
-                        + ($cOwd !== null ? $cOwd * 15 : 0)
-                        + ($cCal !== null ? $cCal * 10 : 0);
-            $pesoMaxSeg = 10
-                        + ($cOwd !== null ? 15 : 0)
-                        + ($cCal !== null ? 10 : 0);
-            $rSeg = $pesoMaxSeg > 0 ? round(($puntosSeg / $pesoMaxSeg) * 35, 1) : 0.0;
-
-            // DPO
-            $enDpo = isset($dpoColaboradorIds[$colab->id]);
-            if (!$enDpo && !empty($colab->codigo_qr_skap)) $enDpo = isset($dpoQrSafetySet[$normStr($colab->codigo_qr_skap)]);
-            if (!$enDpo && !empty($colab->cedula))         $enDpo = isset($dpoQrSafetySet[$normStr($colab->cedula)]) || isset($dpoNombresSet[$normStr($colab->cedula)]);
-            if (!$enDpo && !empty($colab->nombre_completo)) $enDpo = isset($dpoNombresSet[$normStr($colab->nombre_completo)]);
-            $pDpo  = $enDpo ? 0.0 : 100.0;
-
-            // Ausentismo — manual: default 100%
-            $mcAus = $checklistsManuales->get($colab->id);
-            $pAus  = $mcAus ? ($mcAus->ausentismo_ok ? 100.0 : 0.0) : 100.0;
-
-            // Malas Marcaciones
-            $enMarc = false;
-            if (!empty($colab->cedula))          $enMarc = isset($marcacionesIdSet[$normStr($colab->cedula)]);
-            if (!$enMarc && !empty($colab->codigo_qr_skap)) $enMarc = isset($marcacionesIdSet[$normStr($colab->codigo_qr_skap)]);
-            if (!$enMarc && !empty($colab->nombre_completo)) $enMarc = isset($marcacionesNomSet[$normStr($colab->nombre_completo)]);
-            $pMarc = $enMarc ? 0.0 : 100.0;
-
-            // Resultado Gente
-            $cDpo  = min($pDpo, 100)  / 100;
-            $cAus  = min($pAus, 100) / 100;
-            $cMarc = min($pMarc, 100) / 100;
-            $rGente = round($cDpo*5 + $cAus*5 + $cMarc*5, 1);
-
-            // Reparto
-            $vRec  = $getRechazos($colab);
-            $pRecRaw = !empty($vRec) ? array_sum($vRec)/count($vRec) : null;
-            $pRec  = $pRecRaw !== null ? ($pRecRaw >= 2.4 ? 0.0 : 100.0) : null;
-
-            $vSac  = $getVals($sacPorColId, $sacPorResp)($colab);
-            $pSac  = !empty($vSac) ? round(array_sum($vSac)/count($vSac),1) : 100.0;
-
-            $vAdt  = $getAdTiempo($colab);
-            $pAdtRaw = !empty($vAdt) ? array_sum($vAdt)/count($vAdt) : null;
-            $pAdt  = $pAdtRaw !== null ? ($pAdtRaw >= 83 ? 100.0 : 0.0) : null;
-
-            $vRmd  = $getRmd($colab);
-            $pRmdRaw = !empty($vRmd) ? array_sum($vRmd)/count($vRmd) : null;
-            $pRmd  = $pRmdRaw !== null ? ($pRmdRaw >= 4 ? 100.0 : 0.0) : null;
-
-            $cRec  = $pRec  !== null ? (int)($pRec >= 100) : 0;
-            $cSac  = !empty($vSac) ? 0 : 1;
-            $cAdt  = $pAdt  !== null ? (int)($pAdt >= 100) : 0;
-            $cRmd  = $pRmd  !== null ? (int)($pRmd >= 100) : 0;
-            $rRep  = round($cRec*11 + $cSac*8 + $cAdt*8 + $cRmd*8, 1);
-
-            // Flota (Ambos Aprobados = 15%, Si uno No Aprobado = 0%)
-            $esConductorExp = str_contains(strtoupper((string)($colab->cargo ?? '')), 'CONDUCTOR');
-            if ($esConductorExp) {
-                $mcExp = $checklistsManuales->get($colab->id);
-                $clPreOk  = $mcExp ? (bool)$mcExp->cl_pre : true;
-                $clPostOk = $mcExp ? (bool)$mcExp->cl_post : true;
-                $pCpre = $clPreOk ? 100.0 : 0.0;
-                $pCpost = $clPostOk ? 100.0 : 0.0;
-                $rFlota = ($clPreOk && $clPostOk) ? 15.0 : 0.0;
-            } else {
-                $pCpre = null;
-                $pCpost = null;
-                $rFlota = 0.0;
-            }
-
-            // Total
-            // Para conductores: Seguridad(35%) + Gente(15%) + Reparto(35%) + Flota(15%) = 100%
-            // Para no conductores: Seguridad(35%) + Gente(15%) + Reparto(35%) = 85% → escalado a 100%
-            if ($esConductorExp) {
-                $total = round($rSeg + $rGente + $rRep + $rFlota, 1);
-            } else {
-                $sumaBase = $rSeg + $rGente + $rRep;
-                $total = round(($sumaBase / 85) * 100, 1);
-            }
-
-            $estado = $aciRealizadas >= self::META_BASE
-                ? 'Meta Alcanzada'
-                : ($aciRealizadas > 0 ? 'En Progreso' : 'Sin Participación');
+        foreach ($filas as $c) {
+            $estadoStr = match ($c['estado']) {
+                'meta_alcanzada'    => 'Meta Alcanzada',
+                'en_progreso'       => 'En Progreso',
+                default             => 'Sin Participación',
+            };
 
             $datos = [
-                'A' => $colab->cedula,
-                'B' => $colab->nombre_completo.' - '.($colab->cargo ?? 'Sin cargo'),
-                'C' => $fmt($pAci),
-                'D' => $fmt($pOwd),
-                'E' => $fmt($pCal),
-                'F' => $rSeg.'%',
-                'G' => $pDpo.'%',
-                'H' => $fmt($pAus),
-                'I' => $pMarc.'%',
-                'J' => $rGente.'%',
-                'K' => $fmt($pRec),
-                'L' => $pSac.'%',
-                'M' => $fmt($pAdt),
-                'N' => $pRmd !== null ? (string)$pRmd : 'N/A',
-                'O' => $rRep.'%',
-                'P' => $fmt($pCpre),
-                'Q' => $fmt($pCpost),
-                'R' => $rFlota.'%',
-                'S' => $total.'%',
+                'A' => $c['cedula'],
+                'B' => $c['nombre_completo'].' - '.($c['cargo'] ?? 'Sin cargo'),
+                'C' => $c['porcentaje'].'%',
+                'D' => $na($c['porcentaje_owd_ruta']),
+                'E' => $na($c['promedio_calificaciones']),
+                'F' => $c['resultado'].'%',
+                'G' => $c['porcentaje_dpo'].'%',
+                'H' => $na($c['porcentaje_ausentismo']),
+                'I' => $c['porcentaje_malas_marcaciones'].'%',
+                'J' => $c['resultado_asistencia'].'%',
+                'K' => $na($c['porcentaje_rechazos']),
+                'L' => $c['porcentaje_sac'].'%',
+                'M' => $na($c['porcentaje_adherencia_tiempo']),
+                'N' => $c['promedio_rmd'] !== null ? (string) $c['promedio_rmd'] : 'N/A',
+                'O' => $c['resultado_reparto'].'%',
+                'P' => $na($c['porcentaje_checklist_pre']),
+                'Q' => $na($c['porcentaje_checklist_post']),
+                'R' => $c['resultado_flota'] !== null ? $c['resultado_flota'].'%' : 'N/A',
+                'S' => $c['calificacion_total'].'%',
             ];
 
-            $filasProcesadas[] = [
-                'total'  => $total,
-                'datos'  => $datos,
-                'estado' => $estado,
-            ];
-        }
-
-        // Ordenar de mayor a menor calificación total (mismo orden que la vista)
-        usort($filasProcesadas, fn($a, $b) => $b['total'] <=> $a['total']);
-
-        // Escribir filas ordenadas en el Excel
-        $fila = 4;
-        foreach ($filasProcesadas as $filaData) {
-            foreach ($filaData['datos'] as $col => $val) {
+            foreach ($datos as $col => $val) {
                 $sheet->setCellValue($col.$fila, $val);
-                $bg = $pilarBg[$col] ?? null;
+                $bg    = $pilarBg[$col] ?? null;
                 $style = ['borders'=>['allBorders'=>['borderStyle'=>'thin','color'=>['rgb'=>'E2E8F0']]]];
                 if ($bg) $style['fill'] = ['fillType'=>'solid','startColor'=>['rgb'=>$bg]];
                 $sheet->getStyle($col.$fila)->applyFromArray($style);
             }
 
-            // Fondo alternado para legibilidad
             if ($fila % 2 === 0) {
                 $sheet->getStyle('A'.$fila.':B'.$fila)->applyFromArray(['fill'=>['fillType'=>'solid','startColor'=>['rgb'=>'F8FAFC']]]);
             }
 
-            // Color estado en columna S
-            $colorEstado = match($filaData['estado']) {
-                'Meta Alcanzada'   => '059669',
-                'En Progreso'      => 'D97706',
-                default            => 'E11D48',
+            $colorEstado = match($estadoStr) {
+                'Meta Alcanzada' => '059669',
+                'En Progreso'    => 'D97706',
+                default          => 'E11D48',
             };
             $sheet->getStyle('S'.$fila)->getFont()->getColor()->setRGB($colorEstado);
             $sheet->getStyle('S'.$fila)->getFont()->setBold(true);
-
             $sheet->getRowDimension($fila)->setRowHeight(16);
             $fila++;
         }
 
-        // Congelar paneles en la fila de datos
         $sheet->freezePane('C4');
-
-        // Auto-filtro
         $sheet->setAutoFilter('A3:S3');
 
-        // ── Generar respuesta streamed ────────────────────────────────────────
         $filename = "plan_premiacion_{$anio}_{$mes}.xlsx";
 
         return response()->streamDownload(function () use ($spreadsheet) {
@@ -1051,7 +706,7 @@ class PlanPremiacionController extends Controller
             ->where('colaborador_id', $colaborador->id)
             ->count();
 
-        $porcentajeAci = round(($aciRealizadas / self::META_BASE) * 100, 1);
+        $porcentajeAci = min(100.0, round(($aciRealizadas / self::META_BASE) * 100, 1));
 
         // ── Historial ACI últimos 6 meses ──────────────────────────────────
         $historialAci = [];
