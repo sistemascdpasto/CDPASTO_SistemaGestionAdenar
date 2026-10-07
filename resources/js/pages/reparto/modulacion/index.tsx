@@ -873,12 +873,12 @@ export default function ModulacionIndex({
             if (controller.signal.aborted) return;
             if (data.exists && data.modulacion) {
                 setActiveModulacionId(data.modulacion.id ?? null);
-                const rutasExistentes = mapModulacionItems(data.modulacion.items ?? []);
+                const rutasExistentes = mapModulacionItems((data.modulacion.items ?? []) as ModulacionItemData[]);
                 setRutasGuardadas(rutasExistentes);
                 setRutas(readOnly ? rutasExistentes : []);
 
                 if (Array.isArray(data.modulacion.novedades)) {
-                    setNovedadesLocal(readOnly ? [...data.modulacion.novedades] : []);
+                    setNovedadesLocal([...data.modulacion.novedades]);
                 }
 
                 if (!readOnly) setIsEditing(true);
