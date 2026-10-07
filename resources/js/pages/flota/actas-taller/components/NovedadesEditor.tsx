@@ -5,6 +5,7 @@ import { useRef } from 'react';
 const PRIORIDADES = [{ v: 'alta', l: 'Alta' }, { v: 'media', l: 'Media' }, { v: 'baja', l: 'Baja' }];
 
 export interface NovedadEvidencia { file: File; preview: string; etiqueta: string }
+export interface NovedadEvidenciaGuardada { id: number; url: string; etiqueta?: string }
 
 export interface NovedadLocal {
     id?: number | null;
@@ -19,6 +20,8 @@ export interface NovedadLocal {
     realizada: boolean;
     observacion_solucion: string;
     evidencias: NovedadEvidencia[];
+    /** Fotos ya guardadas en una edición previa — solo lectura, no se pueden quitar desde aquí. */
+    evidenciasGuardadas: NovedadEvidenciaGuardada[];
 }
 
 interface Props {
@@ -30,13 +33,14 @@ interface Props {
     onActualizarObservacion: (i: number, valor: string) => void;
     onAgregarEvidencia: (i: number, file: File) => void;
     onQuitarEvidencia: (i: number, ei: number) => void;
+    onVerEvidencia?: (url: string) => void;
     errors: Record<string, string>;
 }
 
 export default function NovedadesEditor({
     novedades, onAgregar, onQuitar, onActualizar,
     onToggleRealizada, onActualizarObservacion,
-    onAgregarEvidencia, onQuitarEvidencia, errors,
+    onAgregarEvidencia, onQuitarEvidencia, onVerEvidencia, errors,
 }: Props) {
     const fileRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -103,6 +107,15 @@ export default function NovedadesEditor({
 
                                 {/* Evidencias */}
                                 <td className="border-r border-sidebar-border/70 px-3 py-3 dark:border-sidebar-border">
+                                    {nov.evidenciasGuardadas.length > 0 && (
+                                        <div className="mb-1.5 flex flex-wrap gap-1">
+                                            {nov.evidenciasGuardadas.map((ev) => (
+                                                <button key={ev.id} type="button" onClick={() => onVerEvidencia?.(ev.url)}>
+                                                    <img src={ev.url} alt={ev.etiqueta || 'Evidencia'} className="h-10 w-10 rounded object-cover" />
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
                                     {nov.evidencias.length > 0 && (
                                         <div className="mb-1.5 flex flex-wrap gap-1">
                                             {nov.evidencias.map((ev, ei) => (

@@ -26,9 +26,10 @@ export interface NovedadRow {
     fecha_reporte?: string | null;
     fecha_solucion?: string | null;
     observacion_solucion?: string | null;
+    evidencias?: { id: number; url: string; etiqueta?: string }[];
 }
 
-export default function NovedadesTabla({ novedades }: { novedades: NovedadRow[] }) {
+export default function NovedadesTabla({ novedades, onVerEvidencia }: { novedades: NovedadRow[]; onVerEvidencia?: (url: string) => void }) {
     if (!novedades.length) return null;
 
     return (
@@ -58,6 +59,15 @@ export default function NovedadesTabla({ novedades }: { novedades: NovedadRow[] 
                                 )}
                                 {nov.observacion_solucion && (
                                     <p className="mt-1 text-[11px] italic text-green-700 dark:text-green-400">{nov.observacion_solucion}</p>
+                                )}
+                                {nov.evidencias && nov.evidencias.length > 0 && (
+                                    <div className="mt-1.5 flex flex-wrap gap-1">
+                                        {nov.evidencias.map((ev) => (
+                                            <button key={ev.id} type="button" onClick={() => onVerEvidencia?.(ev.url)}>
+                                                <img src={ev.url} alt={ev.etiqueta || 'Evidencia'} className="h-10 w-10 rounded object-cover" />
+                                            </button>
+                                        ))}
+                                    </div>
                                 )}
                             </td>
 

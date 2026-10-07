@@ -4,6 +4,7 @@ namespace App\Models\Flota;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ActaTallerNovedad extends Model
 {
@@ -42,5 +43,10 @@ class ActaTallerNovedad extends Model
     public function acta(): BelongsTo
     {
         return $this->belongsTo(ActaTaller::class, 'acta_taller_id');
+    }
+
+    public function evidencias(): HasMany
+    {
+        return $this->hasMany(ActaTallerEvidencia::class, 'novedad_id')->orderBy('orden');
     }
 }

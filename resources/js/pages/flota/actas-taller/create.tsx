@@ -1,3 +1,4 @@
+import { EvidenciaUploader, type PickedFile } from '@/components/evidencia-uploader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -90,6 +91,7 @@ export default function ActasTallerCreate({ vehiculos, colaboradores, numero_act
 
     // Novedades
     const [novedades, setNovedades] = useState<NovedadLocal[]>([]);
+    const [evidenciasGenerales, setEvidenciasGenerales] = useState<PickedFile[]>([]);
     const [processing, setProcessing] = useState(false);
     const [errors,     setErrors]     = useState<Record<string, string>>({});
 
@@ -97,7 +99,7 @@ export default function ActasTallerCreate({ vehiculos, colaboradores, numero_act
         titulo: '', descripcion: '', categoria: '', prioridad: 'media',
         estado: 'pendiente', responsable: '',
         fecha_reporte: new Date().toISOString().split('T')[0],
-        fecha_solucion: '', realizada: false, observacion_solucion: '', evidencias: [],
+        fecha_solucion: '', realizada: false, observacion_solucion: '', evidencias: [], evidenciasGuardadas: [],
     });
 
     const agregarNovedad  = () => setNovedades(prev => [...prev, novVacia()]);
@@ -157,9 +159,13 @@ export default function ActasTallerCreate({ vehiculos, colaboradores, numero_act
             fd.append(`novedades[${i}][realizada]`, nov.realizada ? '1' : '0');
             fd.append(`novedades[${i}][observacion_solucion]`, nov.observacion_solucion ?? '');
             nov.evidencias.forEach((ev, ei) => {
-                fd.append(`evidencias_novedad_${i}[${ei}]`, ev.file);
-                fd.append(`etiquetas_novedad_${i}[${ei}]`,  ev.etiqueta);
+                fd.append(`evidencias_novedad[${i}][${ei}]`, ev.file);
+                fd.append(`etiquetas_novedad[${i}][${ei}]`,  ev.etiqueta);
             });
+        });
+
+        evidenciasGenerales.forEach((ev, i) => {
+            fd.append(`evidencias[${i}]`, ev.file);
         });
 
         const b64Entrega = await canvasToBase64(firmaEntregaRef);
@@ -305,6 +311,15 @@ export default function ActasTallerCreate({ vehiculos, colaboradores, numero_act
                             onAgregarEvidencia={agregarEvidencia}
                             onQuitarEvidencia={quitarEvidencia}
                             errors={errors}
+                        />
+                    </Seccion>
+
+                    {/* Evidencia fotográfica general del acta */}
+                    <Seccion titulo="Evidencia Fotográfica">
+                        <EvidenciaUploader
+                            files={evidenciasGenerales}
+                            onChange={setEvidenciasGenerales}
+                            label="Fotos generales del acta (no asociadas a una novedad puntual)"
                         />
                     </Seccion>
 
