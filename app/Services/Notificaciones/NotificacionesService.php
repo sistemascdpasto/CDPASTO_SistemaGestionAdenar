@@ -64,17 +64,17 @@ class NotificacionesService
 
         $colaboradores = Colaborador::query()
             ->where('is_active', true)
-            ->where(fn ($q) => $q->whereNotNull('fecha_ingreso_empresa')->orWhereNotNull('contrato_fecha_desde'))
+            ->where(fn ($q) => $q->whereNotNull('fecha_ingreso_empresa'))
             ->with('pruebasPeriodo:id,colaborador_id,etapa,realizada')
             ->get();
 
         $items = [];
         foreach ($colaboradores as $colaborador) {
-            $ingreso = $colaborador->contrato_fecha_desde ?? $colaborador->fecha_ingreso_empresa;
+            $ingreso = $colaborador->fecha_ingreso_empresa;
             if (! $ingreso) {
                 continue;
             }
-            $retiro = $colaborador->contrato_fecha_hasta ?? $colaborador->fecha_retiro_empresa;
+            $retiro = $colaborador->fecha_retiro_empresa;
 
             foreach ($etapas as $etapa => $dias) {
                 $fechaPrueba = $ingreso->copy()->addDays($dias);
@@ -146,7 +146,7 @@ class NotificacionesService
             'no_apto' => 'No apto',
             'calibracion_proxima' => 'Calibración próxima',
             'certificado_vencido' => 'Certificado vencido',
-            'contrato_proximo_vencer' => 'Contrato por vencer',
+            'retiro_proximo' => 'Contrato por vencer',
         ];
 
         $items = $alertas->map(fn (Alerta $a) => [

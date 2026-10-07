@@ -22,20 +22,20 @@ class RevisarVencimientoContratos extends Command
         Colaborador::query()
             ->completos()
             ->where('is_active', true)
-            ->whereNotNull('contrato_fecha_hasta')
-            ->where('contrato_fecha_hasta', '<=', $limite)
+            ->whereNotNull('fecha_retiro_empresa')
+            ->where('fecha_retiro_empresa', '<=', $limite)
             ->each(function (Colaborador $colaborador) use (&$creadas) {
                 $yaExiste = Alerta::query()
                     ->where('colaborador_id', $colaborador->id)
-                    ->where('tipo', 'contrato_proximo_vencer')
+                    ->where('tipo', 'retiro_proximo')
                     ->where('atendida', false)
                     ->exists();
 
                 if (! $yaExiste) {
                     $alerta = Alerta::create([
-                        'tipo' => 'contrato_proximo_vencer',
+                        'tipo' => 'retiro_proximo',
                         'colaborador_id' => $colaborador->id,
-                        'mensaje' => "El contrato de {$colaborador->nombre_completo} vence el {$colaborador->contrato_fecha_hasta->toDateString()}.",
+                        'mensaje' => "El contrato de {$colaborador->nombre_completo} vence el {$colaborador->fecha_retiro_empresa->toDateString()}.",
                     ]);
                     AlertaNotifier::notificar($alerta);
                     $creadas++;

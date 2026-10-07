@@ -2269,7 +2269,9 @@ export default function ModulacionIndex({
         merges.unshift(mergeRutas, mergeRow0Header, mergeRow1Header);
 
         // ─── Construir worksheet final ───────────────────────────────
-        const ws: XLSX.WorkSheet = { ...wsData };
+        // ws es el mismo objeto que wsData (sin spread) para que setCell
+        // siga escribiendo en ws directamente, incluyendo las novedades.
+        const ws: XLSX.WorkSheet = wsData;
         ws['!ref'] = XLSX.utils.encode_range({
             s: { r: 0, c: 0 },
             e: { r: currentRow + 1, c: TOTAL_COLS - 1 },

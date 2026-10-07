@@ -32,7 +32,7 @@ class NotificarPruebasPeriodoHoy extends Command
             ->where('is_active', true)
             ->where(function ($q) {
                 $q->whereNotNull('fecha_ingreso_empresa')
-                  ->orWhereNotNull('contrato_fecha_desde');
+                  ;
             })
             ->with(['pruebasPeriodo', 'user'])
             ->get();
@@ -48,12 +48,12 @@ class NotificarPruebasPeriodoHoy extends Command
         $colaboradoresIndividualesEnviados = 0;
 
         foreach ($colaboradores as $colaborador) {
-            $fechaIngreso = $colaborador->contrato_fecha_desde ?? $colaborador->fecha_ingreso_empresa;
+            $fechaIngreso = $colaborador->fecha_ingreso_empresa;
             if (! $fechaIngreso) {
                 continue;
             }
 
-            $fechaRetiro = $colaborador->contrato_fecha_hasta ?? $colaborador->fecha_retiro_empresa;
+            $fechaRetiro = $colaborador->fecha_retiro_empresa;
 
             foreach ($etapasConfig as $etapaKey => $dias) {
                 $fechaPrueba = $fechaIngreso->copy()->addDays($dias);

@@ -60,8 +60,6 @@ export function Paso3InformacionPuesto({ colaborador, catalogos, historialCargos
         fecha_retiro_empresa: (colaborador.fecha_retiro_empresa as string) ?? '',
         motivo_retiro: (colaborador.motivo_retiro as string) ?? '',
         tipo_contrato: (colaborador.tipo_contrato as string) ?? '',
-        contrato_fecha_desde: (colaborador.contrato_fecha_desde as string) ?? '',
-        contrato_fecha_hasta: (colaborador.contrato_fecha_hasta as string) ?? '',
 
         codigo_qr_skap: (colaborador.codigo_qr_skap as string) ?? '',
 
@@ -233,16 +231,6 @@ export function Paso3InformacionPuesto({ colaborador, catalogos, historialCargos
                             </SelectContent>
                         </Select>
                         <InputError message={errors.tipo_contrato} />
-                    </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor="contrato_fecha_desde">Tiempo de contrato — desde</Label>
-                        <Input id="contrato_fecha_desde" type="date" value={data.contrato_fecha_desde} onChange={(e) => setData('contrato_fecha_desde', e.target.value)} disabled={processing} />
-                        <InputError message={errors.contrato_fecha_desde} />
-                    </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor="contrato_fecha_hasta">Tiempo de contrato — hasta</Label>
-                        <Input id="contrato_fecha_hasta" type="date" min={minDateFor(colaborador.contrato_fecha_hasta)} value={data.contrato_fecha_hasta} onChange={(e) => setData('contrato_fecha_hasta', e.target.value)} disabled={processing} />
-                        <InputError message={errors.contrato_fecha_hasta} />
                     </div>
                 </div>
             </SeccionCard>

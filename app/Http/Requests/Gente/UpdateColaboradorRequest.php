@@ -96,8 +96,6 @@ class UpdateColaboradorRequest extends FormRequest
             'fecha_retiro_empresa' => ['nullable', 'date', $this->futureUnlessUnchanged($colaborador, 'fecha_retiro_empresa')],
             'motivo_retiro' => ['nullable', Rule::in(config('seguridad.colaboradores.motivos_retiro'))],
             'tipo_contrato' => ['nullable', Rule::in(config('seguridad.colaboradores.tipos_contrato'))],
-            'contrato_fecha_desde' => ['nullable', 'date'],
-            'contrato_fecha_hasta' => ['nullable', 'date', 'after_or_equal:contrato_fecha_desde', $this->futureUnlessUnchanged($colaborador, 'contrato_fecha_hasta')],
             'codigo_qr_skap' => ['nullable', 'string', 'max:100'],
             'vacaciones_aplica' => ['nullable', Rule::in(['no_aplica', 'aplica'])],
             'vacaciones_fecha_desde' => ['nullable', 'date', $this->futureUnlessUnchanged($colaborador, 'vacaciones_fecha_desde')],

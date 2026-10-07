@@ -530,7 +530,7 @@ class PortalController extends Controller
         $colaborador = $this->colaboradorDeOFallar($request);
 
         $hoy = \Carbon\Carbon::today();
-        $fechaIngreso = $colaborador->contrato_fecha_desde ?? $colaborador->fecha_ingreso_empresa;
+        $fechaIngreso = $colaborador->fecha_ingreso_empresa;
 
         $etapasConfig = ['7_dias' => 8, '30_dias' => 30, '90_dias' => 90];
         $etapas = [];

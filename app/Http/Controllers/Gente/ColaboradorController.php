@@ -79,10 +79,10 @@ class ColaboradorController extends Controller
             ->when($arl !== '', fn ($query) => $query->where('arl', $arl))
             ->when($fechaIngresoDesde !== '', fn ($query) => $query->whereDate('fecha_ingreso_empresa', '>=', $fechaIngresoDesde))
             ->when($fechaIngresoHasta !== '', fn ($query) => $query->whereDate('fecha_ingreso_empresa', '<=', $fechaIngresoHasta))
-            ->when($vencimientoContrato === 'vencidos', fn ($query) => $query->whereNotNull('contrato_fecha_hasta')->where('contrato_fecha_hasta', '<', now()))
-            ->when($vencimientoContrato === 'proximos', fn ($query) => $query->whereNotNull('contrato_fecha_hasta')->whereBetween('contrato_fecha_hasta', [now(), $limiteProximoVencer]))
+            ->when($vencimientoContrato === 'vencidos', fn ($query) => $query->whereNotNull('fecha_retiro_empresa')->where('fecha_retiro_empresa', '<', now()))
+            ->when($vencimientoContrato === 'proximos', fn ($query) => $query->whereNotNull('fecha_retiro_empresa')->whereBetween('fecha_retiro_empresa', [now(), $limiteProximoVencer]))
             ->when($vencimientoContrato === 'vigentes', fn ($query) => $query->where(function ($query) use ($limiteProximoVencer) {
-                $query->whereNull('contrato_fecha_hasta')->orWhere('contrato_fecha_hasta', '>', $limiteProximoVencer);
+                $query->whereNull('fecha_retiro_empresa')->orWhere('fecha_retiro_empresa', '>', $limiteProximoVencer);
             }))
             ->orderBy('nombres')
             ->paginate(15)
@@ -99,12 +99,12 @@ class ColaboradorController extends Controller
             'area_operativa'     => Colaborador::completos()->where('area', 'Operativa')->count(),
             'area_administrativa'=> Colaborador::completos()->where('area', 'Administrativa')->count(),
             'contratos_proximos' => Colaborador::completos()
-                ->whereNotNull('contrato_fecha_hasta')
-                ->whereBetween('contrato_fecha_hasta', [now(), $limiteProximoVencerResumen])
+                ->whereNotNull('fecha_retiro_empresa')
+                ->whereBetween('fecha_retiro_empresa', [now(), $limiteProximoVencerResumen])
                 ->count(),
             'contratos_vencidos' => Colaborador::completos()
-                ->whereNotNull('contrato_fecha_hasta')
-                ->where('contrato_fecha_hasta', '<', now())
+                ->whereNotNull('fecha_retiro_empresa')
+                ->where('fecha_retiro_empresa', '<', now())
                 ->count(),
         ];
 

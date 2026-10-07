@@ -40,7 +40,7 @@ class SeguimientoPruebasController extends Controller
             ->where('is_active', true)
             ->where(function ($q) {
                 $q->whereNotNull('fecha_ingreso_empresa')
-                  ->orWhereNotNull('contrato_fecha_desde');
+                  ;
             })
             ->with(['pruebasPeriodo.realizadoPor', 'pruebasPeriodo.evidencias'])
             ->orderBy('apellidos')
@@ -67,12 +67,12 @@ class SeguimientoPruebasController extends Controller
         ];
 
         foreach ($colaboradoresDb as $colaborador) {
-            $fechaIngreso = $colaborador->contrato_fecha_desde ?? $colaborador->fecha_ingreso_empresa;
+            $fechaIngreso = $colaborador->fecha_ingreso_empresa;
             if (! $fechaIngreso) {
                 continue;
             }
 
-            $fechaRetiro = $colaborador->contrato_fecha_hasta ?? $colaborador->fecha_retiro_empresa;
+            $fechaRetiro = $colaborador->fecha_retiro_empresa;
 
             $etapasMap = [];
             $hasAnyActiveEtapa = false;
@@ -302,7 +302,7 @@ class SeguimientoPruebasController extends Controller
             ->where('is_active', true)
             ->where(function ($q) {
                 $q->whereNotNull('fecha_ingreso_empresa')
-                  ->orWhereNotNull('contrato_fecha_desde');
+                  ;
             })
             ->with(['pruebasPeriodo'])
             ->get();
@@ -318,12 +318,12 @@ class SeguimientoPruebasController extends Controller
         ];
 
         foreach ($colaboradores as $colaborador) {
-            $fechaIngreso = $colaborador->contrato_fecha_desde ?? $colaborador->fecha_ingreso_empresa;
+            $fechaIngreso = $colaborador->fecha_ingreso_empresa;
             if (! $fechaIngreso) {
                 continue;
             }
 
-            $fechaRetiro = $colaborador->contrato_fecha_hasta ?? $colaborador->fecha_retiro_empresa;
+            $fechaRetiro = $colaborador->fecha_retiro_empresa;
 
             foreach ($etapasConfig as $etapaKey => $dias) {
                 $fechaPrueba = $fechaIngreso->copy()->addDays($dias);
@@ -499,7 +499,7 @@ class SeguimientoPruebasController extends Controller
         ];
 
         foreach ($colaboradoresDb as $colaborador) {
-            $fechaIngreso = $colaborador->fecha_ingreso_empresa ?? $colaborador->contrato_fecha_desde;
+            $fechaIngreso = $colaborador->fecha_ingreso_empresa;
 
             // Formatear antigüedad en la empresa
             $antiguedadTexto = 'Sin fecha de ingreso';
