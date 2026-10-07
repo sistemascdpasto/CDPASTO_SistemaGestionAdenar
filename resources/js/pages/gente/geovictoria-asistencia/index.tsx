@@ -731,7 +731,7 @@ export default function GeovictoriaAsistenciaIndex({
                                 {registros.links.map((link, index) => (
                                     <Button key={index} variant={link.active ? 'default' : 'outline'} size="sm" disabled={!link.url} asChild={!!link.url}>
                                         {link.url ? (
-                                            <Link href={link.url} preserveScroll dangerouslySetInnerHTML={{ __html: link.label }} />
+                                            <Link href={link.url} preserveScroll preserveState dangerouslySetInnerHTML={{ __html: link.label }} />
                                         ) : (
                                             <span dangerouslySetInnerHTML={{ __html: link.label }} />
                                         )}
