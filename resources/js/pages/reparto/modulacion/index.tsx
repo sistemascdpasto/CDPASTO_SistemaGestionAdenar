@@ -852,6 +852,7 @@ export default function ModulacionIndex({
                     despachado_por_nombre?: string | null;
                     items?: Array<{
                         id?: number;
+                        modulacion_id?: number;
                         placa?: string;
                         doc_tras?: string | null;
                         cargo?: string | null;
@@ -1494,7 +1495,7 @@ export default function ModulacionIndex({
                 ud_programado_por: udProgramadoPor,
                 despachado_por_colaborador_id: despachadoPorId ? Number(despachadoPorId) : null,
                 despachado_por_nombre: despachadoPorNombre,
-                rutas: finalRutas,
+                rutas: finalRutas as unknown as Record<string, unknown>[],
                 novedades: novedadesPayload,
             },
             {
@@ -1519,7 +1520,9 @@ export default function ModulacionIndex({
 
     // TABLA 2: NOVEDADES — estado local unificado (servidor + fijos iniciales + pendientes nuevas)
     const [novedadesLocal, setNovedadesLocal] = useState<ModulacionNovedadData[]>(() => {
-        if (readOnly && modulacion?.novedades && modulacion.novedades.length > 0) {
+        // Cargar novedades guardadas del servidor siempre que existan,
+        // tanto en modo lectura como en modo edición.
+        if (modulacion?.novedades && modulacion.novedades.length > 0) {
             return [...modulacion.novedades];
         }
         if (fijosIniciales && fijosIniciales.length > 0) {
@@ -1545,7 +1548,8 @@ export default function ModulacionIndex({
 
     // Sincronizar novedades cuando cambia modulacion o fijosIniciales
     useEffect(() => {
-        if (readOnly && modulacion?.novedades && modulacion.novedades.length > 0) {
+        // Cargar novedades del servidor siempre que existan (lectura y edición).
+        if (modulacion?.novedades && modulacion.novedades.length > 0) {
             setNovedadesLocal([...modulacion.novedades]);
         } else if (!modulacion && fijosIniciales && fijosIniciales.length > 0) {
             setNovedadesLocal(
@@ -1830,10 +1834,10 @@ export default function ModulacionIndex({
         const BLANCO_CARGO_4 = 'FFFFFF';    // 4to tripulante
         const NEGRO_PLACA = '000000';       // Fondo columna placa
         const BORDER_THIN = {
-            top: { style: 'thin', color: { rgb: 'FF000000' } },
-            bottom: { style: 'thin', color: { rgb: 'FF000000' } },
-            left: { style: 'thin', color: { rgb: 'FF000000' } },
-            right: { style: 'thin', color: { rgb: 'FF000000' } },
+            top: { style: 'thin' as const, color: { rgb: 'FF000000' } },
+            bottom: { style: 'thin' as const, color: { rgb: 'FF000000' } },
+            left: { style: 'thin' as const, color: { rgb: 'FF000000' } },
+            right: { style: 'thin' as const, color: { rgb: 'FF000000' } },
         };
 
         const FONT_HEADER = {
@@ -2102,17 +2106,28 @@ export default function ModulacionIndex({
             for (let t = 0; t < maxTripulantes; t++) {
                 const trip = tripulacion[t];
                 const nombre = (trip?.nombres || '').toUpperCase();
+                const cargo = (trip?.cargo || '').toUpperCase();
                 let colorFondo: string;
 
-                if (t === 0) {
+                // Color según cargo (no por posición):
+                // Azul   → Conductor
+                // Amarillo → Responsable de Reparto
+                // Gris   → Auxiliar de Reparto
+                // Blanco → cualquier otro cargo
+                if (cargo.includes('CONDUCTOR')) {
                     colorFondo = AZUL_CARGO_1;
-                } else if (t === 1) {
+                } else if (cargo.includes('RESPONSABLE')) {
                     colorFondo = AZUL_CLARO_CARGO_2;
-                } else if (t === 2) {
+                } else if (cargo.includes('AUXILIAR')) {
                     colorFondo = GRIS_CARGO_3;
                 } else {
                     colorFondo = BLANCO_CARGO_4;
                 }
+
+                // Color del texto del nombre: azul oscuro para Responsable de Reparto, negro para los demás
+                const colorTextoNombre = cargo.includes('RESPONSABLE')
+                    ? { color: { rgb: AZUL_TEXTO_CARGO_2 } }
+                    : {};
 
                 // Columna de color (chica)
                 setCell(r0 + t, COL.TRIP_COLOR, cell('', {
@@ -2125,7 +2140,7 @@ export default function ModulacionIndex({
                 // Columna de nombre (al lado)
                 setCell(r0 + t, COL.TRIP_NOMBRE, cell(nombre, {
                     s: {
-                        font: { ...FONT_BODY, bold: true, ...(t === 1 ? { color: { rgb: AZUL_TEXTO_CARGO_2 } } : {}) },
+                        font: { ...FONT_BODY, bold: true, ...colorTextoNombre },
                         alignment: ALIGN_LEFT,
                         border: BORDER_THIN,
                     },
@@ -2993,18 +3008,19 @@ export default function ModulacionIndex({
                 </div>
 
                 {/* ── Tabla novedades ──────────────────────────────────────── */}
-                {isEditing && (
+                {(isEditing || (!isEditing && novedadesLocal.length > 0)) && (
                 <div className="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border overflow-hidden">
                     <div className="flex items-center gap-2 border-b border-sidebar-border/70 dark:border-sidebar-border bg-muted/30 px-5 py-3">
                         <Users className="size-4 text-blue-600" />
-                        <span className="font-semibold text-foreground">Agregar Colaboradores</span>
+                        <span className="font-semibold text-foreground">Novedades de Colaboradores</span>
                         {novedadesLocal.length > 0 && (
                             <Badge variant="secondary">{novedadesLocal.length}</Badge>
                         )}
                     </div>
 
                     <div className="p-4 space-y-4">
-                        {/* Formulario agregar colaborador */}
+                        {/* Formulario agregar colaborador — solo en modo edición */}
+                        {isEditing && (
                         <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
                             <div className="sm:col-span-4 grid gap-1.5">
                                 <Label htmlFor="nueva-novedad-colaborador" className="text-xs text-muted-foreground">Seleccionar Colaborador</Label>
@@ -3104,6 +3120,7 @@ export default function ModulacionIndex({
                                 </Button>
                             </div>
                         </div>
+                        )}
 
                         {/* Tabla novedades */}
                         <div className="rounded-lg border border-border overflow-x-auto">
@@ -3119,13 +3136,13 @@ export default function ModulacionIndex({
                                         <TableHead className="text-center font-semibold">No Asistio</TableHead>
                                         <TableHead className="text-center font-semibold">Incapacidad</TableHead>
                                         <TableHead className="text-center font-semibold">Vacaciones</TableHead>
-                                        <TableHead className="text-right font-semibold w-16">Eliminar</TableHead>
+                                        {isEditing && <TableHead className="text-right font-semibold w-16">Eliminar</TableHead>}
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {novedadesLocal.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={10} className="py-8 text-center text-sm text-muted-foreground">
+                                            <TableCell colSpan={isEditing ? 10 : 9} className="py-8 text-center text-sm text-muted-foreground">
                                                 No hay colaboradores en novedades. Use el formulario de arriba para agregar uno.
                                             </TableCell>
                                         </TableRow>
@@ -3135,34 +3152,63 @@ export default function ModulacionIndex({
                                                 <TableCell className="font-mono text-sm">{nov.cedula ?? '—'}</TableCell>
                                                 <TableCell className="font-medium text-sm">{nov.nombres ?? '—'}</TableCell>
                                                 <TableCell className="text-sm">
-                                                    <Input
-                                                        id={`novedad-${nov.id}-observaciones`}
-                                                        name={`novedad-${nov.id}-observaciones`}
-                                                        type="text"
-                                                        value={nov.observaciones ?? ''}
-                                                        onChange={(e) => handleNovedadChange(nov.id, 'observaciones', e.target.value)}
-                                                        placeholder="Observaciones..."
-                                                        className="h-8 text-sm"
-                                                    />
+                                                    {isEditing ? (
+                                                        <Input
+                                                            id={`novedad-${nov.id}-observaciones`}
+                                                            name={`novedad-${nov.id}-observaciones`}
+                                                            type="text"
+                                                            value={nov.observaciones ?? ''}
+                                                            onChange={(e) => handleNovedadChange(nov.id, 'observaciones', e.target.value)}
+                                                            placeholder="Observaciones..."
+                                                            className="h-8 text-sm"
+                                                        />
+                                                    ) : (
+                                                        <span>{nov.observaciones ?? '—'}</span>
+                                                    )}
                                                 </TableCell>
                                                 <TableCell className="text-center">
-                                                    <Checkbox id={`novedad-${nov.id}-fijo-rescate`} aria-label={`Fijo Rescate: ${nov.nombres ?? nov.cedula ?? nov.id}`} checked={Boolean(nov.fijo_rescate)} onCheckedChange={(c) => handleNovedadChange(nov.id, 'fijo_rescate', Boolean(c))} />
+                                                    {isEditing ? (
+                                                        <Checkbox id={`novedad-${nov.id}-fijo-rescate`} aria-label={`Fijo Rescate: ${nov.nombres ?? nov.cedula ?? nov.id}`} checked={Boolean(nov.fijo_rescate)} onCheckedChange={(c) => handleNovedadChange(nov.id, 'fijo_rescate', Boolean(c))} />
+                                                    ) : (
+                                                        <span>{nov.fijo_rescate ? '✓' : '—'}</span>
+                                                    )}
                                                 </TableCell>
                                                 <TableCell className="text-center">
-                                                    <Checkbox id={`novedad-${nov.id}-fijo-taller`} aria-label={`Fijo Taller: ${nov.nombres ?? nov.cedula ?? nov.id}`} checked={Boolean(nov.fijo_taller)} onCheckedChange={(c) => handleNovedadChange(nov.id, 'fijo_taller', Boolean(c))} />
+                                                    {isEditing ? (
+                                                        <Checkbox id={`novedad-${nov.id}-fijo-taller`} aria-label={`Fijo Taller: ${nov.nombres ?? nov.cedula ?? nov.id}`} checked={Boolean(nov.fijo_taller)} onCheckedChange={(c) => handleNovedadChange(nov.id, 'fijo_taller', Boolean(c))} />
+                                                    ) : (
+                                                        <span>{nov.fijo_taller ? '✓' : '—'}</span>
+                                                    )}
                                                 </TableCell>
                                                 <TableCell className="text-center">
-                                                    <Checkbox id={`novedad-${nov.id}-permiso`} aria-label={`Permiso: ${nov.nombres ?? nov.cedula ?? nov.id}`} checked={Boolean(nov.permiso)} onCheckedChange={(c) => handleNovedadChange(nov.id, 'permiso', Boolean(c))} />
+                                                    {isEditing ? (
+                                                        <Checkbox id={`novedad-${nov.id}-permiso`} aria-label={`Permiso: ${nov.nombres ?? nov.cedula ?? nov.id}`} checked={Boolean(nov.permiso)} onCheckedChange={(c) => handleNovedadChange(nov.id, 'permiso', Boolean(c))} />
+                                                    ) : (
+                                                        <span>{nov.permiso ? '✓' : '—'}</span>
+                                                    )}
                                                 </TableCell>
                                                 <TableCell className="text-center">
-                                                    <Checkbox id={`novedad-${nov.id}-no-asistio`} aria-label={`No asistió: ${nov.nombres ?? nov.cedula ?? nov.id}`} checked={Boolean(nov.no_asitio)} onCheckedChange={(c) => handleNovedadChange(nov.id, 'no_asitio', Boolean(c))} />
+                                                    {isEditing ? (
+                                                        <Checkbox id={`novedad-${nov.id}-no-asistio`} aria-label={`No asistió: ${nov.nombres ?? nov.cedula ?? nov.id}`} checked={Boolean(nov.no_asitio)} onCheckedChange={(c) => handleNovedadChange(nov.id, 'no_asitio', Boolean(c))} />
+                                                    ) : (
+                                                        <span>{nov.no_asitio ? '✓' : '—'}</span>
+                                                    )}
                                                 </TableCell>
                                                 <TableCell className="text-center">
-                                                    <Checkbox id={`novedad-${nov.id}-incapacidad`} aria-label={`Incapacidad: ${nov.nombres ?? nov.cedula ?? nov.id}`} checked={Boolean(nov.incapacidad)} onCheckedChange={(c) => handleNovedadChange(nov.id, 'incapacidad', Boolean(c))} />
+                                                    {isEditing ? (
+                                                        <Checkbox id={`novedad-${nov.id}-incapacidad`} aria-label={`Incapacidad: ${nov.nombres ?? nov.cedula ?? nov.id}`} checked={Boolean(nov.incapacidad)} onCheckedChange={(c) => handleNovedadChange(nov.id, 'incapacidad', Boolean(c))} />
+                                                    ) : (
+                                                        <span>{nov.incapacidad ? '✓' : '—'}</span>
+                                                    )}
                                                 </TableCell>
                                                 <TableCell className="text-center">
-                                                    <Checkbox id={`novedad-${nov.id}-vacaciones`} aria-label={`Vacaciones: ${nov.nombres ?? nov.cedula ?? nov.id}`} checked={Boolean(nov.vacaciones)} onCheckedChange={(c) => handleNovedadChange(nov.id, 'vacaciones', Boolean(c))} />
+                                                    {isEditing ? (
+                                                        <Checkbox id={`novedad-${nov.id}-vacaciones`} aria-label={`Vacaciones: ${nov.nombres ?? nov.cedula ?? nov.id}`} checked={Boolean(nov.vacaciones)} onCheckedChange={(c) => handleNovedadChange(nov.id, 'vacaciones', Boolean(c))} />
+                                                    ) : (
+                                                        <span>{nov.vacaciones ? '✓' : '—'}</span>
+                                                    )}
                                                 </TableCell>
+                                                {isEditing && (
                                                 <TableCell className="text-right">
                                                     <Button
                                                         size="icon"
@@ -3173,6 +3219,7 @@ export default function ModulacionIndex({
                                                         <Trash2 className="size-3.5" />
                                                     </Button>
                                                 </TableCell>
+                                                )}
                                             </TableRow>
                                         ))
                                     )}
