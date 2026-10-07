@@ -125,7 +125,7 @@ export default function ActasTallerIndex({ actas, vehiculos, filters }: Props) {
                             Gestión de mantenimiento de vehículos · {actas.total} actas registradas
                         </p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                         <Button variant="outline" size="sm" asChild className="gap-1.5">
                             <Link href={route('flota.actas-taller.dashboard')}>
                                 <BarChart3 className="size-4" /> Dashboard

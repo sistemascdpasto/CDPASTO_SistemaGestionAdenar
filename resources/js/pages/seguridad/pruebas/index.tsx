@@ -378,7 +378,7 @@ export default function PruebasIndex({
                     </div>
 
                     {/* Filtros de Búsqueda */}
-                    <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <form className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                         <div className="grid gap-1.5">
                             <Label htmlFor="colaborador">Colaborador o cédula</Label>
                             <Input
@@ -390,13 +390,13 @@ export default function PruebasIndex({
                         </div>
                         <div className="grid gap-1.5">
                             <Label>Rango de fechas</Label>
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex flex-wrap items-center gap-1.5">
                                 <Input
                                     id="fecha_desde"
                                     type="date"
                                     value={form.fecha_desde}
                                     onChange={(e) => setForm({ ...form, fecha_desde: e.target.value, fecha: e.target.value })}
-                                    className="flex-1"
+                                    className="min-w-0 flex-1 basis-32"
                                 />
                                 <span className="text-muted-foreground text-xs shrink-0">—</span>
                                 <Input
@@ -404,7 +404,7 @@ export default function PruebasIndex({
                                     type="date"
                                     value={form.fecha_hasta}
                                     onChange={(e) => setForm({ ...form, fecha_hasta: e.target.value })}
-                                    className="flex-1"
+                                    className="min-w-0 flex-1 basis-32"
                                 />
                             </div>
                         </div>
@@ -494,8 +494,8 @@ export default function PruebasIndex({
 
                 {/* Vista: Pendientes de la Planeación (Histórico Completo) */}
                 {activeTab === 'pendientes' && (
-                    <div className="rounded-lg border border-sidebar-border/70 dark:border-sidebar-border overflow-hidden">
-                        
+                    <div className="overflow-x-auto rounded-lg border border-sidebar-border/70 dark:border-sidebar-border">
+
                         <Table>
                             <TableHeader>
                                 <TableRow>

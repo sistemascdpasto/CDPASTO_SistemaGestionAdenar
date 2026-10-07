@@ -2434,7 +2434,7 @@ export default function ModulacionIndex({
                             </div>
                         </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
                         {readOnly && (
                             <Button variant="outline" size="sm" asChild>
                                 <Link href={route('reparto.modulacion.historial')}>
@@ -2443,7 +2443,7 @@ export default function ModulacionIndex({
                                 </Link>
                             </Button>
                         )}
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                             <Label htmlFor="ud_programado_por" className="text-xs font-semibold text-muted-foreground whitespace-nowrap">
                                 UD Programado Por:
                             </Label>
@@ -2453,7 +2453,7 @@ export default function ModulacionIndex({
                                 placeholder="Nombre del usuario programador"
                                 value={udProgramadoPor}
                                 onChange={(e) => setUdProgramadoPor(e.target.value)}
-                                className="h-10 w-64 text-sm bg-background"
+                                className="h-10 w-full min-w-0 text-sm bg-background sm:w-64"
                             />
                         </div>
                     </div>

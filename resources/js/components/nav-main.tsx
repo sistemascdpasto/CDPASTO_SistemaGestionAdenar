@@ -104,7 +104,7 @@ function NavSubItems({ items, currentUrl }: { items: NavItem[]; currentUrl: stri
 
 export function NavMain({ items = [] }: { items: NavItem[] }) {
     const page = usePage();
-    const { state } = useSidebar();
+    const { state, isMobile } = useSidebar();
 
     const grupoActivoTitulo = items.find((item) => item.items?.length && containsUrl(item, page.url, true))?.title;
     const hayGrupoActivo = Boolean(grupoActivoTitulo);
@@ -135,7 +135,10 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                     // Con el sidebar retraído a solo íconos no hay espacio para desplegar
                     // los submódulos, así que el ícono navega directo a la vista general
                     // del módulo en vez de intentar abrir el submenú (que quedaría oculto).
-                    if (item.items?.length && state === 'collapsed') {
+                    // En móvil el sidebar es siempre un Sheet de ancho completo (nunca modo
+                    // solo-íconos), así que esto no aplica ahí aunque `state` venga en
+                    // 'collapsed' por el valor persistido del sidebar de escritorio.
+                    if (item.items?.length && state === 'collapsed' && !isMobile) {
                         return (
                             <SidebarMenuItem key={item.title}>
                                 <SidebarMenuButton

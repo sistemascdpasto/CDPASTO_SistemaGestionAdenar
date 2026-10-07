@@ -126,7 +126,7 @@ export default function EvaluacionesIndex({
             <div className="flex h-full flex-1 flex-col gap-6 rounded-xl p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                     <HeadingSmall title="Bandeja de evaluaciones" description="Exámenes médicos ocupacionales por colaborador." />
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                         <Button variant="outline" asChild>
                             <a href={exportUrl('seguridad.examenes-medicos.exportar.basica')}>
                                 <Download />
