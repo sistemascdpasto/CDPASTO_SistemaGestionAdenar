@@ -2312,8 +2312,6 @@ export default function ModulacionIndex({
         });
         ws['!rows'] = rowHeights;
 
-        XLSX.utils.book_append_sheet(wb, ws, 'Planeación de Ruta');
-
         // ─── Tabla de NOVEDADES en la misma hoja, separada por 2 filas ───────
         const encabezadosNovedades = [
             'NOMBRE',
@@ -2400,6 +2398,8 @@ export default function ModulacionIndex({
             fechaNombre = `${y}-${m}-${day}`;
         }
         const fileName = `Planeacion_Ruta_${fechaNombre}.xlsx`;
+        // Añadir la hoja al workbook después de escribir rutas Y novedades
+        XLSX.utils.book_append_sheet(wb, ws, 'Planeación de Ruta');
         XLSX.writeFile(wb, fileName);
     };
 
