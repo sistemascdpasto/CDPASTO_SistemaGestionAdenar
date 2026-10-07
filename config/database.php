@@ -60,6 +60,9 @@ return [
             'timezone' => env('DB_TIMEZONE', '-05:00'),
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+                // Si MySQL no responde (p. ej. mientras Railway lo reinicia), fallar en pocos
+                // segundos en lugar de colgar la petición hasta el límite de 30 s de PHP.
+                PDO::ATTR_TIMEOUT => (int) env('DB_CONNECT_TIMEOUT', 5),
             ]) : [],
         ],
 
