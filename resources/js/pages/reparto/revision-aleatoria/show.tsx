@@ -1,9 +1,11 @@
+import { ImageLightbox } from '@/components/image-lightbox';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { AlertTriangle, ArrowLeft, CalendarDays, CheckCircle2, Trash2, Truck, User } from 'lucide-react';
+import { useState } from 'react';
 
 interface NovedadDetalle {
     id: number;
@@ -32,6 +34,7 @@ interface RevisionDetalle {
 
 export default function RevisionAleatoriaShow({ revision }: { revision: RevisionDetalle }) {
     const { auth } = usePage<SharedData>().props;
+    const [imagenAmpliada, setImagenAmpliada] = useState<string | null>(null);
 
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Dashboard', href: '/dashboard' },
@@ -125,9 +128,9 @@ export default function RevisionAleatoriaShow({ revision }: { revision: Revision
                                 {n.evidencias.length > 0 && (
                                     <div className="mt-3 flex flex-wrap gap-2">
                                         {n.evidencias.map((e) => (
-                                            <a key={e.id} href={e.url} target="_blank" rel="noreferrer">
+                                            <button key={e.id} type="button" onClick={() => setImagenAmpliada(e.url)}>
                                                 <img src={e.url} className="h-20 w-20 rounded-md border border-border object-cover transition-transform hover:scale-105" />
-                                            </a>
+                                            </button>
                                         ))}
                                     </div>
                                 )}
@@ -136,6 +139,7 @@ export default function RevisionAleatoriaShow({ revision }: { revision: Revision
                     </div>
                 )}
             </div>
+            <ImageLightbox src={imagenAmpliada} onClose={() => setImagenAmpliada(null)} />
         </AppLayout>
     );
 }
