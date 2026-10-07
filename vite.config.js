@@ -49,7 +49,11 @@ export default defineConfig({
                 short_name: 'Adenar',
                 description: 'Sistema de gestión ADENAR: seguridad, reparto, gente y flota.',
                 lang: 'es',
-                start_url: '/dashboard',
+                // "/" renderiza welcome.tsx. No se usa /dashboard porque esa
+                // ruta exige sesión: para alguien sin login, abrir la app
+                // instalada terminaría cayendo directo en /login en vez de
+                // en la pantalla de bienvenida.
+                start_url: '/',
                 scope: '/',
                 display: 'standalone',
                 background_color: '#ffffff',
