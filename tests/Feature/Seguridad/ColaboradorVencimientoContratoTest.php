@@ -39,12 +39,12 @@ class ColaboradorVencimientoContratoTest extends TestCase
     {
         Notification::fake();
 
-        $colaborador = $this->colaborador(['contrato_fecha_hasta' => now()->addDays(10)->toDateString()]);
+        $colaborador = $this->colaborador(['fecha_retiro_empresa' => now()->addDays(10)->toDateString()]);
 
         $this->artisan('seguridad:revisar-vencimiento-contratos')->assertSuccessful();
 
         $this->assertSame(1, Alerta::where('colaborador_id', $colaborador->id)
-            ->where('tipo', 'contrato_proximo_vencer')
+            ->where('tipo', 'retiro_proximo')
             ->count());
     }
 
@@ -52,7 +52,7 @@ class ColaboradorVencimientoContratoTest extends TestCase
     {
         Notification::fake();
 
-        $colaborador = $this->colaborador(['contrato_fecha_hasta' => now()->addDays(10)->toDateString()]);
+        $colaborador = $this->colaborador(['fecha_retiro_empresa' => now()->addDays(10)->toDateString()]);
 
         $this->artisan('seguridad:revisar-vencimiento-contratos');
         $this->artisan('seguridad:revisar-vencimiento-contratos');
@@ -64,11 +64,11 @@ class ColaboradorVencimientoContratoTest extends TestCase
     {
         Notification::fake();
 
-        $this->colaborador(['contrato_fecha_hasta' => now()->addMonths(6)->toDateString()]);
+        $this->colaborador(['fecha_retiro_empresa' => now()->addMonths(6)->toDateString()]);
 
         $this->artisan('seguridad:revisar-vencimiento-contratos');
 
-        $this->assertSame(0, Alerta::where('tipo', 'contrato_proximo_vencer')->count());
+        $this->assertSame(0, Alerta::where('tipo', 'retiro_proximo')->count());
     }
 
     public function test_it_ignores_draft_colaboradores(): void
@@ -77,13 +77,13 @@ class ColaboradorVencimientoContratoTest extends TestCase
 
         $this->colaborador([
             'cedula' => '700100201',
-            'contrato_fecha_hasta' => now()->addDays(5)->toDateString(),
+            'fecha_retiro_empresa' => now()->addDays(5)->toDateString(),
             'estado_registro' => 'borrador',
             'wizard_step' => 3,
         ]);
 
         $this->artisan('seguridad:revisar-vencimiento-contratos');
 
-        $this->assertSame(0, Alerta::where('tipo', 'contrato_proximo_vencer')->count());
+        $this->assertSame(0, Alerta::where('tipo', 'retiro_proximo')->count());
     }
 }

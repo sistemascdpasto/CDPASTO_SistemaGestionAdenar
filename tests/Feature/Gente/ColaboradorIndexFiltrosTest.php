@@ -96,9 +96,9 @@ class ColaboradorIndexFiltrosTest extends TestCase
     public function test_it_filters_by_vencimiento_de_contrato(): void
     {
         $user = $this->seguridadUser();
-        $this->colaborador(['contrato_fecha_hasta' => now()->subDays(5)->toDateString()]); // vencido
-        $this->colaborador(['contrato_fecha_hasta' => now()->addDays(10)->toDateString()]); // próximo
-        $this->colaborador(['contrato_fecha_hasta' => now()->addMonths(6)->toDateString()]); // vigente
+        $this->colaborador(['fecha_retiro_empresa' => now()->subDays(5)->toDateString()]); // vencido
+        $this->colaborador(['fecha_retiro_empresa' => now()->addDays(10)->toDateString()]); // próximo
+        $this->colaborador(['fecha_retiro_empresa' => now()->addMonths(6)->toDateString()]); // vigente
 
         $vencidos = $this->actingAs($user)->get(route('gente.colaboradores.index', ['vencimiento_contrato' => 'vencidos']));
         $vencidos->assertInertia(fn ($page) => $page->has('colaboradores.data', 1));
