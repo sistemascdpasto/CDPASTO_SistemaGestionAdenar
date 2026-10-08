@@ -885,5 +885,67 @@ class SeguimientoPruebasController extends Controller
 
         return back()->with('status', 'Nivel de autonomía actualizado.');
     }
-}
 
+    /**
+     * Actualiza el rol de padrino (Padrino / Apadrinado / Ninguno) de un colaborador.
+     */
+    public function updateRolPadrino(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'colaborador_id' => 'required|exists:colaboradores,id',
+            'tipo_padrino'   => 'nullable|string|in:Padrino,Apadrinado,Ninguno',
+        ]);
+
+        $colaborador = Colaborador::findOrFail($validated['colaborador_id']);
+        $colaborador->tipo_padrino = $validated['tipo_padrino'] === 'Ninguno' ? null : $validated['tipo_padrino'];
+        $colaborador->es_padrino   = $validated['tipo_padrino'] === 'Padrino';
+        $colaborador->save();
+
+        return back()->with('status', 'Rol de padrino actualizado.');
+    }
+
+    /**
+     * Vista pública de los Padrinos: grid de tarjetas con foto, cargo y nombre.
+     */
+    public function padrinos(): Response
+    {
+        $padrinos = Colaborador::query()
+            ->where('is_active', true)
+            ->where('es_padrino', true)
+            ->whereRaw("LOWER(TRIM(area)) = 'operativa'")
+            ->select(['id', 'cedula', 'nombres', 'apellidos', 'cargo', 'imagen', 'mensaje_padrino'])
+            ->orderBy('apellidos')
+            ->orderBy('nombres')
+            ->get()
+            ->map(fn ($c) => [
+                'id'              => $c->id,
+                'cedula'          => $c->cedula,
+                'nombre_completo' => $c->nombre_completo,
+                'cargo'           => $c->cargo ?? 'Sin cargo',
+                'imagen'          => $c->imagen,
+                'mensaje_padrino' => $c->mensaje_padrino,
+            ]);
+
+        return Inertia::render('gente/plan-padrinos/padrinos', [
+            'padrinos' => $padrinos,
+        ]);
+    }
+
+    /**
+     * Actualiza el mensaje del padrino.
+     */
+    public function updateMensajePadrino(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'colaborador_id'  => 'required|exists:colaboradores,id',
+            'mensaje_padrino' => 'nullable|string|max:2000',
+        ]);
+
+        $colaborador = Colaborador::findOrFail($validated['colaborador_id']);
+        $colaborador->mensaje_padrino = $validated['mensaje_padrino'];
+        $colaborador->save();
+
+        return back()->with('status', 'Mensaje actualizado.');
+    }
+
+}

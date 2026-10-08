@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
-import { AlertCircle, Calendar, Camera, CheckCircle2, Clock, HeartHandshake, ImageIcon, ListChecks, Search, ShieldAlert, Trash2, Upload, UserCheck, X } from 'lucide-react';
+import { AlertCircle, Calendar, Camera, CheckCircle2, Clock, HeartHandshake, ImageIcon, ListChecks, Search, ShieldAlert, Star, Trash2, Upload, UserCheck, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -147,6 +147,13 @@ export default function SeguimientoPruebasIndex({ colaboradores, metrics, filter
                     >
                         <ListChecks className="h-4 w-4" />
                         Criterios y Nivel de Autonomía
+                    </Link>
+                    <Link
+                        href="/modules/gente/plan-padrinos/padrinos"
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg text-muted-foreground hover:bg-muted transition-colors"
+                    >
+                        <Star className="h-4 w-4" />
+                        Padrinos
                     </Link>
                 </div>
 

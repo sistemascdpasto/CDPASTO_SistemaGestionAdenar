@@ -122,6 +122,7 @@ class Colaborador extends Model
         // Paso 4 — plan padrino (toggle; el archivo vive en colaborador_documentos)
         'es_padrino',
         'tipo_padrino',
+        'mensaje_padrino',
         'nivel_autonomia',
     ];
 

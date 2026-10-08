@@ -632,8 +632,32 @@ function NarinoMunicipioInput({
                 <datalist id={`${baseId}-barrios-list`}>
                     {barrios.map((opcion) => <option key={opcion.id} value={opcion.nombre} />)}
                 </datalist>
+            </div>
+
+            {/* Hora de cita — opcional (al frente del barrio) */}
+            <div className="grid gap-1.5">
+                <Label htmlFor={`${baseId}-hora`} className="text-xs font-medium text-muted-foreground">
+                    Hora de cita <span className="text-muted-foreground/60">(opcional)</span>
+                </Label>
+                <Input
+                    id={`${baseId}-hora`}
+                    name={`${baseId}-hora`}
+                    type="time"
+                    value={horaDestino}
+                    onChange={(e) => onHoraDestinoChange(e.target.value)}
+                    className="mt-0.5 h-10 text-sm w-full sm:w-36"
+                />
+                {horaDestino && (
+                    <p className="text-xs text-muted-foreground">
+                        Aparecerá como <span className="font-medium text-foreground">CITA {horaDestino}</span> en la ruta y el Excel.
+                    </p>
+                )}
+            </div>
+
+            {/* Tabla de destinos registrados / pendientes y mensajes (ocupan ambas columnas debajo para no desplazar los inputs) */}
+            <div className="sm:col-span-2 space-y-1.5">
                 {(viajesRegistrados.length > 0 || destinosPendientes.length > 0) && (
-                    <div className="mt-1 overflow-hidden rounded-md border border-border/70 bg-muted/30 text-xs" aria-live="polite">
+                    <div className="overflow-hidden rounded-md border border-border/70 bg-muted/30 text-xs" aria-live="polite">
                         <p className="border-b border-border/70 px-3 py-2 font-medium text-foreground">
                             Destinos de la ruta ({viajesRegistrados.length + (destinosPendientes.length > 0 ? 1 : 0)} viajes)
                         </p>
@@ -656,6 +680,7 @@ function NarinoMunicipioInput({
                                             <li key={`${destino.lugares}-${destino.barrio}-${destinoIndex}`} className="break-words">
                                                 <span className="mr-1 text-foreground" aria-hidden="true">•</span>
                                                 {destino.barrio ? `${destino.lugares} — ${destino.barrio}` : destino.lugares}
+                                                {destino.hora && <span className="ml-1 font-semibold text-amber-600"> · Cita {destino.hora}</span>}
                                             </li>
                                         ))}
                                         </ul>
@@ -674,6 +699,7 @@ function NarinoMunicipioInput({
                                                 <span className="min-w-0 break-words">
                                                     <span className="mr-1 text-foreground" aria-hidden="true">•</span>
                                                 {destino.barrio ? `${destino.lugares} — ${destino.barrio}` : destino.lugares}
+                                                {destino.hora && <span className="ml-1 font-semibold text-amber-600"> · Cita {destino.hora}</span>}
                                                 </span>
                                                 <Button
                                                     type="button"
@@ -710,26 +736,6 @@ function NarinoMunicipioInput({
                             ? 'El municipio y el barrio escritos se guardarán al guardar la ruta.'
                             : ''}
                 </p>
-            </div>
-
-            {/* Hora de cita — opcional */}
-            <div className="grid gap-1.5">
-                <Label htmlFor={`${baseId}-hora`} className="text-xs font-medium text-muted-foreground">
-                    Hora de cita <span className="text-muted-foreground/60">(opcional)</span>
-                </Label>
-                <Input
-                    id={`${baseId}-hora`}
-                    name={`${baseId}-hora`}
-                    type="time"
-                    value={horaDestino}
-                    onChange={(e) => onHoraDestinoChange(e.target.value)}
-                    className="h-10 text-sm w-36"
-                />
-                {horaDestino && (
-                    <p className="text-xs text-muted-foreground">
-                        Aparecerá como <span className="font-medium text-foreground">CITA {horaDestino}</span> en la ruta y el Excel.
-                    </p>
-                )}
             </div>
             <div className="grid gap-1.5">
                 <Label htmlFor={`${baseId}-cliente`} className="text-xs font-medium text-muted-foreground">Cliente</Label>
@@ -901,7 +907,7 @@ export default function ModulacionIndex({
                 setActiveModulacionId(data.modulacion.id ?? null);
                 const rutasExistentes = mapModulacionItems((data.modulacion.items ?? []) as ModulacionItemData[]);
                 setRutasGuardadas(rutasExistentes);
-                setRutas(readOnly ? rutasExistentes : []);
+                setRutas(rutasExistentes);
 
                 if (Array.isArray(data.modulacion.novedades)) {
                     setNovedadesLocal([...data.modulacion.novedades]);
@@ -916,8 +922,6 @@ export default function ModulacionIndex({
                     }
                     setDespachadoPorNombre(cleanString(data.modulacion.despachado_por_nombre, DESPACHADO_POR_DEFECTO));
                     alert(`La fecha ${newFecha} ya tiene una planeación registrada. Se han precargado los datos.`);
-                } else {
-                    alert(`La fecha ${newFecha} ya tiene una planeación. La pantalla quedó vacía; puede cargarla manualmente para editarla.`);
                 }
             } else {
                 setActiveModulacionId(null);
@@ -975,9 +979,9 @@ export default function ModulacionIndex({
     const [editingViajeIndex, setEditingViajeIndex] = useState<number | null>(null);
 
     // Rutas guardadas en la lista
-    const [rutas, setRutas] = useState<RutaFormState[]>(() => {
-        return readOnly ? mapModulacionItems(modulacion?.items ?? []) : [];
-    });
+    const [rutas, setRutas] = useState<RutaFormState[]>(() =>
+        mapModulacionItems(modulacion?.items ?? [])
+    );
     const [rutasGuardadas, setRutasGuardadas] = useState<RutaFormState[]>(() =>
         mapModulacionItems(modulacion?.items ?? []),
     );
@@ -992,14 +996,10 @@ export default function ModulacionIndex({
 
         const rutasIniciales = mapModulacionItems(modulacion?.items ?? []);
         setRutasGuardadas(rutasIniciales);
+        setRutas(rutasIniciales);
         if (readOnly) {
-            setRutas(rutasIniciales);
             setIsEditing(false);
-        } else if (modulacion) {
-            setRutas([]);
-            setIsEditing(true);
         } else {
-            setRutas([]);
             setIsEditing(true);
         }
     }, [modulacion, readOnly]);
@@ -1035,6 +1035,13 @@ export default function ModulacionIndex({
         if (viajes.length === 0 || viajeIndex >= viajes.length) return;
 
         const viajeToEdit = viajes[viajeIndex];
+        const destinosToEdit = viajeToEdit.destinos?.length
+            ? viajeToEdit.destinos
+            : viajeToEdit.lugares || viajeToEdit.barrio
+              ? [{ lugares: viajeToEdit.lugares ?? '', barrio: viajeToEdit.barrio ?? '' }]
+              : [];
+        const savedHora = destinosToEdit[0]?.hora ?? '';
+
         setCurrentRoute({
             id: routeToEdit.id,
             placa: routeToEdit.placa,
@@ -1050,7 +1057,8 @@ export default function ModulacionIndex({
             cliente: viajeToEdit.cliente ?? '',
             peso: viajeToEdit.peso ?? '',
         });
-        setDestinosViajePendientes(viajeToEdit.destinos ?? []);
+        setDestinosViajePendientes(destinosToEdit);
+        setHoraDestinoPendiente(savedHora);
         setEditingIndex(rutaIndex);
         setEditingViajeIndex(viajeIndex); // Establecer índice del viaje específico
         setIsEditing(true);
@@ -1252,38 +1260,24 @@ export default function ModulacionIndex({
             };
 
             const rutaQuedaSinViajes = updatedViajes.length === 0;
-            setRutas((prev) => {
-                if (editingIndex < 0 || editingIndex >= prev.length) return prev;
-                if (rutaQuedaSinViajes) return prev.filter((_, index) => index !== editingIndex);
+            let nextRutas = [...rutas];
+            if (editingIndex >= 0 && editingIndex < nextRutas.length) {
+                if (rutaQuedaSinViajes) {
+                    nextRutas.splice(editingIndex, 1);
+                } else {
+                    nextRutas[editingIndex] = updatedRoute;
+                }
+            }
 
-                const updated = [...prev];
-                updated[editingIndex] = updatedRoute;
-                return updated;
-            });
-
+            setRutas(nextRutas);
             if (rutaQuedaSinViajes) {
                 setCurrentRoute(createEmptyRoute());
                 setEditingIndex(null);
             } else {
                 setCurrentRoute(updatedRoute);
             }
-            // Limpiar el formulario de viaje después de actualizar
-            setCurrentViajeForm({
-                lugares: '',
-                barrio: '',
-                cliente: '',
-                peso: '',
-            });
-            setDestinosViajePendientes([]);
-        setHoraDestinoPendiente('');
-            setEditingViajeIndex(null); // Resetear índice de viaje
-            alert(
-                viajeFormLleno
-                    ? 'Viaje actualizado correctamente'
-                    : rutaQuedaSinViajes
-                      ? 'El viaje vacío y su ruta se eliminaron correctamente'
-                      : 'Viaje vacío eliminado correctamente',
-            );
+
+            guardarBatchEnBD(nextRutas, { isAutoSave: true, readOnlyMode: false });
             return;
         }
 
@@ -1297,46 +1291,35 @@ export default function ModulacionIndex({
             peso: cv.peso || '',
         };
 
-        const existingRouteIndex = rutas.findIndex(
+        let nextRutas = [...rutas];
+        const existingIdx = nextRutas.findIndex(
             (route) => route.placa.trim().toUpperCase() === currentRoute.placa.trim().toUpperCase(),
         );
-        const routeIndex = editingIndex ?? (existingRouteIndex >= 0 ? existingRouteIndex : rutas.length);
-        setRutas((prev) => {
-            const updated = [...prev];
-            const existingIdx = updated.findIndex(
-                (route) => route.placa.trim().toUpperCase() === currentRoute.placa.trim().toUpperCase(),
-            );
-            const routeToUpdate = existingIdx >= 0 ? updated[existingIdx] : currentRoute;
-            const updatedRoute: RutaFormState = {
-                ...routeToUpdate,
-                ...currentRoute,
-                tripulacion: [...(currentRoute.tripulacion || routeToUpdate.tripulacion || [])],
-                viajes: combinarViajes(routeToUpdate.viajes ?? [], currentRoute.viajes ?? [], [newViaje]),
-            };
+        const routeToUpdate = existingIdx >= 0 ? nextRutas[existingIdx] : currentRoute;
+        updatedRoute = {
+            ...routeToUpdate,
+            ...currentRoute,
+            tripulacion: [...(currentRoute.tripulacion || routeToUpdate.tripulacion || [])],
+            viajes: combinarViajes(routeToUpdate.viajes ?? [], currentRoute.viajes ?? [], [newViaje]),
+        };
 
-            if (existingIdx >= 0) {
-                updated[existingIdx] = updatedRoute;
-            } else {
-                updated.push(updatedRoute);
-            }
-            return updated;
-        });
+        if (existingIdx >= 0) {
+            nextRutas[existingIdx] = updatedRoute;
+        } else {
+            nextRutas.push(updatedRoute);
+        }
 
+        const routeIndex = editingIndex ?? (existingIdx >= 0 ? existingIdx : nextRutas.length - 1);
+        setRutas(nextRutas);
         setCurrentRoute((prev) => ({
             ...prev,
             ...currentRoute,
             viajes: combinarViajes(prev.viajes ?? [], currentRoute.viajes ?? [], [newViaje]),
         }));
-        setCurrentViajeForm({
-            lugares: '',
-            barrio: '',
-            cliente: '',
-            peso: '',
-        });
-        setDestinosViajePendientes([]);
-        setHoraDestinoPendiente('');
         setEditingViajeIndex(null);
         setEditingIndex(routeIndex);
+
+        guardarBatchEnBD(nextRutas, { isAutoSave: true, readOnlyMode: false });
     };
 
     const handleRemoveViajeIndividual = (placa: string, viajeId: string | undefined, viajeIndex: number) => {
@@ -1424,6 +1407,78 @@ export default function ModulacionIndex({
 
     // GUARDAR PLANEACIÓN DE RUTA COMPLETA (TODAS LAS RUTAS + NOVEDADES)
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const guardarBatchEnBD = (
+        finalRutas: RutaFormState[],
+        options: { isAutoSave?: boolean; readOnlyMode?: boolean } = {}
+    ) => {
+        const { isAutoSave = false, readOnlyMode = false } = options;
+
+        if (finalRutas.length === 0) {
+            alert('Por favor ingrese al menos una ruta con Placa antes de guardar la planeación.');
+            return;
+        }
+
+        setIsSubmitting(true);
+
+        const novedadesPayload = novedadesLocal.map((nov) => {
+            const isNew = nov.id < 0;
+            return {
+                ...(isNew ? {} : { id: nov.id }),
+                colaborador_id: nov.colaborador_id ?? null,
+                cedula: nov.cedula ?? null,
+                nombres: nov.nombres ?? null,
+                cargo: nov.cargo ?? null,
+                observaciones: nov.observaciones ?? null,
+                fijo_rescate: Boolean(nov.fijo_rescate),
+                fijo_taller: Boolean(nov.fijo_taller),
+                fijo: Boolean(nov.fijo_rescate) || Boolean(nov.fijo_taller),
+                permiso: Boolean(nov.permiso),
+                no_asitio: Boolean(nov.no_asitio),
+                incapacidad: Boolean(nov.incapacidad),
+                vacaciones: Boolean(nov.vacaciones),
+            };
+        });
+
+        router.post(
+            route('reparto.modulacion.storeBatch'),
+            {
+                modulacion_id: activeModulacionId,
+                fecha: fechaTexto,
+                ud_programado_por: udProgramadoPor,
+                despachado_por_colaborador_id: despachadoPorId ? Number(despachadoPorId) : null,
+                despachado_por_nombre: despachadoPorNombre,
+                rutas: finalRutas as unknown as any,
+                novedades: novedadesPayload as unknown as any,
+                read_only: readOnlyMode,
+            },
+            {
+                preserveScroll: true,
+                preserveState: false,
+                onSuccess: () => {
+                    setIsSubmitting(false);
+                    if (isAutoSave) {
+                        setCurrentViajeForm({ lugares: '', barrio: '', cliente: '', peso: '' });
+                        setDestinosViajePendientes([]);
+                        setHoraDestinoPendiente('');
+                        setEditingViajeIndex(null);
+                    } else {
+                        alert('Planeación de ruta guardada correctamente.');
+                    }
+                },
+                onError: (errs) => {
+                    setIsSubmitting(false);
+                    console.error('Error al guardar planeación en la base de datos:', errs);
+                    const msg =
+                        errs.rutas ||
+                        Object.values(errs)[0] ||
+                        'Error al guardar en la base de datos. Verifique los campos requeridos.';
+                    alert(msg);
+                },
+            }
+        );
+    };
+
     const handleGuardarTodo = () => {
         const finalRutas = [...rutas];
 
@@ -1491,64 +1546,7 @@ export default function ModulacionIndex({
         // NO se inyectan colaboradores fijos ni novedades en la tripulación de finalRutas.
         // Tripulación contiene SOLO los miembros asignados explícitamente a cada ruta.
 
-        if (finalRutas.length === 0) {
-            alert('Por favor ingrese al menos una ruta con Placa antes de guardar la planeación.');
-            return;
-        }
-
-        setIsSubmitting(true);
-
-        // Preparar novedades para enviar en lote
-        // - Las que tienen id real: actualizar checkboxes
-        // - Las que tienen id negativo (pendientes): crear nuevas en el backend
-        const novedadesPayload = novedadesLocal.map((nov) => {
-            const isNew = nov.id < 0;
-            return {
-                ...(isNew ? {} : { id: nov.id }),
-                colaborador_id: nov.colaborador_id ?? null,
-                cedula: nov.cedula ?? null,
-                nombres: nov.nombres ?? null,
-                cargo: nov.cargo ?? null,
-                observaciones: nov.observaciones ?? null,
-                fijo_rescate: Boolean(nov.fijo_rescate),
-                fijo_taller: Boolean(nov.fijo_taller),
-                fijo: Boolean(nov.fijo_rescate) || Boolean(nov.fijo_taller),
-                permiso: Boolean(nov.permiso),
-                no_asitio: Boolean(nov.no_asitio),
-                incapacidad: Boolean(nov.incapacidad),
-                vacaciones: Boolean(nov.vacaciones),
-            };
-        });
-
-        router.post(
-            route('reparto.modulacion.storeBatch'),
-            {
-                modulacion_id: activeModulacionId,
-                fecha: fechaTexto,
-                ud_programado_por: udProgramadoPor,
-                despachado_por_colaborador_id: despachadoPorId ? Number(despachadoPorId) : null,
-                despachado_por_nombre: despachadoPorNombre,
-                rutas: finalRutas as unknown as Record<string, unknown>[],
-                novedades: novedadesPayload,
-            },
-            {
-                preserveScroll: true,
-                preserveState: false,
-                onSuccess: () => {
-                    setIsSubmitting(false);
-                    alert('Planeación de ruta guardada correctamente.');
-                },
-                onError: (errs) => {
-                    setIsSubmitting(false);
-                    console.error('Error al guardar planeación:', errs);
-                    const msg =
-                        errs.rutas ||
-                        Object.values(errs)[0] ||
-                        'Error al guardar la planeación. Verifique los campos requeridos.';
-                    alert(msg);
-                },
-            }
-        );
+        guardarBatchEnBD(finalRutas, { isAutoSave: false, readOnlyMode: true });
     };
 
     // TABLA 2: NOVEDADES — estado local unificado (servidor + fijos iniciales + pendientes nuevas)
@@ -2220,11 +2218,13 @@ export default function ModulacionIndex({
                         .map((destino) => {
                             const municipio = destino.lugares.trim().toLocaleUpperCase('es');
                             const barrio = destino.barrio.trim().toLocaleUpperCase('es');
+                            const hora = destino.hora?.trim() ?? '';
+                            const citaLinea = hora ? `\nCITA ${hora}` : '';
                             const esPasto = municipio.normalize('NFD').replace(/[\u0300-\u036f]/g, '') === 'PASTO';
 
-                            if (esPasto) return barrio ? `• ${barrio}` : '';
+                            if (esPasto) return barrio ? `• ${barrio}${citaLinea}` : '';
                             if (!municipio && !barrio) return '';
-                            return `• ${municipio}${barrio ? `\n  BARRIOS: ${barrio}` : ''}`;
+                            return `• ${municipio}${barrio ? `\n  BARRIOS: ${barrio}` : ''}${citaLinea}`;
                         })
                         .filter(Boolean)
                         .join('\n');
@@ -2847,9 +2847,19 @@ export default function ModulacionIndex({
                                 <div className="sm:col-span-2">
                                     <NarinoMunicipioInput
                                         value={String(currentViajeForm.lugares ?? '')}
-                                        onChange={(val) => handleViajeFormChange('lugares', val)}
+                                        onChange={(val) => {
+                                            handleViajeFormChange('lugares', val);
+                                            if (editingViajeIndex === null) {
+                                                setHoraDestinoPendiente('');
+                                            }
+                                        }}
                                         barrio={String(currentViajeForm.barrio ?? '')}
-                                        onBarrioChange={(val) => handleViajeFormChange('barrio', val)}
+                                        onBarrioChange={(val) => {
+                                            handleViajeFormChange('barrio', val);
+                                            if (editingViajeIndex === null) {
+                                                setHoraDestinoPendiente('');
+                                            }
+                                        }}
                                         cliente={String(currentViajeForm.cliente ?? '')}
                                         onClienteChange={(val) => handleViajeFormChange('cliente', val)}
                                         horaDestino={horaDestinoPendiente}
@@ -3034,6 +3044,11 @@ export default function ModulacionIndex({
                                                                                     <div key={`${destino.lugares}-${destino.barrio}-${destinoIdx}`}>
                                                                                         <p><span className="font-medium">Municipio:</span> {destino.lugares || '—'}</p>
                                                                                         <p><span className="font-medium">Barrio:</span> {destino.barrio || '—'}</p>
+                                                                                        {destino.hora && (
+                                                                                            <p className="font-semibold text-amber-600 dark:text-amber-400">
+                                                                                                Cita: {destino.hora}
+                                                                                            </p>
+                                                                                        )}
                                                                                     </div>
                                                                                 ))
                                                                             ) : (

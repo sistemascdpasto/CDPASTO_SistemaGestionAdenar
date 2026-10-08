@@ -326,6 +326,8 @@ class ModulacionController extends Controller
             'ud_programado_por' => 'nullable|string|max:255',
             'despachado_por_colaborador_id' => 'nullable|exists:colaboradores,id',
             'despachado_por_nombre' => 'nullable|string|max:255',
+            'read_only' => 'nullable|boolean',
+            'readOnly' => 'nullable|boolean',
             'rutas' => 'required|array|min:1',
             'rutas.*.placa' => 'required|string|max:50',
             'rutas.*.doc_tras' => 'nullable|string|max:100',
@@ -497,11 +499,17 @@ class ModulacionController extends Controller
             }
         }
 
+        $readOnly = $request->has('read_only')
+            ? $request->boolean('read_only')
+            : ($request->has('readOnly') ? $request->boolean('readOnly') : true);
+
+        $redirectParams = ['fecha' => $modulacion->fecha];
+        if ($readOnly) {
+            $redirectParams['readOnly'] = 'true';
+        }
+
         return redirect()
-            ->route('reparto.modulacion.index', [
-                'fecha' => $modulacion->fecha,
-                'readOnly' => 'true',
-            ])
+            ->route('reparto.modulacion.index', $redirectParams)
             ->with('success', 'Planeación de ruta guardada exitosamente.');
     }
 

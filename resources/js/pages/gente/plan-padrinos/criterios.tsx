@@ -24,6 +24,7 @@ import {
     Search,
     Shield,
     Sparkles,
+    Star,
     Trash2,
     Upload,
     UserCheck,
@@ -248,6 +249,14 @@ export default function CriteriosPlanPadrinoIndex({
         router.post(
             route('gente.plan-padrinos.criterios.columna-extra.toggle', columnaId),
             { colaborador_id: colaboradorId, mes, anio },
+            { preserveScroll: true }
+        );
+    };
+
+    const handleUpdateRolPadrino = (colaboradorId: number, rol: string) => {
+        router.post(
+            route('gente.plan-padrinos.criterios.rol-padrino'),
+            { colaborador_id: colaboradorId, tipo_padrino: rol },
             { preserveScroll: true }
         );
     };
@@ -485,6 +494,13 @@ export default function CriteriosPlanPadrinoIndex({
                         <ListChecks className="h-4 w-4" />
                         Criterios y Nivel de Autonomía
                     </Link>
+                    <Link
+                        href="/modules/gente/plan-padrinos/padrinos"
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg text-muted-foreground hover:bg-muted transition-colors"
+                    >
+                        <Star className="h-4 w-4" />
+                        Padrinos
+                    </Link>
                 </div>
 
                 {/* Tarjetas de Resumen Superior */}
@@ -680,12 +696,15 @@ export default function CriteriosPlanPadrinoIndex({
                                     <TableHead className="w-[150px] text-center font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-500/10">
                                         DESEMPEÑO
                                     </TableHead>
+                                    <TableHead className="w-[160px] text-center font-bold text-purple-700 dark:text-purple-300 bg-purple-500/10">
+                                        PADRINOS
+                                    </TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {colaboradores.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={11 + columnas_extra.length} className="h-32 text-center text-muted-foreground">
+                                        <TableCell colSpan={12 + columnas_extra.length} className="h-32 text-center text-muted-foreground">
                                             No se encontraron colaboradores operativos activos que coincidan con los criterios de búsqueda.
                                         </TableCell>
                                     </TableRow>
@@ -938,6 +957,30 @@ export default function CriteriosPlanPadrinoIndex({
                                                         </TableCell>
                                                     );
                                                 })()}
+
+                                                {/* PADRINOS — estático, no cuenta para DESEMPEÑO */}
+                                                <TableCell className="align-middle text-center bg-purple-500/10" onClick={(e) => e.stopPropagation()}>
+                                                    <Select
+                                                        disabled={!canManage}
+                                                        value={colaborador.tipo_padrino ?? 'Ninguno'}
+                                                        onValueChange={(val) => handleUpdateRolPadrino(colaborador.id, val)}
+                                                    >
+                                                        <SelectTrigger className={`w-[140px] h-8 font-semibold text-xs border ${
+                                                            colaborador.tipo_padrino === 'Padrino'
+                                                                ? 'bg-purple-100 text-purple-700 border-purple-400/50 dark:bg-purple-900/30 dark:text-purple-300'
+                                                                : colaborador.tipo_padrino === 'Apadrinado'
+                                                                  ? 'bg-sky-100 text-sky-700 border-sky-400/50 dark:bg-sky-900/30 dark:text-sky-300'
+                                                                  : 'bg-muted text-muted-foreground border-border'
+                                                        }`}>
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="Ninguno" className="text-xs">Ninguno</SelectItem>
+                                                            <SelectItem value="Padrino" className="text-xs font-semibold text-purple-700">Padrino</SelectItem>
+                                                            <SelectItem value="Apadrinado" className="text-xs font-semibold text-sky-700">Apadrinado</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </TableCell>
                                             </TableRow>
                                         );
                                     })
