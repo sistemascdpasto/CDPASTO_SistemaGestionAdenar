@@ -1260,7 +1260,7 @@ export default function ModulacionIndex({
             };
 
             const rutaQuedaSinViajes = updatedViajes.length === 0;
-            let nextRutas = [...rutas];
+            const nextRutas = [...rutas];
             if (editingIndex >= 0 && editingIndex < nextRutas.length) {
                 if (rutaQuedaSinViajes) {
                     nextRutas.splice(editingIndex, 1);
@@ -1291,7 +1291,7 @@ export default function ModulacionIndex({
             peso: cv.peso || '',
         };
 
-        let nextRutas = [...rutas];
+        const nextRutas = [...rutas];
         const existingIdx = nextRutas.findIndex(
             (route) => route.placa.trim().toUpperCase() === currentRoute.placa.trim().toUpperCase(),
         );
@@ -1440,43 +1440,110 @@ export default function ModulacionIndex({
             };
         });
 
-        router.post(
-            route('reparto.modulacion.storeBatch'),
-            {
-                modulacion_id: activeModulacionId,
-                fecha: fechaTexto,
-                ud_programado_por: udProgramadoPor,
-                despachado_por_colaborador_id: despachadoPorId ? Number(despachadoPorId) : null,
-                despachado_por_nombre: despachadoPorNombre,
-                rutas: finalRutas as unknown as any,
-                novedades: novedadesPayload as unknown as any,
-                read_only: readOnlyMode,
-            },
-            {
-                preserveScroll: true,
-                preserveState: false,
-                onSuccess: () => {
-                    setIsSubmitting(false);
-                    if (isAutoSave) {
-                        setCurrentViajeForm({ lugares: '', barrio: '', cliente: '', peso: '' });
-                        setDestinosViajePendientes([]);
-                        setHoraDestinoPendiente('');
-                        setEditingViajeIndex(null);
-                    } else {
-                        alert('Planeación de ruta guardada correctamente.');
+        const payload = {
+            modulacion_id: activeModulacionId,
+            fecha: fechaTexto,
+            ud_programado_por: udProgramadoPor,
+            despachado_por_colaborador_id: despachadoPorId ? Number(despachadoPorId) : null,
+            despachado_por_nombre: despachadoPorNombre,
+            rutas: finalRutas,
+            novedades: novedadesPayload,
+            read_only: readOnlyMode,
+        };
+
+        if (isAutoSave) {
+            // Auto-guardado vía AJAX (fetch) — NO recarga la página, preserva el estado del formulario
+            const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null)?.content ?? '';
+            fetch('/modules/reparto/modulacion/batch-api', {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify(payload),
+            })
+                .then(async (res) => {
+                    const isJson = res.headers.get('content-type')?.includes('application/json');
+                    const data = isJson ? await res.json() : null;
+
+                    if (!res.ok) {
+                        const msg = data?.message || data?.errors?.rutas || 'Error al auto-guardar en la base de datos.';
+                        console.error('Error al auto-guardar:', msg);
+                        alert(msg);
+                        return;
                     }
-                },
-                onError: (errs) => {
+
+                    // Actualizar el ID de la modulación si fue creada por primera vez
+                    if (data?.modulacion_id && !activeModulacionId) {
+                        setActiveModulacionId(data.modulacion_id);
+                    }
+
+                    // Actualizar las rutas guardadas con los datos frescos del servidor
+                    if (data?.modulacion?.items) {
+                        const rutasFrescas = mapModulacionItems(data.modulacion.items);
+                        setRutasGuardadas(rutasFrescas);
+                        // Sincronizar rutas locales con IDs del servidor
+                        setRutas((prevRutas) => {
+                            return prevRutas.map((ruta) => {
+                                const match = rutasFrescas.find(
+                                    (fresh) => fresh.placa.trim().toUpperCase() === ruta.placa.trim().toUpperCase()
+                                );
+                                return match ? { ...ruta, id: match.id, viajes: match.viajes } : ruta;
+                            });
+                        });
+                        // Si la ruta actual coincide, actualizar su ID
+                        setCurrentRoute((prev) => {
+                            const match = rutasFrescas.find(
+                                (fresh) => fresh.placa.trim().toUpperCase() === prev.placa.trim().toUpperCase()
+                            );
+                            return match ? { ...prev, id: match.id } : prev;
+                        });
+                    }
+
+                    // Actualizar novedades con IDs del servidor
+                    if (data?.modulacion?.novedades) {
+                        setNovedadesLocal([...data.modulacion.novedades]);
+                    }
+
+                    // Limpiar formulario de viaje después del auto-guardado exitoso
+                    setCurrentViajeForm({ lugares: '', barrio: '', cliente: '', peso: '' });
+                    setDestinosViajePendientes([]);
+                    setHoraDestinoPendiente('');
+                    setEditingViajeIndex(null);
+                })
+                .catch((err) => {
+                    console.error('Error de red al auto-guardar:', err);
+                })
+                .finally(() => {
                     setIsSubmitting(false);
-                    console.error('Error al guardar planeación en la base de datos:', errs);
-                    const msg =
-                        errs.rutas ||
-                        Object.values(errs)[0] ||
-                        'Error al guardar en la base de datos. Verifique los campos requeridos.';
-                    alert(msg);
-                },
-            }
-        );
+                });
+        } else {
+            // Guardado final completo — usa Inertia router.post para la redirección
+            router.post(
+                route('reparto.modulacion.storeBatch'),
+                payload as unknown as Record<string, unknown>,
+                {
+                    preserveScroll: true,
+                    preserveState: false,
+                    onSuccess: () => {
+                        setIsSubmitting(false);
+                        alert('Planeación de ruta guardada correctamente.');
+                    },
+                    onError: (errs) => {
+                        setIsSubmitting(false);
+                        console.error('Error al guardar planeación en la base de datos:', errs);
+                        const msg =
+                            errs.rutas ||
+                            Object.values(errs)[0] ||
+                            'Error al guardar en la base de datos. Verifique los campos requeridos.';
+                        alert(msg);
+                    },
+                }
+            );
+        }
     };
 
     const handleGuardarTodo = () => {

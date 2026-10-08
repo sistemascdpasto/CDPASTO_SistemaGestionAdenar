@@ -46,6 +46,8 @@ Route::middleware(['auth', 'active', 'submodule.access'])
             ->name('modulacion.saveHeader');
         Route::post('/modulacion/batch', [ModulacionController::class, 'storeBatch'])
             ->name('modulacion.storeBatch');
+        Route::post('/modulacion/batch-api', [ModulacionController::class, 'storeBatchApi'])
+            ->name('modulacion.storeBatchApi');
         Route::put('/modulacion/item/{id}', [ModulacionController::class, 'updateItem'])
             ->name('modulacion.updateItem');
         Route::delete('/modulacion/item/{id}', [ModulacionController::class, 'destroyItem'])

@@ -144,6 +144,7 @@ export default function PruebasIndex({
 }) {
     const [form, setForm] = useState(filters);
     const [activeTab, setActiveTab] = useState<'pruebas' | 'pendientes' | 'planeados'>('pruebas');
+    const [localTiposPlaneados, setLocalTiposPlaneados] = useState<Record<string, TipoPrueba | null>>({});
     const debouncedForm = useDebouncedValue(form, 400);
     const isFirstRender = useRef(true);
 
@@ -683,84 +684,98 @@ export default function PruebasIndex({
                                             </TableCell>
                                         </TableRow>
                                     )}
-                                    {pruebas.data.map((prueba) => (
-                                        <TableRow key={prueba.id}>
-                                            <TableCell className="whitespace-nowrap">{new Date(prueba.fecha_hora).toLocaleString()}</TableCell>
-                                            <TableCell className="capitalize">
-                                                {prueba.colaborador ? `${prueba.colaborador.nombres} ${prueba.colaborador.apellidos}`.toLowerCase() : '—'}
-                                            </TableCell>
-                                            <TableCell>{TIPO_LABELS[prueba.tipo] ?? prueba.tipo}</TableCell>
-                                            <TableCell className="capitalize">{prueba.ruta_asignada ? prueba.ruta_asignada.toLowerCase() : '—'}</TableCell>
-                                            <TableCell>{prueba.alcoholimetro?.codigo ?? '—'}</TableCell>
-                                            <TableCell>
-                                                {prueba.estado === 'programada' ? (
-                                                    <Badge variant="secondary">Programada</Badge>
-                                                ) : prueba.es_positivo ? (
-                                                    <span className="font-bold text-red-600 dark:text-red-400">
-                                                        {prueba.resultado} — Positivo
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-emerald-700 dark:text-emerald-400 font-medium">
-                                                        Negativo
-                                                    </span>
-                                                )}
-                                            </TableCell>
-                                            <TableCell className="capitalize">{prueba.responsable?.name ? prueba.responsable.name.toLowerCase() : '—'}</TableCell>
-                                            <TableCell>
-                                                {prueba.firma_path ? (
-                                                    <SafeImage
-                                                        src={`/storage/${prueba.firma_path}`}
-                                                        alt="Firma"
-                                                        className="h-8 w-16 rounded border border-sidebar-border/70 bg-white object-contain dark:border-sidebar-border"
-                                                    />
-                                                ) : (
-                                                    <span className="text-muted-foreground">—</span>
-                                                )}
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <div className="flex justify-end gap-1">
-                                                    {prueba.pertenece_planeacion && prueba.colaborador_id && prueba.fecha_prueba && (
-                                                        <DropdownMenu>
-                                                            <DropdownMenuTrigger asChild>
-                                                                <button
-                                                                    type="button"
-                                                                    title="Tipo requerido"
-                                                                    className="inline-flex items-center justify-center h-8 w-8 rounded-md border border-input bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-                                                                >
-                                                                    <ListFilter className="size-4" />
-                                                                    <span className="sr-only">Tipo requerido</span>
-                                                                </button>
-                                                            </DropdownMenuTrigger>
-                                                            <DropdownMenuContent align="end" className="w-44">
-                                                                <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">Tipo requerido</DropdownMenuLabel>
-                                                                <DropdownMenuSeparator />
-                                                                <DropdownMenuRadioGroup
-                                                                    value={prueba.tipo_prueba_planeado ?? FLUJO_PRE_POST}
-                                                                    onValueChange={(value) => {
-                                                                        router.patch(
-                                                                            route('seguridad.pruebas.planeacion.tipo', {
-                                                                                colaborador: prueba.colaborador_id,
-                                                                                fecha: prueba.fecha_prueba,
-                                                                            }),
-                                                                            { tipo: value === FLUJO_PRE_POST ? null : value },
-                                                                            { preserveScroll: true },
-                                                                        );
-                                                                    }}
-                                                                >
-                                                                    <DropdownMenuRadioItem value={FLUJO_PRE_POST}>Pre y Post Ruta</DropdownMenuRadioItem>
-                                                                    {(['ruta', 'jl', 'segundo_viaje', 'movilizador', 'administrativo'] as TipoPrueba[]).map((tipo) => (
-                                                                        <DropdownMenuRadioItem key={tipo} value={tipo}>{TIPO_LABELS[tipo]}</DropdownMenuRadioItem>
-                                                                    ))}
-                                                                </DropdownMenuRadioGroup>
-                                                            </DropdownMenuContent>
-                                                        </DropdownMenu>
+                                    {pruebas.data.map((prueba) => {
+                                        const reqKey = prueba.colaborador_id && prueba.fecha_prueba ? `${prueba.colaborador_id}_${prueba.fecha_prueba}` : null;
+                                        const tipoPlaneadoActual = reqKey && localTiposPlaneados[reqKey] !== undefined
+                                            ? localTiposPlaneados[reqKey]
+                                            : prueba.tipo_prueba_planeado;
+                                        const displayTipo = (prueba.pertenece_planeacion && tipoPlaneadoActual)
+                                            ? tipoPlaneadoActual
+                                            : prueba.tipo;
+
+                                        return (
+                                            <TableRow key={prueba.id}>
+                                                <TableCell className="whitespace-nowrap">{new Date(prueba.fecha_hora).toLocaleString()}</TableCell>
+                                                <TableCell className="capitalize">
+                                                    {prueba.colaborador ? `${prueba.colaborador.nombres} ${prueba.colaborador.apellidos}`.toLowerCase() : '—'}
+                                                </TableCell>
+                                                <TableCell>{TIPO_LABELS[displayTipo] ?? displayTipo}</TableCell>
+                                                <TableCell className="capitalize">{prueba.ruta_asignada ? prueba.ruta_asignada.toLowerCase() : '—'}</TableCell>
+                                                <TableCell>{prueba.alcoholimetro?.codigo ?? '—'}</TableCell>
+                                                <TableCell>
+                                                    {prueba.estado === 'programada' ? (
+                                                        <Badge variant="secondary">Programada</Badge>
+                                                    ) : prueba.es_positivo ? (
+                                                        <span className="font-bold text-red-600 dark:text-red-400">
+                                                            {prueba.resultado} — Positivo
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-emerald-700 dark:text-emerald-400 font-medium">
+                                                            Negativo
+                                                        </span>
                                                     )}
-                                                    <IconActionButton icon={Eye} label="Ver" href={route('seguridad.pruebas.show', prueba.id)} />
-                                                    <IconActionButton icon={Pencil} label="Editar" href={route('seguridad.pruebas.edit', prueba.id)} />
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
+                                                </TableCell>
+                                                <TableCell className="capitalize">{prueba.responsable?.name ? prueba.responsable.name.toLowerCase() : '—'}</TableCell>
+                                                <TableCell>
+                                                    {prueba.firma_path ? (
+                                                        <SafeImage
+                                                            src={`/storage/${prueba.firma_path}`}
+                                                            alt="Firma"
+                                                            className="h-8 w-16 rounded border border-sidebar-border/70 bg-white object-contain dark:border-sidebar-border"
+                                                        />
+                                                    ) : (
+                                                        <span className="text-muted-foreground">—</span>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <div className="flex justify-end gap-1">
+                                                        {prueba.pertenece_planeacion && prueba.colaborador_id && prueba.fecha_prueba && (
+                                                            <DropdownMenu>
+                                                                <DropdownMenuTrigger asChild>
+                                                                    <button
+                                                                        type="button"
+                                                                        title="Tipo requerido"
+                                                                        className="inline-flex items-center justify-center h-8 w-8 rounded-md border border-input bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                                                                    >
+                                                                        <ListFilter className="size-4" />
+                                                                        <span className="sr-only">Tipo requerido</span>
+                                                                    </button>
+                                                                </DropdownMenuTrigger>
+                                                                <DropdownMenuContent align="end" className="w-44">
+                                                                    <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">Tipo requerido</DropdownMenuLabel>
+                                                                    <DropdownMenuSeparator />
+                                                                    <DropdownMenuRadioGroup
+                                                                        value={tipoPlaneadoActual ?? FLUJO_PRE_POST}
+                                                                        onValueChange={(value) => {
+                                                                            const val = value === FLUJO_PRE_POST ? null : (value as TipoPrueba);
+                                                                            if (reqKey) {
+                                                                                setLocalTiposPlaneados((prev) => ({ ...prev, [reqKey]: val }));
+                                                                            }
+                                                                            router.patch(
+                                                                                route('seguridad.pruebas.planeacion.tipo', {
+                                                                                    colaborador: prueba.colaborador_id,
+                                                                                    fecha: prueba.fecha_prueba,
+                                                                                }),
+                                                                                { tipo: val },
+                                                                                { preserveScroll: true, preserveState: true },
+                                                                            );
+                                                                        }}
+                                                                    >
+                                                                        <DropdownMenuRadioItem value={FLUJO_PRE_POST}>Pre y Post Ruta</DropdownMenuRadioItem>
+                                                                        {(['ruta', 'jl', 'segundo_viaje', 'movilizador', 'administrativo'] as TipoPrueba[]).map((tipo) => (
+                                                                            <DropdownMenuRadioItem key={tipo} value={tipo}>{TIPO_LABELS[tipo]}</DropdownMenuRadioItem>
+                                                                        ))}
+                                                                    </DropdownMenuRadioGroup>
+                                                                </DropdownMenuContent>
+                                                            </DropdownMenu>
+                                                        )}
+                                                        <IconActionButton icon={Eye} label="Ver" href={route('seguridad.pruebas.show', prueba.id)} />
+                                                        <IconActionButton icon={Pencil} label="Editar" href={route('seguridad.pruebas.edit', prueba.id)} />
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
                                 </TableBody>
                             </Table>
                         </div>

@@ -616,6 +616,195 @@ class ModulacionController extends Controller
             ->with('success', 'Planeación de ruta eliminada exitosamente.');
     }
 
+    /**
+     * Guardar la planeación de ruta vía AJAX (auto-guardado).
+     *
+     * Reutiliza la misma lógica de storeBatch pero devuelve JSON
+     * para que el frontend pueda guardar cada viaje sin recargar la página,
+     * evitando pérdida de datos si se recarga el navegador.
+     */
+    public function storeBatchApi(Request $request, ModulacionUbicacionesService $ubicaciones): JsonResponse
+    {
+        $this->ensureFijoColumnExists();
+
+        $validated = $request->validate([
+            'fecha' => 'required|string|max:255',
+            'modulacion_id' => 'nullable|integer|exists:modulaciones,id',
+            'ud_programado_por' => 'nullable|string|max:255',
+            'despachado_por_colaborador_id' => 'nullable|exists:colaboradores,id',
+            'despachado_por_nombre' => 'nullable|string|max:255',
+            'rutas' => 'required|array|min:1',
+            'rutas.*.placa' => 'required|string|max:50',
+            'rutas.*.doc_tras' => 'nullable|string|max:100',
+            'rutas.*.ud' => 'nullable|string|max:100',
+            'rutas.*.cargo' => 'nullable|string|max:100',
+            'rutas.*.reunion' => 'nullable|string|max:255',
+            'rutas.*.tripulacion' => 'nullable|array',
+            'rutas.*.tripulacion.*.colaborador_id' => 'nullable',
+            'rutas.*.tripulacion.*.cedula' => 'nullable|string',
+            'rutas.*.tripulacion.*.nombres' => 'nullable|string',
+            'rutas.*.tripulacion.*.cargo' => 'nullable|string',
+            'rutas.*.viajes' => 'nullable|array',
+            'rutas.*.viajes.*.lugares' => 'nullable|string|max:255',
+            'rutas.*.viajes.*.barrio' => 'nullable|string|max:200',
+            'rutas.*.viajes.*.destinos' => 'nullable|array',
+            'rutas.*.viajes.*.destinos.*.lugares' => 'required|string|max:255',
+            'rutas.*.viajes.*.destinos.*.barrio' => 'nullable|string|max:200',
+            'rutas.*.viajes.*.cliente' => 'nullable|string|max:255',
+            'rutas.*.viajes.*.peso' => 'nullable|string|max:100',
+            'novedades' => 'nullable|array',
+            'novedades.*.id' => 'nullable|integer',
+            'novedades.*.colaborador_id' => 'nullable|integer',
+            'novedades.*.cedula' => 'nullable|string|max:50',
+            'novedades.*.nombres' => 'nullable|string|max:255',
+            'novedades.*.cargo' => 'nullable|string|max:100',
+            'novedades.*.observaciones' => 'nullable|string',
+            'novedades.*.fijo' => 'nullable|boolean',
+            'novedades.*.fijo_rescate' => 'nullable|boolean',
+            'novedades.*.fijo_taller' => 'nullable|boolean',
+            'novedades.*.permiso' => 'nullable|boolean',
+            'novedades.*.no_asitio' => 'nullable|boolean',
+            'novedades.*.incapacidad' => 'nullable|boolean',
+            'novedades.*.vacaciones' => 'nullable|boolean',
+        ]);
+
+        // Verificar duplicados de colaboradores (misma lógica que storeBatch)
+        $fijosIds = [];
+        $fijosCedulas = [];
+        foreach ($validated['novedades'] ?? [] as $nov) {
+            $esFijo = !empty($nov['fijo_rescate']) || !empty($nov['fijo_taller']) || !empty($nov['fijo']);
+            if (!$esFijo) continue;
+            if (!empty($nov['colaborador_id'])) $fijosIds[] = (string) $nov['colaborador_id'];
+            if (!empty($nov['cedula'])) $fijosCedulas[] = trim($nov['cedula']);
+        }
+        if (!empty($validated['modulacion_id'])) {
+            $fijosBD = ModulacionNovedad::where('modulacion_id', $validated['modulacion_id'])
+                ->where('fijo', true)
+                ->get(['colaborador_id', 'cedula']);
+            foreach ($fijosBD as $f) {
+                if ($f->colaborador_id) $fijosIds[] = (string) $f->colaborador_id;
+                if ($f->cedula) $fijosCedulas[] = trim($f->cedula);
+            }
+        }
+        $fijosIds = array_unique($fijosIds);
+        $fijosCedulas = array_unique($fijosCedulas);
+
+        $assignedCollaboratorIds = [];
+        $assignedCedulas = [];
+        foreach ($validated['rutas'] as $ruta) {
+            foreach ($ruta['tripulacion'] ?? [] as $miembro) {
+                $colId = !empty($miembro['colaborador_id']) ? (string)$miembro['colaborador_id'] : null;
+                $ced = !empty($miembro['cedula']) ? trim($miembro['cedula']) : null;
+                $nom = $miembro['nombres'] ?? 'Colaborador';
+
+                if ($colId && in_array($colId, $assignedCollaboratorIds, true)) {
+                    if (!in_array($colId, $fijosIds, true)) {
+                        return response()->json([
+                            'message' => "El colaborador '{$nom}' ya se encuentra programado en otra ruta para la fecha {$validated['fecha']}.",
+                        ], 422);
+                    }
+                }
+                if ($ced && in_array($ced, $assignedCedulas, true)) {
+                    if (!in_array($ced, $fijosCedulas, true)) {
+                        return response()->json([
+                            'message' => "El colaborador con cédula '{$ced}' ({$nom}) ya se encuentra programado en otra ruta para la fecha {$validated['fecha']}.",
+                        ], 422);
+                    }
+                }
+                if ($colId) $assignedCollaboratorIds[] = $colId;
+                if ($ced) $assignedCedulas[] = $ced;
+            }
+        }
+
+        $ubicaciones->guardarUbicacionesDeRutas($validated['rutas']);
+
+        // Obtener o crear la planeación
+        if (!empty($validated['modulacion_id'])) {
+            $modulacion = Modulacion::findOrFail($validated['modulacion_id']);
+            $modulacion->update([
+                'fecha' => $validated['fecha'],
+                'ud_programado_por' => $validated['ud_programado_por'] ?? $modulacion->ud_programado_por,
+                'despachado_por_colaborador_id' => $validated['despachado_por_colaborador_id'] ?? $modulacion->despachado_por_colaborador_id,
+                'despachado_por_nombre' => $validated['despachado_por_nombre'] ?? $modulacion->despachado_por_nombre,
+            ]);
+        } else {
+            $modulacion = Modulacion::firstOrCreate(
+                ['fecha' => $validated['fecha']],
+                [
+                    'ud_programado_por' => $validated['ud_programado_por'] ?? null,
+                    'despachado_por_colaborador_id' => $validated['despachado_por_colaborador_id'] ?? null,
+                    'despachado_por_nombre' => $validated['despachado_por_nombre'] ?? null,
+                    'user_id' => $request->user()?->id,
+                ]
+            );
+            $modulacion->update([
+                'ud_programado_por' => $validated['ud_programado_por'] ?? $modulacion->ud_programado_por,
+                'despachado_por_colaborador_id' => $validated['despachado_por_colaborador_id'] ?? $modulacion->despachado_por_colaborador_id,
+                'despachado_por_nombre' => $validated['despachado_por_nombre'] ?? $modulacion->despachado_por_nombre,
+            ]);
+        }
+
+        // Reemplazar items
+        $modulacion->items()->delete();
+        foreach ($validated['rutas'] as $ruta) {
+            $tripulacion = $ruta['tripulacion'] ?? [];
+            $firstMember = $tripulacion[0] ?? null;
+
+            $modulacion->items()->create([
+                'placa' => $ruta['placa'],
+                'doc_tras' => $ruta['doc_tras'] ?? null,
+                'ud' => $ruta['ud'] ?? null,
+                'cargo' => $ruta['cargo'] ?? ($firstMember['cargo'] ?? null),
+                'colaborador_id' => $firstMember['colaborador_id'] ?? null,
+                'cedula' => $firstMember['cedula'] ?? null,
+                'nombres' => $firstMember['nombres'] ?? null,
+                'reunion' => $ruta['reunion'] ?? null,
+                'tripulacion' => $tripulacion,
+                'viajes' => $ruta['viajes'] ?? [],
+            ]);
+        }
+
+        // Actualizar novedades
+        if (!empty($validated['novedades'])) {
+            foreach ($validated['novedades'] as $novItem) {
+                $fijoRescate = !empty($novItem['fijo_rescate']);
+                $fijoTaller = !empty($novItem['fijo_taller']);
+                $campos = [
+                    'fijo_rescate' => $fijoRescate,
+                    'fijo_taller' => $fijoTaller,
+                    'fijo' => $fijoRescate || $fijoTaller,
+                    'permiso' => !empty($novItem['permiso']),
+                    'no_asitio' => !empty($novItem['no_asitio']),
+                    'incapacidad' => !empty($novItem['incapacidad']),
+                    'vacaciones' => !empty($novItem['vacaciones']),
+                    'observaciones' => $novItem['observaciones'] ?? null,
+                ];
+
+                if (!empty($novItem['id'])) {
+                    ModulacionNovedad::where('id', $novItem['id'])->update($campos);
+                } else {
+                    ModulacionNovedad::create(array_merge($campos, [
+                        'modulacion_id' => $modulacion->id,
+                        'colaborador_id' => $novItem['colaborador_id'] ?? null,
+                        'cedula' => $novItem['cedula'] ?? null,
+                        'nombres' => $novItem['nombres'] ?? null,
+                        'cargo' => $novItem['cargo'] ?? null,
+                    ]));
+                }
+            }
+        }
+
+        // Recargar la modulación con items y novedades para devolver datos frescos
+        $modulacion->load(['items', 'novedades']);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Planeación guardada exitosamente.',
+            'modulacion_id' => $modulacion->id,
+            'modulacion' => $modulacion,
+        ]);
+    }
+
     public function storeNovedad(Request $request): RedirectResponse
     {
         $this->ensureFijoColumnExists();

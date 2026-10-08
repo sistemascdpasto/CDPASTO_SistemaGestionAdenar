@@ -152,7 +152,9 @@ class PruebaAlcoholemiaController extends Controller
         $planeacion = $coberturaService->resolverPlaneacionRuta($colaborador, $fecha);
         abort_unless($planeacion['pertenece_planeacion'], 404, 'El colaborador no pertenece a la planeación de esa fecha.');
 
-        if (empty($validated['tipo'])) {
+        $nuevoTipo = empty($validated['tipo']) ? null : $validated['tipo'];
+
+        if (empty($nuevoTipo)) {
             PruebaAlcoholemiaRequisito::query()
                 ->where('colaborador_id', $colaborador)
                 ->whereDate('fecha', $fecha)
@@ -160,9 +162,16 @@ class PruebaAlcoholemiaController extends Controller
         } else {
             PruebaAlcoholemiaRequisito::query()->updateOrCreate(
                 ['colaborador_id' => $colaborador, 'fecha' => $fecha],
-                ['tipo' => $validated['tipo']]
+                ['tipo' => $nuevoTipo]
             );
         }
+
+        $tipoFinal = $nuevoTipo ?? 'pre_ruta';
+        PruebaAlcoholemia::query()
+            ->where('colaborador_id', $colaborador)
+            ->whereDate('fecha_hora', $fecha)
+            ->where('estado', 'programada')
+            ->update(['tipo' => $tipoFinal]);
 
         return back()->with('success', 'Tipo de prueba requerido actualizado.');
     }
