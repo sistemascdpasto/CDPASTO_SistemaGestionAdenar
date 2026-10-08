@@ -12,6 +12,7 @@ class ActaTallerEvidencia extends Model
 
     protected $fillable = [
         'acta_taller_id',
+        'novedad_id',
         'path',
         'etiqueta',
         'orden',
@@ -22,6 +23,11 @@ class ActaTallerEvidencia extends Model
     public function acta(): BelongsTo
     {
         return $this->belongsTo(ActaTaller::class, 'acta_taller_id');
+    }
+
+    public function novedad(): BelongsTo
+    {
+        return $this->belongsTo(ActaTallerNovedad::class, 'novedad_id');
     }
 
     public function getUrlAttribute(): string

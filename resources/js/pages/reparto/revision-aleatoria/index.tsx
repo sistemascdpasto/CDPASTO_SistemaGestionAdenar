@@ -1,4 +1,5 @@
 import { EvidenciaUploader, type PickedFile } from '@/components/evidencia-uploader';
+import { ImageLightbox } from '@/components/image-lightbox';
 import InputError from '@/components/input-error';
 import { Ruleta } from '@/components/reparto/ruleta';
 import { Button } from '@/components/ui/button';
@@ -128,6 +129,7 @@ export default function RevisionAleatoriaIndex({
     const [cargandoVehiculo, setCargandoVehiculo] = useState(false);
     const [cargandoResponsable, setCargandoResponsable] = useState(false);
     const [mostrarFormularioSku, setMostrarFormularioSku] = useState(false);
+    const [imagenAmpliada, setImagenAmpliada] = useState<string | null>(null);
 
     const form = useForm<FinalizarForm>({
         resultado: '',
@@ -296,9 +298,9 @@ export default function RevisionAleatoriaIndex({
                                             {n.evidencias.length > 0 && (
                                                 <div className="mt-2 flex flex-wrap gap-2">
                                                     {n.evidencias.map((e) => (
-                                                        <a key={e.id} href={e.url} target="_blank" rel="noreferrer">
+                                                        <button key={e.id} type="button" onClick={() => setImagenAmpliada(e.url)}>
                                                             <img src={e.url} className="h-16 w-16 rounded-md border border-border object-cover" />
-                                                        </a>
+                                                        </button>
                                                     ))}
                                                 </div>
                                             )}
@@ -483,6 +485,7 @@ export default function RevisionAleatoriaIndex({
                     </div>
                 )}
             </div>
+            <ImageLightbox src={imagenAmpliada} onClose={() => setImagenAmpliada(null)} />
         </AppLayout>
     );
 }

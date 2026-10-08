@@ -632,7 +632,7 @@ export default function PlanPremiacionIndex({ colaboradores, top3, peores2 = [],
                             </CardTitle>
 
                             {/* Control de registros por página */}
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                                 <span className="text-xs whitespace-nowrap">Registros por página:</span>
                                 <Input
                                     type="number"
@@ -1145,7 +1145,7 @@ export default function PlanPremiacionIndex({ colaboradores, top3, peores2 = [],
 
                         {/* Paginación */}
                         {totalPages > 1 && (
-                            <div className="mt-4 flex items-center justify-between border-t pt-4">
+                            <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t pt-4">
                                 <p className="text-sm text-muted-foreground">
                                     Página <span className="font-semibold text-foreground">{safePage}</span> de{' '}
                                     <span className="font-semibold text-foreground">{totalPages}</span>

@@ -63,3 +63,12 @@ createInertiaApp({
 
 // This will set light / dark mode on load...
 initializeTheme();
+
+// Registra el service worker solo en build de producción: devOptions.enabled
+// está en false en vite.config.js, así que en `npm run dev` este módulo
+// virtual no genera un service worker real y no hay nada que registrar.
+if (import.meta.env.PROD) {
+    import('virtual:pwa-register').then(({ registerSW }) => {
+        registerSW({ immediate: true });
+    });
+}
