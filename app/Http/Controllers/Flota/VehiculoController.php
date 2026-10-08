@@ -101,6 +101,13 @@ class VehiculoController extends Controller
             unset($data[$field]);
         }
 
+        // validated() trae 'imagen' => null cuando no se sube un archivo
+        // nuevo (el formulario siempre manda ese campo, aunque sea vacío).
+        // Si se deja así, el update() de abajo borraría la imagen existente
+        // en cualquier edición que no vuelva a adjuntarla. Se quita la clave
+        // y solo se repone si de verdad llega un archivo nuevo.
+        unset($data['imagen']);
+
         if ($request->hasFile('imagen')) {
             if ($vehiculo->imagen) {
                 Storage::disk('public')->delete($vehiculo->imagen);
