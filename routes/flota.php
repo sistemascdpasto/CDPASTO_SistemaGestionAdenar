@@ -3,6 +3,7 @@
 use App\Http\Controllers\Flota\ActaTallerController;
 use App\Http\Controllers\Flota\CarretaController;
 use App\Http\Controllers\Flota\DisponibilidadFlotaController;
+use App\Http\Controllers\Flota\OcupacionCargaController;
 use App\Http\Controllers\Flota\SimitConsultaController;
 use App\Http\Controllers\Flota\VaradaController;
 use App\Http\Controllers\Flota\VehiculoController;
@@ -27,6 +28,10 @@ Route::middleware(['auth', 'active', 'role:Administrador|Flota', 'submodule.acce
             ->name('disponibilidad.historico');
         Route::get('disponibilidad/exportar-excel', [DisponibilidadFlotaController::class, 'exportarExcel'])
             ->name('disponibilidad.exportar-excel');
+
+        // ── Ocupación de Carga (peso de Planeación de ruta vs capacidad del vehículo) ──
+        Route::get('ocupacion-carga', [OcupacionCargaController::class, 'index'])
+            ->name('ocupacion-carga.index');
 
         // "destroy" se registra aparte con role:Administrador (ver abajo).
         Route::resource('carretas', CarretaController::class)

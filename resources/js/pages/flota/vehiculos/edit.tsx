@@ -13,6 +13,7 @@ interface EditableVehiculo {
     truck_type: string | null;
     modelo: string | null;
     capacidad_pallets: number | null;
+    capacidad_carga_kg: number | null;
     is_active: boolean;
 
     fecha_vencimiento_soat: string | null;
@@ -37,6 +38,7 @@ export default function EditVehiculo({ vehiculo }: { vehiculo: EditableVehiculo 
         truck_type: vehiculo.truck_type ?? '',
         modelo: vehiculo.modelo ?? '',
         capacidad_pallets: vehiculo.capacidad_pallets?.toString() ?? '',
+        capacidad_carga_kg: vehiculo.capacidad_carga_kg?.toString() ?? '',
         imagen: null,
 
         fecha_vencimiento_soat: vehiculo.fecha_vencimiento_soat ?? '',

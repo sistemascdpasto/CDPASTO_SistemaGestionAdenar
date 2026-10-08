@@ -26,6 +26,7 @@ interface VehiculoRow {
     truck_type: string | null;
     modelo: string | null;
     capacidad_pallets: number | null;
+    capacidad_carga_kg: number | null;
     imagen: string | null;
     is_active: boolean;
     novedad_no_disponible: string | null;
@@ -127,7 +128,7 @@ export default function VehiculosIndex({ vehiculos, filters }: { vehiculos: Vehi
                     </Button>
                 </form>
 
-                <div className="rounded-lg border border-sidebar-border/70 dark:border-sidebar-border">
+                <div className="overflow-x-auto rounded-lg border border-sidebar-border/70 dark:border-sidebar-border">
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -136,6 +137,7 @@ export default function VehiculosIndex({ vehiculos, filters }: { vehiculos: Vehi
                                 <TableHead>Tipo</TableHead>
                                 <TableHead>Modelo</TableHead>
                                 <TableHead>Capacidad pallets</TableHead>
+                                <TableHead>Capacidad carga</TableHead>
                                 <TableHead>Estado</TableHead>
                                 <TableHead className="text-right">Acciones</TableHead>
                             </TableRow>
@@ -171,6 +173,7 @@ export default function VehiculosIndex({ vehiculos, filters }: { vehiculos: Vehi
                                     <TableCell>{vehiculo.truck_type ?? '—'}</TableCell>
                                     <TableCell>{vehiculo.modelo ?? '—'}</TableCell>
                                     <TableCell>{vehiculo.capacidad_pallets ?? '—'}</TableCell>
+                                    <TableCell>{vehiculo.capacidad_carga_kg ? `${vehiculo.capacidad_carga_kg.toLocaleString()} Kg` : '—'}</TableCell>
                                     <TableCell>
                                         <Badge variant={vehiculo.is_active ? 'default' : 'destructive'}>
                                             {vehiculo.is_active ? 'Disponible' : 'No disponible'}

@@ -20,6 +20,7 @@ export default function CreateVehiculo() {
         truck_type: '',
         modelo: '',
         capacidad_pallets: '',
+        capacidad_carga_kg: '',
         imagen: null,
 
         fecha_vencimiento_soat: '',

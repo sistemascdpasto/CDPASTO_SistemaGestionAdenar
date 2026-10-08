@@ -33,6 +33,7 @@ import {
     Truck,
     UserCheck,
     Users,
+    Weight,
     Wine,
     Wrench,
     type LucideIcon,
@@ -229,6 +230,7 @@ export const modules: ModuleDef[] = [
             { title: 'Consultas SIMIT', slug: 'simit-consultas', icon: Gavel },
             { title: 'Control de Varadas', slug: 'varadas', icon: Wrench },
             { title: 'Actas de Taller', slug: 'actas-taller', icon: ClipboardList },
+            { title: 'Ocupación de Carga', slug: 'ocupacion-carga', icon: Weight },
         ],
     },
 ];

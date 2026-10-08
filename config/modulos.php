@@ -89,5 +89,6 @@ return [
         'simit-consultas' => 'Consultas SIMIT',
         'varadas' => 'Control de Varadas',
         'actas-taller' => 'Actas de Taller',
+        'ocupacion-carga' => 'Ocupación de Carga',
     ],
 ];
