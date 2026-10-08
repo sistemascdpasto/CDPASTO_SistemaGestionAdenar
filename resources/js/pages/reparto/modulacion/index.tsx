@@ -57,6 +57,7 @@ interface Viaje {
 interface DestinoViaje {
     lugares: string;
     barrio: string;
+    hora?: string; // HH:MM opcional — si se indica aparece como "CITA HH:MM"
 }
 
 interface ViajeRegistrado {
@@ -274,6 +275,8 @@ function NarinoMunicipioInput({
     onBarrioChange,
     cliente,
     onClienteChange,
+    horaDestino,
+    onHoraDestinoChange,
     puedeAgregarViaje,
     viajesRegistrados,
     destinosPendientes,
@@ -287,6 +290,8 @@ function NarinoMunicipioInput({
     onBarrioChange: (val: string) => void;
     cliente: string;
     onClienteChange: (val: string) => void;
+    horaDestino: string;
+    onHoraDestinoChange: (val: string) => void;
     puedeAgregarViaje: boolean;
     viajesRegistrados: ViajeRegistrado[];
     destinosPendientes: DestinoViaje[];
@@ -397,7 +402,7 @@ function NarinoMunicipioInput({
                 municipio,
             ]);
             setBarriosReloadToken((token) => token + 1);
-            onDestinoAgregado({ lugares: municipio.nombre, barrio: '' });
+            onDestinoAgregado({ lugares: municipio.nombre, barrio: '', hora: horaDestino.trim() || undefined });
             setMunicipioInput(municipio.nombre);
             ultimoMunicipioRef.current = municipio.nombre;
             onChange(municipio.nombre);
@@ -470,7 +475,7 @@ function NarinoMunicipioInput({
             setBarrioInput('');
             ultimoBarrioRef.current = '';
             onBarrioChange('');
-            onDestinoAgregado({ lugares: municipio.nombre, barrio: barrioNombreFinal });
+            onDestinoAgregado({ lugares: municipio.nombre, barrio: barrioNombreFinal, hora: horaDestino.trim() || undefined });
         } catch (error) {
             setUbicacionesError(error instanceof Error ? error.message : 'No se pudo agregar el barrio.');
         } finally {
@@ -706,6 +711,26 @@ function NarinoMunicipioInput({
                             : ''}
                 </p>
             </div>
+
+            {/* Hora de cita — opcional */}
+            <div className="grid gap-1.5">
+                <Label htmlFor={`${baseId}-hora`} className="text-xs font-medium text-muted-foreground">
+                    Hora de cita <span className="text-muted-foreground/60">(opcional)</span>
+                </Label>
+                <Input
+                    id={`${baseId}-hora`}
+                    name={`${baseId}-hora`}
+                    type="time"
+                    value={horaDestino}
+                    onChange={(e) => onHoraDestinoChange(e.target.value)}
+                    className="h-10 text-sm w-36"
+                />
+                {horaDestino && (
+                    <p className="text-xs text-muted-foreground">
+                        Aparecerá como <span className="font-medium text-foreground">CITA {horaDestino}</span> en la ruta y el Excel.
+                    </p>
+                )}
+            </div>
             <div className="grid gap-1.5">
                 <Label htmlFor={`${baseId}-cliente`} className="text-xs font-medium text-muted-foreground">Cliente</Label>
                 <Input
@@ -825,6 +850,7 @@ export default function ModulacionIndex({
         setCurrentRoute(createEmptyRoute());
         setCurrentViajeForm({ lugares: '', barrio: '', cliente: '', peso: '' });
         setDestinosViajePendientes([]);
+        setHoraDestinoPendiente('');
         setEditingIndex(null);
         setEditingViajeIndex(null);
         setFilterTablePlaca('todas');
@@ -944,6 +970,7 @@ export default function ModulacionIndex({
         peso: '',
     });
     const [destinosViajePendientes, setDestinosViajePendientes] = useState<DestinoViaje[]>([]);
+    const [horaDestinoPendiente, setHoraDestinoPendiente] = useState<string>('');
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
     const [editingViajeIndex, setEditingViajeIndex] = useState<number | null>(null);
 
@@ -959,6 +986,7 @@ export default function ModulacionIndex({
         setCurrentRoute(createEmptyRoute());
         setCurrentViajeForm({ lugares: '', barrio: '', cliente: '', peso: '' });
         setDestinosViajePendientes([]);
+        setHoraDestinoPendiente('');
         setEditingIndex(null);
         setEditingViajeIndex(null);
 
@@ -1078,6 +1106,7 @@ export default function ModulacionIndex({
             peso: '',
         });
         setDestinosViajePendientes([]);
+        setHoraDestinoPendiente('');
         setSearchQuery('');
         setCargoFilter('todos');
     };
@@ -1246,6 +1275,7 @@ export default function ModulacionIndex({
                 peso: '',
             });
             setDestinosViajePendientes([]);
+        setHoraDestinoPendiente('');
             setEditingViajeIndex(null); // Resetear índice de viaje
             alert(
                 viajeFormLleno
@@ -1304,6 +1334,7 @@ export default function ModulacionIndex({
             peso: '',
         });
         setDestinosViajePendientes([]);
+        setHoraDestinoPendiente('');
         setEditingViajeIndex(null);
         setEditingIndex(routeIndex);
     };
@@ -1358,6 +1389,7 @@ export default function ModulacionIndex({
                             setEditingViajeIndex(null);
                             setCurrentViajeForm({ lugares: '', barrio: '', cliente: '', peso: '' });
                             setDestinosViajePendientes([]);
+        setHoraDestinoPendiente('');
                         }
                     }
                 },
@@ -1385,6 +1417,7 @@ export default function ModulacionIndex({
                 setEditingViajeIndex(null);
                 setCurrentViajeForm({ lugares: '', barrio: '', cliente: '', peso: '' });
                 setDestinosViajePendientes([]);
+        setHoraDestinoPendiente('');
             }
         }
     };
@@ -2280,14 +2313,16 @@ export default function ModulacionIndex({
 
         // ─── Anchos de columna ───────────────────────────────────────
         const colWidths: { wch: number }[] = [
-            { wch: 14 }, // A placa / IDENT+NOMBRE (novedades)
-            { wch: 14 }, // B DOC.T RAS / OBSERVACIONES (novedades)
-            { wch: 3 },  // C TRIP_COLOR (columna chica de color)
-            { wch: 40 }, // D TRIP_NOMBRE (nombre del colaborador)
-            { wch: 9 },  // E REUNION
+            { wch: 25 }, // A placa (rutas) / NOMBRE col 1 (novedades)
+            { wch: 25 }, // B DOC.T RAS (rutas) / NOMBRE col 2 (novedades)
+            { wch: 3 },  // C TRIP_COLOR (rutas) / OBSERVACIONES col 1 (novedades)
+            { wch: 40 }, // D TRIP_NOMBRE (rutas) / OBSERVACIONES col 2 (novedades)
+            { wch: 9 },  // E REUNION (rutas) / FIJO RESCATE (novedades)
         ];
         for (let v = 0; v < maxViajes; v++) colWidths.push({ wch: 30 }); // 1ER/2DO VIAJE...
-        colWidths.push({ wch: 14 }, { wch: 10 }); // CLIENTE, PESO (september)
+        colWidths.push({ wch: 14 }, { wch: 10 }); // CLIENTE, PESO
+        // Asegurar al menos 10 columnas para que los checks de novedades tengan ancho
+        while (colWidths.length < 10) colWidths.push({ wch: 9 });
         ws['!cols'] = colWidths;
 
         // ─── Alturas de fila ─────────────────────────────────────────
@@ -2315,33 +2350,47 @@ export default function ModulacionIndex({
         ws['!rows'] = rowHeights;
 
         // ─── Tabla de NOVEDADES en la misma hoja, separada por 2 filas ───────
-        const encabezadosNovedades = [
-            'NOMBRE',
-            'OBSERVACIONES',
-            'FIJO RESCATE',
-            'FIJO TALLER',
-            'PERMISO',
-            'NO ASISTIO',
-            'INCAPACIDAD',
-            'VACACIONES',
+        // Layout de columnas (base 0):
+        // [0-1] NOMBRE (merge 2 cols)  [2-3] OBSERVACIONES (merge 2 cols)
+        // [4] FIJO RESCATE  [5] FIJO TALLER  [6] PERMISO
+        // [7] NO ASISTIO  [8] INCAPACIDAD  [9] VACACIONES
+        const COL_NOV = {
+            NOMBRE_START: 0, NOMBRE_END: 1,
+            OBS_START: 2,    OBS_END: 3,
+            FIJO_RESCATE: 4, FIJO_TALLER: 5, PERMISO: 6,
+            NO_ASISTIO: 7,   INCAPACIDAD: 8, VACACIONES: 9,
+        };
+        const TOTAL_COLS_NOV = 10;
+
+        const encabezadosNovedades: { label: string; col: number; colEnd: number }[] = [
+            { label: 'NOMBRE',       col: COL_NOV.NOMBRE_START, colEnd: COL_NOV.NOMBRE_END },
+            { label: 'OBSERVACIONES',col: COL_NOV.OBS_START,    colEnd: COL_NOV.OBS_END    },
+            { label: 'FIJO RESCATE', col: COL_NOV.FIJO_RESCATE, colEnd: COL_NOV.FIJO_RESCATE },
+            { label: 'FIJO TALLER',  col: COL_NOV.FIJO_TALLER,  colEnd: COL_NOV.FIJO_TALLER  },
+            { label: 'PERMISO',      col: COL_NOV.PERMISO,      colEnd: COL_NOV.PERMISO      },
+            { label: 'NO ASISTIO',   col: COL_NOV.NO_ASISTIO,   colEnd: COL_NOV.NO_ASISTIO   },
+            { label: 'INCAPACIDAD',  col: COL_NOV.INCAPACIDAD,  colEnd: COL_NOV.INCAPACIDAD  },
+            { label: 'VACACIONES',   col: COL_NOV.VACACIONES,   colEnd: COL_NOV.VACACIONES   },
         ];
-        const filasNovedades = novedadesLocal.map((novedad) => [
-            (novedad.nombres || '').trim().toLocaleUpperCase('es'),
-            novedad.observaciones || '',
-            novedad.fijo_rescate ? 'X' : '',
-            novedad.fijo_taller ? 'X' : '',
-            novedad.permiso ? 'X' : '',
-            novedad.no_asitio ? 'X' : '',
-            novedad.incapacidad ? 'X' : '',
-            novedad.vacaciones ? 'X' : '',
-        ]);
+
+        const filasNovedades = novedadesLocal.map((novedad) => ({
+            nombre:       (novedad.nombres || '').trim().toLocaleUpperCase('es'),
+            observaciones: novedad.observaciones || '',
+            fijoRescate:  novedad.fijo_rescate ? 'X' : '',
+            fijoTaller:   novedad.fijo_taller  ? 'X' : '',
+            permiso:      novedad.permiso      ? 'X' : '',
+            noAsistio:    novedad.no_asitio    ? 'X' : '',
+            incapacidad:  novedad.incapacidad  ? 'X' : '',
+            vacaciones:   novedad.vacaciones   ? 'X' : '',
+        }));
+
         const estiloEncabezadoNovedades: XLSX.CellStyle = {
             fill: { patternType: 'solid', fgColor: { rgb: AZUL_OSCURO } },
             font: FONT_HEADER,
             alignment: ALIGN_CENTER,
             border: BORDER_THIN,
         };
-        const estiloDatoNovedades: XLSX.CellStyle = {
+        const estiloDatoNombre: XLSX.CellStyle = {
             fill: { patternType: 'solid', fgColor: { rgb: AZUL_CLARO_NOMBRES } },
             font: FONT_BODY,
             alignment: ALIGN_LEFT,
@@ -2357,26 +2406,41 @@ export default function ModulacionIndex({
         const rowInicioNovedades = currentRow + 2;
         const rowDatosNovedades = rowInicioNovedades + 1;
 
-        // Encabezados de la tabla de novedades
-        encabezadosNovedades.forEach((label, col) => {
+        // Encabezados — con merge para NOMBRE y OBSERVACIONES
+        encabezadosNovedades.forEach(({ label, col, colEnd }) => {
             setCell(rowInicioNovedades, col, cell(label, { s: estiloEncabezadoNovedades }));
+            if (colEnd > col) {
+                // Rellenar la columna de extensión con celda vacía del mismo estilo
+                setCell(rowInicioNovedades, colEnd, cell('', { s: estiloEncabezadoNovedades }));
+                merges.push({ s: { r: rowInicioNovedades, c: col }, e: { r: rowInicioNovedades, c: colEnd } });
+            }
         });
 
-        // Filas de datos de novedades
+        // Filas de datos
         filasNovedades.forEach((fila, rowIndex) => {
-            fila.forEach((valor, col) => {
-                setCell(rowDatosNovedades + rowIndex, col, cell(valor, {
-                    s: col < 2 ? estiloDatoNovedades : estiloCheckNovedades,
-                }));
-            });
+            const r = rowDatosNovedades + rowIndex;
+            // NOMBRE (cols 0-1, merge)
+            setCell(r, COL_NOV.NOMBRE_START, cell(fila.nombre, { s: estiloDatoNombre }));
+            setCell(r, COL_NOV.NOMBRE_END,   cell('', { s: estiloDatoNombre }));
+            merges.push({ s: { r, c: COL_NOV.NOMBRE_START }, e: { r, c: COL_NOV.NOMBRE_END } });
+            // OBSERVACIONES (cols 2-3, merge)
+            setCell(r, COL_NOV.OBS_START, cell(fila.observaciones, { s: estiloDatoNombre }));
+            setCell(r, COL_NOV.OBS_END,   cell('', { s: estiloDatoNombre }));
+            merges.push({ s: { r, c: COL_NOV.OBS_START }, e: { r, c: COL_NOV.OBS_END } });
+            // Checks
+            setCell(r, COL_NOV.FIJO_RESCATE, cell(fila.fijoRescate, { s: estiloCheckNovedades }));
+            setCell(r, COL_NOV.FIJO_TALLER,  cell(fila.fijoTaller,  { s: estiloCheckNovedades }));
+            setCell(r, COL_NOV.PERMISO,      cell(fila.permiso,     { s: estiloCheckNovedades }));
+            setCell(r, COL_NOV.NO_ASISTIO,   cell(fila.noAsistio,   { s: estiloCheckNovedades }));
+            setCell(r, COL_NOV.INCAPACIDAD,  cell(fila.incapacidad, { s: estiloCheckNovedades }));
+            setCell(r, COL_NOV.VACACIONES,   cell(fila.vacaciones,  { s: estiloCheckNovedades }));
         });
 
         // Actualizar ref del worksheet para incluir las novedades
         const lastRowNovedades = rowDatosNovedades + Math.max(filasNovedades.length - 1, 0);
-        const lastColNovedades = encabezadosNovedades.length - 1;
         ws['!ref'] = XLSX.utils.encode_range({
             s: { r: 0, c: 0 },
-            e: { r: Math.max(currentRow + 1, lastRowNovedades), c: Math.max(TOTAL_COLS - 1, lastColNovedades) },
+            e: { r: Math.max(currentRow + 1, lastRowNovedades), c: Math.max(TOTAL_COLS - 1, TOTAL_COLS_NOV - 1) },
         });
 
         // Añadir alturas para las filas de separación y novedades
@@ -2386,7 +2450,7 @@ export default function ModulacionIndex({
         }
         rowHeightsActual.push({ hpt: 24 }); // encabezado novedades
         filasNovedades.forEach((fila) => {
-            rowHeightsActual.push({ hpt: Math.min(90, Math.max(22, Math.ceil(String(fila[1] ?? '').length / 55) * 18)) });
+            rowHeightsActual.push({ hpt: Math.min(90, Math.max(22, Math.ceil(fila.observaciones.length / 55) * 18)) });
         });
         ws['!rows'] = rowHeightsActual;
 
@@ -2788,6 +2852,8 @@ export default function ModulacionIndex({
                                         onBarrioChange={(val) => handleViajeFormChange('barrio', val)}
                                         cliente={String(currentViajeForm.cliente ?? '')}
                                         onClienteChange={(val) => handleViajeFormChange('cliente', val)}
+                                        horaDestino={horaDestinoPendiente}
+                                        onHoraDestinoChange={setHoraDestinoPendiente}
                                         puedeAgregarViaje={Boolean(currentRoute.placa.trim())}
                                         viajesRegistrados={
                                             editingViajeIndex === null
