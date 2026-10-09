@@ -51,7 +51,58 @@ class OcupacionCargaTest extends TestCase
                 ->where('filas.0.ocupacion_pct', 86)
                 ->where('kpis.promedio_ocupacion', 86)
                 ->where('kpis.rutas_sobrecargadas', 0)
-                ->where('kpis.vehiculos_sin_capacidad', 0);
+                ->where('kpis.vehiculos_sin_capacidad', 0)
+                ->where('kpis.peso_total_toneladas', 4.3)
+                ->where('tendencia_diaria.0.fecha', '2026-10-08')
+                ->where('tendencia_diaria.0.promedio', 86)
+                ->where('distribucion_ocupacion.2.rango', 'Alto (80-100%)')
+                ->where('distribucion_ocupacion.2.total', 1);
+        });
+    }
+
+    public function test_el_ranking_de_sobrecarga_y_la_distribucion_agrupan_correctamente(): void
+    {
+        $user = $this->actingAsFlota();
+
+        Vehiculo::create(['placa' => 'SOB111', 'capacidad_carga_kg' => 1000]);
+        Vehiculo::create(['placa' => 'OK222', 'capacidad_carga_kg' => 1000]);
+
+        $dia1 = Modulacion::create(['fecha' => '2026-10-05']);
+        $dia2 = Modulacion::create(['fecha' => '2026-10-06']);
+
+        // SOB111 sale sobrecargado los dos días (150% y 120%).
+        ModulacionItem::create([
+            'modulacion_id' => $dia1->id,
+            'placa' => 'SOB111',
+            'viajes' => [['lugares' => 'A', 'barrio' => '', 'cliente' => 'X', 'peso' => '1.5']],
+        ]);
+        ModulacionItem::create([
+            'modulacion_id' => $dia2->id,
+            'placa' => 'SOB111',
+            'viajes' => [['lugares' => 'A', 'barrio' => '', 'cliente' => 'X', 'peso' => '1.2']],
+        ]);
+
+        // OK222 sale en un rango óptimo (60%).
+        ModulacionItem::create([
+            'modulacion_id' => $dia1->id,
+            'placa' => 'OK222',
+            'viajes' => [['lugares' => 'B', 'barrio' => '', 'cliente' => 'Y', 'peso' => '0.6']],
+        ]);
+
+        $response = $this->actingAs($user)->get(route('flota.ocupacion-carga.index', [
+            'desde' => '2026-10-01',
+            'hasta' => '2026-10-31',
+        ]));
+
+        $response->assertInertia(function ($page) {
+            $page->where('top_sobrecargados.0.placa', 'SOB111')
+                ->where('top_sobrecargados.0.veces_sobrecargado', 2)
+                ->where('top_sobrecargados.0.maximo', 150)
+                ->where('distribucion_ocupacion.1.rango', 'Óptimo (50-80%)')
+                ->where('distribucion_ocupacion.1.total', 1)
+                ->where('distribucion_ocupacion.3.rango', 'Sobrecarga (>100%)')
+                ->where('distribucion_ocupacion.3.total', 2)
+                ->has('tendencia_diaria', 2);
         });
     }
 

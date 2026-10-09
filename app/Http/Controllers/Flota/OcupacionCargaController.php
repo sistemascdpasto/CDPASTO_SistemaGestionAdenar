@@ -87,8 +87,12 @@ class OcupacionCargaController extends Controller
                 'promedio_ocupacion' => $conCapacidad->isNotEmpty() ? round($conCapacidad->avg('ocupacion_pct'), 1) : null,
                 'rutas_sobrecargadas' => $conCapacidad->filter(fn ($f) => $f['ocupacion_pct'] > 100)->count(),
                 'vehiculos_sin_capacidad' => $filas->filter(fn ($f) => $f['ocupacion_pct'] === null)->pluck('placa')->unique()->count(),
+                'peso_total_toneladas' => round($filas->sum('peso_toneladas'), 1),
             ],
             'ocupacion_por_vehiculo' => $this->ocupacionPorVehiculo($conCapacidad),
+            'tendencia_diaria' => $this->tendenciaDiaria($conCapacidad),
+            'distribucion_ocupacion' => $this->distribucionOcupacion($conCapacidad),
+            'top_sobrecargados' => $this->topSobrecargados($conCapacidad),
             'filters' => compact('desde', 'hasta', 'placa'),
         ]);
     }
@@ -108,6 +112,62 @@ class OcupacionCargaController extends Controller
             ])
             ->sortByDesc('rutas')
             ->take(10)
+            ->values();
+    }
+
+    /**
+     * Ocupación promedio por día, para ver la tendencia a lo largo del rango
+     * filtrado (¿está mejorando o empeorando el aprovechamiento de la flota?).
+     */
+    private function tendenciaDiaria(Collection $conCapacidad): Collection
+    {
+        return $conCapacidad
+            ->groupBy('fecha')
+            ->map(fn ($grupo, $fecha) => [
+                'fecha' => $fecha,
+                'promedio' => round($grupo->avg('ocupacion_pct'), 1),
+                'rutas' => $grupo->count(),
+            ])
+            ->sortBy('fecha')
+            ->values();
+    }
+
+    /**
+     * Cuántas rutas caen en cada rango de ocupación — da una foto rápida de
+     * qué tan bien se está aprovechando la flota en general.
+     */
+    private function distribucionOcupacion(Collection $conCapacidad): Collection
+    {
+        $rangos = [
+            'Bajo (<50%)' => fn ($pct) => $pct < 50,
+            'Óptimo (50-80%)' => fn ($pct) => $pct >= 50 && $pct < 80,
+            'Alto (80-100%)' => fn ($pct) => $pct >= 80 && $pct <= 100,
+            'Sobrecarga (>100%)' => fn ($pct) => $pct > 100,
+        ];
+
+        return collect($rangos)->map(fn ($condicion, $rango) => [
+            'rango' => $rango,
+            'total' => $conCapacidad->filter(fn ($f) => $condicion($f['ocupacion_pct']))->count(),
+        ])->values();
+    }
+
+    /**
+     * Vehículos que más veces salieron sobrecargados (>100%) en el rango —
+     * los primeros candidatos a revisar antes que el resto.
+     */
+    private function topSobrecargados(Collection $conCapacidad): Collection
+    {
+        return $conCapacidad
+            ->filter(fn ($f) => $f['ocupacion_pct'] > 100)
+            ->groupBy('placa')
+            ->map(fn ($grupo, $placa) => [
+                'placa' => $placa,
+                'veces_sobrecargado' => $grupo->count(),
+                'promedio' => round($grupo->avg('ocupacion_pct'), 1),
+                'maximo' => round($grupo->max('ocupacion_pct'), 1),
+            ])
+            ->sortByDesc('veces_sobrecargado')
+            ->take(5)
             ->values();
     }
 }
