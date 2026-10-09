@@ -290,6 +290,16 @@ const SidebarInset = React.forwardRef<HTMLDivElement, React.ComponentProps<'main
                 // contenido se ajuste o haga scroll internamente.
                 'relative flex min-h-svh min-w-0 flex-1 flex-col bg-background',
                 'peer-data-[variant=inset]:min-h-[calc(100svh-(--spacing(4)))] md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow-sm',
+                // Como el layout no es persistente (cada navegación remonta
+                // este <main> desde cero, ver comentario en nav-main.tsx),
+                // esta animación de entrada se vuelve a disparar sola en
+                // cada cambio de módulo — da la misma sensación "discreta"
+                // que ya tenían las tarjetas KPI (KpiCardGrid) pero para
+                // cualquier página, tenga o no KPIs. Duración más corta que
+                // el fade-in-up de welcome.tsx (0.7s) porque este dispara en
+                // cada clic del sidebar, no solo al entrar al sitio; respeta
+                // prefers-reduced-motion con motion-safe.
+                'motion-safe:animate-[fade-in-up_0.4s_ease-out_both]',
                 className,
             )}
             {...props}
