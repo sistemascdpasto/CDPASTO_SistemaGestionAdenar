@@ -11,7 +11,7 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { Download, LoaderCircle, Plus } from 'lucide-react';
-import { FormEventHandler, useRef, useState } from 'react';
+import { FormEventHandler, useEffect, useRef, useState } from 'react';
 
 interface ColaboradorInfo {
     id: number;
@@ -105,6 +105,26 @@ export default function DotacionEppShow({
     const [firmandoCompromiso, setFirmandoCompromiso] = useState(!perfil?.compromiso_firmado_en);
     const [procesandoCompromiso, setProcesandoCompromiso] = useState(false);
     const compromisoFirmaRef = useRef<FirmaPadHandle>(null);
+
+    // Precarga la última firma que el colaborador dejó en Pruebas de
+    // Alcoholemia (si tiene una), para no obligarlo a volver a firmar algo
+    // que ya firmó recientemente para otro trámite. La firma de recibido de
+    // cada entrega de dotación, en cambio, siempre se traza de nuevo.
+    useEffect(() => {
+        if (!firmandoCompromiso) return;
+
+        fetch(route('seguridad.pruebas.ultima-firma', { colaborador: colaborador.id }))
+            .then((res) => res.json())
+            .then((json: { firma_url: string | null }) => {
+                if (json.firma_url) {
+                    compromisoFirmaRef.current?.loadFromUrl(json.firma_url);
+                }
+            })
+            .catch(() => {
+                /* ignorar errores de red: el colaborador puede firmar de cero */
+            });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [firmandoCompromiso]);
 
     const archivoABase64 = (file: File): Promise<string> =>
         new Promise((resolve) => {
@@ -275,7 +295,11 @@ export default function DotacionEppShow({
                             <p className="text-xs text-muted-foreground">
                                 El colaborador se compromete a usar correctamente la dotación y los elementos de protección personal asignados.
                             </p>
-                            <FirmaPad ref={compromisoFirmaRef} label="Firma del compromiso" fileName="compromiso.png" />
+                            <FirmaPad
+                                ref={compromisoFirmaRef}
+                                label="Firma del compromiso (se precarga la última registrada en Pruebas de Alcoholemia)"
+                                fileName="compromiso.png"
+                            />
                             <div>
                                 <Button type="button" size="sm" onClick={firmarCompromiso} disabled={procesandoCompromiso} className="gap-1.5">
                                     {procesandoCompromiso && <LoaderCircle className="size-4 animate-spin" />}

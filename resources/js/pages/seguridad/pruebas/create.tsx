@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import AppLayout from '@/layouts/app-layout';
 import { SeccionCard } from '@/pages/seguridad/colaboradores/colaborador-form-fields';
 import { ColaboradorSearchSelect, type ColaboradorOption } from '@/pages/seguridad/pruebas/colaborador-search-select';
-import { FirmaPad, type FirmaPadHandle } from '@/pages/seguridad/pruebas/firma-pad';
+import { FirmaPad, type FirmaPadHandle } from '@/components/firma-pad';
 import { type BreadcrumbItem } from '@/types';
 import { Head, useForm } from '@inertiajs/react';
 import { CalendarClock, Camera, ChevronDown, Gauge, LoaderCircle, Paperclip, PenTool, ShieldCheck, Users, X } from 'lucide-react';
@@ -773,7 +773,11 @@ export default function CreatePrueba({
 
                             <SeccionCard icon={PenTool} titulo="Firma del colaborador" tono="azul">
                                 <div className="flex justify-center">
-                                    <FirmaPad ref={firmaPadRef} />
+                                    <FirmaPad
+                                        ref={firmaPadRef}
+                                        label="Firma del colaborador (se precarga la última registrada)"
+                                        helpText="Dibuja la firma con el dedo o el mouse."
+                                    />
                                 </div>
                             </SeccionCard>
 
