@@ -69,6 +69,20 @@ class User extends Authenticatable
                 $user->name = trim("{$user->first_name} {$user->last_name}");
             }
         });
+
+        // Activar o desactivar un usuario en Gestión de usuarios se refleja en su colaborador
+        // (el sentido contrario lo hace el módulo de colaboradores al cambiar su estado).
+        static::updated(function (User $user) {
+            if (! $user->wasChanged('is_active')) {
+                return;
+            }
+
+            $colaborador = $user->colaborador()->first();
+
+            if ($colaborador && $colaborador->is_active !== $user->is_active) {
+                $colaborador->update(['is_active' => $user->is_active]);
+            }
+        });
     }
 
     public function colaborador(): HasOne
