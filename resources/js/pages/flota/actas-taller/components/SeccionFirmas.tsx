@@ -1,7 +1,7 @@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Phone } from 'lucide-react';
-import { FirmaPad, type FirmaPadHandle } from '../firma-pad';
+import { FirmaPad, type FirmaPadHandle } from '@/components/firma-pad';
 
 // ─── Modo edición (create / show editable) ────────────────────────────────────
 

@@ -12,7 +12,7 @@ import { useEffect, useRef, useState } from 'react';
 import NovedadesEditor, { type NovedadLocal } from './components/NovedadesEditor';
 import NovedadesTabla from './components/NovedadesTabla';
 import SeccionFirmas from './components/SeccionFirmas';
-import { type FirmaPadHandle } from './firma-pad';
+import { type FirmaPadHandle } from '@/components/firma-pad';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },

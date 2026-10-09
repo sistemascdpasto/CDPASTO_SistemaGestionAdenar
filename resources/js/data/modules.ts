@@ -27,6 +27,7 @@ import {
     MapPinned,
     QrCode,
     ShieldCheck,
+    Shirt,
     Stethoscope,
     TestTube,
     Trophy,
@@ -158,6 +159,7 @@ export const modules: ModuleDef[] = [
                     { title: 'Mapa de Calor', href: '/modules/seguridad/rutogramas/mapa-calor', icon: MapPinned },
                 ],
             },
+            { title: 'Dotación y EPP', slug: 'dotacion-epp', icon: Shirt },
         ],
     },
     {

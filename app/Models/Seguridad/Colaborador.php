@@ -233,6 +233,16 @@ class Colaborador extends Model
         return $this->hasMany(EncuestaMorbilidad::class);
     }
 
+    public function eppPerfil(): HasOne
+    {
+        return $this->hasOne(ColaboradorEppPerfil::class);
+    }
+
+    public function eppEntregas(): HasMany
+    {
+        return $this->hasMany(EppEntrega::class)->orderByDesc('fecha_entrega');
+    }
+
     public function getEstadoSkapAttribute(): string
     {
         if (! $this->codigo_qr_skap) {

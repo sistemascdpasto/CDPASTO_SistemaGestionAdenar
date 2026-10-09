@@ -47,6 +47,7 @@ return [
         'glosario' => 'Glosario',
         'rutas-criticas' => 'Mapa de Rutas Críticas',
         'rutogramas' => 'Rutogramas',
+        'dotacion-epp' => 'Dotación y EPP',
     ],
 
     'reparto' => [

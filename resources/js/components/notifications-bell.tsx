@@ -10,6 +10,7 @@ import {
     HeartPulse,
     ListChecks,
     Loader2,
+    Shirt,
     ShieldAlert,
     Stethoscope,
     Truck,
@@ -52,6 +53,7 @@ const ICONOS: Record<string, LucideIcon> = {
     wrench: Wrench,
     'list-checks': ListChecks,
     'file-warning': FileWarning,
+    shirt: Shirt,
 };
 
 // ── Componente ────────────────────────────────────────────────────────────────

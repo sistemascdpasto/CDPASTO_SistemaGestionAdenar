@@ -11,6 +11,7 @@ use App\Models\Seguridad\Colaborador;
 use App\Models\Seguridad\CondicionSalud;
 use App\Models\Seguridad\EvaluacionMedica;
 use App\Models\User;
+use App\Services\Seguridad\EppEstadoService;
 use Illuminate\Support\Carbon;
 
 /**
@@ -21,6 +22,10 @@ use Illuminate\Support\Carbon;
 class NotificacionesService
 {
     private const MAX_ITEMS = 8;
+
+    public function __construct(private readonly EppEstadoService $eppEstado)
+    {
+    }
 
     public function paraUsuario(User $user): array
     {
@@ -38,6 +43,7 @@ class NotificacionesService
             $constructores[] = fn () => $this->alertasSeguridad();
             $constructores[] = fn () => $this->condicionesSaludConNovedad();
             $constructores[] = fn () => $this->examenesPorVencer();
+            $constructores[] = fn () => $this->dotacionEppPorVencer();
         }
         if ($es('Flota')) {
             $constructores[] = fn () => $this->documentosVehiculos();
@@ -226,6 +232,26 @@ class NotificacionesService
             'label' => 'Ver bandeja de exámenes médicos',
             'url' => '/modules/seguridad/examenes-medicos',
         ], $total);
+    }
+
+    private function dotacionEppPorVencer(): ?array
+    {
+        $registros = $this->eppEstado->colaboradoresConAlerta();
+
+        $items = $registros->map(fn (array $r) => [
+            'titulo' => $r['colaborador']->nombre_completo,
+            'detalle' => $r['estado'] === 'vencido'
+                ? 'Dotación/EPP vencida o nunca entregada'
+                : 'Dotación/EPP próxima a vencer',
+            'fecha' => null,
+            'url' => '/modules/seguridad/dotacion-epp/'.$r['colaborador']->id,
+            'critico' => $r['estado'] === 'vencido',
+        ])->all();
+
+        return $this->grupo('dotacion_epp', 'Dotación y EPP por vencer', 'shirt', '#B45309', $items, [
+            'label' => 'Ver tablero de Dotación y EPP',
+            'url' => '/modules/seguridad/dotacion-epp',
+        ]);
     }
 
     private function documentosVehiculos(): ?array
