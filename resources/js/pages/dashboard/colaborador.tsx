@@ -10,7 +10,21 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link } from '@inertiajs/react';
-import { AlertTriangle, BellRing, Trophy, User } from 'lucide-react';
+import {
+    AlertTriangle,
+    BellRing,
+    Calendar,
+    DollarSign,
+    GraduationCap,
+    HeartPulse,
+    type LucideIcon,
+    Star,
+    Stethoscope,
+    Trophy,
+    User,
+    UserCheck,
+} from 'lucide-react';
+import { type ReactNode } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [{ title: 'Dashboard', href: '/dashboard' }];
 
@@ -48,6 +62,18 @@ interface PruebaRow {
     alcoholimetro: { codigo: string } | null;
 }
 
+interface Resumen {
+    compensacion_diaria: { dias_trabajados: number; total_ganado: number };
+    compensacion_variable: { total_pago_variable: number; anio: number };
+    plan_premiacion: { aci_realizadas: number; meta: number };
+    plan_padrinos: { etapa_pendiente: string | null } | null;
+    geovictoria: { recientes_30_dias: number };
+    capacitaciones_pendientes: number;
+    condicion_salud: { estado: 'Bueno' | 'Regular' | 'Malo' | null; fecha_hora: string | null };
+    encuesta_morbilidad_pendiente: boolean;
+    indicadores_reparto: { jornadas_mes: number };
+}
+
 interface ColaboradorDashboardProps {
     colaborador: {
         id: number;
@@ -62,6 +88,56 @@ interface ColaboradorDashboardProps {
     indiceRiesgo: IndiceRiesgo;
     ultimasPruebas: PruebaRow[];
     alertasPendientes: number;
+    resumen: Resumen;
+}
+
+function formatCOP(amount: number): string {
+    return new Intl.NumberFormat('es-CO', {
+        style: 'currency',
+        currency: 'COP',
+        maximumFractionDigits: 0,
+    }).format(amount || 0);
+}
+
+const ESTADO_SALUD_COLOR: Record<string, string> = {
+    Bueno: 'text-green-700 dark:text-green-400',
+    Regular: 'text-amber-600 dark:text-amber-400',
+    Malo: 'text-destructive',
+};
+
+interface TeaserCardProps {
+    icon: LucideIcon;
+    color: string;
+    titulo: string;
+    href: string;
+    delay?: number;
+    children: ReactNode;
+}
+
+function TeaserCard({ icon: Icon, color, titulo, href, delay = 0, children }: TeaserCardProps) {
+    return (
+        <Reveal delay={delay}>
+            <Card className="h-full border-sidebar-border/70 dark:border-sidebar-border">
+                <CardContent className="flex h-full items-center justify-between gap-4 py-4">
+                    <div className="flex items-center gap-3">
+                        <div
+                            className="flex size-10 shrink-0 items-center justify-center rounded-full"
+                            style={{ backgroundColor: `${color}1a`, color }}
+                        >
+                            <Icon className="size-5" />
+                        </div>
+                        <div>
+                            <p className="text-sm font-semibold text-foreground">{titulo}</p>
+                            <div className="text-xs text-muted-foreground">{children}</div>
+                        </div>
+                    </div>
+                    <Button variant="outline" size="sm" asChild>
+                        <Link href={href}>Ver más</Link>
+                    </Button>
+                </CardContent>
+            </Card>
+        </Reveal>
+    );
 }
 
 export default function ColaboradorDashboard({
@@ -71,6 +147,7 @@ export default function ColaboradorDashboard({
     indiceRiesgo,
     ultimasPruebas,
     alertasPendientes,
+    resumen,
 }: ColaboradorDashboardProps) {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -166,25 +243,82 @@ export default function ColaboradorDashboard({
                     </Reveal>
                 </div>
 
-                {/* Plan Premiación */}
-                <Reveal delay={300}>
-                    <Card className="border-amber-200/70 bg-gradient-to-r from-amber-500/5 to-transparent dark:border-amber-800/40 dark:from-amber-950/20">
-                        <CardContent className="flex items-center justify-between gap-4 py-4">
-                            <div className="flex items-center gap-3">
-                                <div className="flex size-10 items-center justify-center rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400">
-                                    <Trophy className="size-5" />
-                                </div>
-                                <div>
-                                    <p className="text-sm font-semibold text-foreground">Plan Premiación</p>
-                                    <p className="text-xs text-muted-foreground">Revisa tus indicadores y metas del mes</p>
-                                </div>
-                            </div>
-                            <Button variant="outline" size="sm" asChild className="border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-950/30">
-                                <Link href="/portal/mi-plan-premiacion">Ver mis resultados</Link>
-                            </Button>
-                        </CardContent>
-                    </Card>
-                </Reveal>
+                {/* Resumen de todo el portal */}
+                <div className="space-y-3">
+                    <HeadingSmall title="Mi resumen" description="Cómo vas en cada área de tu portal." />
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        <TeaserCard icon={Trophy} color="#D97706" titulo="Plan Premiación" href="/portal/mi-plan-premiacion" delay={300}>
+                            {resumen.plan_premiacion.aci_realizadas}/{resumen.plan_premiacion.meta} ACI realizadas este mes
+                        </TeaserCard>
+
+                        <TeaserCard icon={Calendar} color="#0891B2" titulo="Mi Compensación Diaria" href="/portal/mi-compensacion" delay={340}>
+                            {resumen.compensacion_diaria.dias_trabajados} día(s) trabajados · {formatCOP(resumen.compensacion_diaria.total_ganado)}{' '}
+                            este mes
+                        </TeaserCard>
+
+                        <TeaserCard
+                            icon={DollarSign}
+                            color="#15803d"
+                            titulo="Mi Compensación Variable"
+                            href="/portal/mi-compensacion-variable"
+                            delay={380}
+                        >
+                            {formatCOP(resumen.compensacion_variable.total_pago_variable)} en {resumen.compensacion_variable.anio}
+                        </TeaserCard>
+
+                        {resumen.plan_padrinos && (
+                            <TeaserCard icon={UserCheck} color="#7C3AED" titulo="Mi Plan Padrinos" href="/portal/mi-plan-padrinos" delay={420}>
+                                {resumen.plan_padrinos.etapa_pendiente
+                                    ? `Etapa ${resumen.plan_padrinos.etapa_pendiente} pendiente`
+                                    : 'Todas tus etapas están al día'}
+                            </TeaserCard>
+                        )}
+
+                        <TeaserCard
+                            icon={AlertTriangle}
+                            color="#D4102A"
+                            titulo="Mis Incidencias GeoVictoria"
+                            href="/portal/mis-incidencias-geovictoria"
+                            delay={460}
+                        >
+                            {resumen.geovictoria.recientes_30_dias > 0
+                                ? `${resumen.geovictoria.recientes_30_dias} incidencia(s) en los últimos 30 días`
+                                : 'Sin incidencias recientes'}
+                        </TeaserCard>
+
+                        <TeaserCard icon={GraduationCap} color="#0D9488" titulo="Mis Capacitaciones" href="/portal/capacitaciones" delay={500}>
+                            {resumen.capacitaciones_pendientes > 0
+                                ? `${resumen.capacitaciones_pendientes} material(es) por revisar`
+                                : 'Estás al día'}
+                        </TeaserCard>
+
+                        <TeaserCard icon={HeartPulse} color="#3F7A22" titulo="Condición de Salud" href="/portal/condicion-salud" delay={540}>
+                            {resumen.condicion_salud.estado ? (
+                                <span className={ESTADO_SALUD_COLOR[resumen.condicion_salud.estado]}>
+                                    Último registro: {resumen.condicion_salud.estado}
+                                </span>
+                            ) : (
+                                'Sin registros'
+                            )}
+                        </TeaserCard>
+
+                        {resumen.encuesta_morbilidad_pendiente && (
+                            <TeaserCard
+                                icon={Stethoscope}
+                                color="#3F7A22"
+                                titulo="Encuesta de Morbilidad"
+                                href="/portal/encuesta-morbilidad"
+                                delay={580}
+                            >
+                                Tienes una encuesta sin terminar
+                            </TeaserCard>
+                        )}
+
+                        <TeaserCard icon={Star} color="#D4102A" titulo="Mis Estrellas del Camión" href="/portal/mis-indicadores-reparto" delay={620}>
+                            {resumen.indicadores_reparto.jornadas_mes} jornada(s) registradas este mes
+                        </TeaserCard>
+                    </div>
+                </div>
 
                 <div className="space-y-3">
                     <HeadingSmall title="Últimas pruebas de alcoholemia" description="Tus 5 pruebas más recientes." />

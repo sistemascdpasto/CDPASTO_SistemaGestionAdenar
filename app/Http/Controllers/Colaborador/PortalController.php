@@ -8,6 +8,7 @@ use App\Models\Reparto\EventosTripulacion;
 use App\Models\Reparto\ModulacionItem;
 use App\Models\Seguridad\Aci;
 use App\Models\Seguridad\Colaborador;
+use App\Services\Colaborador\ColaboradorResumenService;
 use App\Services\Seguridad\EvaluacionCalculator;
 use App\Services\Seguridad\IndiceRiesgoCalculator;
 use Carbon\Carbon;
@@ -18,7 +19,7 @@ use Inertia\Response;
 
 class PortalController extends Controller
 {
-    public function index(Request $request, EvaluacionCalculator $evaluacion, IndiceRiesgoCalculator $riesgo): Response
+    public function index(Request $request, EvaluacionCalculator $evaluacion, IndiceRiesgoCalculator $riesgo, ColaboradorResumenService $resumenService): Response
     {
         $colaborador = $this->colaboradorDe($request);
 
@@ -48,6 +49,7 @@ class PortalController extends Controller
                 ->limit(5)
                 ->get(),
             'alertasPendientes' => $colaborador->alertas()->where('atendida', false)->count(),
+            'resumen' => $resumenService->resumen($colaborador, $request->user()->id),
         ]);
     }
 
