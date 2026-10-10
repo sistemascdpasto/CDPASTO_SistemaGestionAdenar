@@ -174,6 +174,13 @@ export default function HistorialModulacion({ planeaciones, placas_disponibles =
     const [fechaHasta, setFechaHasta] = useState(filters.fecha_hasta ?? '');
     const [placa, setPlaca] = useState(filters.placa ?? '');
     const [exportUrl, setExportUrl] = useState<string | null>(null);
+    const [expandedRows, setExpandedRows] = useState<number[]>([]);
+
+    const toggleExpandRow = (id: number) => {
+        setExpandedRows((prev) =>
+            prev.includes(id) ? prev.filter((rowId) => rowId !== id) : [...prev, id]
+        );
+    };
 
     const debouncedFechaDesde = useDebouncedValue(fechaDesde);
     const debouncedFechaHasta = useDebouncedValue(fechaHasta);
@@ -455,8 +462,22 @@ export default function HistorialModulacion({ planeaciones, placas_disponibles =
                             ) : (
                                 planeaciones.data.map((plan) => {
                                     const rutas = plan.rutas_detalle ?? [];
+                                    const isExpanded = expandedRows.includes(plan.id);
+                                    const hasPlacaFilter = Boolean(placa.trim());
+                                    const showAll = isExpanded || hasPlacaFilter;
+                                    const visibleRutas = showAll ? rutas : rutas.slice(0, 2);
+                                    const hasMoreRutas = rutas.length > 2 && !showAll;
+
                                     return (
-                                        <TableRow key={plan.id}>
+                                        <TableRow
+                                            key={plan.id}
+                                            className={rutas.length > 2 && !hasPlacaFilter ? 'cursor-pointer hover:bg-muted/30 transition-colors' : ''}
+                                            onClick={() => {
+                                                if (rutas.length > 2 && !hasPlacaFilter) {
+                                                    toggleExpandRow(plan.id);
+                                                }
+                                            }}
+                                        >
                                             <TableCell className="align-top">
                                                 <div className="text-sm font-medium text-foreground">{formatFecha(plan.fecha)}</div>
                                                 <div className="text-[11px] capitalize text-muted-foreground">{getDiaSemana(plan.fecha)}</div>
@@ -466,7 +487,7 @@ export default function HistorialModulacion({ planeaciones, placas_disponibles =
                                                     {rutas.length === 0 ? (
                                                         <span className="text-xs text-muted-foreground">—</span>
                                                     ) : (
-                                                        rutas.map((r, idx) => (
+                                                        visibleRutas.map((r, idx) => (
                                                             <div key={idx} className="text-xs font-mono" title={r.doc_tras || '—'}>
                                                                 {r.doc_tras || <span className="text-muted-foreground/70">—</span>}
                                                             </div>
@@ -482,7 +503,7 @@ export default function HistorialModulacion({ planeaciones, placas_disponibles =
                                                     {rutas.length === 0 ? (
                                                         <span className="text-xs text-muted-foreground">—</span>
                                                     ) : (
-                                                        rutas.map((r, idx) => (
+                                                        visibleRutas.map((r, idx) => (
                                                             <div key={idx} className="text-xs font-medium" title={r.responsable || '—'}>
                                                                 {r.responsable || <span className="text-muted-foreground/70">—</span>}
                                                             </div>
@@ -495,7 +516,7 @@ export default function HistorialModulacion({ planeaciones, placas_disponibles =
                                                     {rutas.length === 0 ? (
                                                         <span className="text-xs text-muted-foreground">—</span>
                                                     ) : (
-                                                        rutas.map((r, idx) => (
+                                                        visibleRutas.map((r, idx) => (
                                                             <div key={idx} className="text-xs" title={r.destino || '—'}>
                                                                 {r.destino || <span className="text-muted-foreground/70">—</span>}
                                                             </div>
@@ -508,7 +529,7 @@ export default function HistorialModulacion({ planeaciones, placas_disponibles =
                                                     {rutas.length === 0 ? (
                                                         <span className="text-xs text-muted-foreground">—</span>
                                                     ) : (
-                                                        rutas.map((r, idx) => (
+                                                        visibleRutas.map((r, idx) => (
                                                             <div key={idx} className="text-xs" title={r.cliente || '—'}>
                                                                 {r.cliente || <span className="text-muted-foreground/70">—</span>}
                                                             </div>
@@ -521,7 +542,7 @@ export default function HistorialModulacion({ planeaciones, placas_disponibles =
                                                     {rutas.length === 0 ? (
                                                         <span className="text-xs text-muted-foreground">—</span>
                                                     ) : (
-                                                        rutas.map((r, idx) => (
+                                                        visibleRutas.map((r, idx) => (
                                                             <div key={idx} className="text-xs" title={r.peso || '—'}>
                                                                 {r.peso || <span className="text-muted-foreground/70">—</span>}
                                                             </div>
@@ -534,29 +555,59 @@ export default function HistorialModulacion({ planeaciones, placas_disponibles =
                                                     {rutas.length === 0 ? (
                                                         <span className="text-xs text-muted-foreground">Sin vehículos</span>
                                                     ) : (
-                                                        rutas.map((r, idx) => {
-                                                            const isMatch = Boolean(placa.trim()) && r.placa.trim().toUpperCase() === placa.trim().toUpperCase();
-                                                            return (
-                                                                <div key={idx}>
-                                                                    <Link
-                                                                        href={route('reparto.modulacion.index', { fecha: plan.fecha, readOnly: 'true', placa: r.placa })}
-                                                                        className="inline-block transition-transform hover:scale-105"
-                                                                        title={`Abrir planeación para la placa ${r.placa} del ${formatFecha(plan.fecha)}`}
-                                                                    >
-                                                                        <Badge
-                                                                            variant={isMatch ? 'default' : 'outline'}
-                                                                            className={`px-1.5 py-0 font-mono text-[11px] cursor-pointer transition-colors ${
-                                                                                isMatch
-                                                                                    ? 'bg-yellow-300 text-yellow-950 border-yellow-500 font-bold shadow-sm hover:bg-yellow-400'
-                                                                                    : 'hover:bg-accent hover:text-accent-foreground'
-                                                                            }`}
+                                                        <>
+                                                            {visibleRutas.map((r, idx) => {
+                                                                const isMatch = Boolean(placa.trim()) && r.placa.trim().toUpperCase() === placa.trim().toUpperCase();
+                                                                return (
+                                                                    <div key={idx}>
+                                                                        <Link
+                                                                            href={route('reparto.modulacion.index', { fecha: plan.fecha, readOnly: 'true', placa: r.placa })}
+                                                                            className="inline-block transition-transform hover:scale-105"
+                                                                            title={`Abrir planeación para la placa ${r.placa} del ${formatFecha(plan.fecha)}`}
+                                                                            onClick={(e) => e.stopPropagation()}
                                                                         >
-                                                                            {r.placa}
-                                                                        </Badge>
-                                                                    </Link>
-                                                                </div>
-                                                            );
-                                                        })
+                                                                            <Badge
+                                                                                variant={isMatch ? 'default' : 'outline'}
+                                                                                className={`px-1.5 py-0 font-mono text-[11px] cursor-pointer transition-colors ${
+                                                                                    isMatch
+                                                                                        ? 'bg-yellow-300 text-yellow-950 border-yellow-500 font-bold shadow-sm hover:bg-yellow-400'
+                                                                                        : 'hover:bg-accent hover:text-accent-foreground'
+                                                                                }`}
+                                                                            >
+                                                                                {r.placa}
+                                                                            </Badge>
+                                                                        </Link>
+                                                                    </div>
+                                                                );
+                                                            })}
+
+                                                            {hasMoreRutas && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        toggleExpandRow(plan.id);
+                                                                    }}
+                                                                    className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline text-left cursor-pointer transition-colors"
+                                                                    title="Ver todas las rutas de esta planeación"
+                                                                >
+                                                                    + {rutas.length - 2} más
+                                                                </button>
+                                                            )}
+
+                                                            {isExpanded && !hasPlacaFilter && rutas.length > 2 && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        toggleExpandRow(plan.id);
+                                                                    }}
+                                                                    className="mt-1 text-[11px] text-muted-foreground hover:underline text-left cursor-pointer transition-colors"
+                                                                >
+                                                                    Ver menos
+                                                                </button>
+                                                            )}
+                                                        </>
                                                     )}
                                                 </div>
                                             </TableCell>
@@ -572,7 +623,7 @@ export default function HistorialModulacion({ planeaciones, placas_disponibles =
                                                     {plan.total_tripulantes}
                                                 </Badge>
                                             </TableCell>
-                                            <TableCell className="align-top">
+                                            <TableCell className="align-top" onClick={(e) => e.stopPropagation()}>
                                                 <div className="flex justify-end gap-1.5">
                                                     <Button
                                                         size="icon"
