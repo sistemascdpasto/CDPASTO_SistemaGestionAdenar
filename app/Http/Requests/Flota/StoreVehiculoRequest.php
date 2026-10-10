@@ -22,6 +22,7 @@ class StoreVehiculoRequest extends FormRequest
             'truck_type' => ['nullable', 'string', 'max:100'],
             'modelo' => ['nullable', 'string', 'max:100'],
             'capacidad_pallets' => ['nullable', 'integer', 'min:0', 'max:1000'],
+            'capacidad_carga_kg' => ['nullable', 'integer', 'min:0', 'max:100000'],
             'imagen' => ['nullable', 'image', 'max:2048'],
             'fecha_vencimiento_soat' => ['nullable', 'date'],
             'fecha_vencimiento_tecnomecanica' => ['nullable', 'date'],

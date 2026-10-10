@@ -10,7 +10,7 @@ import { CheckCircle2, ChevronDown, ChevronUp, LoaderCircle, XCircle } from 'luc
 import { useEffect, useRef, useState } from 'react';
 import NovedadesEditor, { type NovedadLocal } from './components/NovedadesEditor';
 import SeccionFirmas from './components/SeccionFirmas';
-import { type FirmaPadHandle } from './firma-pad';
+import { type FirmaPadHandle } from '@/components/firma-pad';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },

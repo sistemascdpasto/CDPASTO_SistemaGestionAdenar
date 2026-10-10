@@ -17,6 +17,7 @@ class Vehiculo extends Model
         'truck_type',
         'modelo',
         'capacidad_pallets',
+        'capacidad_carga_kg',
         'imagen',
         'is_active',
         'novedad_no_disponible',
@@ -31,6 +32,7 @@ class Vehiculo extends Model
         return [
             'is_active' => 'boolean',
             'capacidad_pallets' => 'integer',
+            'capacidad_carga_kg' => 'integer',
             'fecha_vencimiento_soat' => 'date:Y-m-d',
             'fecha_vencimiento_tecnomecanica' => 'date:Y-m-d',
             'soat_alerta_enviada_para' => 'date:Y-m-d',

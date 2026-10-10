@@ -9,6 +9,7 @@ use App\Http\Controllers\Seguridad\AlertaController;
 use App\Http\Controllers\Seguridad\CargoExamenController;
 use App\Http\Controllers\Seguridad\ConceptoAptitudController;
 use App\Http\Controllers\Seguridad\CondicionSaludController;
+use App\Http\Controllers\Seguridad\DotacionEppController;
 use App\Http\Controllers\Seguridad\EncuestaMorbilidadController;
 use App\Http\Controllers\Seguridad\EncuestaMorbilidadPreguntaController;
 use App\Http\Controllers\Seguridad\EncuestaMorbilidadSeccionController;
@@ -202,4 +203,12 @@ Route::middleware(['auth', 'active', 'role:Administrador|Seguridad', 'submodule.
             ->name('examenes-medicos.egreso.rechazar');
         Route::patch('examenes-medicos/{evaluacion}/egreso/seguimiento', [EvaluacionMedicaController::class, 'actualizarSeguimientoEgreso'])
             ->name('examenes-medicos.egreso.seguimiento');
+
+        // Dotación y EPP: entrega de elementos de protección personal.
+        Route::get('dotacion-epp', [DotacionEppController::class, 'index'])->name('dotacion-epp.index');
+        Route::get('dotacion-epp/{colaborador}', [DotacionEppController::class, 'show'])->name('dotacion-epp.show');
+        Route::post('dotacion-epp/{colaborador}/entregas', [DotacionEppController::class, 'storeEntrega'])->name('dotacion-epp.entregas.store');
+        Route::put('dotacion-epp/{colaborador}/perfil', [DotacionEppController::class, 'updatePerfil'])->name('dotacion-epp.perfil.update');
+        Route::post('dotacion-epp/{colaborador}/compromiso', [DotacionEppController::class, 'storeCompromiso'])->name('dotacion-epp.compromiso.store');
+        Route::get('dotacion-epp/{colaborador}/pdf', [DotacionEppController::class, 'exportarPdf'])->name('dotacion-epp.pdf');
     });

@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
-import { FirmaPad, type FirmaPadHandle } from '@/pages/seguridad/pruebas/firma-pad';
+import { FirmaPad, type FirmaPadHandle } from '@/components/firma-pad';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { FileSpreadsheet, FileText, LoaderCircle, Pencil, PenLine, Search, Trash2 } from 'lucide-react';
@@ -119,7 +119,11 @@ function FirmarSupervisorDialog({ salidaId }: { salidaId: number }) {
                     <DialogTitle>Firma del supervisor</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={submit} className="space-y-4">
-                    <FirmaPad ref={firmaRef} />
+                    <FirmaPad
+                        ref={firmaRef}
+                        label="Firma del colaborador (se precarga la última registrada)"
+                        helpText="Dibuja la firma con el dedo o el mouse."
+                    />
                     <DialogFooter>
                         <DialogClose asChild>
                             <Button type="button" variant="secondary">

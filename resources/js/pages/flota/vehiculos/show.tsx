@@ -17,6 +17,7 @@ interface VehiculoDetalle {
     truck_type: string | null;
     modelo: string | null;
     capacidad_pallets: number | null;
+    capacidad_carga_kg: number | null;
     imagen: string | null;
     is_active: boolean;
     novedad_no_disponible: string | null;
@@ -113,6 +114,9 @@ export default function VehiculoShow({ vehiculo }: { vehiculo: VehiculoDetalle }
                             />
                             <div className="flex flex-wrap gap-1.5">
                                 {vehiculo.capacidad_pallets !== null && <Badge variant="secondary">{vehiculo.capacidad_pallets} pallets</Badge>}
+                                {vehiculo.capacidad_carga_kg !== null && (
+                                    <Badge variant="secondary">{vehiculo.capacidad_carga_kg.toLocaleString()} Kg</Badge>
+                                )}
                                 <Badge variant={vehiculo.is_active ? 'default' : 'destructive'}>
                                     {vehiculo.is_active ? 'Disponible' : 'No disponible'}
                                 </Badge>

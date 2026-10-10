@@ -47,6 +47,7 @@ return [
         'glosario' => 'Glosario',
         'rutas-criticas' => 'Mapa de Rutas Críticas',
         'rutogramas' => 'Rutogramas',
+        'dotacion-epp' => 'Dotación y EPP',
     ],
 
     'reparto' => [
@@ -89,5 +90,6 @@ return [
         'simit-consultas' => 'Consultas SIMIT',
         'varadas' => 'Control de Varadas',
         'actas-taller' => 'Actas de Taller',
+        'ocupacion-carga' => 'Ocupación de Carga',
     ],
 ];

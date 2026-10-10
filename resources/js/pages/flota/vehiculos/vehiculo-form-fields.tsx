@@ -11,6 +11,7 @@ export interface VehiculoFormData {
     truck_type: string;
     modelo: string;
     capacidad_pallets: string;
+    capacidad_carga_kg: string;
     imagen: File | null;
 
     fecha_vencimiento_soat: string;
@@ -257,6 +258,18 @@ export function VehiculoFormFields({ data, setData, errors, processing, readonly
                                     disabled={processing}
                                 />
                                 <InputError message={errors.capacidad_pallets} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="capacidad_carga_kg">Capacidad de carga (Kg)</Label>
+                                <Input
+                                    id="capacidad_carga_kg"
+                                    type="number"
+                                    min={0}
+                                    value={data.capacidad_carga_kg}
+                                    onChange={(e) => setData('capacidad_carga_kg', e.target.value)}
+                                    disabled={processing}
+                                />
+                                <InputError message={errors.capacidad_carga_kg} />
                             </div>
                         </div>
 
