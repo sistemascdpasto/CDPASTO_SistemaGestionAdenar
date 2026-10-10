@@ -43,6 +43,7 @@ export default function ColaboradorPruebas({ pruebas }: { pruebas: PruebasPagina
                     <Table>
                         <TableHeader>
                             <TableRow>
+                                <TableHead className="w-12 text-center">#</TableHead>
                                 <TableHead>Fecha</TableHead>
                                 <TableHead>Tipo</TableHead>
                                 <TableHead>Dispositivo</TableHead>
@@ -53,13 +54,14 @@ export default function ColaboradorPruebas({ pruebas }: { pruebas: PruebasPagina
                         <TableBody>
                             {pruebas.data.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={5} className="text-muted-foreground py-6 text-center">
+                                    <TableCell colSpan={6} className="text-muted-foreground py-6 text-center">
                                         Sin pruebas registradas.
                                     </TableCell>
                                 </TableRow>
                             )}
-                            {pruebas.data.map((prueba) => (
+                            {pruebas.data.map((prueba, index) => (
                                 <TableRow key={prueba.id}>
+                                    <TableCell className="text-center font-medium text-muted-foreground">{index + 1}</TableCell>
                                     <TableCell>{new Date(prueba.fecha_hora).toLocaleString()}</TableCell>
                                     <TableCell className="capitalize">{prueba.tipo}</TableCell>
                                     <TableCell>{prueba.alcoholimetro?.codigo ?? '—'}</TableCell>

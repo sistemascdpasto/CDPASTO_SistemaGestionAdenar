@@ -7,6 +7,7 @@ use App\Http\Requests\Gente\ImportarPlanPadrinoCriteriosRequest;
 use App\Models\Gente\ColaboradorPadrinoCriterio;
 use App\Models\Gente\ColaboradorPadrinoColumnaExtra;
 use App\Models\Gente\ColaboradorPadrinoColumnaExtraValor;
+use App\Models\Gente\ColaboradorPadrinoHistorial;
 use App\Models\Gente\ColaboradorPadrinoIndicador;
 use App\Models\Seguridad\Aci;
 use App\Models\Seguridad\Colaborador;
@@ -35,13 +36,9 @@ class SeguimientoPruebasController extends Controller
 
         $hoy = Carbon::today();
 
-        // 1. Solo colaboradores activos con fecha de ingreso registrada
+        // 1. Solo colaboradores activos
         $query = Colaborador::query()
             ->where('is_active', true)
-            ->where(function ($q) {
-                $q->whereNotNull('fecha_ingreso_empresa')
-                  ;
-            })
             ->with(['pruebasPeriodo.realizadoPor', 'pruebasPeriodo.evidencias'])
             ->orderBy('apellidos')
             ->orderBy('nombres');
@@ -67,7 +64,7 @@ class SeguimientoPruebasController extends Controller
         ];
 
         foreach ($colaboradoresDb as $colaborador) {
-            $fechaIngreso = $colaborador->fecha_ingreso_empresa;
+            $fechaIngreso = $colaborador->fecha_ingreso_empresa ?? $colaborador->created_at;
             if (! $fechaIngreso) {
                 continue;
             }
@@ -257,7 +254,7 @@ class SeguimientoPruebasController extends Controller
             'colaborador_id' => 'required|exists:colaboradores,id',
             'etapa'          => 'required|in:7_dias,30_dias,90_dias',
             'evidencias'     => 'required|array|min:1',
-            'evidencias.*'   => 'required|file|mimes:jpg,jpeg,png,webp,heic|max:10240',
+            'evidencias.*'   => 'required|file|mimes:jpg,jpeg,png,webp,heic,pdf|max:20480',
         ]);
 
         $record = ColaboradorPruebaPeriodo::firstOrCreate(
@@ -272,12 +269,16 @@ class SeguimientoPruebasController extends Controller
             ]
         );
 
+        $etapa = $request->input('etapa');
+        $colaboradorId = $request->input('colaborador_id');
+        $folderPath = "plan-padrinos/evidencias/{$etapa}/colaborador_{$colaboradorId}";
+
         foreach ($request->file('evidencias', []) as $archivo) {
-            $path = $archivo->store('plan-padrinos/evidencias', 'public');
+            $path = $archivo->store($folderPath, 'public');
             $record->evidencias()->create(['path' => $path]);
         }
 
-        return back()->with('status', 'Evidencias subidas correctamente.');
+        return back()->with('status', 'Evidencias subidas correctamente en su respectiva carpeta.');
     }
 
     /**
@@ -300,10 +301,6 @@ class SeguimientoPruebasController extends Controller
 
         $colaboradores = Colaborador::query()
             ->where('is_active', true)
-            ->where(function ($q) {
-                $q->whereNotNull('fecha_ingreso_empresa')
-                  ;
-            })
             ->with(['pruebasPeriodo'])
             ->get();
 
@@ -318,7 +315,7 @@ class SeguimientoPruebasController extends Controller
         ];
 
         foreach ($colaboradores as $colaborador) {
-            $fechaIngreso = $colaborador->fecha_ingreso_empresa;
+            $fechaIngreso = $colaborador->fecha_ingreso_empresa ?? $colaborador->created_at;
             if (! $fechaIngreso) {
                 continue;
             }
@@ -499,7 +496,7 @@ class SeguimientoPruebasController extends Controller
         ];
 
         foreach ($colaboradoresDb as $colaborador) {
-            $fechaIngreso = $colaborador->fecha_ingreso_empresa;
+            $fechaIngreso = $colaborador->fecha_ingreso_empresa ?? $colaborador->created_at;
 
             // Formatear antigüedad en la empresa
             $antiguedadTexto = 'Sin fecha de ingreso';
@@ -909,11 +906,12 @@ class SeguimientoPruebasController extends Controller
      */
     public function padrinos(): Response
     {
+        $hoy = Carbon::today();
+
         $padrinos = Colaborador::query()
             ->where('is_active', true)
             ->where('es_padrino', true)
-            ->whereRaw("LOWER(TRIM(area)) = 'operativa'")
-            ->select(['id', 'cedula', 'nombres', 'apellidos', 'cargo', 'imagen', 'mensaje_padrino'])
+            ->select(['id', 'cedula', 'nombres', 'apellidos', 'cargo', 'imagen', 'mensaje_padrino', 'correo', 'celular_1'])
             ->orderBy('apellidos')
             ->orderBy('nombres')
             ->get()
@@ -924,10 +922,33 @@ class SeguimientoPruebasController extends Controller
                 'cargo'           => $c->cargo ?? 'Sin cargo',
                 'imagen'          => $c->imagen,
                 'mensaje_padrino' => $c->mensaje_padrino,
+                'correo'          => $c->correo,
+                'celular'         => $c->celular_1,
             ]);
+
+        // Solo colaboradores SIN padrino asignado (para asignar nuevas parejas)
+        $apadrinadosList = Colaborador::query()
+            ->where('is_active', true)
+            ->whereNull('padrino_id')
+            ->orderByRaw('COALESCE(fecha_ingreso_empresa, created_at) DESC')
+            ->get()
+            ->map(function ($c) use ($hoy) {
+                $fechaIngreso = $c->fecha_ingreso_empresa ?? $c->created_at;
+
+                return [
+                    'id'              => $c->id,
+                    'cedula'          => $c->cedula,
+                    'nombre_completo' => $c->nombre_completo,
+                    'cargo'           => $c->cargo ?? 'Sin cargo',
+                    'imagen'          => $c->imagen,
+                    'fecha_ingreso'   => $fechaIngreso ? $fechaIngreso->format('d/m/Y') : 'N/R',
+                    'padrino_id'      => $c->padrino_id,
+                ];
+            });
 
         return Inertia::render('gente/plan-padrinos/padrinos', [
             'padrinos' => $padrinos,
+            'apadrinadosList' => $apadrinadosList,
         ]);
     }
 
@@ -946,6 +967,379 @@ class SeguimientoPruebasController extends Controller
         $colaborador->save();
 
         return back()->with('status', 'Mensaje actualizado.');
+    }
+
+    /**
+     * Vista de los Apadrinados: empleados de reciente ingreso laboral (basados en fecha_ingreso_empresa o created_at).
+     */
+    public function apadrinados(Request $request): Response
+    {
+        $search = $request->string('search')->trim()->toString();
+        $hoy = Carbon::today();
+
+        // Muestra colaboradores marcados como Apadrinado pero SIN padrino asignado aún.
+        // Los que ya tienen padrino_id se muestran en la vista "Parejas".
+        $query = Colaborador::query()
+            ->where('is_active', true)
+            ->where('tipo_padrino', 'Apadrinado')
+            ->whereNull('padrino_id')
+            ->with(['padrino.apadrinados', 'padrino.padrino', 'pruebasPeriodo.evidencias'])
+            ->orderByRaw('COALESCE(fecha_ingreso_empresa, created_at) DESC');
+
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('nombres', 'like', "%{$search}%")
+                  ->orWhere('apellidos', 'like', "%{$search}%")
+                  ->orWhere('cedula', 'like', "%{$search}%")
+                  ->orWhere('cargo', 'like', "%{$search}%");
+            });
+        }
+
+        // El filtro estado_asignacion ya no aplica: esta vista solo muestra sin padrino asignado.
+
+        $colaboradoresDb = $query->get();
+
+        $apadrinados = $colaboradoresDb->map(function ($c) use ($hoy) {
+            $fechaIngreso = $c->fecha_ingreso_empresa ?? $c->created_at;
+
+            $diasEnEmpresa = 0;
+            $antiguedadTexto = 'Sin fecha';
+
+            if ($fechaIngreso) {
+                $diasEnEmpresa = (int) $fechaIngreso->diffInDays($hoy);
+
+                $years = (int) $fechaIngreso->diffInYears($hoy);
+                $months = (int) $fechaIngreso->copy()->addYears($years)->diffInMonths($hoy);
+                $days = (int) $fechaIngreso->copy()->addYears($years)->addMonths($months)->diffInDays($hoy);
+
+                $parts = [];
+                if ($years > 0) {
+                    $parts[] = "{$years} " . ($years === 1 ? 'año' : 'años');
+                }
+                if ($months > 0) {
+                    $parts[] = "{$months} " . ($months === 1 ? 'mes' : 'meses');
+                }
+                if ($years === 0 && $months === 0) {
+                    $parts[] = "{$days} " . ($days === 1 ? 'día' : 'días');
+                }
+
+                $antiguedadTexto = implode(', ', $parts);
+                if (empty($antiguedadTexto)) {
+                    $antiguedadTexto = '0 días';
+                }
+            }
+
+            $evidencias = $c->pruebasPeriodo->flatMap(function ($prueba) {
+                return $prueba->evidencias->map(fn ($e) => [
+                    'id' => $e->id,
+                    'url' => '/storage/' . $e->path,
+                    'etapa' => $prueba->etapa,
+                    'fecha' => $e->created_at ? $e->created_at->format('d/m/Y H:i') : null,
+                ]);
+            })->values()->all();
+
+            return [
+                'id' => $c->id,
+                'cedula' => $c->cedula,
+                'nombre_completo' => $c->nombre_completo,
+                'cargo' => $c->cargo ?? 'Sin cargo',
+                'area' => $c->area ?? 'General',
+                'imagen' => $c->imagen,
+                'fecha_ingreso' => $fechaIngreso ? $fechaIngreso->format('d/m/Y') : 'N/R',
+                'antiguedad_texto' => $antiguedadTexto,
+                'dias_en_empresa' => $diasEnEmpresa,
+                'es_padrino' => (bool) $c->es_padrino,
+                'tipo_padrino' => $c->tipo_padrino,
+                'padrino_id' => $c->padrino_id,
+                'padrino' => $c->padrino ? [
+                    'id' => $c->padrino->id,
+                    'nombre_completo' => $c->padrino->nombre_completo,
+                    'cargo' => $c->padrino->cargo ?? 'Sin cargo',
+                    'imagen' => $c->padrino->imagen,
+                    'historial' => [
+                        'veces_padrino' => $c->padrino->apadrinados->count(),
+                        'apadrinados_list' => $c->padrino->apadrinados->map(fn ($a) => [
+                            'id' => $a->id,
+                            'nombre_completo' => $a->nombre_completo,
+                            'cargo' => $a->cargo ?? 'Sin cargo',
+                            'imagen' => $a->imagen,
+                            'fecha_ingreso' => $a->fecha_ingreso_empresa ? $a->fecha_ingreso_empresa->format('d/m/Y') : 'N/R',
+                        ])->values()->all(),
+                        'fue_apadrinado' => $c->padrino->padrino_id !== null || $c->padrino->tipo_padrino === 'Apadrinado',
+                        'padrino_guia' => $c->padrino->padrino ? [
+                            'id' => $c->padrino->padrino->id,
+                            'nombre_completo' => $c->padrino->padrino->nombre_completo,
+                            'cargo' => $c->padrino->padrino->cargo ?? 'Sin cargo',
+                            'imagen' => $c->padrino->padrino->imagen,
+                        ] : null,
+                        'fecha_ingreso' => $c->padrino->fecha_ingreso_empresa ? $c->padrino->fecha_ingreso_empresa->format('d/m/Y') : 'N/R',
+                    ],
+                ] : null,
+                'nivel_autonomia' => $c->nivel_autonomia ?? 'Nivel 0',
+                'evidencias' => $evidencias,
+            ];
+        });
+
+        // Lista de Padrinos disponibles para asignar
+        $padrinosList = Colaborador::query()
+            ->where('is_active', true)
+            ->where('es_padrino', true)
+            ->with(['apadrinados', 'padrino'])
+            ->select(['id', 'nombres', 'apellidos', 'cargo', 'imagen', 'padrino_id', 'tipo_padrino', 'fecha_ingreso_empresa'])
+            ->orderBy('apellidos')
+            ->orderBy('nombres')
+            ->get()
+            ->map(fn ($p) => [
+                'id'              => $p->id,
+                'nombre_completo' => $p->nombre_completo,
+                'cargo'           => $p->cargo ?? 'Sin cargo',
+                'imagen'          => $p->imagen,
+                'historial'       => [
+                    'veces_padrino' => $p->apadrinados->count(),
+                    'apadrinados_list' => $p->apadrinados->map(fn ($a) => [
+                        'id' => $a->id,
+                        'nombre_completo' => $a->nombre_completo,
+                        'cargo' => $a->cargo ?? 'Sin cargo',
+                        'imagen' => $a->imagen,
+                        'fecha_ingreso' => $a->fecha_ingreso_empresa ? $a->fecha_ingreso_empresa->format('d/m/Y') : 'N/R',
+                    ])->values()->all(),
+                    'fue_apadrinado' => $p->padrino_id !== null || $p->tipo_padrino === 'Apadrinado',
+                    'padrino_guia' => $p->padrino ? [
+                        'id' => $p->padrino->id,
+                        'nombre_completo' => $p->padrino->nombre_completo,
+                        'cargo' => $p->padrino->cargo ?? 'Sin cargo',
+                        'imagen' => $p->padrino->imagen,
+                    ] : null,
+                    'fecha_ingreso' => $p->fecha_ingreso_empresa ? $p->fecha_ingreso_empresa->format('d/m/Y') : 'N/R',
+                ],
+            ]);
+
+        $metrics = [
+            'total' => $apadrinados->count(),
+            'recientes_30' => $apadrinados->where('dias_en_empresa', '<=', 30)->count(),
+            'periodo_prueba_90' => $apadrinados->where('dias_en_empresa', '<=', 90)->count(),
+        ];
+
+        return Inertia::render('gente/plan-padrinos/apadrinados', [
+            'apadrinados' => $apadrinados->values(),
+            'padrinosList' => $padrinosList,
+            'metrics' => $metrics,
+            'filters' => [
+                'search' => $search,
+            ],
+        ]);
+    }
+
+    /**
+     * Asigna un Padrino a un colaborador Apadrinado.
+     * Registra el evento en el historial: cierra la relación anterior (si existe)
+     * y abre una nueva con fecha_inicio = hoy.
+     */
+    public function asignarPadrino(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'colaborador_id' => 'required|exists:colaboradores,id',
+            'padrino_id'     => 'nullable|exists:colaboradores,id',
+        ]);
+
+        $colaborador  = Colaborador::findOrFail($validated['colaborador_id']);
+        $hoy          = Carbon::today()->toDateString();
+        $padrinoAnteriorId = $colaborador->padrino_id;
+
+        // Cerrar relación anterior en el historial si existía un padrino distinto
+        if ($padrinoAnteriorId && $padrinoAnteriorId !== $validated['padrino_id']) {
+            ColaboradorPadrinoHistorial::where('colaborador_id', $colaborador->id)
+                ->where('padrino_id', $padrinoAnteriorId)
+                ->whereNull('fecha_fin')
+                ->update(['fecha_fin' => $hoy]);
+        }
+
+        // Abrir nueva relación si se asigna un padrino
+        if ($validated['padrino_id'] && $validated['padrino_id'] !== $padrinoAnteriorId) {
+            ColaboradorPadrinoHistorial::create([
+                'colaborador_id' => $colaborador->id,
+                'padrino_id'     => $validated['padrino_id'],
+                'fecha_inicio'   => $hoy,
+                'fecha_fin'      => null,
+            ]);
+        }
+
+        $colaborador->padrino_id = $validated['padrino_id'];
+        if ($validated['padrino_id']) {
+            $colaborador->tipo_padrino = 'Apadrinado';
+        }
+        $colaborador->save();
+
+        return back()->with('status', 'Padrino asignado correctamente.');
+    }
+
+    /**
+     * Vista de Parejas: Catálogo de Padrinos y sus Apadrinados asignados.
+     */
+    public function parejas(Request $request): Response
+    {
+        $search = $request->string('search')->trim()->toString();
+        $padrinoIdFiltro = $request->integer('padrino_id') ?: null;
+        $hoy = Carbon::today();
+
+        // 1. Padrinos
+        $padrinosList = Colaborador::query()
+            ->where('is_active', true)
+            ->where('es_padrino', true)
+            ->with(['apadrinados', 'padrino'])
+            ->select(['id', 'cedula', 'nombres', 'apellidos', 'cargo', 'imagen', 'mensaje_padrino', 'correo', 'celular_1', 'padrino_id', 'tipo_padrino', 'fecha_ingreso_empresa'])
+            ->orderBy('apellidos')
+            ->orderBy('nombres')
+            ->get()
+            ->map(fn ($p) => [
+                'id'              => $p->id,
+                'cedula'          => $p->cedula,
+                'nombre_completo' => $p->nombre_completo,
+                'cargo'           => $p->cargo ?? 'Sin cargo',
+                'imagen'          => $p->imagen,
+                'mensaje_padrino' => $p->mensaje_padrino,
+                'correo'          => $p->correo,
+                'celular'         => $p->celular_1,
+                'historial'       => [
+                    'veces_padrino' => $p->apadrinados->count(),
+                    'apadrinados_list' => $p->apadrinados->map(fn ($a) => [
+                        'id' => $a->id,
+                        'nombre_completo' => $a->nombre_completo,
+                        'cargo' => $a->cargo ?? 'Sin cargo',
+                        'imagen' => $a->imagen,
+                        'fecha_ingreso' => $a->fecha_ingreso_empresa ? $a->fecha_ingreso_empresa->format('d/m/Y') : 'N/R',
+                    ])->values()->all(),
+                    'fue_apadrinado' => $p->padrino_id !== null || $p->tipo_padrino === 'Apadrinado',
+                    'padrino_guia' => $p->padrino ? [
+                        'id' => $p->padrino->id,
+                        'nombre_completo' => $p->padrino->nombre_completo,
+                        'cargo' => $p->padrino->cargo ?? 'Sin cargo',
+                        'imagen' => $p->padrino->imagen,
+                    ] : null,
+                    'fecha_ingreso' => $p->fecha_ingreso_empresa ? $p->fecha_ingreso_empresa->format('d/m/Y') : 'N/R',
+                ],
+            ]);
+
+        // 2. Apadrinados con padrino ya asignado (padrino_id NOT NULL)
+        $query = Colaborador::query()
+            ->where('is_active', true)
+            ->where('tipo_padrino', 'Apadrinado')
+            ->whereNotNull('padrino_id')
+            ->with(['padrino.apadrinados', 'padrino.padrino', 'pruebasPeriodo.evidencias'])
+            ->orderByRaw('COALESCE(fecha_ingreso_empresa, created_at) DESC');
+
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('nombres', 'like', "%{$search}%")
+                  ->orWhere('apellidos', 'like', "%{$search}%")
+                  ->orWhere('cedula', 'like', "%{$search}%")
+                  ->orWhere('cargo', 'like', "%{$search}%");
+            });
+        }
+
+        if ($padrinoIdFiltro) {
+            $query->where('padrino_id', $padrinoIdFiltro);
+        }
+
+        $colaboradoresDb = $query->get();
+
+        $apadrinados = $colaboradoresDb->map(function ($c) use ($hoy) {
+            $fechaIngreso = $c->fecha_ingreso_empresa ?? $c->created_at;
+
+            $diasEnEmpresa = 0;
+            $antiguedadTexto = 'Sin fecha';
+
+            if ($fechaIngreso) {
+                $diasEnEmpresa = (int) $fechaIngreso->diffInDays($hoy);
+
+                $years = (int) $fechaIngreso->diffInYears($hoy);
+                $months = (int) $fechaIngreso->copy()->addYears($years)->diffInMonths($hoy);
+                $days = (int) $fechaIngreso->copy()->addYears($years)->addMonths($months)->diffInDays($hoy);
+
+                $parts = [];
+                if ($years > 0) {
+                    $parts[] = "{$years} " . ($years === 1 ? 'año' : 'años');
+                }
+                if ($months > 0) {
+                    $parts[] = "{$months} " . ($months === 1 ? 'mes' : 'meses');
+                }
+                if ($years === 0 && $months === 0) {
+                    $parts[] = "{$days} " . ($days === 1 ? 'día' : 'días');
+                }
+
+                $antiguedadTexto = implode(', ', $parts);
+                if (empty($antiguedadTexto)) {
+                    $antiguedadTexto = '0 días';
+                }
+            }
+
+            $evidencias = $c->pruebasPeriodo->flatMap(function ($prueba) {
+                return $prueba->evidencias->map(fn ($e) => [
+                    'id' => $e->id,
+                    'url' => '/storage/' . $e->path,
+                    'etapa' => $prueba->etapa,
+                    'fecha' => $e->created_at ? $e->created_at->format('d/m/Y H:i') : null,
+                ]);
+            })->values()->all();
+
+            return [
+                'id' => $c->id,
+                'cedula' => $c->cedula,
+                'nombre_completo' => $c->nombre_completo,
+                'cargo' => $c->cargo ?? 'Sin cargo',
+                'area' => $c->area ?? 'General',
+                'imagen' => $c->imagen,
+                'fecha_ingreso' => $fechaIngreso ? $fechaIngreso->format('d/m/Y') : 'N/R',
+                'antiguedad_texto' => $antiguedadTexto,
+                'dias_en_empresa' => $diasEnEmpresa,
+                'es_padrino' => (bool) $c->es_padrino,
+                'tipo_padrino' => $c->tipo_padrino,
+                'padrino_id' => $c->padrino_id,
+                'padrino' => $c->padrino ? [
+                    'id' => $c->padrino->id,
+                    'nombre_completo' => $c->padrino->nombre_completo,
+                    'cargo' => $c->padrino->cargo ?? 'Sin cargo',
+                    'imagen' => $c->padrino->imagen,
+                    'historial' => [
+                        'veces_padrino' => $c->padrino->apadrinados->count(),
+                        'apadrinados_list' => $c->padrino->apadrinados->map(fn ($a) => [
+                            'id' => $a->id,
+                            'nombre_completo' => $a->nombre_completo,
+                            'cargo' => $a->cargo ?? 'Sin cargo',
+                            'imagen' => $a->imagen,
+                            'fecha_ingreso' => $a->fecha_ingreso_empresa ? $a->fecha_ingreso_empresa->format('d/m/Y') : 'N/R',
+                        ])->values()->all(),
+                        'fue_apadrinado' => $c->padrino->padrino_id !== null || $c->padrino->tipo_padrino === 'Apadrinado',
+                        'padrino_guia' => $c->padrino->padrino ? [
+                            'id' => $c->padrino->padrino->id,
+                            'nombre_completo' => $c->padrino->padrino->nombre_completo,
+                            'cargo' => $c->padrino->padrino->cargo ?? 'Sin cargo',
+                            'imagen' => $c->padrino->padrino->imagen,
+                        ] : null,
+                        'fecha_ingreso' => $c->padrino->fecha_ingreso_empresa ? $c->padrino->fecha_ingreso_empresa->format('d/m/Y') : 'N/R',
+                    ],
+                ] : null,
+                'nivel_autonomia' => $c->nivel_autonomia ?? 'Nivel 0',
+                'evidencias' => $evidencias,
+            ];
+        });
+
+        $metrics = [
+            'total_padrinos' => $padrinosList->count(),
+            'total_apadrinados' => $apadrinados->count(),
+            'parejas_activas' => $apadrinados->whereNotNull('padrino_id')->count(),
+            'sin_padrino' => $apadrinados->whereNull('padrino_id')->count(),
+        ];
+
+        return Inertia::render('gente/plan-padrinos/parejas', [
+            'padrinos' => $padrinosList,
+            'apadrinados' => $apadrinados->values(),
+            'metrics' => $metrics,
+            'filters' => [
+                'search' => $search,
+                'padrino_id' => $padrinoIdFiltro,
+            ],
+        ]);
     }
 
 }

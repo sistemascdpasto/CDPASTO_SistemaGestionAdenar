@@ -500,6 +500,7 @@ export default function PruebasIndex({
                         <Table>
                             <TableHeader>
                                 <TableRow>
+                                    <TableHead className="w-12 text-center text-gray-500 font-bold text-black dark:text-white">#</TableHead>
                                     <TableHead className="text-gray-500 font-bold text-black dark:text-white">Fecha planeada</TableHead>
                                     <TableHead className="text-gray-500 font-bold text-black dark:text-white">Colaborador</TableHead>
                                     <TableHead className="text-gray-500 font-bold text-black dark:text-white">Prueba pendiente</TableHead>
@@ -516,13 +517,14 @@ export default function PruebasIndex({
                             <TableBody>
                                 {pruebasPendientes.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={11} className="text-muted-foreground py-8 text-center">
+                                        <TableCell colSpan={12} className="text-muted-foreground py-8 text-center">
                                             🎉 ¡Excelente! No hay pruebas Pre Ruta ni Post Ruta pendientes de la planeación.
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    pruebasPendientes.map((item) => (
+                                    pruebasPendientes.map((item, index) => (
                                         <TableRow key={`${item.key}-${item.tipo_pendiente}`}>
+                                            <TableCell className="text-center font-medium text-muted-foreground">{index + 1}</TableCell>
                                             <TableCell className="whitespace-nowrap font-medium">
                                                 {item.fecha || form.fecha || fechaConsulta}
                                             </TableCell>
@@ -567,6 +569,7 @@ export default function PruebasIndex({
                         <Table>
                             <TableHeader>
                                 <TableRow>
+                                    <TableHead className="w-12 text-center font-bold text-black dark:text-white">#</TableHead>
                                     <TableHead className="font-bold text-black dark:text-white">Fecha de la ruta</TableHead>
                                     <TableHead className="font-bold text-black dark:text-white">Población planeada</TableHead>
                                     <TableHead className="font-bold text-black dark:text-white">Pre ruta</TableHead>
@@ -579,13 +582,14 @@ export default function PruebasIndex({
                             <TableBody>
                                 {!cobertura.planeaciones || cobertura.planeaciones.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={7} className="text-muted-foreground py-8 text-center">
+                                        <TableCell colSpan={8} className="text-muted-foreground py-8 text-center">
                                             No hay registros de planeación de ruta en el histórico.
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    cobertura.planeaciones.map((plan) => (
+                                    cobertura.planeaciones.map((plan, index) => (
                                         <TableRow key={plan.fecha}>
+                                            <TableCell className="text-center font-medium text-muted-foreground">{index + 1}</TableCell>
                                             <TableCell className="font-semibold text-foreground whitespace-nowrap">
                                                 {plan.fecha}
                                             </TableCell>
@@ -665,6 +669,7 @@ export default function PruebasIndex({
                             <Table>
                                 <TableHeader>
                                     <TableRow>
+                                        <TableHead className="w-12 text-center font-bold text-black dark:text-white">#</TableHead>
                                         <TableHead className="font-bold text-black dark:text-white">Fecha</TableHead>
                                         <TableHead className="font-bold text-black dark:text-white">Colaborador</TableHead>
                                         <TableHead className="font-bold text-black dark:text-white">Tipo</TableHead>
@@ -679,12 +684,12 @@ export default function PruebasIndex({
                                 <TableBody>
                                     {pruebas.data.length === 0 && (
                                         <TableRow>
-                                            <TableCell colSpan={9} className="text-muted-foreground py-6 text-center">
+                                            <TableCell colSpan={10} className="text-muted-foreground py-6 text-center">
                                                 No se encontraron pruebas de alcoholemia.
                                             </TableCell>
                                         </TableRow>
                                     )}
-                                    {pruebas.data.map((prueba) => {
+                                    {pruebas.data.map((prueba, index) => {
                                         const reqKey = prueba.colaborador_id && prueba.fecha_prueba ? `${prueba.colaborador_id}_${prueba.fecha_prueba}` : null;
                                         const tipoPlaneadoActual = reqKey && localTiposPlaneados[reqKey] !== undefined
                                             ? localTiposPlaneados[reqKey]
@@ -695,6 +700,7 @@ export default function PruebasIndex({
 
                                         return (
                                             <TableRow key={prueba.id}>
+                                                <TableCell className="text-center font-medium text-muted-foreground">{index + 1}</TableCell>
                                                 <TableCell className="whitespace-nowrap">{new Date(prueba.fecha_hora).toLocaleString()}</TableCell>
                                                 <TableCell className="capitalize">
                                                     {prueba.colaborador ? `${prueba.colaborador.nombres} ${prueba.colaborador.apellidos}`.toLowerCase() : '—'}

@@ -294,6 +294,95 @@ class ModulacionController extends Controller
                 return count($item->tripulacion ?? []);
             });
 
+            $rutasDetalle = $items->map(function ($item) {
+                $docTras = trim((string)($item->doc_tras ?? ''));
+
+                $responsable = '';
+                $tripulacion = is_array($item->tripulacion) ? $item->tripulacion : [];
+
+                foreach ($tripulacion as $m) {
+                    $cargo = strtoupper((string)($m['cargo'] ?? ''));
+                    if (str_contains($cargo, 'RESPONSABLE')) {
+                        $responsable = trim((string)($m['nombres'] ?? ''));
+                        break;
+                    }
+                }
+                if ($responsable === '') {
+                    foreach ($tripulacion as $m) {
+                        $cargo = strtoupper((string)($m['cargo'] ?? ''));
+                        if (str_contains($cargo, 'CONDUCTOR')) {
+                            $responsable = trim((string)($m['nombres'] ?? ''));
+                            break;
+                        }
+                    }
+                }
+                if ($responsable === '') {
+                    $responsable = trim((string)($item->nombres ?? ($tripulacion[0]['nombres'] ?? '')));
+                }
+
+                $destinosList = [];
+                $viajes = is_array($item->viajes) ? $item->viajes : [];
+                foreach ($viajes as $v) {
+                    if (!empty($v['destinos']) && is_array($v['destinos'])) {
+                        foreach ($v['destinos'] as $d) {
+                            $destinosList[] = [
+                                'barrio'    => trim((string)($d['barrio'] ?? '')),
+                                'municipio' => trim((string)($d['lugares'] ?? '')),
+                            ];
+                        }
+                    } else {
+                        $destinosList[] = [
+                            'barrio'    => trim((string)($v['barrio'] ?? '')),
+                            'municipio' => trim((string)($v['lugares'] ?? '')),
+                        ];
+                    }
+                }
+
+                $destino = '';
+                foreach ($destinosList as $d) {
+                    if ($d['barrio'] !== '') {
+                        $destino = $d['barrio'];
+                        break;
+                    }
+                }
+                if ($destino === '') {
+                    foreach ($destinosList as $d) {
+                        if ($d['municipio'] !== '') {
+                            $destino = $d['municipio'];
+                            break;
+                        }
+                    }
+                }
+
+                $clientes = [];
+                foreach ($viajes as $v) {
+                    $c = trim((string)($v['cliente'] ?? ''));
+                    if ($c !== '') {
+                        $clientes[] = $c;
+                    }
+                }
+                $clienteStr = implode(', ', array_unique($clientes));
+
+                $pesos = [];
+                foreach ($viajes as $v) {
+                    $p = trim((string)($v['peso'] ?? ''));
+                    if ($p !== '') {
+                        $pesos[] = $p;
+                    }
+                }
+                $pesoStr = implode(', ', array_unique($pesos));
+
+                return [
+                    'id'          => $item->id,
+                    'placa'       => $item->placa,
+                    'doc_tras'    => $docTras,
+                    'responsable' => $responsable,
+                    'destino'     => $destino,
+                    'cliente'     => $clienteStr,
+                    'peso'        => $pesoStr,
+                ];
+            })->values();
+
             return [
                 'id'                          => $mod->id,
                 'fecha'                       => $mod->fecha,
@@ -303,15 +392,37 @@ class ModulacionController extends Controller
                 'total_tripulantes'           => $totalTripulantes,
                 'total_novedades'             => $mod->novedades->count(),
                 'placas'                      => $placas,
+                'rutas_detalle'               => $rutasDetalle,
             ];
         });
 
+        $placasModulacion = ModulacionItem::select('placa')
+            ->whereNotNull('placa')
+            ->where('placa', '!=', '')
+            ->distinct()
+            ->pluck('placa');
+
+        $placasFlota = \App\Models\Flota\Vehiculo::select('placa')
+            ->whereNotNull('placa')
+            ->where('placa', '!=', '')
+            ->distinct()
+            ->pluck('placa');
+
+        $placasDisponibles = $placasModulacion
+            ->concat($placasFlota)
+            ->map(fn($p) => strtoupper(trim((string)$p)))
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values();
+
         return Inertia::render('reparto/modulacion/historial', [
-            'planeaciones' => $planeaciones,
-            'filters'      => [
+            'planeaciones'       => $planeaciones,
+            'placas_disponibles' => $placasDisponibles,
+            'filters'            => [
                 'fecha_desde' => $fechaDesde,
                 'fecha_hasta' => $fechaHasta,
-                'placa' => $placa,
+                'placa'       => $placa,
             ],
         ]);
     }

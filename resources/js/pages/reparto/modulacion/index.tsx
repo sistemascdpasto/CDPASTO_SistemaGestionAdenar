@@ -121,8 +121,6 @@ interface ModulacionNovedadData {
     cargo?: string;
     observaciones?: string;
     fijo: boolean;
-    fijo_rescate: boolean;
-    fijo_taller: boolean;
     permiso: boolean;
     no_asitio: boolean;
     incapacidad: boolean;
@@ -145,8 +143,6 @@ interface FijoInicial {
     nombres?: string;
     cargo?: string;
     observaciones?: string;
-    fijo_rescate?: boolean;
-    fijo_taller?: boolean;
 }
 
 interface Props {
@@ -898,8 +894,6 @@ export default function ModulacionIndex({
                     cedula?: string;
                     nombres?: string;
                     cargo?: string;
-                    fijo_rescate?: boolean;
-                    fijo_taller?: boolean;
                 }>;
             };
             if (controller.signal.aborted) return;
@@ -938,8 +932,6 @@ export default function ModulacionIndex({
                             cargo: f.cargo,
                             observaciones: '',
                             fijo: true,
-                            fijo_rescate: Boolean(f.fijo_rescate),
-                            fijo_taller: Boolean(f.fijo_taller),
                             permiso: false,
                             no_asitio: false,
                             incapacidad: false,
@@ -1002,10 +994,25 @@ export default function ModulacionIndex({
         } else {
             setIsEditing(true);
         }
+
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            const p = params.get('placa');
+            if (p) {
+                setFilterTablePlaca(p.toUpperCase());
+            }
+        }
     }, [modulacion, readOnly]);
 
     // Filtros de la Tabla Planeación de Ruta (Solo Filtro por Placa)
-    const [filterTablePlaca, setFilterTablePlaca] = useState<string>('todas');
+    const [filterTablePlaca, setFilterTablePlaca] = useState<string>(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            const p = params.get('placa');
+            if (p) return p.toUpperCase();
+        }
+        return 'todas';
+    });
 
     // Filtros de búsqueda para el Checklist de tripulación
     const [searchQuery, setSearchQuery] = useState<string>('');
@@ -1430,9 +1437,7 @@ export default function ModulacionIndex({
                 nombres: nov.nombres ?? null,
                 cargo: nov.cargo ?? null,
                 observaciones: nov.observaciones ?? null,
-                fijo_rescate: Boolean(nov.fijo_rescate),
-                fijo_taller: Boolean(nov.fijo_taller),
-                fijo: Boolean(nov.fijo_rescate) || Boolean(nov.fijo_taller),
+                fijo: Boolean(nov.fijo),
                 permiso: Boolean(nov.permiso),
                 no_asitio: Boolean(nov.no_asitio),
                 incapacidad: Boolean(nov.incapacidad),
@@ -1633,8 +1638,6 @@ export default function ModulacionIndex({
                 cargo: f.cargo,
                 observaciones: '',
                 fijo: true,
-                fijo_rescate: Boolean(f.fijo_rescate),
-                fijo_taller: Boolean(f.fijo_taller),
                 permiso: false,
                 no_asitio: false,
                 incapacidad: false,
@@ -1660,8 +1663,6 @@ export default function ModulacionIndex({
                     cargo: f.cargo,
                     observaciones: '',
                     fijo: true,
-                    fijo_rescate: Boolean(f.fijo_rescate),
-                    fijo_taller: Boolean(f.fijo_taller),
                     permiso: false,
                     no_asitio: false,
                     incapacidad: false,
@@ -1681,8 +1682,6 @@ export default function ModulacionIndex({
         nombres: '',
         cargo: '',
         observaciones: '',
-        fijo_rescate: false,
-        fijo_taller: false,
         permiso: false,
         no_asitio: false,
         incapacidad: false,
@@ -1753,9 +1752,7 @@ export default function ModulacionIndex({
             nombres: nuevaNovedad.nombres,
             cargo: nuevaNovedad.cargo,
             observaciones: nuevaNovedad.observaciones,
-            fijo: nuevaNovedad.fijo_rescate || nuevaNovedad.fijo_taller,
-            fijo_rescate: nuevaNovedad.fijo_rescate,
-            fijo_taller: nuevaNovedad.fijo_taller,
+            fijo: false,
             permiso: nuevaNovedad.permiso,
             no_asitio: nuevaNovedad.no_asitio,
             incapacidad: nuevaNovedad.incapacidad,
@@ -1771,8 +1768,6 @@ export default function ModulacionIndex({
             nombres: '',
             cargo: '',
             observaciones: '',
-            fijo_rescate: false,
-            fijo_taller: false,
             permiso: false,
             no_asitio: false,
             incapacidad: false,
@@ -1901,17 +1896,23 @@ export default function ModulacionIndex({
         return Array.from(set);
     }, [rutas]);
 
-    // RUTAS FILTRADAS EN LA TABLA PLANEACIÓN DE RUTA
+    // RUTAS EN LA TABLA PLANEACIÓN DE RUTA (se muestran todas las rutas sin ocultar ninguna)
     const filteredRutasTable = useMemo(() => {
-        return rutas.filter((r) => {
-            const matchesPlaca =
-                filterTablePlaca === 'todas' || !filterTablePlaca
-                    ? true
-                    : r.placa.toUpperCase() === filterTablePlaca.toUpperCase();
+        return rutas;
+    }, [rutas]);
 
-            return matchesPlaca;
-        });
-    }, [rutas, filterTablePlaca]);
+    // Desplazar automáticamente hacia la fila resaltada si viene seleccionada una placa
+    useEffect(() => {
+        if (filterTablePlaca && filterTablePlaca !== 'todas') {
+            const timer = setTimeout(() => {
+                const el = document.getElementById(`ruta-row-${filterTablePlaca.trim().toUpperCase()}`);
+                if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 300);
+            return () => clearTimeout(timer);
+        }
+    }, [filterTablePlaca, rutas]);
 
     // FUNCIÓN PARA EXPORTAR A EXCEL — Formato exacto según plantilla con estilos
     const handleExportExcel = () => {
@@ -1967,8 +1968,7 @@ export default function ModulacionIndex({
         //
         // SECCIÓN NOVEDADES (1 fila por novedad, 1 sola columna A, NO merge cols):
         // [A] IDENTIFICACIÓN / NOMBRE (multi-linea), [B] OBSERVACIONES,
-        // [C] FIJO RESCATE, [D] FIJO TALLER, [E] PERMISO, [F] NO ASISTIO,
-        // [G] INCAPACIDAD, [H] VACACIONES
+        // [C] PERMISO, [D] NO ASISTIO, [E] INCAPACIDAD, [F] VACACIONES
 
         const cell = (
             v: unknown,
@@ -2384,7 +2384,7 @@ export default function ModulacionIndex({
             { wch: 25 }, // B DOC.T RAS (rutas) / NOMBRE col 2 (novedades)
             { wch: 3 },  // C TRIP_COLOR (rutas) / OBSERVACIONES col 1 (novedades)
             { wch: 40 }, // D TRIP_NOMBRE (rutas) / OBSERVACIONES col 2 (novedades)
-            { wch: 9 },  // E REUNION (rutas) / FIJO RESCATE (novedades)
+            { wch: 9 },  // E REUNION (rutas) / PERMISO (novedades)
         ];
         for (let v = 0; v < maxViajes; v++) colWidths.push({ wch: 30 }); // 1ER/2DO VIAJE...
         colWidths.push({ wch: 14 }, { wch: 10 }); // CLIENTE, PESO
@@ -2419,21 +2419,17 @@ export default function ModulacionIndex({
         // ─── Tabla de NOVEDADES en la misma hoja, separada por 2 filas ───────
         // Layout de columnas (base 0):
         // [0-1] NOMBRE (merge 2 cols)  [2-3] OBSERVACIONES (merge 2 cols)
-        // [4] FIJO RESCATE  [5] FIJO TALLER  [6] PERMISO
-        // [7] NO ASISTIO  [8] INCAPACIDAD  [9] VACACIONES
+        // [4] PERMISO  [5] NO ASISTIO  [6] INCAPACIDAD  [7] VACACIONES
         const COL_NOV = {
             NOMBRE_START: 0, NOMBRE_END: 1,
             OBS_START: 2,    OBS_END: 3,
-            FIJO_RESCATE: 4, FIJO_TALLER: 5, PERMISO: 6,
-            NO_ASISTIO: 7,   INCAPACIDAD: 8, VACACIONES: 9,
+            PERMISO: 4,      NO_ASISTIO: 5,   INCAPACIDAD: 6, VACACIONES: 7,
         };
-        const TOTAL_COLS_NOV = 10;
+        const TOTAL_COLS_NOV = 8;
 
         const encabezadosNovedades: { label: string; col: number; colEnd: number }[] = [
             { label: 'NOMBRE',       col: COL_NOV.NOMBRE_START, colEnd: COL_NOV.NOMBRE_END },
             { label: 'OBSERVACIONES',col: COL_NOV.OBS_START,    colEnd: COL_NOV.OBS_END    },
-            { label: 'FIJO RESCATE', col: COL_NOV.FIJO_RESCATE, colEnd: COL_NOV.FIJO_RESCATE },
-            { label: 'FIJO TALLER',  col: COL_NOV.FIJO_TALLER,  colEnd: COL_NOV.FIJO_TALLER  },
             { label: 'PERMISO',      col: COL_NOV.PERMISO,      colEnd: COL_NOV.PERMISO      },
             { label: 'NO ASISTIO',   col: COL_NOV.NO_ASISTIO,   colEnd: COL_NOV.NO_ASISTIO   },
             { label: 'INCAPACIDAD',  col: COL_NOV.INCAPACIDAD,  colEnd: COL_NOV.INCAPACIDAD  },
@@ -2443,8 +2439,6 @@ export default function ModulacionIndex({
         const filasNovedades = novedadesLocal.map((novedad) => ({
             nombre:       (novedad.nombres || '').trim().toLocaleUpperCase('es'),
             observaciones: novedad.observaciones || '',
-            fijoRescate:  novedad.fijo_rescate ? 'X' : '',
-            fijoTaller:   novedad.fijo_taller  ? 'X' : '',
             permiso:      novedad.permiso      ? 'X' : '',
             noAsistio:    novedad.no_asitio    ? 'X' : '',
             incapacidad:  novedad.incapacidad  ? 'X' : '',
@@ -2495,8 +2489,6 @@ export default function ModulacionIndex({
             setCell(r, COL_NOV.OBS_END,   cell('', { s: estiloDatoNombre }));
             merges.push({ s: { r, c: COL_NOV.OBS_START }, e: { r, c: COL_NOV.OBS_END } });
             // Checks
-            setCell(r, COL_NOV.FIJO_RESCATE, cell(fila.fijoRescate, { s: estiloCheckNovedades }));
-            setCell(r, COL_NOV.FIJO_TALLER,  cell(fila.fijoTaller,  { s: estiloCheckNovedades }));
             setCell(r, COL_NOV.PERMISO,      cell(fila.permiso,     { s: estiloCheckNovedades }));
             setCell(r, COL_NOV.NO_ASISTIO,   cell(fila.noAsistio,   { s: estiloCheckNovedades }));
             setCell(r, COL_NOV.INCAPACIDAD,  cell(fila.incapacidad, { s: estiloCheckNovedades }));
@@ -2624,16 +2616,16 @@ export default function ModulacionIndex({
                     <div>
                         <Label htmlFor="filtro-placa" className="flex items-center gap-1 text-xs font-semibold text-muted-foreground mb-1.5">
                             <Filter className="size-3.5" style={{ color: ACCENT }} />
-                            Filtro por placa
+                            Resaltar placa
                         </Label>
                         <Select value={filterTablePlaca} onValueChange={setFilterTablePlaca}>
                             <SelectTrigger id="filtro-placa" className="h-10 text-sm w-full">
-                                <SelectValue />
+                                <SelectValue placeholder="-- Seleccionar Placa a resaltar --" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="todas">-- Todas las Placas --</SelectItem>
+                                <SelectItem value="todas">-- Mostrar todas (Sin resaltar) --</SelectItem>
                                 {uniquePlacasInRutas.map((placa) => (
-                                    <SelectItem key={placa} value={placa}>{placa}</SelectItem>
+                                    <SelectItem key={placa} value={placa}>Placa: {placa}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
@@ -3068,9 +3060,20 @@ export default function ModulacionIndex({
                                         const rutaIndex = rutas.indexOf(item);
                                         const tripMembers = Array.isArray(item.tripulacion) ? item.tripulacion : [];
                                         const viajesList = Array.isArray(item.viajes) ? item.viajes : [];
+                                        const isSelectedPlaca = Boolean(
+                                            filterTablePlaca && item.placa?.toLowerCase().trim() === filterTablePlaca.toLowerCase().trim()
+                                        );
 
                                         return (
-                                            <TableRow key={item.id ?? `ruta-${item.placa}-${idx}`} className="hover:bg-muted/30 align-top">
+                                            <TableRow
+                                                key={item.id ?? `ruta-${item.placa}-${idx}`}
+                                                id={`ruta-row-${item.placa?.toUpperCase()}`}
+                                                className={
+                                                    isSelectedPlaca
+                                                        ? 'bg-sky-100/80 dark:bg-sky-950/60 border-l-4 border-l-sky-500 hover:bg-sky-100/90 align-top transition-colors'
+                                                        : 'hover:bg-muted/30 align-top'
+                                                }
+                                            >
                                                 <TableCell className="text-center text-sm font-medium">{idx + 1}</TableCell>
 
                                                 <TableCell className="text-sm font-semibold text-foreground">
@@ -3240,25 +3243,6 @@ export default function ModulacionIndex({
                                 />
                             </div>
 
-                            <div className="sm:col-span-3 flex items-center gap-2">
-                                <label className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/30 px-3 py-2 cursor-pointer h-10 flex-1">
-                                    <Checkbox
-                                        id="nuevo-fijo-rescate"
-                                        checked={nuevaNovedad.fijo_rescate}
-                                        onCheckedChange={(checked) => setNuevaNovedad((prev) => ({ ...prev, fijo_rescate: Boolean(checked) }))}
-                                    />
-                                    <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-300 whitespace-nowrap">Fijo Rescate</span>
-                                </label>
-                                <label className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30 px-3 py-2 cursor-pointer h-10 flex-1">
-                                    <Checkbox
-                                        id="nuevo-fijo-taller"
-                                        checked={nuevaNovedad.fijo_taller}
-                                        onCheckedChange={(checked) => setNuevaNovedad((prev) => ({ ...prev, fijo_taller: Boolean(checked) }))}
-                                    />
-                                    <span className="text-xs font-semibold text-green-800 dark:text-green-300 whitespace-nowrap">Fijo Taller</span>
-                                </label>
-                            </div>
-
                             <div className="sm:col-span-2">
                                 <Button
                                     type="button"
@@ -3280,8 +3264,6 @@ export default function ModulacionIndex({
                                         <TableHead className="font-semibold">Identificación</TableHead>
                                         <TableHead className="font-semibold">Nombres</TableHead>
                                         <TableHead className="font-semibold">Observaciones</TableHead>
-                                        <TableHead className="text-center font-semibold">Fijo Rescate</TableHead>
-                                        <TableHead className="text-center font-semibold">Fijo Taller</TableHead>
                                         <TableHead className="text-center font-semibold">Permiso</TableHead>
                                         <TableHead className="text-center font-semibold">No Asistio</TableHead>
                                         <TableHead className="text-center font-semibold">Incapacidad</TableHead>
@@ -3292,13 +3274,13 @@ export default function ModulacionIndex({
                                 <TableBody>
                                     {novedadesLocal.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={isEditing ? 10 : 9} className="py-8 text-center text-sm text-muted-foreground">
+                                            <TableCell colSpan={isEditing ? 8 : 7} className="py-8 text-center text-sm text-muted-foreground">
                                                 No hay colaboradores en novedades. Use el formulario de arriba para agregar uno.
                                             </TableCell>
                                         </TableRow>
                                     ) : (
                                         novedadesLocal.map((nov) => (
-                                            <TableRow key={nov.id} className={(nov.fijo || nov.fijo_rescate || nov.fijo_taller) ? 'bg-emerald-50/40 dark:bg-emerald-950/10' : ''}>
+                                            <TableRow key={nov.id} className={nov.fijo ? 'bg-emerald-50/40 dark:bg-emerald-950/10' : ''}>
                                                 <TableCell className="font-mono text-sm">{nov.cedula ?? '—'}</TableCell>
                                                 <TableCell className="font-medium text-sm">{nov.nombres ?? '—'}</TableCell>
                                                 <TableCell className="text-sm">
@@ -3314,20 +3296,6 @@ export default function ModulacionIndex({
                                                         />
                                                     ) : (
                                                         <span>{nov.observaciones ?? '—'}</span>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell className="text-center">
-                                                    {isEditing ? (
-                                                        <Checkbox id={`novedad-${nov.id}-fijo-rescate`} aria-label={`Fijo Rescate: ${nov.nombres ?? nov.cedula ?? nov.id}`} checked={Boolean(nov.fijo_rescate)} onCheckedChange={(c) => handleNovedadChange(nov.id, 'fijo_rescate', Boolean(c))} />
-                                                    ) : (
-                                                        <span>{nov.fijo_rescate ? '✓' : '—'}</span>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell className="text-center">
-                                                    {isEditing ? (
-                                                        <Checkbox id={`novedad-${nov.id}-fijo-taller`} aria-label={`Fijo Taller: ${nov.nombres ?? nov.cedula ?? nov.id}`} checked={Boolean(nov.fijo_taller)} onCheckedChange={(c) => handleNovedadChange(nov.id, 'fijo_taller', Boolean(c))} />
-                                                    ) : (
-                                                        <span>{nov.fijo_taller ? '✓' : '—'}</span>
                                                     )}
                                                 </TableCell>
                                                 <TableCell className="text-center">

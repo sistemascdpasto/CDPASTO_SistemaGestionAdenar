@@ -501,6 +501,20 @@ export default function CriteriosPlanPadrinoIndex({
                         <Star className="h-4 w-4" />
                         Padrinos
                     </Link>
+                    <Link
+                        href="/modules/gente/plan-padrinos/apadrinados"
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg text-muted-foreground hover:bg-muted transition-colors"
+                    >
+                        <Users className="h-4 w-4" />
+                        Apadrinados
+                    </Link>
+                    <Link
+                        href="/modules/gente/plan-padrinos/parejas"
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg text-muted-foreground hover:bg-muted transition-colors"
+                    >
+                        <HeartHandshake className="h-4 w-4" />
+                        Parejas Padrino - Apadrinado
+                    </Link>
                 </div>
 
                 {/* Tarjetas de Resumen Superior */}
