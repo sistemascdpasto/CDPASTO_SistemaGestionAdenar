@@ -73,7 +73,7 @@ class PortalAccessTest extends TestCase
                 ->has('resumen.compensacion_variable')
                 ->has('resumen.plan_premiacion')
                 ->has('resumen.geovictoria')
-                ->has('resumen.capacitaciones_pendientes')
+                ->has('resumen.capacitaciones')
                 ->has('resumen.condicion_salud')
                 ->has('resumen.encuesta_morbilidad_pendiente')
                 ->has('resumen.indicadores_reparto')
@@ -146,7 +146,7 @@ class PortalAccessTest extends TestCase
             ->where('resumen.compensacion_variable.total_pago_variable', 250000)
             ->where('resumen.plan_premiacion.aci_realizadas', 1)
             ->where('resumen.geovictoria.recientes_30_dias', 1)
-            ->where('resumen.capacitaciones_pendientes', 1)
+            ->where('resumen.capacitaciones.pendientes', 1)
             ->where('resumen.encuesta_morbilidad_pendiente', true)
         );
     }
