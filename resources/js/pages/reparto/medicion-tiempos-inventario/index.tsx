@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
-import { Eye, Plus, Trash2, Edit, Clock, User, Download, Truck, Timer, TrendingDown, Activity, Users } from 'lucide-react';
+import { Eye, Plus, Trash2, Edit, Clock, User, Download, Truck, Timer, TrendingDown, Activity, Users, AlertTriangle } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     BarElement, CategoryScale, Chart as ChartJS,
@@ -32,6 +32,8 @@ interface Indicadores {
     suma_minutos: number;
     vehiculos_unicos: number;
     colaboradores_unicos: number;
+    excedieron_meta?: number;
+    cumplieron_meta?: number;
 }
 
 interface DatosPorPeriodo {
@@ -82,6 +84,7 @@ interface Props {
         fecha_hasta: string;
         placa: string;
         colaborador: string;
+        estado_meta?: string;
     };
     indicadores?: Indicadores;
     por_dia?: DatosPorPeriodo;
@@ -93,6 +96,7 @@ type Filters = {
     fecha_hasta: string;
     placa: string;
     colaborador: string;
+    estado_meta?: string;
 };
 
 function formatFecha(fecha: string | null) {
@@ -116,15 +120,65 @@ function formatDuracion(minutos: number | null) {
     return horas > 0 ? `${horas}h ${mins}m` : `${mins}m`;
 }
 
+function formatExceso(minutos: number) {
+    const horas = Math.floor(minutos / 60);
+    const mins = minutos % 60;
+    if (horas > 0) {
+        return mins > 0 ? `${horas}h ${mins}m` : `${horas}h`;
+    }
+    return `${mins}m`;
+}
+
+function renderMetaStatus(duracion_minutos: number | null, meta_minutos: number | null = 12) {
+    const meta = meta_minutos || 12;
+
+    if (duracion_minutos === null) {
+        return (
+            <div className="flex flex-col whitespace-nowrap">
+                <span className="text-xs font-semibold text-muted-foreground">{meta} min</span>
+                <span className="text-[10px] text-muted-foreground">Pendiente</span>
+            </div>
+        );
+    }
+
+    if (duracion_minutos <= meta) {
+        return (
+            <div className="flex flex-col gap-0.5 whitespace-nowrap">
+                <span className="text-[10px] font-mono text-muted-foreground">{meta} min</span>
+                <Badge variant="outline" className="w-fit border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400 text-[11px] font-semibold px-2 py-0.5">
+                    Cumplió
+                </Badge>
+            </div>
+        );
+    }
+
+    const exceso = duracion_minutos - meta;
+    return (
+        <div className="flex flex-col gap-0.5 whitespace-nowrap">
+            <span className="text-[10px] font-mono text-muted-foreground">{meta} min</span>
+            <Badge variant="outline" className="w-fit border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-400 text-[11px] font-semibold px-2 py-0.5">
+                Se pasó por {formatExceso(exceso)}
+            </Badge>
+        </div>
+    );
+}
+
 // ─── KpiCard ─────────────────────────────────────────────────────────────────
 function KpiCard({
-    label, value, sub, icon: Icon, color = '#3b82f6',
+    label, value, sub, icon: Icon, color = '#3b82f6', onClick, active = false,
 }: {
     label: string; value: string; sub?: string;
-    icon: React.ElementType; color?: string;
+    icon: React.ElementType; color?: string; onClick?: () => void; active?: boolean;
 }) {
     return (
-        <div className="flex flex-col justify-between gap-2 rounded-xl border border-sidebar-border/70 bg-card p-4 shadow-sm dark:border-sidebar-border">
+        <div
+            onClick={onClick}
+            className={`flex flex-col justify-between gap-2 rounded-xl border bg-card p-4 shadow-sm transition-all dark:border-sidebar-border ${
+                onClick ? 'cursor-pointer hover:shadow-md hover:scale-[1.01]' : ''
+            } ${
+                active ? 'border-rose-500 ring-2 ring-rose-500/30 bg-rose-50/20 dark:bg-rose-950/20' : 'border-sidebar-border/70'
+            }`}
+        >
             <div className="flex items-start justify-between">
                 <p className="text-[11px] font-semibold text-muted-foreground leading-tight">{label}</p>
                 <Icon className="size-4 shrink-0" style={{ color }} />
@@ -244,11 +298,13 @@ export default function MedicionTiemposInventarioIndex({ registros, filters, ind
     const [fechaHasta, setFechaHasta] = useState(safeFilters.fecha_hasta ?? '');
     const [placa, setPlaca] = useState(safeFilters.placa ?? '');
     const [colaborador, setColaborador] = useState(safeFilters.colaborador ?? '');
+    const [estadoMeta, setEstadoMeta] = useState(safeFilters.estado_meta ?? '');
 
     const debouncedFechaDesde = useDebouncedValue(fechaDesde);
     const debouncedFechaHasta = useDebouncedValue(fechaHasta);
     const debouncedPlaca = useDebouncedValue(placa);
     const debouncedColaborador = useDebouncedValue(colaborador);
+    const debouncedEstadoMeta = useDebouncedValue(estadoMeta);
 
     const isFirstRender = useRef(true);
 
@@ -260,10 +316,11 @@ export default function MedicionTiemposInventarioIndex({ registros, filters, ind
                 fecha_hasta: overrides.fecha_hasta ?? debouncedFechaHasta,
                 placa: overrides.placa ?? debouncedPlaca,
                 colaborador: overrides.colaborador ?? debouncedColaborador,
+                estado_meta: overrides.estado_meta ?? debouncedEstadoMeta,
             },
             { preserveState: true, preserveScroll: true, replace: true },
         );
-    }, [debouncedColaborador, debouncedFechaDesde, debouncedFechaHasta, debouncedPlaca]);
+    }, [debouncedColaborador, debouncedEstadoMeta, debouncedFechaDesde, debouncedFechaHasta, debouncedPlaca]);
 
     useEffect(() => {
         if (isFirstRender.current) { isFirstRender.current = false; return; }
@@ -271,8 +328,8 @@ export default function MedicionTiemposInventarioIndex({ registros, filters, ind
     }, [applyFilters]);
 
     const clearFilters = () => {
-        setFechaDesde(''); setFechaHasta(''); setPlaca(''); setColaborador('');
-        applyFilters({ fecha_desde: '', fecha_hasta: '', placa: '', colaborador: '' });
+        setFechaDesde(''); setFechaHasta(''); setPlaca(''); setColaborador(''); setEstadoMeta('');
+        applyFilters({ fecha_desde: '', fecha_hasta: '', placa: '', colaborador: '', estado_meta: '' });
     };
 
     const deleteRegistro = (id: number) => {
@@ -282,13 +339,14 @@ export default function MedicionTiemposInventarioIndex({ registros, filters, ind
     };
 
     const exportUrl = route('reparto.medicion-tiempos-inventario.exportar', {
-        ...(debouncedFechaDesde && { fecha_desde: debouncedFechaDesde }),
-        ...(debouncedFechaHasta && { fecha_hasta: debouncedFechaHasta }),
-        ...(debouncedPlaca      && { placa: debouncedPlaca }),
+        ...(debouncedFechaDesde  && { fecha_desde: debouncedFechaDesde }),
+        ...(debouncedFechaHasta  && { fecha_hasta: debouncedFechaHasta }),
+        ...(debouncedPlaca       && { placa: debouncedPlaca }),
         ...(debouncedColaborador && { colaborador: debouncedColaborador }),
+        ...(debouncedEstadoMeta  && { estado_meta: debouncedEstadoMeta }),
     });
 
-    const hasFilters = !!(debouncedFechaDesde || debouncedFechaHasta || debouncedPlaca || debouncedColaborador);
+    const hasFilters = !!(debouncedFechaDesde || debouncedFechaHasta || debouncedPlaca || debouncedColaborador || debouncedEstadoMeta);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -361,7 +419,7 @@ export default function MedicionTiemposInventarioIndex({ registros, filters, ind
 
                 {/* ── Filtros ── */}
                 <div className="rounded-xl border border-sidebar-border/70 bg-card p-4 dark:border-sidebar-border">
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
                         <div className="space-y-1.5">
                             <Label className="text-xs">Fecha desde</Label>
                             <Input type="date" value={fechaDesde} onChange={e => setFechaDesde(e.target.value)} className="h-8 text-sm" />
@@ -378,6 +436,21 @@ export default function MedicionTiemposInventarioIndex({ registros, filters, ind
                             <Label className="text-xs">Colaborador</Label>
                             <Input placeholder="Cédula o nombre..." value={colaborador} onChange={e => setColaborador(e.target.value)} className="h-8 text-sm" />
                         </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-xs">Estado Meta</Label>
+                            <select
+                                value={estadoMeta}
+                                onChange={(e) => {
+                                    setEstadoMeta(e.target.value);
+                                    applyFilters({ estado_meta: e.target.value });
+                                }}
+                                className="h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-xs focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+                            >
+                                <option value="">Todos los registros</option>
+                                <option value="excedido">Excedieron meta (&gt; 12 min)</option>
+                                <option value="cumplio">Cumplieron meta (&le; 12 min)</option>
+                            </select>
+                        </div>
                     </div>
                     {hasFilters && (
                         <div className="mt-3 flex justify-end">
@@ -390,13 +463,32 @@ export default function MedicionTiemposInventarioIndex({ registros, filters, ind
 
                 {/* ── KPI Cards ── */}
                 {ind.total_registros !== undefined && ind.total_registros > 0 && (
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-4">
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
                         <KpiCard
                             label="Total inventarios"
                             value={String(ind.total_registros)}
                             sub={`${ind.con_duracion} con duración registrada`}
                             icon={Timer}
                             color="#3b82f6"
+                        />
+                        <KpiCard
+                            label="Excedieron meta (>12m)"
+                            value={String(ind.excedieron_meta ?? 0)}
+                            sub={
+                                estadoMeta === 'excedido'
+                                    ? 'Filtro activo (clic para quitar)'
+                                    : ind.con_duracion > 0
+                                    ? `${Math.round(((ind.excedieron_meta ?? 0) / ind.con_duracion) * 100)}% del total · Clic para filtrar`
+                                    : 'Clic para filtrar'
+                            }
+                            icon={AlertTriangle}
+                            color="#ef4444"
+                            onClick={() => {
+                                const nuevoEstado = estadoMeta === 'excedido' ? '' : 'excedido';
+                                setEstadoMeta(nuevoEstado);
+                                applyFilters({ estado_meta: nuevoEstado });
+                            }}
+                            active={estadoMeta === 'excedido'}
                         />
                         <KpiCard
                             label="Promedio duración"
@@ -501,7 +593,7 @@ export default function MedicionTiemposInventarioIndex({ registros, filters, ind
                                                     <span className="text-sm font-semibold">{formatDuracion(registro.duracion_minutos)}</span>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <span className="text-sm text-muted-foreground">{registro.meta_minutos ? `${registro.meta_minutos}m` : '-'}</span>
+                                                    {renderMetaStatus(registro.duracion_minutos, registro.meta_minutos)}
                                                 </TableCell>
                                                 <TableCell>
                                                     <Badge variant="outline" className="text-xs capitalize">
@@ -591,10 +683,20 @@ export default function MedicionTiemposInventarioIndex({ registros, filters, ind
                                             </p>
                                         </div>
                                         <div className="text-center">
-                                            <p className="text-[9px] font-medium text-muted-foreground">Meta</p>
-                                            <p className="mt-0.5 text-sm font-bold text-foreground">
-                                                {registro.meta_minutos ? `${registro.meta_minutos}m` : '-'}
-                                            </p>
+                                            <p className="text-[9px] font-medium text-muted-foreground">Meta (12m)</p>
+                                            <div className="mt-0.5 flex flex-col items-center justify-center">
+                                                {registro.duracion_minutos === null ? (
+                                                    <span className="text-xs font-semibold text-muted-foreground">Pendiente</span>
+                                                ) : registro.duracion_minutos <= (registro.meta_minutos || 12) ? (
+                                                    <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400 text-[10px] font-bold px-1.5 py-0">
+                                                        Cumplió
+                                                    </Badge>
+                                                ) : (
+                                                    <Badge variant="outline" className="border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-400 text-[10px] font-bold px-1 py-0 leading-tight">
+                                                        +{formatExceso(registro.duracion_minutos - (registro.meta_minutos || 12))}
+                                                    </Badge>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
 

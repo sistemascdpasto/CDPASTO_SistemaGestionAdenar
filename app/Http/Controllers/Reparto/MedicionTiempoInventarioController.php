@@ -86,6 +86,7 @@ class MedicionTiempoInventarioController extends Controller
         // La hora de inicio es exactamente el momento en que se pulsa "Iniciar"
         $validated['hora_inicio']     = now()->format('H:i');
         $validated['tipo_inventario'] = 'inicio';
+        $validated['meta_minutos']    = 12;
         $validated['user_id']         = $request->user()->id;
         $validated['creado_por']      = $request->user()->name;
 
@@ -114,8 +115,9 @@ class MedicionTiempoInventarioController extends Controller
         $filtros = [
             'fecha_desde' => $request->string('fecha_desde')->toString(),
             'fecha_hasta' => $request->string('fecha_hasta')->toString(),
-            'placa' => $request->string('placa')->toString(),
+            'placa'       => $request->string('placa')->toString(),
             'colaborador' => $request->string('colaborador')->toString(),
+            'estado_meta' => $request->string('estado_meta')->toString(),
         ];
 
         // ── Query base reutilizable para indicadores y gráficas ──────────────
@@ -131,7 +133,15 @@ class MedicionTiempoInventarioController extends Controller
                 $q->where('cedula', 'like', "%{$filtros['colaborador']}%")
                   ->orWhere('nombres', 'like', "%{$filtros['colaborador']}%")
                   ->orWhere('apellidos', 'like', "%{$filtros['colaborador']}%");
-            }));
+            }))
+            ->when($filtros['estado_meta'] === 'excedido', fn ($q) => $q
+                ->whereNotNull('duracion_minutos')
+                ->whereRaw('duracion_minutos > COALESCE(meta_minutos, 12)')
+            )
+            ->when($filtros['estado_meta'] === 'cumplio', fn ($q) => $q
+                ->whereNotNull('duracion_minutos')
+                ->whereRaw('duracion_minutos <= COALESCE(meta_minutos, 12)')
+            );
 
         // ── Tabla paginada ────────────────────────────────────────────────────
         $query = (clone $baseQuery)
@@ -146,7 +156,7 @@ class MedicionTiempoInventarioController extends Controller
                 'hora_inicio' => $registro->hora_inicio?->format('H:i'),
                 'hora_fin' => $registro->hora_fin?->format('H:i'),
                 'duracion_minutos' => $registro->duracion_minutos,
-                'meta_minutos' => $registro->meta_minutos,
+                'meta_minutos' => $registro->meta_minutos ?? 12,
                 'tipo_inventario' => $registro->tipo_inventario,
                 'creado_por' => $registro->creado_por,
                 'fecha_creacion' => $registro->fecha_creacion?->toIso8601String(),
@@ -169,6 +179,29 @@ class MedicionTiempoInventarioController extends Controller
             ')
             ->first();
 
+        // Conteo de registros que exceden o cumplen meta respetando los otros filtros (sin el filtro de estado_meta activo)
+        $queryStatsMeta = MedicionTiempoInventario::query()
+            ->whereNotNull('colaborador_id')
+            ->when($esColaborador, fn ($q) => $q->where('user_id', $request->user()->id))
+            ->when($filtros['fecha_desde'], fn ($q) => $q->whereDate('fecha_medicion', '>=', $filtros['fecha_desde']))
+            ->when($filtros['fecha_hasta'], fn ($q) => $q->whereDate('fecha_medicion', '<=', $filtros['fecha_hasta']))
+            ->when($filtros['placa'], fn ($q) => $q->whereHas('vehiculo', fn ($q2) => $q2->where('placa', 'like', "%{$filtros['placa']}%")))
+            ->when($filtros['colaborador'], fn ($q) => $q->whereHas('colaborador', fn ($q2) => $q2
+                ->where('cedula', 'like', "%{$filtros['colaborador']}%")
+                ->orWhere('nombres', 'like', "%{$filtros['colaborador']}%")
+                ->orWhere('apellidos', 'like', "%{$filtros['colaborador']}%")
+            ));
+
+        $excedieronMeta = (clone $queryStatsMeta)
+            ->whereNotNull('duracion_minutos')
+            ->whereRaw('duracion_minutos > COALESCE(meta_minutos, 12)')
+            ->count();
+
+        $cumplieronMeta = (clone $queryStatsMeta)
+            ->whereNotNull('duracion_minutos')
+            ->whereRaw('duracion_minutos <= COALESCE(meta_minutos, 12)')
+            ->count();
+
         $totalRegistros    = (clone $baseQuery)->count();
         $conDuracion       = (int) ($statsRaw->total ?? 0);
         $vehiculosUnicos   = (clone $baseQuery)->distinct('vehiculo_id')->whereNotNull('vehiculo_id')->count('vehiculo_id');
@@ -183,6 +216,8 @@ class MedicionTiempoInventarioController extends Controller
             'suma_minutos'         => $conDuracion > 0 ? (int) $statsRaw->suma : 0,
             'vehiculos_unicos'     => $vehiculosUnicos,
             'colaboradores_unicos' => $colaboradoresUnic,
+            'excedieron_meta'      => $excedieronMeta,
+            'cumplieron_meta'      => $cumplieronMeta,
         ];
 
         // ── Totales por día ───────────────────────────────────────────────────
@@ -273,6 +308,7 @@ class MedicionTiempoInventarioController extends Controller
                 'hora_inicio' => $medicionTiempoInventario->hora_inicio?->format('H:i'),
                 'hora_fin' => $medicionTiempoInventario->hora_fin?->format('H:i'),
                 'duracion_minutos' => $medicionTiempoInventario->duracion_minutos,
+                'meta_minutos' => $medicionTiempoInventario->meta_minutos ?? 12,
                 'tipo_inventario' => $medicionTiempoInventario->tipo_inventario,
                 'creado_por' => $medicionTiempoInventario->creado_por,
                 'fecha_creacion' => $medicionTiempoInventario->fecha_creacion?->toIso8601String(),
@@ -421,6 +457,7 @@ class MedicionTiempoInventarioController extends Controller
             'fecha_hasta' => $request->string('fecha_hasta')->toString(),
             'placa'       => $request->string('placa')->toString(),
             'colaborador' => $request->string('colaborador')->toString(),
+            'estado_meta' => $request->string('estado_meta')->toString(),
         ];
 
         $query = MedicionTiempoInventario::query()
@@ -433,6 +470,14 @@ class MedicionTiempoInventarioController extends Controller
                 ->orWhere('nombres', 'like', "%{$filtros['colaborador']}%")
                 ->orWhere('apellidos', 'like', "%{$filtros['colaborador']}%")
             ))
+            ->when($filtros['estado_meta'] === 'excedido', fn ($q) => $q
+                ->whereNotNull('duracion_minutos')
+                ->whereRaw('duracion_minutos > COALESCE(meta_minutos, 12)')
+            )
+            ->when($filtros['estado_meta'] === 'cumplio', fn ($q) => $q
+                ->whereNotNull('duracion_minutos')
+                ->whereRaw('duracion_minutos <= COALESCE(meta_minutos, 12)')
+            )
             ->orderBy('fecha_medicion', 'desc')
             ->orderBy('created_at', 'desc');
 
@@ -672,7 +717,7 @@ class MedicionTiempoInventarioController extends Controller
                     $duracion = (int) $ini->diffInMinutes($fin);
                 }
 
-                $meta = is_numeric($metaRaw) ? (int) $metaRaw : null;
+                $meta = is_numeric($metaRaw) ? (int) $metaRaw : 12;
 
                 // Buscar FK (opcional — NO bloquea la importación)
                 $vehiculo    = Vehiculo::where('placa', $placaRaw)->first();

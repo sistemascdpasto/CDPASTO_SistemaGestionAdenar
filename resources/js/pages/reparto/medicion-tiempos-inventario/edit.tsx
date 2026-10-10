@@ -139,7 +139,7 @@ export default function MedicionTiemposInventarioEdit({ registro, vehiculos, col
 
             <div className="space-y-6">
                 <div className="flex items-center justify-between">
-                    <HeadingSmall>Medición #{registro.id}</HeadingSmall>
+                    <HeadingSmall title={`Medición #${registro.id}`} />
                     {!esColaborador && (
                         <Link href={route('reparto.medicion-tiempos-inventario.index')}>
                             <Button variant="outline">
@@ -212,9 +212,9 @@ export default function MedicionTiemposInventarioEdit({ registro, vehiculos, col
                                         type="date"
                                         value={data.fecha_medicion}
                                         onChange={(e) => setData('fecha_medicion', e.target.value)}
-                                        error={errors.fecha_medicion}
                                         required
                                     />
+                                    {errors.fecha_medicion && <p className="text-xs text-destructive">{errors.fecha_medicion}</p>}
                                 </div>
                             </div>
 
@@ -227,8 +227,8 @@ export default function MedicionTiemposInventarioEdit({ registro, vehiculos, col
                                         type="time"
                                         value={data.hora_inicio}
                                         onChange={(e) => setData('hora_inicio', e.target.value)}
-                                        error={errors.hora_inicio}
                                     />
+                                    {errors.hora_inicio && <p className="text-xs text-destructive">{errors.hora_inicio}</p>}
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="hora_fin">Hora de finalización</Label>
@@ -237,8 +237,8 @@ export default function MedicionTiemposInventarioEdit({ registro, vehiculos, col
                                         type="time"
                                         value={data.hora_fin}
                                         onChange={(e) => setData('hora_fin', e.target.value)}
-                                        error={errors.hora_fin}
                                     />
+                                    {errors.hora_fin && <p className="text-xs text-destructive">{errors.hora_fin}</p>}
                                 </div>
                             </div>
 

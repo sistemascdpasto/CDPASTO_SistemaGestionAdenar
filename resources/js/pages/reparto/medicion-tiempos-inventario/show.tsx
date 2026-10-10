@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
-import { ArrowLeft, Calendar, Edit, FileText, Trash2, Truck, User } from 'lucide-react';
+import { ArrowLeft, Calendar, Edit, FileText, Timer, Trash2, Truck, User } from 'lucide-react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
@@ -21,6 +21,7 @@ interface Registro {
     hora_inicio: string | null;
     hora_fin: string | null;
     duracion_minutos: number | null;
+    meta_minutos?: number | null;
     tipo_inventario: string | null;
     creado_por: string | null;
     fecha_creacion: string | null;
@@ -50,6 +51,15 @@ function formatDuracion(min: number | null) {
     const h = Math.floor(min / 60);
     const m = min % 60;
     return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+function formatExceso(minutos: number) {
+    const horas = Math.floor(minutos / 60);
+    const mins = minutos % 60;
+    if (horas > 0) {
+        return mins > 0 ? `${horas}h ${mins}m` : `${horas}h`;
+    }
+    return `${mins} min`;
 }
 
 function Fila({ icono, etiqueta, valor }: { icono: React.ReactNode; etiqueta: string; valor: React.ReactNode }) {
@@ -83,7 +93,7 @@ export default function MedicionTiemposInventarioShow({ registro }: Props) {
 
                 {/* Cabecera */}
                 <div className="flex items-center justify-between flex-wrap gap-3">
-                    <HeadingSmall>Medición #{registro.id}</HeadingSmall>
+                    <HeadingSmall title={`Medición #${registro.id}`} />
                     <div className="flex flex-wrap gap-2">
                         <Link href={route('reparto.medicion-tiempos-inventario.edit', registro.id)}>
                             <Button variant="outline" size="sm" className="text-xs sm:text-sm">
@@ -142,6 +152,19 @@ export default function MedicionTiemposInventarioShow({ registro }: Props) {
                         </div>
 
                         {/* Resto de datos */}
+                        <Fila
+                            icono={<Timer className="size-3.5" />}
+                            etiqueta="Meta de tiempo"
+                            valor={
+                                registro.duracion_minutos === null ? (
+                                    <span className="text-muted-foreground">12 min (Pendiente)</span>
+                                ) : registro.duracion_minutos <= (registro.meta_minutos || 12) ? (
+                                    <span className="text-emerald-600 dark:text-emerald-400 font-bold">12 min — Cumplió</span>
+                                ) : (
+                                    <span className="text-rose-600 dark:text-rose-400 font-bold">12 min — Se pasó por {formatExceso(registro.duracion_minutos - (registro.meta_minutos || 12))}</span>
+                                )
+                            }
+                        />
                         <Fila
                             icono={<Calendar className="size-3.5" />}
                             etiqueta="Fecha de registro"
