@@ -1,7 +1,7 @@
 import HeadingSmall from '@/components/heading-small';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,23 +12,17 @@ import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     Calendar,
-    CheckCircle2,
-    Clock,
     Download,
     FileSpreadsheet,
     Filter,
-    HeartHandshake,
-    ListChecks,
     Plus,
     QrCode,
     Search,
     Shield,
     Sparkles,
-    Star,
     Trash2,
     Upload,
     UserCheck,
-    Users,
     X,
 } from 'lucide-react';
 import { useRef, useState } from 'react';
@@ -336,8 +330,7 @@ export default function CriteriosPlanPadrinoIndex({
             <div className="flex h-full flex-1 flex-col gap-6 rounded-xl p-4 md:p-6">
                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <HeadingSmall
-                        title="Plan Padrino — Criterios y Nivel de Autonomía"
-                        description="Visualización del personal operativo de la empresa, antigüedad en la empresa y gestión del Nivel de Autonomía cruzado con QR Safety."
+                        title="Criterios y Nivel de Autonomía"
                     />
 
                     {canManage && (
@@ -476,112 +469,6 @@ export default function CriteriosPlanPadrinoIndex({
                             )}
                         </div>
                     )}
-                </div>
-
-                {/* Navegación por pestañas del submódulo */}
-                <div className="flex items-center gap-2 border-b pb-2">
-                    <Link
-                        href="/modules/gente/plan-padrinos"
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg text-muted-foreground hover:bg-muted transition-colors"
-                    >
-                        <HeartHandshake className="h-4 w-4" />
-                        Seguimiento de Pruebas (7, 30, 90 días)
-                    </Link>
-                    <Link
-                        href="/modules/gente/plan-padrinos/criterios"
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg bg-primary text-primary-foreground shadow-xs"
-                    >
-                        <ListChecks className="h-4 w-4" />
-                        Criterios y Nivel de Autonomía
-                    </Link>
-                    <Link
-                        href="/modules/gente/plan-padrinos/padrinos"
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg text-muted-foreground hover:bg-muted transition-colors"
-                    >
-                        <Star className="h-4 w-4" />
-                        Padrinos
-                    </Link>
-                    <Link
-                        href="/modules/gente/plan-padrinos/apadrinados"
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg text-muted-foreground hover:bg-muted transition-colors"
-                    >
-                        <Users className="h-4 w-4" />
-                        Apadrinados
-                    </Link>
-                    <Link
-                        href="/modules/gente/plan-padrinos/parejas"
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg text-muted-foreground hover:bg-muted transition-colors"
-                    >
-                        <HeartHandshake className="h-4 w-4" />
-                        Parejas Padrino - Apadrinado
-                    </Link>
-                </div>
-
-                {/* Tarjetas de Resumen Superior */}
-                <div className="grid gap-4 md:grid-cols-4">
-                    {/* Card Total Operativos */}
-                    <Card className="border-l-4 border-l-blue-500 shadow-sm transition-all hover:shadow">
-                        <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-semibold text-blue-700 dark:text-blue-400">
-                                Personal Operativo
-                            </CardTitle>
-                            <Users className="h-5 w-5 text-blue-500" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-3xl font-extrabold text-blue-600 dark:text-blue-300">
-                                {metrics.total_operativos}
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-1">colaboradores activos área Operativa</p>
-                        </CardContent>
-                    </Card>
-
-                    {/* Card Evaluados Excel */}
-                    <Card className="border-l-4 border-l-purple-500 shadow-sm transition-all hover:shadow">
-                        <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-semibold text-purple-700 dark:text-purple-400">
-                                Evaluados por Excel
-                            </CardTitle>
-                            <FileSpreadsheet className="h-5 w-5 text-purple-500" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-3xl font-extrabold text-purple-600 dark:text-purple-300">
-                                {metrics.total_evaluados_excel}
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-1">cruzados por QR Safety</p>
-                        </CardContent>
-                    </Card>
-
-                    {/* Card Autónomos / Alto Nivel */}
-                    <Card className="border-l-4 border-l-emerald-500 shadow-sm transition-all hover:shadow">
-                        <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
-                                Nivel Alto / Autónomo
-                            </CardTitle>
-                            <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-3xl font-extrabold text-emerald-600 dark:text-emerald-300">
-                                {metrics.autonomos}
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-1">desempeño autónomo consolidado</p>
-                        </CardContent>
-                    </Card>
-
-                    {/* Card En Desarrollo */}
-                    <Card className="border-l-4 border-l-amber-500 shadow-sm transition-all hover:shadow">
-                        <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-semibold text-amber-700 dark:text-amber-400">
-                                En Acompañamiento
-                            </CardTitle>
-                            <Clock className="h-5 w-5 text-amber-500" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-3xl font-extrabold text-amber-600 dark:text-amber-300">
-                                {metrics.en_desarrollo}
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-1">etapas iniciales o supervisión cercana</p>
-                        </CardContent>
-                    </Card>
                 </div>
 
                 {/* Filtros y Búsqueda */}

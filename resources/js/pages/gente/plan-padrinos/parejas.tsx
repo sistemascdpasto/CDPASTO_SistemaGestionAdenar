@@ -18,7 +18,6 @@ import {
     HeartHandshake,
     HeartHandshake as ParejasIcon,
     ImageIcon,
-    ListChecks,
     Search,
     Sparkles,
     Star,
@@ -432,48 +431,8 @@ export default function ParejasIndex({ padrinos, apadrinados, metrics, filters }
 
             <div className="flex h-full flex-1 flex-col gap-6 rounded-xl p-4 md:p-6">
                 <HeadingSmall
-                    title="Catálogo de Parejas (Padrinos y Apadrinados)"
-                    description="Parejas constituidas actualmente entre Padrinos Guía y colaboradores Apadrinados. Haz clic en una pareja para desplegar sus evidencias."
+                    title="Catálogo (Padrinos y Apadrinados)"
                 />
-
-                {/* Pestañas del submódulo */}
-                <div className="flex items-center gap-2 border-b pb-2 flex-wrap">
-                    <Link
-                        href="/modules/gente/plan-padrinos"
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg text-muted-foreground hover:bg-muted transition-colors"
-                    >
-                        <HeartHandshake className="h-4 w-4" />
-                        Seguimiento de Pruebas
-                    </Link>
-                    <Link
-                        href="/modules/gente/plan-padrinos/criterios"
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg text-muted-foreground hover:bg-muted transition-colors"
-                    >
-                        <ListChecks className="h-4 w-4" />
-                        Criterios y Nivel de Autonomía
-                    </Link>
-                    <Link
-                        href="/modules/gente/plan-padrinos/padrinos"
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg text-muted-foreground hover:bg-muted transition-colors"
-                    >
-                        <Star className="h-4 w-4" />
-                        Padrinos
-                    </Link>
-                    <Link
-                        href="/modules/gente/plan-padrinos/apadrinados"
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg text-muted-foreground hover:bg-muted transition-colors"
-                    >
-                        <Users className="h-4 w-4" />
-                        Apadrinados
-                    </Link>
-                    <Link
-                        href="/modules/gente/plan-padrinos/parejas"
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg bg-primary text-primary-foreground shadow-xs"
-                    >
-                        <ParejasIcon className="h-4 w-4" />
-                        Parejas Padrino - Apadrinado
-                    </Link>
-                </div>
 
                 {/* Resumen Métricas */}
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

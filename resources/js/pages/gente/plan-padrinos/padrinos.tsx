@@ -1,20 +1,16 @@
 import HeadingSmall from '@/components/heading-small';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem, type SharedData } from '@/types';
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
+import { ApadrinadoCard } from './apadrinado-card';
 import {
     ArrowLeft,
-    Calendar,
     Check,
     ChevronRight,
-    HeartHandshake,
     Lightbulb,
-    ListChecks,
-    Mail,
     Phone,
     Plus,
     Search,
@@ -54,6 +50,8 @@ interface ApadrinadoSummary {
     cargo: string;
     imagen: string | null;
     fecha_ingreso: string;
+    antiguedad_texto?: string;
+    celular?: string | null;
     padrino_id: number | null;
 }
 
@@ -116,8 +114,8 @@ function MiniCard({
                 <path d="M0,300 Q150,250 300,320 L300,400 L0,400 Z" fill="#dcfce7" opacity="0.6" />
             </svg>
 
-            {/* Foto grande — 70% superior */}
-            <div className="relative h-[68%] overflow-hidden">
+            {/* Foto grande — 58% superior */}
+            <div className="relative h-[58%] overflow-hidden">
                 {padrino.imagen ? (
                     <img
                         src={`/storage/${padrino.imagen}`}
@@ -131,7 +129,7 @@ function MiniCard({
                     </div>
                 )}
                 {/* Onda verde sobre la foto */}
-                <svg className="absolute bottom-0 left-0 w-full pointer-events-none" viewBox="0 0 300 40" preserveAspectRatio="none" style={{ height: 40 }}>
+                <svg className="absolute bottom-0 left-0 w-full pointer-events-none" viewBox="0 0 300 40" preserveAspectRatio="none" style={{ height: 30 }}>
                     <path d="M0,20 Q75,0 150,20 Q225,40 300,20 L300,40 L0,40 Z" fill="white" />
                 </svg>
                 {/* Badge */}
@@ -140,11 +138,17 @@ function MiniCard({
                 </span>
             </div>
 
-            {/* Datos — 32% inferior */}
-            <div className="relative flex flex-col items-center justify-center px-3 pb-3 pt-1 text-center gap-0.5">
-                <p className="text-sm font-black text-green-500 leading-tight">{nombre1}</p>
-                <p className="text-sm font-black text-green-700 leading-tight">{nombre2}</p>
-                <p className="text-[10px] text-gray-500 mt-0.5 line-clamp-1">{padrino.cargo}</p>
+            {/* Datos — 42% inferior */}
+            <div className="relative flex flex-col items-center justify-center px-2 pb-2.5 pt-0.5 text-center gap-0.5 min-w-0">
+                <p className="text-sm font-black text-green-500 leading-tight truncate w-full">{nombre1}</p>
+                <p className="text-sm font-black text-green-700 leading-tight truncate w-full">{nombre2}</p>
+                <p className="text-[10px] text-gray-500 mt-0.5 line-clamp-1 w-full">{padrino.cargo}</p>
+                <div className="mt-1 flex flex-col items-center gap-0.5 w-full text-[10px] text-gray-600">
+                    <div className="flex items-center justify-center gap-1 w-full min-w-0">
+                        <Phone className="h-3 w-3 shrink-0 text-emerald-600" />
+                        <span className="truncate font-medium">{padrino.celular || '—'}</span>
+                    </div>
+                </div>
             </div>
         </div>
     );
@@ -237,8 +241,8 @@ function ApadrinadoMiniCard({
 // ─── Helpers de diseño ───────────────────────────────────────────────────────
 // Lienzo de referencia 1127 x 713 px. Todo se escala con unidades de contenedor
 // (cqw), por lo que la tarjeta se ve igual a cualquier ancho del modal.
-const W = 1127;
-const H = 713;
+const W = 800;
+const H = 460;
 const cq = (px: number) => `${((px / W) * 100).toFixed(3)}cqw`;
 const at = (x: number, y: number, w?: number): CSSProperties => ({
     position: 'absolute',
@@ -254,12 +258,7 @@ const INK = '#052e16';
 const GREEN = '#1e9a3b';
 const FONTS = `@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Poppins:wght@400;500;600;800&display=swap');`;
 
-const PILARES = [
-    { Icon: Users, texto: 'Acompaño' },
-    { Icon: Lightbulb, texto: 'Comparto conocimiento' },
-    { Icon: TrendingUp, texto: 'Impulso talento' },
-    { Icon: Star, texto: 'Construimos grandes resultados' },
-];
+
 
 // ─── Tarjeta corporativa modal ───────────────────────────────────────────────
 function PadrinoCard({ padrino, canManage }: { padrino: Padrino; canManage: boolean }) {
@@ -269,7 +268,7 @@ function PadrinoCard({ padrino, canManage }: { padrino: Padrino; canManage: bool
 
     // Si el nombre es largo, se reduce la letra para no invadir la columna derecha
     const masLargo = Math.max(primerNombre.length, apellido.length, 1);
-    const nameSize = Math.max(4, Math.min(68, (68 * 7.5) / masLargo));
+    const nameSize = Math.max(4, Math.min(52, (52 * 7.5) / masLargo));
 
     const [mensaje, setMensaje] = useState(padrino.mensaje_padrino ?? '');
     const [editando, setEditando] = useState(false);
@@ -295,8 +294,7 @@ function PadrinoCard({ padrino, canManage }: { padrino: Padrino; canManage: bool
     };
 
     const contactos = [
-        { Icon: Mail,  texto: padrino.correo   || '—' },
-        { Icon: Phone, texto: padrino.celular_1 || '—' },
+        { texto: padrino.celular || '—' },
     ];
 
     const lineasMensaje = mensaje.trim().split('\n').filter(Boolean);
@@ -359,7 +357,7 @@ function PadrinoCard({ padrino, canManage }: { padrino: Padrino; canManage: bool
             </div>
 
             {/* ───────────── Ola inferior izquierda + slogan ───────────── */}
-            <div className="pointer-events-none absolute bottom-0 left-0 h-[33%] w-[29%]">
+            <div className="pointer-events-none absolute bottom-0 left-0 h-[43%] w-[49%]">
                 <svg viewBox="0 0 300 200" preserveAspectRatio="none" className="absolute inset-0 h-full w-full" aria-hidden>
                     <defs>
                         <linearGradient id="pc-lime" x1="0" y1="0" x2="1" y2="1">
@@ -377,28 +375,28 @@ function PadrinoCard({ padrino, canManage }: { padrino: Padrino; canManage: bool
 
                 <div
                     className="absolute origin-bottom-left text-white"
-                    style={{ left: cq(26), bottom: cq(34), transform: 'rotate(-10deg)' }}
+                    style={{ left: cq(60), bottom: cq(20), transform: 'rotate(-09deg)' }}
                 >
-                    <p style={{ fontFamily: HAND, fontWeight: 600, fontSize: cq(34), lineHeight: 1.05 }}>
+                    <p style={{ fontFamily: HAND, fontWeight: 600, fontSize: cq(25), lineHeight: 1.0 }}>
                         Juntos
                         <br />
                         hacemos
                         <br />
                         la diferencia
                     </p>
-                    <svg viewBox="0 0 120 12" style={{ width: cq(130), marginTop: cq(4) }} aria-hidden>
+                    <svg viewBox="0 0 120 12" style={{ width: cq(100), marginTop: cq(3) }} aria-hidden>
                         <path d="M2 9 C 30 3, 80 2, 118 4" stroke="white" strokeWidth="3" strokeLinecap="round" fill="none" />
                     </svg>
                 </div>
             </div>
 
            
-            {/* ───────────── Nombre y cargo ───────────── */}
-            <div style={at(510, 138)}>
+            {/* ───────────── Nombre, cargo y teléfono ───────────── */}
+            <div style={at(355, 44)}>
                 <h2
                     style={{
                         fontSize: cq(nameSize),
-                        fontWeight: 700,
+                        fontWeight: 600,
                         lineHeight: 0.78,
                         letterSpacing: '-0.05em',
                         whiteSpace: 'nowrap',
@@ -407,32 +405,23 @@ function PadrinoCard({ padrino, canManage }: { padrino: Padrino; canManage: bool
                     <span style={{ display: 'block', color: '#06281a' }}>{primerNombre}</span>
                     {apellido && <span style={{ display: 'block', color: GREEN }}>{apellido}</span>}
                 </h2>
-                <div style={{ height: cq(4), width: cq(48), background: GREEN, marginTop: cq(2) }} />
-                <p style={{ fontSize: cq(21), fontWeight: 500, color: '#0f3b26', marginTop: cq(14), whiteSpace: 'nowrap' }}>
+                <div style={{ height: cq(3), width: cq(38), background: GREEN, marginTop: cq(2) }} />
+                <p style={{ fontSize: cq(14), fontWeight: 500, color: '#0f3b26', marginTop: cq(9), whiteSpace: 'nowrap' }}>
                     {padrino.cargo}
                 </p>
-            </div>
-
-            {/* ───────────── Contacto ───────────── */}
-            <ul style={{ ...at(513, 363), display: 'flex', flexDirection: 'column', gap: cq(7) }}>
-                {contactos.map(({ Icon, texto }, idx) => (
-                    <li key={idx} style={{ display: 'flex', alignItems: 'center', gap: cq(18), height: cq(40) }}>
-                        <span
-                            className="flex shrink-0 items-center justify-center rounded-full text-white"
-                            style={{ ...ic(40), background: '#14532d' }}
-                        >
-                            <Icon style={ic(19)} strokeWidth={2.2} />
-                        </span>
-                        <span style={{ fontSize: cq(16.5), color: '#14301f', whiteSpace: 'nowrap' }}>{texto}</span>
-                    </li>
+                {/* Teléfono debajo del cargo — solo número, sin ícono */}
+                {contactos.map(({ texto }, idx) => (
+                    <p key={idx} style={{ fontSize: cq(12), color: '#14301f', marginTop: cq(6), whiteSpace: 'nowrap' }}>
+                        {texto}
+                    </p>
                 ))}
-            </ul>
+            </div>
 
             {/* ───────────── Frase + pincel (mensaje editable) ───────────── */}
             <div
                 style={{
-                    ...at(826, editando ? 120 : 210, 280),
-                    transform: editando ? 'none' : 'rotate(-8deg)',
+                    ...at(355, editando ? 148 : 158, 390),
+                    transform: editando ? 'none' : 'rotate(-3deg)',
                     transformOrigin: 'left top',
                 }}
             >
@@ -458,10 +447,10 @@ function PadrinoCard({ padrino, canManage }: { padrino: Padrino; canManage: bool
                             style={{
                                 fontFamily: HAND,
                                 fontWeight: 700,
-                                fontSize: cq(24),
+                                fontSize: cq(18),
                                 lineHeight: 1.1,
-                                padding: cq(10),
-                                borderRadius: cq(10),
+                                padding: cq(8),
+                                borderRadius: cq(8),
                             }}
                         />
                         <div style={{ display: 'flex', gap: cq(14), fontSize: cq(13) }}>
@@ -489,10 +478,8 @@ function PadrinoCard({ padrino, canManage }: { padrino: Padrino; canManage: bool
                     <>
                         <div
                             className={`relative block w-full ${canManage ? 'cursor-pointer' : ''}`}
-style={{
-        marginTop: cq(40),
-        transform: `translateX(-${cq(95)})`,
-    }}                            onClick={() => canManage && setEditando(true)}
+                            style={{ marginTop: cq(20) }}
+                            onClick={() => canManage && setEditando(true)}
                             title={canManage ? 'Clic para editar' : undefined}
                         >
                             <svg viewBox="5 5 270 130" preserveAspectRatio="none" className="absolute inset-2 h-full w-full" aria-hidden>
@@ -509,7 +496,7 @@ style={{
                             </svg>
                             <div
                                 className="relative text-center text-white"
-                                style={{ padding: `${cq(42)} ${cq(5)} ${cq(34)}` }}
+                                style={{ padding: `${cq(30)} ${cq(5)} ${cq(24)}` }}
                             >
                                 {lineasMensaje.length > 0 ? (
                                     lineasMensaje.map((l, i, arr) => (
@@ -518,7 +505,7 @@ style={{
                                             style={{
                                                 fontFamily: HAND,
                                                 fontWeight: 80,
-                                                fontSize: cq(28),
+                                                fontSize: cq(21),
                                                 lineHeight: 1.0,
                                                 textTransform: 'uppercase',
                                                 color: i === arr.length - 1 ? '#d9f99d' : '#ffffff',
@@ -556,73 +543,53 @@ style={{
             
 
             {/* ───────────── Mi experiencia ───────────── */}
-            <div style={{ ...at(878, 499), display: 'flex', alignItems: 'center', gap: cq(15) }}>
-                <Sprout style={ic(46)} color="#15803d" strokeWidth={1.8} />
-                <div style={{ transform: 'rotate(-6deg)' }}>
-                    <p style={{ fontFamily: HAND, fontWeight: 900, fontSize: cq(25), lineHeight: 1, color: '#14532d' }}>
-                        Mi experiencia
-                        <br />
-                        también es
-                        <br />
-                        un impulso.
-                    </p>
-                    
-                </div>
-            </div>
-
-            {/* ───────────── Pilares ───────────── */}
-            <ul style={{ ...at(365, 574, 445), display: 'flex', alignItems: 'stretch', height: cq(92) }}>
-                {PILARES.map(({ Icon, texto }, i) => (
-                    <li
-                        key={texto}
-                        className="flex flex-1 flex-col items-center justify-center text-center"
-                        style={{
-                            borderLeft: i ? '1px solid #86efac' : undefined,
-                            padding: `0 ${cq(6)}`,
-                            gap: cq(8),
-                        }}
-                    >
-                        <Icon style={ic(34)} color="#15803d" strokeWidth={1.6} />
-                        <span style={{ fontSize: cq(12.5), lineHeight: 1.2, color: '#1f2937' }}>{texto}</span>
-                    </li>
-                ))}
-            </ul>
+          <div style={{ ...at(610, 370), display: 'flex', alignItems: 'center', gap: cq(10) }}>
+    <Sprout style={ic(30)} color="#15803d" strokeWidth={1.8} />
+    <div style={{ transform: 'rotate(-6deg)' }}>
+        <p style={{ fontFamily: HAND, fontWeight: 300, fontSize: cq(23), lineHeight: 1, color: '#14532d' }}>
+            Mi experiencia
+            <br />
+            también es
+            <br />
+            un impulso.
+        </p>
+    </div>
+</div>
+|
 
             {/* ───────────── CTA ───────────── */}
-            <button
-                type="button"
-                className="absolute flex items-center text-left text-white transition-transform hover:scale-[1.03]"
-                style={{
-                    ...at(843, 588, 268),
-                    height: `${((84 / H) * 100).toFixed(3)}%`,
-                    borderRadius: 9999,
-                    padding: `0 ${cq(20)}`,
-                    gap: cq(14),
-                    background: 'linear-gradient(135deg,#15803d 0%,#166534 60%,#14532d 100%)',
-                    border: `${cq(2.5)} solid #a3e635`,
-                    boxShadow: '0 10px 24px rgba(21,128,61,.35)',
-                }}
-            >
-                <Users style={ic(38)} strokeWidth={1.7} />
-                <span style={{ lineHeight: 1.2 }}>
-                    <span style={{ display: 'block', fontSize: cq(16), fontWeight: 600 }}>Hoy soy padrino.</span>
-                    <span style={{ display: 'block', fontSize: cq(11.5), opacity: 0.92 }}>
-                        mañana seré parte de la historia, 
-                        <br />
-                        que "ellos" construirán.
-                    </span>
-                </span>
-                <svg viewBox="0 0 50 14" style={{ position: 'absolute', right: cq(20), bottom: cq(10), width: cq(46) }} aria-hidden>
-                    <path
-                        d="M2 10 C 16 2, 32 2, 47 7 M41 3 L47 7 L41 11"
-                        stroke="white"
-                        strokeWidth="1.6"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        fill="none"
-                    />
-                </svg>
-            </button>
+
+<button
+    type="button"
+    className="absolute flex items-center justify-center text-left text-white transition-transform hover:scale-[1.03]"
+    style={{
+        ...at(570, 372, 215),
+        left: '50%',
+        transform: 'translateX(-50%)',
+        height: `${((58 / H) * 100).toFixed(3)}%`,
+        padding: `0 ${cq(14)}`,
+        gap: cq(7),
+        borderRadius: 9999,
+        background: 'linear-gradient(135deg,#15803d,#166534 60%,#14532d)',
+        border: `${cq(2)} solid #a3e635`,
+        boxShadow: '0 8px 20px rgba(21,128,61,.35)',
+    }}
+>
+    <Users style={ic(26)} strokeWidth={1.9} />
+    <span style={{ lineHeight: 1.2 }}>
+        <strong style={{ display: 'block', fontSize: cq(13) }}>
+            Hoy soy padrino.
+        </strong>
+        <span style={{ display: 'block', fontSize: cq(8.5), opacity: 0.92 }}>
+            mañana seré parte de la historia,
+            <br />que "ellos" construirán.
+        </span>
+    </span>
+    <svg viewBox="0 0 50 14" style={{ position: 'absolute', right: cq(14), bottom: cq(7), width: cq(34) }} aria-hidden>
+        <path d="M2 10 C16 2,32 2,47 7 M41 3 L47 7 L41 11" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    </svg>
+</button>
+
         </div>
     );
 }
@@ -642,6 +609,7 @@ export default function PadrinosIndex({ padrinos, apadrinadosList = [] }: Props)
     const [selectedPadrinoId, setSelectedPadrinoId] = useState<number | null>(null);
     const [selectedApadrinadoId, setSelectedApadrinadoId] = useState<number | null>(null);
     const [searchApadrinado, setSearchApadrinado] = useState('');
+    const [searchPadrino, setSearchPadrino] = useState('');
     const [savingSeleccion, setSavingSeleccion] = useState(false);
 
     const handleIniciarSeleccion = () => {
@@ -683,6 +651,17 @@ export default function PadrinosIndex({ padrinos, apadrinadosList = [] }: Props)
 
     const padrinoSeleccionadoObj = padrinos.find((p) => p.id === selectedPadrinoId);
 
+    // Filtrado local del grid de padrinos
+    const padrinosFiltrados = padrinos.filter((p) => {
+        if (!searchPadrino.trim()) return true;
+        const q = searchPadrino.toLowerCase();
+        return (
+            p.nombre_completo.toLowerCase().includes(q) ||
+            p.cargo.toLowerCase().includes(q) ||
+            p.cedula.includes(q)
+        );
+    });
+
     // Solo mostrar colaboradores SIN padrino asignado (padrino_id === null)
     const apadrinadosFiltrados = apadrinadosList
         .filter((a) => a.padrino_id === null)
@@ -704,9 +683,18 @@ export default function PadrinosIndex({ padrinos, apadrinadosList = [] }: Props)
                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <HeadingSmall
                         title="Nuestros Padrinos"
-                        description="Colaboradores operativos con rol de Padrino dentro del Plan Padrino."
                     />
-
+<div className="flex flex-wrap items-center gap-3">
+                    <div className="relative w-full sm:w-72">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                            placeholder="Buscar por nombre, cédula o cargo..."
+                            value={searchPadrino}
+                            onChange={(e) => setSearchPadrino(e.target.value)}
+                            className="pl-9 text-sm"
+                        />
+                    </div>
+                </div>
                     {canManage && !modoSeleccion && (
                         <Button
                             onClick={handleIniciarSeleccion}
@@ -814,29 +802,6 @@ export default function PadrinosIndex({ padrinos, apadrinadosList = [] }: Props)
                 )}
 
                 {/* Pestañas */}
-                <div className="flex items-center gap-2 border-b pb-2">
-                    <Link href="/modules/gente/plan-padrinos"
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg text-muted-foreground hover:bg-muted transition-colors">
-                        <HeartHandshake className="h-4 w-4" /> Seguimiento de Pruebas (7, 30, 90 días)
-                    </Link>
-                    <Link href="/modules/gente/plan-padrinos/criterios"
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg text-muted-foreground hover:bg-muted transition-colors">
-                        <ListChecks className="h-4 w-4" /> Criterios y Nivel de Autonomía
-                    </Link>
-                    <Link href="/modules/gente/plan-padrinos/padrinos"
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg bg-primary text-primary-foreground shadow-xs">
-                        <Star className="h-4 w-4" /> Padrinos
-                    </Link>
-                    <Link href="/modules/gente/plan-padrinos/apadrinados"
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg text-muted-foreground hover:bg-muted transition-colors">
-                        <Users className="h-4 w-4" /> Apadrinados
-                    </Link>
-                    <Link href="/modules/gente/plan-padrinos/parejas"
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg text-muted-foreground hover:bg-muted transition-colors">
-                        <HeartHandshake className="h-4 w-4" /> Parejas Padrino - Apadrinado
-                    </Link>
-                </div>
-
                 {/* PASO 1: GRID DE PADRINOS */}
                 {(!modoSeleccion || pasoSeleccion === 1) && (
                     <div className="flex flex-col gap-3">
@@ -846,15 +811,17 @@ export default function PadrinosIndex({ padrinos, apadrinadosList = [] }: Props)
                                 Haz clic en el CÍRCULO CON CHECK para elegir el Padrino Guía o en la TARJETA para inspeccionar sus datos:
                             </span>
                         )}
-                        {padrinos.length === 0 ? (
+                        {padrinosFiltrados.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-24 gap-4 text-muted-foreground">
                                 <Star className="h-16 w-16 opacity-20 text-green-500" />
-                                <p className="text-sm font-medium">No hay colaboradores con rol de Padrino aún.</p>
-                                <p className="text-xs">Asigna el rol desde la vista de Criterios.</p>
+                                {searchPadrino.trim()
+                                    ? <p className="text-sm font-medium">No hay padrinos que coincidan con la búsqueda.</p>
+                                    : <><p className="text-sm font-medium">No hay colaboradores con rol de Padrino aún.</p><p className="text-xs">Asigna el rol desde la vista de Criterios.</p></>
+                                }
                             </div>
                         ) : (
                             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-                                {padrinos.map((p) => (
+                                {padrinosFiltrados.map((p) => (
                                     <MiniCard
                                         key={p.id}
                                         padrino={p}
@@ -913,7 +880,7 @@ export default function PadrinosIndex({ padrinos, apadrinadosList = [] }: Props)
 
             {/* MODAL PADRINO CARNET */}
             <Dialog open={!!selectedPadrinoModal} onOpenChange={(open) => { if (!open) setSelectedPadrinoModal(null); }}>
-                <DialogContent className="w-[96vw] max-w-5xl gap-0 overflow-hidden rounded-2xl border-0 bg-transparent p-0 shadow-2xl sm:max-w-5xl sm:rounded-2xl">
+                <DialogContent className="w-[60vw] max-w-3xl gap-0 overflow-hidden rounded-2xl border-0 bg-transparent p-0 shadow-2xl sm:max-w-3xl sm:rounded-2xl">
                     <DialogTitle className="sr-only">Padrino {selectedPadrinoModal?.nombre_completo}</DialogTitle>
                     <DialogDescription className="sr-only">
                         Tarjeta de presentación del padrino {selectedPadrinoModal?.nombre_completo}
@@ -924,63 +891,11 @@ export default function PadrinosIndex({ padrinos, apadrinadosList = [] }: Props)
 
             {/* MODAL DETALLE APADRINADO */}
             <Dialog open={!!selectedApadrinadoModal} onOpenChange={(open) => { if (!open) setSelectedApadrinadoModal(null); }}>
-                <DialogContent className="sm:max-w-md">
+                <DialogContent className="w-[85vw] max-w-2xl gap-0 overflow-hidden rounded-2xl border-0 bg-transparent p-0 shadow-2xl sm:max-w-2xl sm:rounded-2xl">
+                    <DialogTitle className="sr-only">Apadrinado {selectedApadrinadoModal?.nombre_completo}</DialogTitle>
+                    <DialogDescription className="sr-only">Tarjeta del apadrinado {selectedApadrinadoModal?.nombre_completo}</DialogDescription>
                     {selectedApadrinadoModal && (
-                        <div className="flex flex-col items-center gap-4 py-3 text-center">
-                            {selectedApadrinadoModal.imagen ? (
-                                <img
-                                    src={`/storage/${selectedApadrinadoModal.imagen}`}
-                                    alt={selectedApadrinadoModal.nombre_completo}
-                                    className="h-28 w-28 rounded-full object-cover border-4 border-sky-300 shadow-md"
-                                />
-                            ) : (
-                                <div className="flex h-28 w-28 items-center justify-center rounded-full bg-sky-100 text-sky-600 border-4 border-sky-300 shadow-md">
-                                    <UserCheck className="h-12 w-12" />
-                                </div>
-                            )}
-
-                            <div className="flex flex-col items-center gap-1">
-                                <h3 className="text-lg font-bold text-foreground">
-                                    {selectedApadrinadoModal.nombre_completo}
-                                </h3>
-                                <Badge variant="outline" className="text-xs font-semibold">
-                                    {selectedApadrinadoModal.cargo}
-                                </Badge>
-                                <span className="text-xs font-mono text-muted-foreground mt-1">
-                                    Cédula: {selectedApadrinadoModal.cedula}
-                                </span>
-                            </div>
-
-                            <div className="w-full bg-sky-500/10 rounded-xl p-3 text-xs flex flex-col gap-1.5 border border-sky-200">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-muted-foreground flex items-center gap-1">
-                                        <Calendar className="h-3.5 w-3.5 text-sky-600" />
-                                        Fecha de Ingreso:
-                                    </span>
-                                    <span className="font-bold text-foreground">
-                                        {selectedApadrinadoModal.fecha_ingreso}
-                                    </span>
-                                </div>
-                            </div>
-
-                            <div className="flex items-center justify-between w-full pt-3 border-t">
-                                <Button variant="outline" size="sm" onClick={() => setSelectedApadrinadoModal(null)}>
-                                    Cerrar
-                                </Button>
-                                {modoSeleccion && (
-                                    <Button
-                                        onClick={() => {
-                                            setSelectedApadrinadoId(selectedApadrinadoModal.id);
-                                            setSelectedApadrinadoModal(null);
-                                        }}
-                                        className="bg-sky-600 hover:bg-sky-700 text-white text-xs gap-1.5 font-bold"
-                                    >
-                                        <Check className="h-4 w-4" />
-                                        Seleccionar este Apadrinado
-                                    </Button>
-                                )}
-                            </div>
-                        </div>
+                        <ApadrinadoCard apadrinado={selectedApadrinadoModal} />
                     )}
                 </DialogContent>
             </Dialog>

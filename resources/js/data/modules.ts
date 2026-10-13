@@ -29,6 +29,7 @@ import {
     ShieldCheck,
     Shirt,
     Stethoscope,
+    Star,
     TestTube,
     Trophy,
     Truck,
@@ -210,6 +211,9 @@ export const modules: ModuleDef[] = [
                 submodules: [
                     { title: 'Seguimiento Pruebas', href: '/modules/gente/plan-padrinos', icon: HeartHandshake },
                     { title: 'Criterios', href: '/modules/gente/plan-padrinos/criterios', icon: ListChecks },
+                    { title: 'Padrinos', href: '/modules/gente/plan-padrinos/padrinos', icon: Star },
+                    { title: 'Apadrinados', href: '/modules/gente/plan-padrinos/apadrinados', icon: Users },
+                    { title: 'Parejas', href: '/modules/gente/plan-padrinos/parejas', icon: HeartHandshake },
                 ],
             },
             { title: 'Plan Premiación', slug: 'plan-premiacion', icon: Trophy },

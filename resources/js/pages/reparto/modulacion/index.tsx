@@ -11,7 +11,10 @@ import { Head, Link, router } from '@inertiajs/react';
 import {
     ArrowLeft,
     Calendar,
+    CheckCircle2,
     CheckSquare,
+    ChevronDown,
+    ChevronUp,
     FileSpreadsheet,
     FileText,
     Filter,
@@ -22,6 +25,7 @@ import {
     Save,
     Search,
     Trash2,
+    UserX,
     Users,
     X,
 } from 'lucide-react';
@@ -806,6 +810,9 @@ export default function ModulacionIndex({
     const [showDespachadorDropdown, setShowDespachadorDropdown] = useState(false);
     const [placaSearch, setPlacaSearch] = useState('');
     const [showPlacaDropdown, setShowPlacaDropdown] = useState(false);
+
+    // Estado de visibilidad para la Card de Personal Pendiente por Programar
+    const [isPendientesCardOpen, setIsPendientesCardOpen] = useState(true);
 
     // Flag para saber si la consulta de fecha fue iniciada manualmente por el usuario al crear/cambiar fecha
     const userInitiatedDateChange = React.useRef(false);
@@ -1823,20 +1830,18 @@ export default function ModulacionIndex({
                 return;
             }
 
-            // Solo mostrar colaboradores libres no seleccionados cuando el usuario está filtrando
-            if (isFiltering) {
-                const matchesCargo = cargoFilter === 'todos' || col.cargo === cargoFilter;
-                const q = searchQuery.toLowerCase().trim();
-                const matchesSearch =
-                    !q ||
-                    (col.nombre_completo && col.nombre_completo.toLowerCase().includes(q)) ||
-                    (col.cedula && col.cedula.includes(q));
+            // Mostrar colaboradores libres que coincidan con el filtro de búsqueda/cargo
+            const matchesCargo = cargoFilter === 'todos' || col.cargo === cargoFilter;
+            const q = searchQuery.toLowerCase().trim();
+            const matchesSearch =
+                !q ||
+                (col.nombre_completo && col.nombre_completo.toLowerCase().includes(q)) ||
+                (col.cedula && col.cedula.includes(q));
 
-                if (matchesCargo && matchesSearch) {
-                    const isAssignedElsewhere = isCollaboratorAlreadyAssigned(col);
-                    if (!isAssignedElsewhere) {
-                        unselected.push(col);
-                    }
+            if (matchesCargo && matchesSearch) {
+                const isAssignedElsewhere = isCollaboratorAlreadyAssigned(col);
+                if (!isAssignedElsewhere) {
+                    unselected.push(col);
                 }
             }
         });
@@ -1864,17 +1869,89 @@ export default function ModulacionIndex({
         });
 
         return { selectedColaboradores: selected, unselectedColaboradores: unselected };
-    }, [colaboradores, cargoFilter, searchQuery, currentRoute.tripulacion, isCollaboratorAlreadyAssigned, isFiltering]);
+    }, [colaboradores, cargoFilter, searchQuery, currentRoute.tripulacion, isCollaboratorAlreadyAssigned]);
 
     const allChecklistColaboradores = [...selectedColaboradores, ...unselectedColaboradores];
-    const cargosOperativos = Array.from(
-        new Set(
-            colaboradores
-                .filter((col) => esPersonalOperativoDeRuta(col.area))
-                .map((col) => col.cargo)
-                .filter(Boolean),
-        ),
-    ).sort((a, b) => a.localeCompare(b));
+
+    const baseColaboradoresOperativos = useMemo(() => {
+        const op = colaboradores.filter((col) => esPersonalOperativoDeRuta(col.area));
+        return op.length > 0 ? op : colaboradores;
+    }, [colaboradores]);
+
+    const cargosOperativos = useMemo(() => {
+        return Array.from(
+            new Set(
+                baseColaboradoresOperativos
+                    .map((col) => col.cargo)
+                    .filter(Boolean),
+            ),
+        ).sort((a, b) => a.localeCompare(b));
+    }, [baseColaboradoresOperativos]);
+
+    // ─── CÁLCULO DE PERSONAL PENDIENTE POR PROGRAMAR A RUTAS ─────────────────
+    const personalFaltantePorProgramar = useMemo(() => {
+        return baseColaboradoresOperativos.map((col) => {
+            const colIdStr = String(col.id).trim();
+            const colCedStr = col.cedula ? String(col.cedula).trim() : '';
+
+            // ¿Está en alguna otra ruta ya guardada en la tabla?
+            const enOtraRuta =
+                assignedCollaboratorsSet.has(`id:${colIdStr}`) ||
+                (colCedStr !== '' && assignedCollaboratorsSet.has(`cedula:${colCedStr}`));
+
+            // ¿Está en la tripulación de la ruta actualmente en el formulario?
+            const enRutaActual = currentRoute.tripulacion.some(
+                (m) =>
+                    (m.colaborador_id && String(m.colaborador_id).trim() === colIdStr) ||
+                    (m.cedula && colCedStr !== '' && String(m.cedula).trim() === colCedStr)
+            );
+
+            // Novedad registrada en novedadesLocal
+            const nov = novedadesLocal.find(
+                (n) =>
+                    (n.colaborador_id && String(n.colaborador_id).trim() === colIdStr) ||
+                    (n.cedula && colCedStr !== '' && String(n.cedula).trim() === colCedStr)
+            );
+
+            const tiposNovedad: string[] = [];
+            let esBloqueante = false;
+            if (nov) {
+                if (nov.permiso) { tiposNovedad.push('Permiso'); esBloqueante = true; }
+                if (nov.no_asitio) { tiposNovedad.push('No Asistió'); esBloqueante = true; }
+                if (nov.incapacidad) { tiposNovedad.push('Incapacidad'); esBloqueante = true; }
+                if (nov.vacaciones) { tiposNovedad.push('Vacaciones'); esBloqueante = true; }
+                if (tiposNovedad.length === 0 && nov.observaciones) {
+                    tiposNovedad.push('Obs: ' + nov.observaciones);
+                }
+            }
+
+            const tipoNovedadStr = tiposNovedad.join(', ');
+
+            return {
+                ...col,
+                enOtraRuta,
+                enRutaActual,
+                novedad: nov,
+                tipoNovedadStr,
+                esBloqueante,
+                faltaProgramar: !enOtraRuta && !enRutaActual,
+            };
+        });
+    }, [baseColaboradoresOperativos, assignedCollaboratorsSet, currentRoute.tripulacion, novedadesLocal]);
+
+    const personalPendiente = useMemo(() => {
+        return personalFaltantePorProgramar.filter((item) => item.faltaProgramar);
+    }, [personalFaltantePorProgramar]);
+
+    const statsPendientes = useMemo(() => {
+        const total = personalFaltantePorProgramar.length;
+        const programados = personalFaltantePorProgramar.filter((p) => p.enOtraRuta || p.enRutaActual).length;
+        const pendientes = personalFaltantePorProgramar.filter((p) => p.faltaProgramar).length;
+        const disponibles = personalFaltantePorProgramar.filter((p) => p.faltaProgramar && !p.esBloqueante).length;
+        const conNovedad = personalFaltantePorProgramar.filter((p) => p.faltaProgramar && p.esBloqueante).length;
+
+        return { total, programados, pendientes, disponibles, conNovedad };
+    }, [personalFaltantePorProgramar]);
     const placasDisponibles = vehiculos.filter((vehiculo) => {
         const placaUpper = String(vehiculo).toUpperCase();
         if (placaUpper === currentRoute.placa.toUpperCase()) return true;
@@ -2827,7 +2904,7 @@ export default function ModulacionIndex({
                                         <CheckSquare className="size-3.5" style={{ color: ACCENT }} />
                                         {isFiltering
                                             ? `Resultados del filtro (${allChecklistColaboradores.length})`
-                                            : `Colaboradores asignados a la tripulación (${selectedColaboradores.length})`}
+                                            : `Colaboradores disponibles (${unselectedColaboradores.length}) · Seleccionados (${selectedColaboradores.length})`}
                                     </p>
                                     {allChecklistColaboradores.length > 0 ? (
                                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
@@ -2872,14 +2949,113 @@ export default function ModulacionIndex({
                                                 );
                                             })}
                                         </div>
-                                    ) : isFiltering ? (
+                                    ) : (
                                         <p className="py-4 text-center text-xs text-muted-foreground">
-                                            No se encontraron colaboradores libres que coincidan con el filtro.
+                                            {isFiltering
+                                                ? 'No se encontraron colaboradores libres que coincidan con el filtro.'
+                                                : 'No hay colaboradores disponibles para asignar.'}
                                         </p>
-                                    ) : null}
+                                    )}
                                 </div>
                             </div>
                         </div>
+                    </div>
+
+                    {/* ── Card: Personal pendiente por programar a las rutas ── */}
+                    <div className="rounded-xl border border-sidebar-border/70 bg-card p-5 dark:border-sidebar-border shadow-sm space-y-4">
+                        {/* Header con botón para colapsar y métricas */}
+                        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+                            <div className="flex items-center gap-2.5">
+                                <div className="flex size-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                                    <Users className="size-5" />
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="text-sm font-bold text-foreground">
+                                            Personal Pendiente por Programar a las Rutas
+                                        </h3>
+                                        <Badge
+                                            variant="outline"
+                                            className={`font-mono text-xs ${
+                                                statsPendientes.pendientes > 0
+                                                    ? 'border-amber-500/40 text-amber-600 dark:text-amber-400 bg-amber-500/5'
+                                                    : 'border-emerald-500/40 text-emerald-600 dark:text-emerald-400 bg-emerald-500/5'
+                                            }`}
+                                        >
+                                            {statsPendientes.pendientes > 0
+                                                ? `${statsPendientes.pendientes} sin programar`
+                                                : 'Todos programados'}
+                                        </Badge>
+                                    </div>
+                                   
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setIsPendientesCardOpen((v) => !v)}
+                                    className="size-8 p-0"
+                                    title={isPendientesCardOpen ? 'Ocultar personal pendiente' : 'Mostrar personal pendiente'}
+                                >
+                                    {isPendientesCardOpen ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+                                </Button>
+                            </div>
+                        </div>
+
+                        {isPendientesCardOpen && (
+                            <div className="pt-1">
+                                {personalPendiente.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center py-6 text-center text-muted-foreground border border-dashed rounded-lg bg-muted/10">
+                                        <CheckCircle2 className="size-8 text-emerald-500 mb-1" />
+                                        <p className="text-sm font-medium text-foreground">¡Todo el personal operativo ha sido programado!</p>
+                                        <p className="text-xs text-muted-foreground">No quedan colaboradores pendientes por asignar a las rutas de hoy.</p>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 max-h-72 overflow-y-auto pr-1">
+                                        {personalPendiente.map((col) => (
+                                            <div
+                                                key={`pendiente-${col.id ?? col.cedula}`}
+                                                className={`flex flex-col justify-between p-3 rounded-lg border transition-all text-xs ${
+                                                    col.esBloqueante
+                                                        ? 'border-amber-200 bg-amber-50/40 dark:border-amber-900/50 dark:bg-amber-950/20'
+                                                        : 'border-border bg-background hover:border-sidebar-border hover:shadow-xs'
+                                                }`}
+                                            >
+                                                <div className="space-y-1.5">
+                                                    <div className="flex items-start justify-between gap-1.5">
+                                                        <p className="font-semibold text-foreground truncate" title={col.nombre_completo}>
+                                                            {col.nombre_completo}
+                                                        </p>
+                                                        {col.esBloqueante ? (
+                                                            <Badge variant="outline" className="shrink-0 text-[9px] px-1.5 py-0 border-amber-300 bg-amber-100/50 text-amber-800 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                                                                {col.tipoNovedadStr}
+                                                            </Badge>
+                                                        ) : (
+                                                            <Badge variant="outline" className="shrink-0 text-[9px] px-1.5 py-0 border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                                                                Disponible
+                                                            </Badge>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground font-mono">
+                                                        <span>CC: {col.cedula || '—'}</span>
+                                                    </div>
+
+                                                    {col.cargo && (
+                                                        <p className="text-[11px] text-muted-foreground truncate" title={col.cargo}>
+                                                            {col.cargo}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     {/* Card 2: Viajes de la Ruta */}
