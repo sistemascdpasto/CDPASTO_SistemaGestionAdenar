@@ -10,14 +10,12 @@ import {
     ArrowLeft,
     Check,
     ChevronRight,
-    Lightbulb,
     Phone,
     Plus,
     Search,
     Sparkles,
     Sprout,
     Star,
-    TrendingUp,
     UserCheck,
     UserPlus,
     Users,
@@ -684,17 +682,6 @@ export default function PadrinosIndex({ padrinos, apadrinadosList = [] }: Props)
                     <HeadingSmall
                         title="Nuestros Padrinos"
                     />
-<div className="flex flex-wrap items-center gap-3">
-                    <div className="relative w-full sm:w-72">
-                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                            placeholder="Buscar por nombre, cédula o cargo..."
-                            value={searchPadrino}
-                            onChange={(e) => setSearchPadrino(e.target.value)}
-                            className="pl-9 text-sm"
-                        />
-                    </div>
-                </div>
                     {canManage && !modoSeleccion && (
                         <Button
                             onClick={handleIniciarSeleccion}
@@ -704,6 +691,19 @@ export default function PadrinosIndex({ padrinos, apadrinadosList = [] }: Props)
                             Crear Apadrinamiento
                         </Button>
                     )}
+                </div>
+
+                {/* Filtro de búsqueda */}
+                <div className="flex flex-wrap items-center gap-3">
+                    <div className="relative w-full sm:w-72">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                            placeholder="Buscar por nombre, cédula o cargo..."
+                            value={searchPadrino}
+                            onChange={(e) => setSearchPadrino(e.target.value)}
+                            className="pl-9 text-sm"
+                        />
+                    </div>
                 </div>
 
                 {/* BANNER DE MODO SELECCIÓN DIRECTA */}

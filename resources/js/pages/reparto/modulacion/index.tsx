@@ -25,7 +25,6 @@ import {
     Save,
     Search,
     Trash2,
-    UserX,
     Users,
     X,
 } from 'lucide-react';

@@ -2,8 +2,8 @@ import HeadingSmall from '@/components/heading-small';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/app-layout';
-import { type BreadcrumbItem, type SharedData } from '@/types';
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { type BreadcrumbItem } from '@/types';
+import { Head, router } from '@inertiajs/react';
 import {
     Search,
     UserCheck,
@@ -112,9 +112,6 @@ function ApadrinadoMiniCard({ apadrinado, onClick }: { apadrinado: Apadrinado; o
 
 // ─── Página principal ────────────────────────────────────────────────────────
 export default function ApadrinadosIndex({ apadrinados, filters }: Props) {
-    const { auth } = usePage<SharedData>().props;
-    const canManage = auth.isAdmin || auth.roles.includes('Gente');
-
     const [search, setSearch]                       = useState(filters.search || '');
     const [detalleApadrinado, setDetalleApadrinado] = useState<Apadrinado | null>(null);
 
