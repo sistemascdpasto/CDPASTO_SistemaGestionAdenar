@@ -14,6 +14,7 @@ import {
 import { type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import {
+    AlertTriangle,
     BellRing,
     Calendar,
     Clock,
@@ -133,6 +134,7 @@ export function AppSidebar() {
                   { title: 'Condición de Salud', url: '/portal/condicion-salud', icon: HeartPulse, color: '#3F7A22' },
                   { title: 'Encuesta de Morbilidad', url: '/portal/encuesta-morbilidad', icon: Stethoscope, color: '#3F7A22' },
                   { title: 'Mis Capacitaciones', url: '/portal/capacitaciones', icon: GraduationCap, color: '#0D9488' },
+                  { title: 'Mis Incidencias GeoVictoria', url: '/portal/mis-incidencias-geovictoria', icon: AlertTriangle, color: '#D4102A' },
                   { title: 'Alertas', url: '/portal/alertas', icon: BellRing, color: '#3F7A22' },
               ]
             : []),

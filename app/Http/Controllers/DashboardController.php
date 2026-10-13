@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\Role;
 use App\Http\Controllers\Colaborador\PortalController;
 use App\Models\User;
+use App\Services\Colaborador\ColaboradorResumenService;
 use App\Services\Dashboard\DashboardResumenService;
 use App\Services\Seguridad\EvaluacionCalculator;
 use App\Services\Seguridad\IndiceRiesgoCalculator;
@@ -41,6 +42,7 @@ class DashboardController extends Controller
                 $request,
                 app(EvaluacionCalculator::class),
                 app(IndiceRiesgoCalculator::class),
+                app(ColaboradorResumenService::class),
             );
         }
 

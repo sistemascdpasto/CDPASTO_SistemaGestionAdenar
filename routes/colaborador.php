@@ -5,6 +5,7 @@ use App\Http\Controllers\Colaborador\CompensacionColaboradorController;
 use App\Http\Controllers\Colaborador\CompensacionVariableColaboradorController;
 use App\Http\Controllers\Colaborador\CondicionSaludController;
 use App\Http\Controllers\Colaborador\EncuestaMorbilidadController;
+use App\Http\Controllers\Colaborador\IncidenciaGeovictoriaController;
 use App\Http\Controllers\Colaborador\PortalController;
 use Illuminate\Support\Facades\Route;
 
@@ -46,4 +47,7 @@ Route::middleware(['auth', 'active', 'role:Colaborador|Administrador|Seguridad']
 
         Route::get('mi-compensacion-variable', [CompensacionVariableColaboradorController::class, 'index'])
             ->name('mi-compensacion-variable.index');
+
+        Route::get('mis-incidencias-geovictoria', [IncidenciaGeovictoriaController::class, 'index'])
+            ->name('mis-incidencias-geovictoria.index');
     });
