@@ -54,7 +54,7 @@ interface HistorialApadrinadoItem {
     activo: boolean;
 }
 
-interface Padrino {
+export interface Padrino {
     id: number;
     cedula: string;
     nombre_completo: string;
@@ -480,7 +480,7 @@ const FONTS = `@import url('https://fonts.googleapis.com/css2?family=Caveat:wght
 
 
 // ─── Tarjeta corporativa modal ───────────────────────────────────────────────
-function PadrinoCard({ padrino, canManage }: { padrino: Padrino; canManage: boolean }) {
+export function PadrinoCard({ padrino, canManage }: { padrino: Padrino; canManage: boolean }) {
     const partes = padrino.nombre_completo.trim().split(' ');
     const primerNombre = partes[0] ?? '';
     const apellido = partes.slice(1, 3).join(' ');

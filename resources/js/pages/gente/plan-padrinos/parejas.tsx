@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
@@ -26,6 +26,8 @@ import {
     Users,
 } from 'lucide-react';
 import { useRef, useState } from 'react';
+import { ApadrinadoCard } from './apadrinado-card';
+import { type Padrino, PadrinoCard } from './padrinos';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
@@ -60,6 +62,9 @@ interface PadrinoSummary {
     nombre_completo: string;
     cargo: string;
     imagen: string | null;
+    celular?: string | null;
+    correo?: string | null;
+    mensaje_padrino?: string | null;
     historial?: HistorialPadrino;
 }
 
@@ -86,6 +91,7 @@ interface Apadrinado {
     padrino: PadrinoSummary | null;
     nivel_autonomia: string;
     evidencias?: Evidencia[];
+    celular?: string | null;
 }
 
 interface Metrics {
@@ -112,12 +118,10 @@ interface Props {
 function EvidenciasSeccion({
     colaboradorId,
     evidencias = [],
-    canManage,
     canUpload,
 }: {
     colaboradorId: number;
     evidencias?: Evidencia[];
-    canManage: boolean;
     canUpload: boolean;
 }) {
     const [subiendoEtapa, setSubiendoEtapa] = useState<'7_dias' | '30_dias' | '90_dias' | null>(null);
@@ -212,15 +216,19 @@ function EvidenciasSeccion({
             </div>
 
             {/* CARPETAS DESPLEGABLES */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <div className="grid grid-cols-3 gap-2.5">
                 {carpetas.map((c) => {
                     const archivosCarpeta = evidencias.filter((ev) => ev.etapa === c.key);
                     const estaAbierta = carpetaAbierta === c.key;
+                    // Si hay una carpeta abierta y NO es esta, ocultarla visualmente pero mantenerla accesible
+                    const otraAbierta = carpetaAbierta !== null && !estaAbierta;
 
                     return (
                         <div
                             key={c.key}
-                            className={`flex flex-col rounded-xl border transition-all ${c.colorBorder} ${c.colorBg} overflow-hidden shadow-2xs`}
+                            className={`flex flex-col rounded-xl border transition-all duration-300 ${c.colorBorder} ${c.colorBg} overflow-hidden shadow-2xs ${
+                                estaAbierta ? 'col-span-3' : otraAbierta ? 'col-span-1' : ''
+                            }`}
                         >
                             <button
                                 type="button"
@@ -233,13 +241,13 @@ function EvidenciasSeccion({
                                     ) : (
                                         <Folder className={`h-4.5 w-4.5 ${c.colorText}`} />
                                     )}
-                                    <span className={`text-xs font-bold ${c.colorText}`}>
-                                        {c.titulo}
+                                    <span className={`text-xs font-bold ${c.colorText} ${otraAbierta ? 'truncate max-w-[60px]' : ''}`}>
+                                        {otraAbierta ? c.titulo.replace('Carpeta ', '') : c.titulo}
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
                                     <Badge className={`${c.badgeBg} text-[9px] px-1.5 py-0 font-bold`}>
-                                        {archivosCarpeta.length} {archivosCarpeta.length === 1 ? 'archivo' : 'archivos'}
+                                        {archivosCarpeta.length}
                                     </Badge>
                                     <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${estaAbierta ? 'rotate-180' : ''}`} />
                                 </div>
@@ -279,7 +287,7 @@ function EvidenciasSeccion({
                                             <span>No hay evidencias en {c.titulo} aún.</span>
                                         </div>
                                     ) : (
-                                        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                                        <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2">
                                             {archivosCarpeta.map((ev) => {
                                                 const esPdf = ev.url.toLowerCase().endsWith('.pdf');
 
@@ -393,6 +401,10 @@ export default function ParejasIndex({ padrinos, apadrinados, metrics, filters, 
 
     // Estado desplegable para mostrar solo el box compacto inicialmente
     const [expandidos, setExpandidos] = useState<Record<number, boolean>>({});
+
+    // Modals de tarjeta de presentación
+    const [cardPadrino, setCardPadrino] = useState<Padrino | null>(null);
+    const [cardApadrinado, setCardApadrinado] = useState<Apadrinado | null>(null);
 
     const toggleExpandido = (id: number) => {
         setExpandidos((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -600,7 +612,49 @@ return (
                                     {/* PAREJA SIDE BY SIDE */}
                                     <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
                                         {/* PADRINO GUÍA */}
-                                        <div className="flex flex-col items-center gap-2 bg-emerald-500/10 p-4 rounded-lg border border-emerald-300/40">
+                                        <div
+                                            className="flex flex-col items-center gap-2 bg-emerald-500/10 p-4 rounded-lg border border-emerald-300/40 cursor-pointer hover:bg-emerald-500/20 transition-colors"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setCardPadrino({
+                                                    id: padrino.id,
+                                                    cedula: '',
+                                                    nombre_completo: padrino.nombre_completo,
+                                                    cargo: padrino.cargo,
+                                                    imagen: padrino.imagen,
+                                                    mensaje_padrino: padrino.mensaje_padrino ?? null,
+                                                    correo: padrino.correo ?? null,
+                                                    celular: padrino.celular ?? null,
+                                                    fecha_ingreso_texto: padrino.historial?.fecha_ingreso ?? '',
+                                                    dias_en_empresa: 0,
+                                                    veces_padrino: padrino.historial?.veces_padrino ?? 0,
+                                                    dias_total_padrino: 0,
+                                                    tiempo_total_texto: '',
+                                                    apadrinados_lista: (padrino.historial?.apadrinados_list ?? []).map((a) => ({
+                                                        id: a.id,
+                                                        nombre_completo: a.nombre_completo,
+                                                        cargo: a.cargo,
+                                                        imagen: a.imagen,
+                                                        fecha_inicio: a.fecha_ingreso ?? '',
+                                                        fecha_fin: null,
+                                                        dias: 0,
+                                                        activo: true,
+                                                    })),
+                                                    veces_apadrinado: padrino.historial?.fue_apadrinado ? 1 : 0,
+                                                    historial_apadrinado: padrino.historial?.padrino_guia ? [{
+                                                        padrino_id: padrino.historial.padrino_guia.id,
+                                                        padrino_nombre: padrino.historial.padrino_guia.nombre_completo,
+                                                        padrino_cargo: padrino.historial.padrino_guia.cargo,
+                                                        padrino_imagen: padrino.historial.padrino_guia.imagen,
+                                                        fecha_inicio: '',
+                                                        fecha_fin: null,
+                                                        dias: 0,
+                                                        activo: true,
+                                                    }] : [],
+                                                });
+                                            }}
+                                            title="Ver tarjeta del Padrino Guía"
+                                        >
                                             {padrino.imagen ? (
                                                 <img
                                                     src={`/storage/${padrino.imagen}`}
@@ -631,7 +685,14 @@ return (
                                         </div>
 
                                         {/* APADRINADO */}
-                                        <div className="flex flex-col items-center gap-2 bg-sky-500/10 p-4 rounded-lg border border-sky-300/40">
+                                        <div
+                                            className="flex flex-col items-center gap-2 bg-sky-500/10 p-4 rounded-lg border border-sky-300/40 cursor-pointer hover:bg-sky-500/20 transition-colors"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setCardApadrinado(apadrinado);
+                                            }}
+                                            title="Ver tarjeta del Apadrinado"
+                                        >
                                             {apadrinado.imagen ? (
                                                 <img
                                                     src={`/storage/${apadrinado.imagen}`}
@@ -704,7 +765,6 @@ return (
                                             <EvidenciasSeccion
                                                 colaboradorId={apadrinado.id}
                                                 evidencias={apadrinado.evidencias || []}
-                                                canManage={canManage}
                                                 canUpload={puedeGestionarEvidencias(apadrinado.id, apadrinado.padrino_id)}
                                             />
                                         </div>
@@ -716,6 +776,24 @@ return (
                 </div>
             )}
         </div>
-    </AppLayout>
+
+            {/* MODAL — Tarjeta Padrino */}
+            <Dialog open={!!cardPadrino} onOpenChange={(v) => { if (!v) setCardPadrino(null); }}>
+                <DialogContent className="w-[60vw] max-w-3xl gap-0 overflow-hidden rounded-2xl border-0 bg-transparent p-0 shadow-2xl sm:max-w-3xl sm:rounded-2xl">
+                    <DialogTitle className="sr-only">Padrino {cardPadrino?.nombre_completo}</DialogTitle>
+                    <DialogDescription className="sr-only">Tarjeta de presentación del padrino {cardPadrino?.nombre_completo}</DialogDescription>
+                    {cardPadrino && <PadrinoCard padrino={cardPadrino} canManage={false} />}
+                </DialogContent>
+            </Dialog>
+
+            {/* MODAL — Tarjeta Apadrinado */}
+            <Dialog open={!!cardApadrinado} onOpenChange={(v) => { if (!v) setCardApadrinado(null); }}>
+                <DialogContent className="w-[85vw] max-w-2xl gap-0 overflow-hidden rounded-2xl border-0 bg-transparent p-0 shadow-2xl sm:max-w-2xl sm:rounded-2xl">
+                    <DialogTitle className="sr-only">Apadrinado {cardApadrinado?.nombre_completo}</DialogTitle>
+                    <DialogDescription className="sr-only">Tarjeta del apadrinado {cardApadrinado?.nombre_completo}</DialogDescription>
+                    {cardApadrinado && <ApadrinadoCard apadrinado={cardApadrinado} />}
+                </DialogContent>
+            </Dialog>
+        </AppLayout>
     );
 }

@@ -558,18 +558,127 @@ class PortalController extends Controller
             ];
         }
 
+        // ── Historial Plan Padrino ────────────────────────────────────────────
+        $hoyCarbon = \Carbon\Carbon::today();
+
+        // Como PADRINO
+        $historialComoPadrino = \DB::table('colaborador_padrino_historial')
+            ->where('padrino_id', $colaborador->id)
+            ->orderBy('fecha_inicio')
+            ->get();
+
+        $apadrinadosMap = \App\Models\Seguridad\Colaborador::query()
+            ->whereIn('id', $historialComoPadrino->pluck('colaborador_id'))
+            ->with(['pruebasPeriodo.evidencias'])
+            ->get(['id', 'nombres', 'apellidos', 'cargo', 'imagen'])
+            ->keyBy('id');
+
+        $apadrinadosLista = $historialComoPadrino->map(function ($h) use ($hoyCarbon, $apadrinadosMap) {
+            $inicio = \Carbon\Carbon::parse($h->fecha_inicio);
+            $fin    = $h->fecha_fin ? \Carbon\Carbon::parse($h->fecha_fin) : $hoyCarbon;
+            $apad   = $apadrinadosMap->get($h->colaborador_id);
+
+            // Evidencias agrupadas por etapa del apadrinado
+            $evidenciasPorEtapa = [];
+            if ($apad) {
+                foreach ($apad->pruebasPeriodo as $prueba) {
+                    $evidenciasPorEtapa[$prueba->etapa] = $prueba->evidencias->map(fn ($e) => [
+                        'id'  => $e->id,
+                        'url' => '/storage/' . $e->path,
+                    ])->values()->all();
+                }
+            }
+
+            return [
+                'id'              => $h->colaborador_id,
+                'nombre_completo' => $apad ? $apad->nombre_completo : 'Desconocido',
+                'cargo'           => $apad ? ($apad->cargo ?? 'Sin cargo') : '—',
+                'imagen'          => $apad ? $apad->imagen : null,
+                'fecha_inicio'    => $inicio->format('d/m/Y'),
+                'fecha_fin'       => $h->fecha_fin ? $fin->format('d/m/Y') : null,
+                'dias'            => (int) $inicio->diffInDays($fin),
+                'activo'          => $h->fecha_fin === null,
+                'evidencias'      => $evidenciasPorEtapa, // ['7_dias' => [...], '30_dias' => [...], '90_dias' => [...]]
+            ];
+        })->values()->all();
+
+        $diasTotalPadrino = collect($apadrinadosLista)->sum('dias');
+
+        // Como APADRINADO
+        $historialComoApadrinado = \DB::table('colaborador_padrino_historial')
+            ->where('colaborador_id', $colaborador->id)
+            ->orderBy('fecha_inicio')
+            ->get();
+
+        $padrinosMap = \App\Models\Seguridad\Colaborador::query()
+            ->whereIn('id', $historialComoApadrinado->pluck('padrino_id'))
+            ->get(['id', 'nombres', 'apellidos', 'cargo', 'imagen'])
+            ->keyBy('id');
+
+        // Evidencias propias del colaborador (como apadrinado) ya calculadas en $etapas
+        $misEvidencias = [];
+        foreach ($etapas as $etapaKey => $etapaData) {
+            if (!empty($etapaData['evidencias'])) {
+                $misEvidencias[$etapaKey] = $etapaData['evidencias'];
+            }
+        }
+
+        $historialApadrinadoLista = $historialComoApadrinado->map(function ($h) use ($hoyCarbon, $padrinosMap, $misEvidencias) {
+            $inicio = \Carbon\Carbon::parse($h->fecha_inicio);
+            $fin    = $h->fecha_fin ? \Carbon\Carbon::parse($h->fecha_fin) : $hoyCarbon;
+            $pad    = $padrinosMap->get($h->padrino_id);
+            return [
+                'padrino_id'     => $h->padrino_id,
+                'padrino_nombre' => $pad ? $pad->nombre_completo : 'Desconocido',
+                'padrino_cargo'  => $pad ? ($pad->cargo ?? 'Sin cargo') : '—',
+                'padrino_imagen' => $pad ? $pad->imagen : null,
+                'fecha_inicio'   => $inicio->format('d/m/Y'),
+                'fecha_fin'      => $h->fecha_fin ? $fin->format('d/m/Y') : null,
+                'dias'           => (int) $inicio->diffInDays($fin),
+                'activo'         => $h->fecha_fin === null,
+                'evidencias'     => $misEvidencias, // mis propias evidencias como apadrinado
+            ];
+        })->values()->all();
+
+        // Tiempo legible
+        $tiempoTexto = 'Sin actividad';
+        if ($diasTotalPadrino > 0) {
+            $years  = intdiv($diasTotalPadrino, 365);
+            $months = intdiv($diasTotalPadrino % 365, 30);
+            $days   = $diasTotalPadrino % 365 % 30;
+            $partes = [];
+            if ($years > 0)  $partes[] = "{$years} " . ($years  === 1 ? 'año'  : 'años');
+            if ($months > 0) $partes[] = "{$months} " . ($months === 1 ? 'mes'  : 'meses');
+            if ($days > 0)   $partes[] = "{$days} "   . ($days   === 1 ? 'día'  : 'días');
+            $tiempoTexto = implode(', ', $partes);
+        }
+
+        $diasEnEmpresa = $fechaIngreso ? (int) $fechaIngreso->diffInDays($hoyCarbon) : 0;
+
         return Inertia::render('colaborador/mi-plan-padrinos/index', [
             'colaborador' => [
-                'id'              => $colaborador->id,
-                'nombre_completo' => $colaborador->nombre_completo,
-                'cedula'          => $colaborador->cedula,
-                'cargo'           => $colaborador->cargo ?? '—',
-                'area'            => $colaborador->area ?? '—',
-                'turno'           => $colaborador->turno ?? '—',
-                'imagen'          => $colaborador->imagen,
-                'fecha_ingreso'   => $fechaIngreso?->format('d/m/Y') ?? '—',
-                'es_padrino'      => (bool) $colaborador->es_padrino,
-                'tipo_padrino'    => $colaborador->tipo_padrino,
+                'id'                   => $colaborador->id,
+                'nombre_completo'      => $colaborador->nombre_completo,
+                'cedula'               => $colaborador->cedula,
+                'cargo'                => $colaborador->cargo ?? '—',
+                'area'                 => $colaborador->area ?? '—',
+                'turno'                => $colaborador->turno ?? '—',
+                'imagen'               => $colaborador->imagen,
+                'fecha_ingreso'        => $fechaIngreso?->format('d/m/Y') ?? '—',
+                'es_padrino'           => (bool) $colaborador->es_padrino,
+                'tipo_padrino'         => $colaborador->tipo_padrino,
+                // historial
+                'fecha_ingreso_texto'  => $fechaIngreso?->format('d/m/Y') ?? 'N/R',
+                'dias_en_empresa'      => $diasEnEmpresa,
+                'veces_padrino'        => $historialComoPadrino->count(),
+                'dias_total_padrino'   => $diasTotalPadrino,
+                'tiempo_total_texto'   => $tiempoTexto,
+                'apadrinados_lista'    => $apadrinadosLista,
+                'veces_apadrinado'     => $historialComoApadrinado->count(),
+                'historial_apadrinado' => $historialApadrinadoLista,
+                'correo'               => $colaborador->correo,
+                'celular'              => $colaborador->celular_1,
+                'mensaje_padrino'      => $colaborador->mensaje_padrino,
             ],
             'etapas' => $etapas,
         ]);
