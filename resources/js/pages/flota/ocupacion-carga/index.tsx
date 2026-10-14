@@ -291,19 +291,32 @@ export default function OcupacionCargaIndex({
                                             <TableHead>Veces sobrecargado</TableHead>
                                             <TableHead>Ocupación promedio</TableHead>
                                             <TableHead>Pico máximo</TableHead>
+                                            <TableHead>Rutas &lt;50%</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {top_sobrecargados.map((v) => (
-                                            <TableRow key={v.placa}>
-                                                <TableCell className="font-mono font-medium">{v.placa}</TableCell>
-                                                <TableCell>{v.veces_sobrecargado}</TableCell>
-                                                <TableCell>{v.promedio}%</TableCell>
-                                                <TableCell>
-                                                    <Badge className="bg-red-600 text-white">{v.maximo}%</Badge>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
+                                        {top_sobrecargados.map((v) => {
+                                            const rutasBajas = filas.filter(
+                                                (f) => f.placa === v.placa && f.ocupacion_pct !== null && f.ocupacion_pct < 50,
+                                            ).length;
+                                            return (
+                                                <TableRow key={v.placa}>
+                                                    <TableCell className="font-mono font-medium">{v.placa}</TableCell>
+                                                    <TableCell>{v.veces_sobrecargado}</TableCell>
+                                                    <TableCell>{v.promedio}%</TableCell>
+                                                    <TableCell>
+                                                        <Badge className="bg-red-600 text-white">{v.maximo}%</Badge>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {rutasBajas > 0 ? (
+                                                            <Badge className="bg-slate-500 text-white">{rutasBajas}</Badge>
+                                                        ) : (
+                                                            <span className="text-muted-foreground">—</span>
+                                                        )}
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })}
                                     </TableBody>
                                 </Table>
                             </div>
