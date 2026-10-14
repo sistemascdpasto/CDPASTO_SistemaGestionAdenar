@@ -1977,6 +1977,11 @@ export default function ModulacionIndex({
         return rutas;
     }, [rutas]);
 
+    // Solo las rutas con doc. transporte lleno (para el contador de rutas)
+    const rutasConDocTransporte = useMemo(() => {
+        return rutas.filter((r) => r.doc_tras && r.doc_tras.trim() !== '');
+    }, [rutas]);
+
     // Desplazar automáticamente hacia la fila resaltada si viene seleccionada una placa
     useEffect(() => {
         if (filterTablePlaca && filterTablePlaca !== 'todas') {
@@ -2117,7 +2122,7 @@ export default function ModulacionIndex({
         const diaStr = DIAS_SEMANA[fechaDate.getDay()] ?? '';
         const mesStr = MESES[fechaDate.getMonth()] ?? '';
         const textoFecha = `${diaStr} ${fechaDate.getDate()} ${mesStr} ${fechaDate.getFullYear()}`;
-        const totalRutas = filteredRutasTable.length;
+        const totalRutas = rutasConDocTransporte.length;
         const textoRutas = `${totalRutas} RUTA${totalRutas === 1 ? '' : 'S'} - ${textoFecha}`;
 
         // ─── Fila 0 (r=0): Cantidad de rutas en A:E + PROGRAMADO POR en viajes ───
@@ -3200,7 +3205,7 @@ export default function ModulacionIndex({
                             <FileText className="size-4" style={{ color: ACCENT }} />
                             <span className="font-semibold text-foreground">Planeación de Ruta</span>
                             {filteredRutasTable.length > 0 && (
-                                <span className="text-xs text-muted-foreground">({filteredRutasTable.length} ruta{filteredRutasTable.length !== 1 ? 's' : ''})</span>
+                                <span className="text-xs text-muted-foreground">({rutasConDocTransporte.length} ruta{rutasConDocTransporte.length !== 1 ? 's' : ''})</span>
                             )}
                         </div>
                     </div>

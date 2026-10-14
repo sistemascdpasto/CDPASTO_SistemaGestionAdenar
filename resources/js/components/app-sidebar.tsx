@@ -127,7 +127,7 @@ export function AppSidebar() {
                   { title: 'Mis Planeaciones de Ruta', url: '/portal/mis-rutas-reparto', icon: Route, color: '#D4102A' },
                   { title: 'Mis Estrellas del Camión', url: '/portal/mis-indicadores-reparto', icon: Star, color: '#D4102A' },
                   { title: 'Mi Plan Premiación', url: '/portal/mi-plan-premiacion', icon: Trophy, color: '#D97706' },
-                  { title: 'Mi Plan Padrinos', url: '/portal/mi-plan-padrinos', icon: UserCheck, color: '#7C3AED' },
+                  { title: 'Mi Plan Padrinos', url: '/modules/gente/plan-padrinos/parejas', icon: UserCheck, color: '#7C3AED' },
                   { title: 'Mi Compensación Diaria', url: '/portal/mi-compensacion', icon: Calendar, color: '#0891B2' },
                   { title: 'Mi Compensación Variable', url: '/portal/mi-compensacion-variable', icon: DollarSign, color: '#15803d' },
                   { title: 'Medición de Tiempos en Inventario', url: '/modules/reparto/medicion-tiempos-inventario/create', icon: Clock, color: '#D4102A' },

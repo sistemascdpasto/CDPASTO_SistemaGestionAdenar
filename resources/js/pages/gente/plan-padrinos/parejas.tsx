@@ -1,8 +1,7 @@
-import HeadingSmall from '@/components/heading-small';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Card, CardContent } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
@@ -99,6 +98,7 @@ interface Metrics {
 interface Filters {
     search: string;
     padrino_id: number | null;
+    estado: 'abiertos' | 'cerrados';
 }
 
 interface Props {
@@ -106,16 +106,19 @@ interface Props {
     apadrinados: Apadrinado[];
     metrics: Metrics;
     filters: Filters;
+    current_colaborador_id: number | null;
 }
 
 function EvidenciasSeccion({
     colaboradorId,
     evidencias = [],
     canManage,
+    canUpload,
 }: {
     colaboradorId: number;
     evidencias?: Evidencia[];
     canManage: boolean;
+    canUpload: boolean;
 }) {
     const [subiendoEtapa, setSubiendoEtapa] = useState<'7_dias' | '30_dias' | '90_dias' | null>(null);
     const [eliminandoId, setEliminandoId] = useState<number | null>(null);
@@ -244,7 +247,7 @@ function EvidenciasSeccion({
 
                             {estaAbierta && (
                                 <div className="p-3 border-t border-black/10 dark:border-white/10 bg-background/90 flex flex-col gap-2.5">
-                                    {canManage && (
+                                    {canUpload && (
                                         <div className="flex items-center justify-between gap-2 pb-2 border-b border-border/50">
                                             <span className="text-[10px] font-semibold text-muted-foreground">
                                                 Subir a esta carpeta:
@@ -321,7 +324,7 @@ function EvidenciasSeccion({
                                                             >
                                                                 <Eye className="h-3 w-3" />
                                                             </Button>
-                                                            {canManage && (
+                                                            {canUpload && (
                                                                 <Button
                                                                     type="button"
                                                                     size="icon"
@@ -366,14 +369,26 @@ function EvidenciasSeccion({
     );
 }
 
-export default function ParejasIndex({ padrinos, apadrinados, metrics, filters }: Props) {
+export default function ParejasIndex({ padrinos, apadrinados, metrics, filters, current_colaborador_id }: Props) {
     const { auth } = usePage<SharedData>().props;
     const canManage = auth.isAdmin || auth.roles.includes('Gente');
+
+    // Un colaborador es "participante" de una pareja si es el apadrinado o el padrino
+    const esParticipante = (apadrinadoId: number, padrinoId: number | null): boolean => {
+        if (!current_colaborador_id) return false;
+        return current_colaborador_id === apadrinadoId || current_colaborador_id === padrinoId;
+    };
+
+    // Puede subir/borrar evidencias: admin/Gente O es el propio apadrinado o su padrino
+    const puedeGestionarEvidencias = (apadrinadoId: number, padrinoId: number | null): boolean => {
+        return canManage || esParticipante(apadrinadoId, padrinoId);
+    };
 
     const [search, setSearch] = useState(filters.search || '');
     const [padrinoFiltro, setPadrinoFiltro] = useState<string>(
         filters.padrino_id ? String(filters.padrino_id) : 'todos'
     );
+    const [estado, setEstado] = useState<'abiertos' | 'cerrados'>(filters.estado ?? 'abiertos');
     const [updatingId, setUpdatingId] = useState<number | null>(null);
 
     // Estado desplegable para mostrar solo el box compacto inicialmente
@@ -388,7 +403,7 @@ export default function ParejasIndex({ padrinos, apadrinados, metrics, filters }
         setSearch(val);
         router.get(
             route('gente.plan-padrinos.parejas'),
-            { search: val, padrino_id: padrinoFiltro === 'todos' ? undefined : padrinoFiltro },
+            { search: val, padrino_id: padrinoFiltro === 'todos' ? undefined : padrinoFiltro, estado },
             { preserveState: true, replace: true }
         );
     };
@@ -397,7 +412,16 @@ export default function ParejasIndex({ padrinos, apadrinados, metrics, filters }
         setPadrinoFiltro(val);
         router.get(
             route('gente.plan-padrinos.parejas'),
-            { search, padrino_id: val === 'todos' ? undefined : val },
+            { search, padrino_id: val === 'todos' ? undefined : val, estado },
+            { preserveState: true, replace: true }
+        );
+    };
+
+    const handleEstadoChange = (nuevoEstado: 'abiertos' | 'cerrados') => {
+        setEstado(nuevoEstado);
+        router.get(
+            route('gente.plan-padrinos.parejas'),
+            { search, padrino_id: padrinoFiltro === 'todos' ? undefined : padrinoFiltro, estado: nuevoEstado },
             { preserveState: true, replace: true }
         );
     };
@@ -425,279 +449,273 @@ export default function ParejasIndex({ padrinos, apadrinados, metrics, filters }
         }))
         .filter((grupo) => grupo.apadrinados.length > 0);
 
-    return (
-        <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Parejas Padrinos y Apadrinados — Plan Padrino" />
+return (
+    <AppLayout breadcrumbs={breadcrumbs}>
+        <Head title="Parejas Padrinos y Apadrinados — Plan Padrino" />
 
-            <div className="flex h-full flex-1 flex-col gap-6 rounded-xl p-4 md:p-6">
-                <HeadingSmall
-                    title="Catálogo (Padrinos y Apadrinados)"
-                />
+        <div className="flex h-full flex-1 flex-col gap-6 rounded-xl p-4 md:p-6">
 
-                {/* Resumen Métricas */}
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                    <Card className="border-border/60 bg-card shadow-xs">
-                        <CardContent className="flex items-center justify-between p-4">
-                            <div className="flex flex-col gap-1">
-                                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                    Padrinos Guía Activos
-                                </span>
-                                <span className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                                    {metrics.total_padrinos}
-                                </span>
-                            </div>
-                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400">
-                                <Star className="h-5 w-5" />
-                            </div>
-                        </CardContent>
-                    </Card>
+            <h1 className="text-center text-3xl font-black text-foreground tracking-tight">
+                Catálogo: Apadrinamientos Activos
+            </h1>
 
-                    <Card className="border-border/60 bg-card shadow-xs">
-                        <CardContent className="flex items-center justify-between p-4">
-                            <div className="flex flex-col gap-1">
-                                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                    Parejas Constituidas
-                                </span>
-                                <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                                    {metrics.parejas_activas}
-                                </span>
-                            </div>
-                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                                <Sparkles className="h-5 w-5" />
-                            </div>
-                        </CardContent>
-                    </Card>
+            {/* Resumen Métricas */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <Card className="border-border/60 bg-card shadow-xs">
+                    <CardContent className="flex items-center justify-between p-4">
+                        <div className="flex flex-col gap-1">
+                            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                Padrinos Guía Activos
+                            </span>
+                            <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                                {metrics.total_padrinos}
+                            </span>
+                        </div>
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                            <Star className="h-5 w-5" />
+                        </div>
+                    </CardContent>
+                </Card>
 
-                    <Card className="border-border/60 bg-card shadow-xs">
-                        <CardContent className="flex items-center justify-between p-4">
-                            <div className="flex flex-col gap-1">
-                                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                    Apadrinados Asignados
-                                </span>
-                                <span className="text-2xl font-bold text-sky-600 dark:text-sky-400">
-                                    {metrics.parejas_activas}
-                                </span>
-                            </div>
-                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400">
-                                <Users className="h-5 w-5" />
-                            </div>
-                        </CardContent>
-                    </Card>
+                <Card className="border-border/60 bg-card shadow-xs">
+                    <CardContent className="flex items-center justify-between p-4">
+                        <div className="flex flex-col gap-1">
+                            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                Parejas Constituidas
+                            </span>
+                            <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                                {metrics.parejas_activas}
+                            </span>
+                        </div>
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                            <Sparkles className="h-5 w-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="border-border/60 bg-card shadow-xs">
+                    <CardContent className="flex items-center justify-between p-4">
+                        <div className="flex flex-col gap-1">
+                            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                Apadrinados Asignados
+                            </span>
+                            <span className="text-2xl font-bold text-sky-600 dark:text-sky-400">
+                                {metrics.parejas_activas}
+                            </span>
+                        </div>
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400">
+                            <Users className="h-5 w-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Filtros */}
+            <div className="flex flex-wrap items-center gap-3">
+                <div className="relative w-full sm:w-72">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                        placeholder="Buscar por nombre, cédula o cargo..."
+                        value={search}
+                        onChange={handleSearchChange}
+                        className="pl-9 text-sm"
+                    />
                 </div>
 
-                {/* Filtros */}
-                <div className="flex flex-wrap items-center gap-3">
-                    <div className="relative w-full sm:w-72">
-                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                            placeholder="Buscar por nombre, cédula o cargo..."
-                            value={search}
-                            onChange={handleSearchChange}
-                            className="pl-9 text-sm"
-                        />
-                    </div>
-
-                    <div className="w-full sm:w-64">
-                        <Select value={padrinoFiltro} onValueChange={handlePadrinoFilterChange}>
-                            <SelectTrigger className="h-9 text-xs font-medium">
-                                <SelectValue placeholder="Filtrar por Padrino" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="todos" className="text-xs">Todos los Padrinos</SelectItem>
-                                {padrinos.map((p) => (
-                                    <SelectItem key={p.id} value={String(p.id)} className="text-xs font-medium">
-                                        ★ Padrino: {p.nombre_completo}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
+                <div className="w-full sm:w-64">
+                    <Select value={padrinoFiltro} onValueChange={handlePadrinoFilterChange}>
+                        <SelectTrigger className="h-9 text-xs font-medium">
+                            <SelectValue placeholder="Filtrar por Padrino" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="todos" className="text-xs">Todos los Padrinos</SelectItem>
+                            {padrinos.map((p) => (
+                                <SelectItem key={p.id} value={String(p.id)} className="text-xs font-medium">
+                                    ★ Padrino: {p.nombre_completo}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
 
-                {/* Catálogo de parejas existentes */}
-                <div className="flex flex-col gap-6">
-                    {parejasExistentes.length === 0 ? (
-                        <Card className="border-border/60">
-                            <CardContent className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground text-center">
-                                <Sparkles className="h-14 w-14 opacity-20 text-purple-500" />
-                                <p className="text-base font-bold text-foreground">No hay parejas de Padrino - Apadrinado constituidas aún.</p>
-                                <p className="text-xs text-muted-foreground max-w-md">
-                                    Crea y asigna apadrinamientos desde la vista de Apadrinados con el botón <strong>Crear Apadrinamiento</strong>.
-                                </p>
-                                <Button asChild className="mt-2 bg-purple-600 hover:bg-purple-700 text-white">
-                                    <Link href="/modules/gente/plan-padrinos/apadrinados">
-                                        Ir a Apadrinados y Asignar
-                                    </Link>
-                                </Button>
-                            </CardContent>
-                        </Card>
-                    ) : (
-                        parejasExistentes.map(({ padrino, apadrinados: apadrinadosPadrino }) => (
-                            <Card key={padrino.id} className="border-purple-300/50 dark:border-purple-900/40 bg-card shadow-xs overflow-hidden">
-                                <CardHeader className="bg-gradient-to-r from-purple-500/10 via-purple-500/5 to-transparent border-b border-purple-200/60 dark:border-purple-900/30 py-3.5 px-5">
-                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                        <div className="flex items-center gap-3">
+                {/* Filtro Abiertos / Cerrados — solo visible para admin/Gente */}
+                <div className="flex rounded-lg border border-border overflow-hidden text-xs font-semibold">
+                    <button
+                        type="button"
+                        onClick={() => handleEstadoChange('abiertos')}
+                        className={`px-4 py-1.5 transition-colors ${
+                            estado === 'abiertos'
+                                ? 'bg-emerald-600 text-white'
+                                : 'bg-card text-muted-foreground hover:bg-muted'
+                        }`}
+                    >
+                        Abiertos
+                    </button>
+                    {canManage && (
+                        <button
+                            type="button"
+                            onClick={() => handleEstadoChange('cerrados')}
+                            className={`px-4 py-1.5 border-l border-border transition-colors ${
+                                estado === 'cerrados'
+                                    ? 'bg-gray-600 text-white'
+                                    : 'bg-card text-muted-foreground hover:bg-muted'
+                            }`}
+                        >
+                            Cerrados
+                        </button>
+                    )}
+                </div>
+            </div>
+
+            {/* Catálogo de parejas — grid plano sin agrupador por padrino */}
+            {parejasExistentes.length === 0 ? (
+                <Card className="border-border/60">
+                    <CardContent className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground text-center">
+                        <Sparkles className="h-14 w-14 opacity-20 text-emerald-500" />
+                        <p className="text-base font-bold text-foreground">No hay parejas de Padrino - Apadrinado constituidas aún.</p>
+                        
+                        <Button asChild className="mt-2 bg-emerald-600 hover:bg-emerald-700 text-white">
+                            <Link href="/modules/gente/plan-padrinos/padrinos">
+                                Ir a Apadrinados y Asignar
+                            </Link>
+                        </Button>
+                    </CardContent>
+                </Card>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {parejasExistentes.flatMap(({ padrino, apadrinados: apadrinadosPadrino }) =>
+                        apadrinadosPadrino.map((apadrinado) => {
+                            const estaExpandido = !!expandidos[apadrinado.id];
+
+                            return (
+                                <div
+                                    key={apadrinado.id}
+                                    className="group flex flex-col gap-3 rounded-xl border border-emerald-200 dark:border-emerald-900/40 bg-card shadow-sm hover:border-emerald-400 hover:shadow-md transition-all cursor-pointer p-4"
+                                    onClick={() => {
+                                        if (canManage || esParticipante(apadrinado.id, apadrinado.padrino_id)) {
+                                            toggleExpandido(apadrinado.id);
+                                        }
+                                    }}
+                                >
+                                    {/* PAREJA SIDE BY SIDE */}
+                                    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+                                        {/* PADRINO GUÍA */}
+                                        <div className="flex flex-col items-center gap-2 bg-emerald-500/10 p-4 rounded-lg border border-emerald-300/40">
                                             {padrino.imagen ? (
                                                 <img
                                                     src={`/storage/${padrino.imagen}`}
                                                     alt={padrino.nombre_completo}
-                                                    className="h-12 w-12 rounded-full object-cover border-2 border-purple-400 shadow-xs shrink-0"
+                                                    className="h-28 w-28 rounded-full object-cover border-2 border-emerald-400 shrink-0"
                                                 />
                                             ) : (
-                                                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-600 text-white font-bold text-sm shadow-xs shrink-0">
-                                                    <Star className="h-6 w-6 fill-current" />
+                                                <div className="flex h-28 w-28 items-center justify-center rounded-full bg-emerald-600 text-white shrink-0">
+                                                    <Star className="h-12 w-12 fill-current" />
                                                 </div>
                                             )}
-                                            <div className="flex flex-col">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-base font-bold text-foreground">
-                                                        Padrino: {padrino.nombre_completo}
-                                                    </span>
-                                                    <Badge className="bg-purple-600 text-white text-[10px] px-2 py-0">
-                                                        ★ Padrino Guía
-                                                    </Badge>
-                                                </div>
+                                            <div className="flex flex-col items-center text-center gap-0.5 w-full">
+                                                <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wide">
+                                                    Padrino Guía
+                                                </span>
+                                                <span className="text-sm font-bold text-foreground leading-tight">
+                                                    {padrino.nombre_completo}
+                                                </span>
                                                 <span className="text-xs text-muted-foreground">
-                                                    Cargo: {padrino.cargo}
+                                                    {padrino.cargo}
                                                 </span>
                                             </div>
                                         </div>
 
-                                        <Badge variant="outline" className="bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-300 font-bold text-xs py-1">
-                                            {apadrinadosPadrino.length} {apadrinadosPadrino.length === 1 ? 'Apadrinado' : 'Apadrinados'}
-                                        </Badge>
-                                    </div>
-                                </CardHeader>
+                                        {/* CONECTOR */}
+                                        <div className="flex items-center justify-center text-emerald-500">
+                                            <HeartHandshake className="h-6 w-6" />
+                                        </div>
 
-                                <CardContent className="p-5 flex flex-col gap-4">
-                                    {apadrinadosPadrino.map((apadrinado) => {
-                                        const estaExpandido = !!expandidos[apadrinado.id];
-
-                                        return (
-                                            <div
-                                                key={apadrinado.id}
-                                                className="group flex flex-col gap-3 rounded-xl border border-purple-200 dark:border-purple-900/40 bg-purple-50/20 dark:bg-purple-950/10 p-4 shadow-2xs hover:border-purple-400 transition-colors cursor-pointer"
-                                                onClick={() => toggleExpandido(apadrinado.id)}
-                                            >
-                                                {/* PAREJA SIDE BY SIDE COMPACTA */}
-                                                <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] items-center gap-4 bg-card/80 p-3.5 rounded-lg border border-border/50">
-                                                    {/* PADRINO GUÍA */}
-                                                    <div className="flex items-center gap-3 bg-purple-500/10 p-3 rounded-lg border border-purple-300/40">
-                                                        {padrino.imagen ? (
-                                                            <img
-                                                                src={`/storage/${padrino.imagen}`}
-                                                                alt={padrino.nombre_completo}
-                                                                className="h-12 w-12 rounded-full object-cover border-2 border-purple-400 shrink-0"
-                                                            />
-                                                        ) : (
-                                                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-600 text-white font-bold text-sm shrink-0">
-                                                                <Star className="h-6 w-6 fill-current" />
-                                                            </div>
-                                                        )}
-                                                        <div className="flex flex-col min-w-0">
-                                                            <span className="text-[10px] font-bold text-purple-700 dark:text-purple-300 uppercase">
-                                                                Padrino Guía
-                                                            </span>
-                                                            <span className="text-xs font-bold text-foreground truncate">
-                                                                {padrino.nombre_completo}
-                                                            </span>
-                                                            <span className="text-[11px] text-muted-foreground truncate">
-                                                                {padrino.cargo}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* ICONO CONECTOR */}
-                                                    <div className="flex flex-col items-center justify-center text-purple-600">
-                                                        <HeartHandshake className="h-5 w-5" />
-                                                    </div>
-
-                                                    {/* APADRINADO */}
-                                                    <div className="flex items-center gap-3 bg-sky-500/10 p-3 rounded-lg border border-sky-300/40">
-                                                        {apadrinado.imagen ? (
-                                                            <img
-                                                                src={`/storage/${apadrinado.imagen}`}
-                                                                alt={apadrinado.nombre_completo}
-                                                                className="h-12 w-12 rounded-full object-cover border-2 border-sky-400 shrink-0"
-                                                            />
-                                                        ) : (
-                                                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-sky-600 text-white font-bold text-sm shrink-0">
-                                                                <UserCheck className="h-6 w-6" />
-                                                            </div>
-                                                        )}
-                                                        <div className="flex flex-col min-w-0">
-                                                            <span className="text-[10px] font-bold text-sky-700 dark:text-sky-300 uppercase">
-                                                                Apadrinado
-                                                            </span>
-                                                            <span className="text-xs font-bold text-foreground truncate">
-                                                                {apadrinado.nombre_completo}
-                                                            </span>
-                                                            <span className="text-[11px] text-muted-foreground truncate">
-                                                                {apadrinado.cargo}
-                                                            </span>
-                                                        </div>
-                                                    </div>
+                                        {/* APADRINADO */}
+                                        <div className="flex flex-col items-center gap-2 bg-sky-500/10 p-4 rounded-lg border border-sky-300/40">
+                                            {apadrinado.imagen ? (
+                                                <img
+                                                    src={`/storage/${apadrinado.imagen}`}
+                                                    alt={apadrinado.nombre_completo}
+                                                    className="h-28 w-28 rounded-full object-cover border-2 border-sky-400 shrink-0"
+                                                />
+                                            ) : (
+                                                <div className="flex h-28 w-28 items-center justify-center rounded-full bg-sky-600 text-white shrink-0">
+                                                    <UserCheck className="h-12 w-12" />
                                                 </div>
-
-                                                {/* INDICADOR PARA DESPLEGAR */}
-                                                <div className="flex items-center justify-center gap-1.5 text-xs text-purple-600 dark:text-purple-400 font-semibold pt-0.5">
-                                                    <span>{estaExpandido ? 'Ocultar detalles' : 'Haz clic para desplegar toda la información y carpetas'}</span>
-                                                    <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${estaExpandido ? 'rotate-180' : ''}`} />
-                                                </div>
-
-                                                {/* CONTENIDO DESPLEGADO AL DAR CLIC */}
-                                                {estaExpandido && (
-                                                    <div
-                                                        className="pt-3 border-t border-border/60 flex flex-col gap-3 cursor-default"
-                                                        onClick={(e) => e.stopPropagation()}
-                                                    >
-                                                        {canManage && (
-                                                            <div className="flex items-center justify-between gap-2 pb-2 border-b border-border/40">
-                                                                <span className="text-xs text-muted-foreground">
-                                                                    Ingreso: <strong className="text-foreground">{apadrinado.fecha_ingreso}</strong> ({apadrinado.antiguedad_texto})
-                                                                </span>
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="text-[11px] font-semibold text-muted-foreground">
-                                                                        Reasignar Padrino:
-                                                                    </span>
-                                                                    <Select
-                                                                        disabled={updatingId === apadrinado.id}
-                                                                        value={String(apadrinado.padrino_id ?? 'ninguno')}
-                                                                        onValueChange={(val) => handleAsignarPadrino(apadrinado.id, val === 'ninguno' ? null : parseInt(val, 10))}
-                                                                    >
-                                                                        <SelectTrigger className="h-7 text-xs bg-card border-purple-300/80 w-44">
-                                                                            <SelectValue />
-                                                                        </SelectTrigger>
-                                                                        <SelectContent>
-                                                                            <SelectItem value="ninguno" className="text-xs text-muted-foreground">Desvincular (Quitar de parejas)</SelectItem>
-                                                                            {padrinos.map((p) => (
-                                                                                <SelectItem key={p.id} value={String(p.id)} className="text-xs font-medium">
-                                                                                    ★ {p.nombre_completo}
-                                                                                </SelectItem>
-                                                                            ))}
-                                                                        </SelectContent>
-                                                                    </Select>
-                                                                </div>
-                                                            </div>
-                                                        )}
-
-                                                        {/* CARPETAS DESPLEGABLES DE EVIDENCIAS */}
-                                                        <EvidenciasSeccion
-                                                            colaboradorId={apadrinado.id}
-                                                            evidencias={apadrinado.evidencias || []}
-                                                            canManage={canManage}
-                                                        />
-                                                    </div>
-                                                )}
+                                            )}
+                                            <div className="flex flex-col items-center text-center gap-0.5 w-full">
+                                                <span className="text-[10px] font-bold text-sky-700 dark:text-sky-300 uppercase tracking-wide">
+                                                    Apadrinado
+                                                </span>
+                                                <span className="text-sm font-bold text-foreground leading-tight">
+                                                    {apadrinado.nombre_completo}
+                                                </span>
+                                                <span className="text-xs text-muted-foreground">
+                                                    {apadrinado.cargo}
+                                                </span>
                                             </div>
-                                        );
-                                    })}
-                                </CardContent>
-                            </Card>
-                        ))
+                                        </div>
+                                    </div>
+
+                                    {/* INDICADOR DESPLEGAR — solo si puede ver carpetas */}
+                                    {(canManage || esParticipante(apadrinado.id, apadrinado.padrino_id)) && (
+                                        <div className="flex items-center justify-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-semibold pt-0.5">
+                                            <span>{estaExpandido ? 'Ocultar detalles' : 'Ver detalles y carpetas'}</span>
+                                            <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${estaExpandido ? 'rotate-180' : ''}`} />
+                                        </div>
+                                    )}
+
+                                    {/* CONTENIDO DESPLEGADO */}
+                                    {estaExpandido && (canManage || esParticipante(apadrinado.id, apadrinado.padrino_id)) && (
+                                        <div
+                                            className="pt-3 border-t border-border/60 flex flex-col gap-3 cursor-default"
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
+                                            {canManage && (
+                                                <div className="flex items-center justify-between gap-2 pb-2 border-b border-border/40">
+                                                    <span className="text-xs text-muted-foreground">
+                                                        Ingreso: <strong className="text-foreground">{apadrinado.fecha_ingreso}</strong> ({apadrinado.antiguedad_texto})
+                                                    </span>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[11px] font-semibold text-muted-foreground">
+                                                            Reasignar Padrino:
+                                                        </span>
+                                                        <Select
+                                                            disabled={updatingId === apadrinado.id}
+                                                            value={String(apadrinado.padrino_id ?? 'ninguno')}
+                                                            onValueChange={(val) => handleAsignarPadrino(apadrinado.id, val === 'ninguno' ? null : parseInt(val, 10))}
+                                                        >
+                                                            <SelectTrigger className="h-7 text-xs bg-card border-emerald-300/80 w-44">
+                                                                <SelectValue />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="ninguno" className="text-xs text-muted-foreground">Desvincular</SelectItem>
+                                                                {padrinos.map((p) => (
+                                                                    <SelectItem key={p.id} value={String(p.id)} className="text-xs font-medium">
+                                                                        ★ {p.nombre_completo}
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            <EvidenciasSeccion
+                                                colaboradorId={apadrinado.id}
+                                                evidencias={apadrinado.evidencias || []}
+                                                canManage={canManage}
+                                                canUpload={puedeGestionarEvidencias(apadrinado.id, apadrinado.padrino_id)}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })
                     )}
                 </div>
-            </div>
-        </AppLayout>
+            )}
+        </div>
+    </AppLayout>
     );
 }

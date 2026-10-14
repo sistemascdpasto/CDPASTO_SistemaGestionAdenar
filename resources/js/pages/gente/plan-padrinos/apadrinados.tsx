@@ -129,12 +129,10 @@ export default function ApadrinadosIndex({ apadrinados, filters }: Props) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Apadrinados — Plan Padrino" />
 
-            <div className="flex h-full flex-1 flex-col gap-6 rounded-xl p-4 md:p-6">
-                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                    <HeadingSmall
-                        title="Nuestros Apadrinados"
-                    />
-                </div>
+            <div className="flex flex-col gap-4 rounded-xl p-4 md:p-6">
+    <h1 className="w-full text-center text-3xl font-black tracking-tight text-foreground">
+        Nuestros Apadrinados
+    </h1>
 
                 {/* Pestañas */}
                 {/* Filtro */}
@@ -154,9 +152,8 @@ export default function ApadrinadosIndex({ apadrinados, filters }: Props) {
                 {apadrinados.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-24 gap-4 text-muted-foreground">
                         <Users className="h-16 w-16 opacity-20" />
-                        <p className="text-sm">No hay colaboradores apadrinados pendientes de asignación.</p>
-                        <p className="text-xs">Todos los apadrinados ya tienen un Padrino Guía. Revisa la vista <strong>Parejas</strong>.</p>
-                    </div>
+                        <p className="text-sm">No hay colaboradores pendientes de apadrinamiento.</p>
+                        <p className="text-xs">Todos los ingresados en los últimos 90 días ya tienen Padrino Guía asignado.</p>                    </div>
                 ) : (
                     <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
                         {apadrinados.map((item) => (

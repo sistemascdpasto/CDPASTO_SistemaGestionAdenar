@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use App\Http\Controllers\Gente\AusentismoController;
 use App\Http\Controllers\Gente\ColaboradorCalificacionController;
@@ -85,10 +85,6 @@ Route::middleware(['auth', 'active', 'role:Administrador|Gente', 'submodule.acce
             ->name('plan-padrinos.index');
         Route::post('plan-padrinos/toggle', [SeguimientoPruebasController::class, 'toggle'])
             ->name('plan-padrinos.toggle');
-        Route::post('plan-padrinos/evidencias', [SeguimientoPruebasController::class, 'subirEvidencias'])
-            ->name('plan-padrinos.evidencias.subir');
-        Route::delete('plan-padrinos/evidencias/{evidencia}', [SeguimientoPruebasController::class, 'eliminarEvidencia'])
-            ->name('plan-padrinos.evidencias.eliminar');
         Route::post('plan-padrinos/criterios/autonomia', [SeguimientoPruebasController::class, 'updateAutonomia'])
             ->name('plan-padrinos.criterios.autonomia');
         Route::post('plan-padrinos/criterios/importar', [SeguimientoPruebasController::class, 'importarCriterios'])
@@ -141,7 +137,7 @@ Route::middleware(['auth', 'active', 'role:Administrador|Gente', 'submodule.acce
             ->name('responsable-ruta.finalizacion');
     });
 
-Route::middleware(['auth', 'active', 'role:Administrador|Seguridad|Reparto|Flota|Gente', 'submodule.access'])
+Route::middleware(['auth', 'active', 'role:Administrador|Seguridad|Reparto|Flota|Gente|Colaborador', 'submodule.access'])
     ->prefix('modules/gente')
     ->name('gente.')
     ->group(function () {
@@ -164,6 +160,12 @@ Route::middleware(['auth', 'active', 'role:Administrador|Seguridad|Reparto|Flota
             ->name('plan-padrinos.apadrinados');
         Route::get('plan-padrinos/parejas', [SeguimientoPruebasController::class, 'parejas'])
             ->name('plan-padrinos.parejas');
+
+        // Evidencias: accesible para Colaborador; el controlador valida pertenencia.
+        Route::post('plan-padrinos/evidencias', [SeguimientoPruebasController::class, 'subirEvidencias'])
+            ->name('plan-padrinos.evidencias.subir');
+        Route::delete('plan-padrinos/evidencias/{evidencia}', [SeguimientoPruebasController::class, 'eliminarEvidencia'])
+            ->name('plan-padrinos.evidencias.eliminar');
 
         // Plan Premiación ACI (32 ACI = 100%)
         Route::get('plan-premiacion', [PlanPremiacionController::class, 'index'])
@@ -238,3 +240,4 @@ Route::middleware(['auth', 'active', 'role:Administrador|Seguridad|Reparto|Gente
         Route::get('correccion-marcaciones/exportar.csv', [CorreccionMarcacionController::class, 'exportar'])->name('correccion-marcaciones.exportar');
         Route::get('correccion-marcaciones/plantilla.csv', [CorreccionMarcacionController::class, 'plantilla'])->name('correccion-marcaciones.plantilla');
     });
+

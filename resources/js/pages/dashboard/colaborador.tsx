@@ -296,7 +296,7 @@ function PadrinosStepper({ etapas, className }: { etapas: NonNullable<Resumen['p
                     </div>
                 ))}
                 <Button variant="outline" size="sm" className="w-full" asChild>
-                    <Link href="/portal/mi-plan-padrinos">Ver detalle</Link>
+                    <Link href="/modules/gente/plan-padrinos/parejas">Ver detalle</Link>
                 </Button>
             </CardContent>
         </Card>

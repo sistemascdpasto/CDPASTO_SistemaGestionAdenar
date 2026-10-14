@@ -10,6 +10,8 @@ import {
     ArrowLeft,
     Check,
     ChevronRight,
+    Clock,
+    Info,
     Phone,
     Plus,
     Search,
@@ -30,6 +32,28 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Padrinos', href: '/modules/gente/plan-padrinos/padrinos' },
 ];
 
+interface ApadrinadoListaItem {
+    id: number;
+    nombre_completo: string;
+    cargo: string;
+    imagen: string | null;
+    fecha_inicio: string;
+    fecha_fin: string | null;   // null = activo
+    dias: number;
+    activo: boolean;
+}
+
+interface HistorialApadrinadoItem {
+    padrino_id: number;
+    padrino_nombre: string;
+    padrino_cargo: string;
+    padrino_imagen: string | null;
+    fecha_inicio: string;
+    fecha_fin: string | null;
+    dias: number;
+    activo: boolean;
+}
+
 interface Padrino {
     id: number;
     cedula: string;
@@ -39,6 +63,16 @@ interface Padrino {
     mensaje_padrino: string | null;
     correo: string | null;
     celular: string | null;
+    // ingreso
+    fecha_ingreso_texto: string;
+    dias_en_empresa: number;
+    // historial
+    veces_padrino: number;
+    dias_total_padrino: number;
+    tiempo_total_texto: string;
+    apadrinados_lista: ApadrinadoListaItem[];
+    veces_apadrinado: number;
+    historial_apadrinado: HistorialApadrinadoItem[];
 }
 
 interface ApadrinadoSummary {
@@ -58,6 +92,182 @@ interface Props {
     apadrinadosList?: ApadrinadoSummary[];
 }
 
+// ─── Dialog de historial del Padrino ─────────────────────────────────────────
+function DetallesPadrinoDialog({
+    padrino,
+    open,
+    onClose,
+}: {
+    padrino: Padrino;
+    open: boolean;
+    onClose: () => void;
+}) {
+    return (
+        <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+            <DialogContent className="w-full max-w-lg rounded-2xl p-0 overflow-hidden shadow-2xl border-0">
+                <DialogTitle className="sr-only">Historial de {padrino.nombre_completo}</DialogTitle>
+                <DialogDescription className="sr-only">
+                    Estadísticas de participación en el Plan Padrino de {padrino.nombre_completo}
+                </DialogDescription>
+
+                {/* ── Cabecera ── */}
+                <div className="relative flex items-center gap-4 bg-gradient-to-r from-emerald-600 to-green-500 px-5 py-4">
+                    {padrino.imagen ? (
+                        <img
+                            src={`/storage/${padrino.imagen}`}
+                            alt={padrino.nombre_completo}
+                            className="h-14 w-14 rounded-full object-cover border-2 border-white/60 shrink-0"
+                        />
+                    ) : (
+                        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/20 border-2 border-white/40 shrink-0">
+                            <UserCheck className="h-7 w-7 text-white" />
+                        </div>
+                    )}
+                    <div className="flex flex-col min-w-0">
+                        <span className="text-[10px] font-bold text-white/70 uppercase tracking-wider">Historial Plan Padrino</span>
+                        <h3 className="text-base font-black text-white leading-tight truncate">{padrino.nombre_completo}</h3>
+                        <span className="text-[11px] text-white/80 truncate">{padrino.cargo}</span>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="absolute top-3 right-3 flex h-7 w-7 items-center justify-center rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors"
+                    >
+                        <X className="h-4 w-4" />
+                    </button>
+                </div>
+
+                {/* ── Cuerpo scrollable ── */}
+                <div className="flex flex-col gap-4 p-5 max-h-[70vh] overflow-y-auto">
+
+                    {/* Tiempo total en la empresa */}
+                    <div className="flex items-center gap-3 rounded-xl bg-gray-50 border border-gray-200 px-4 py-3">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 shrink-0">
+                            <Clock className="h-4 w-4 text-gray-600" />
+                        </div>
+                        <div className="flex flex-col">
+                            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Ingreso a la empresa</span>
+                            <span className="text-sm font-bold text-foreground">
+                                {padrino.fecha_ingreso_texto}
+                                <span className="ml-2 text-xs font-normal text-muted-foreground">
+                                    ({padrino.dias_en_empresa.toLocaleString()} días en la empresa)
+                                </span>
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* Stats resumen */}
+                    <div className="grid grid-cols-3 gap-3">
+                        <div className="flex flex-col items-center gap-1 rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-center">
+                            <Star className="h-4 w-4 text-emerald-600 fill-emerald-200" />
+                            <span className="text-2xl font-black text-emerald-700 leading-none">{padrino.veces_padrino}</span>
+                            <span className="text-[10px] font-semibold text-emerald-600">{padrino.veces_padrino === 1 ? 'vez padrino' : 'veces padrino'}</span>
+                        </div>
+                        <div className="flex flex-col items-center gap-1 rounded-xl bg-green-50 border border-green-200 p-3 text-center">
+                            <Clock className="h-4 w-4 text-green-600" />
+                            <span className="text-xs font-black text-green-700 leading-tight">
+                                {padrino.dias_total_padrino > 0 ? padrino.tiempo_total_texto : '—'}
+                            </span>
+                            <span className="text-[10px] font-semibold text-green-600">tiempo como padrino</span>
+                        </div>
+                        <div className="flex flex-col items-center gap-1 rounded-xl bg-sky-50 border border-sky-200 p-3 text-center">
+                            <Sparkles className="h-4 w-4 text-sky-600" />
+                            <span className="text-2xl font-black text-sky-700 leading-none">{padrino.veces_apadrinado}</span>
+                            <span className="text-[10px] font-semibold text-sky-600">{padrino.veces_apadrinado === 1 ? 'vez apadrinado' : 'veces apadrinado'}</span>
+                        </div>
+                    </div>
+
+                    {/* ── Como Padrino: lista con fechas ── */}
+                    <div className="flex flex-col gap-2">
+                        <p className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                            <Star className="h-3.5 w-3.5 text-emerald-600 fill-emerald-200" />
+                            Personas que ha apadrinado
+                        </p>
+
+                        {padrino.apadrinados_lista.length === 0 ? (
+                            <div className="flex items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-4 text-xs text-muted-foreground gap-2">
+                                <Info className="h-3.5 w-3.5 opacity-50" />
+                                Aún no ha apadrinado a nadie.
+                            </div>
+                        ) : (
+                            <ul className="flex flex-col gap-1.5">
+                                {padrino.apadrinados_lista.map((a, i) => (
+                                    <li key={`${a.id}-${i}`} className="flex items-center gap-3 rounded-lg border border-border/60 bg-card px-3 py-2">
+                                        {a.imagen ? (
+                                            <img src={`/storage/${a.imagen}`} alt={a.nombre_completo}
+                                                className="h-8 w-8 rounded-full object-cover border border-emerald-200 shrink-0" />
+                                        ) : (
+                                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 shrink-0">
+                                                <UserCheck className="h-4 w-4 text-emerald-600" />
+                                            </div>
+                                        )}
+                                        <div className="flex flex-col min-w-0 flex-1">
+                                            <span className="text-xs font-semibold text-foreground truncate">{a.nombre_completo}</span>
+                                            <span className="text-[10px] text-muted-foreground truncate">{a.cargo}</span>
+                                        </div>
+                                        <div className="flex flex-col items-end shrink-0 text-right gap-0.5">
+                                            <span className="text-[10px] text-muted-foreground">
+                                                {a.fecha_inicio} → {a.fecha_fin ?? <span className="text-emerald-600 font-semibold">Activo</span>}
+                                            </span>
+                                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-1.5 py-0.5">
+                                                {a.dias} días
+                                            </span>
+                                        </div>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
+
+                    {/* ── Como Apadrinado: lista con fechas ── */}
+                    <div className="flex flex-col gap-2">
+                        <p className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                            <Sparkles className="h-3.5 w-3.5 text-sky-600" />
+                            Cuando fue apadrinado
+                        </p>
+
+                        {padrino.historial_apadrinado.length === 0 ? (
+                            <div className="flex items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-4 text-xs text-muted-foreground gap-2">
+                                <Info className="h-3.5 w-3.5 opacity-50" />
+                                No fue apadrinado en ningún período.
+                            </div>
+                        ) : (
+                            <ul className="flex flex-col gap-1.5">
+                                {padrino.historial_apadrinado.map((h, i) => (
+                                    <li key={`ap-${h.padrino_id}-${i}`} className="flex items-center gap-3 rounded-lg border border-sky-100 bg-sky-50/40 px-3 py-2">
+                                        {h.padrino_imagen ? (
+                                            <img src={`/storage/${h.padrino_imagen}`} alt={h.padrino_nombre}
+                                                className="h-8 w-8 rounded-full object-cover border border-sky-200 shrink-0" />
+                                        ) : (
+                                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sky-100 shrink-0">
+                                                <Star className="h-4 w-4 text-sky-600" />
+                                            </div>
+                                        )}
+                                        <div className="flex flex-col min-w-0 flex-1">
+                                            <span className="text-[10px] font-bold text-sky-600 uppercase tracking-wide">Padrino Guía</span>
+                                            <span className="text-xs font-semibold text-foreground truncate">{h.padrino_nombre}</span>
+                                            <span className="text-[10px] text-muted-foreground truncate">{h.padrino_cargo}</span>
+                                        </div>
+                                        <div className="flex flex-col items-end shrink-0 text-right gap-0.5">
+                                            <span className="text-[10px] text-muted-foreground">
+                                                {h.fecha_inicio} → {h.fecha_fin ?? <span className="text-sky-600 font-semibold">Activo</span>}
+                                            </span>
+                                            <span className="text-[10px] font-bold text-sky-700 bg-sky-50 border border-sky-200 rounded-full px-1.5 py-0.5">
+                                                {h.dias} días
+                                            </span>
+                                        </div>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
+
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 // ─── Mini card del grid para Padrinos ───────────────────────────────────────
 function MiniCard({
     padrino,
@@ -65,12 +275,14 @@ function MiniCard({
     modoSeleccion,
     isSelected,
     onSelect,
+    onDetalles,
 }: {
     padrino: Padrino;
     onClick: () => void;
     modoSeleccion?: boolean;
     isSelected?: boolean;
     onSelect?: () => void;
+    onDetalles: (e: React.MouseEvent) => void;
 }) {
     const partes = padrino.nombre_completo.trim().split(' ');
     const nombre1 = partes[0] ?? '';
@@ -147,6 +359,15 @@ function MiniCard({
                         <span className="truncate font-medium">{padrino.celular || '—'}</span>
                     </div>
                 </div>
+                {/* Botón Detalles */}
+                <button
+                    type="button"
+                    onClick={onDetalles}
+                    className="mt-1.5 flex items-center justify-center gap-1 w-full rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 py-1 text-[10px] font-bold text-emerald-700 transition-colors"
+                >
+                    <Info className="h-3 w-3" />
+                    Detalles
+                </button>
             </div>
         </div>
     );
@@ -600,6 +821,7 @@ export default function PadrinosIndex({ padrinos, apadrinadosList = [] }: Props)
     // Modals de inspección de tarjetas
     const [selectedPadrinoModal, setSelectedPadrinoModal] = useState<Padrino | null>(null);
     const [selectedApadrinadoModal, setSelectedApadrinadoModal] = useState<ApadrinadoSummary | null>(null);
+    const [detallePadrino, setDetallePadrino] = useState<Padrino | null>(null);
 
     // MODO SELECCIÓN DIRECTA DESDE LAS CARDS
     const [modoSeleccion, setModoSeleccion] = useState(false);
@@ -677,34 +899,33 @@ export default function PadrinosIndex({ padrinos, apadrinadosList = [] }: Props)
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Padrinos — Plan Padrino" />
 
-            <div className="flex h-full flex-1 flex-col gap-6 rounded-xl p-4 md:p-6">
-                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                    <HeadingSmall
-                        title="Nuestros Padrinos"
-                    />
-                    {canManage && !modoSeleccion && (
-                        <Button
-                            onClick={handleIniciarSeleccion}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2 font-semibold shadow-xs"
-                        >
-                            <Plus className="h-4 w-4" />
-                            Crear Apadrinamiento
-                        </Button>
-                    )}
-                </div>
 
-                {/* Filtro de búsqueda */}
-                <div className="flex flex-wrap items-center gap-3">
-                    <div className="relative w-full sm:w-72">
-                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                            placeholder="Buscar por nombre, cédula o cargo..."
-                            value={searchPadrino}
-                            onChange={(e) => setSearchPadrino(e.target.value)}
-                            className="pl-9 text-sm"
-                        />
-                    </div>
-                </div>
+<div className="flex flex-col gap-4 rounded-xl p-4 md:p-6">
+    <h1 className="w-full text-center text-3xl font-black tracking-tight text-foreground">
+        Nuestros Padrinos
+    </h1>
+
+    {/* Búsqueda + botón en la misma fila */}
+    <div className="flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[200px] sm:max-w-72">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+                placeholder="Buscar por nombre, cédula o cargo..."
+                value={searchPadrino}
+                onChange={(e) => setSearchPadrino(e.target.value)}
+                className="pl-9 text-sm"
+            />
+        </div>
+        {canManage && !modoSeleccion && (
+            <Button
+                onClick={handleIniciarSeleccion}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2 font-semibold shadow-xs shrink-0"
+            >
+                <Plus className="h-4 w-4" />
+                Crear Apadrinamiento
+            </Button>
+        )}
+    </div>
 
                 {/* BANNER DE MODO SELECCIÓN DIRECTA */}
                 {modoSeleccion && (
@@ -779,6 +1000,7 @@ export default function PadrinosIndex({ padrinos, apadrinadosList = [] }: Props)
                                 )}
                             </div>
                         </div>
+                        
 
                         {/* Estado de selección en el banner */}
                         {pasoSeleccion === 2 && padrinoSeleccionadoObj && (
@@ -829,6 +1051,7 @@ export default function PadrinosIndex({ padrinos, apadrinadosList = [] }: Props)
                                         modoSeleccion={modoSeleccion}
                                         isSelected={selectedPadrinoId === p.id}
                                         onSelect={() => setSelectedPadrinoId(p.id)}
+                                        onDetalles={(e) => { e.stopPropagation(); setDetallePadrino(p); }}
                                     />
                                 ))}
                             </div>
@@ -876,7 +1099,17 @@ export default function PadrinosIndex({ padrinos, apadrinadosList = [] }: Props)
                         )}
                     </div>
                 )}
-            </div>
+
+            </div>{/* fin contenedor principal */}
+
+            {/* MODAL DETALLES PADRINO */}
+            {detallePadrino && (
+                <DetallesPadrinoDialog
+                    padrino={detallePadrino}
+                    open={!!detallePadrino}
+                    onClose={() => setDetallePadrino(null)}
+                />
+            )}
 
             {/* MODAL PADRINO CARNET */}
             <Dialog open={!!selectedPadrinoModal} onOpenChange={(open) => { if (!open) setSelectedPadrinoModal(null); }}>

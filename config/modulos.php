@@ -74,7 +74,7 @@ return [
         // "Criterios" (y su plantilla/alertas) ya es de lectura amplia para
         // Seguridad, Reparto y Flota — se usa el conjunto más amplio para no
         // bloquear esa sub-vista a quien sí tiene acceso real por ruta.
-        'plan-padrinos' => ['label' => 'Plan Padrinos', 'roles' => ['Gente', 'Seguridad', 'Reparto', 'Flota']],
+        'plan-padrinos' => ['label' => 'Plan Padrinos', 'roles' => ['Gente', 'Seguridad', 'Reparto', 'Flota', 'Colaborador']],
         'plan-premiacion' => ['label' => 'Plan Premiación', 'roles' => ['Gente', 'Seguridad', 'Reparto', 'Flota']],
         'calificaciones' => ['label' => 'Calificaciones', 'roles' => ['Gente', 'Seguridad', 'Reparto', 'Flota']],
         'dpo-academy' => ['label' => 'DPO Academy', 'roles' => ['Gente', 'Seguridad', 'Reparto', 'Flota']],

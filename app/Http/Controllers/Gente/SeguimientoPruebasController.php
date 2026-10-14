@@ -257,6 +257,21 @@ class SeguimientoPruebasController extends Controller
             'evidencias.*'   => 'required|file|mimes:jpg,jpeg,png,webp,heic,pdf|max:20480',
         ]);
 
+        // Un colaborador solo puede subir evidencias de su propia pareja
+        $currentColaboradorId = $request->user()?->colaborador?->id;
+        $targetId = (int) $request->input('colaborador_id');
+        $isManager = $request->user()?->hasRole('Administrador') || $request->user()?->hasRole('Gente');
+
+        if (! $isManager) {
+            // El apadrinado puede subir sus propias evidencias.
+            // El padrino puede subir evidencias de su apadrinado.
+            $colaborador = Colaborador::find($targetId);
+            $esSuApadrinado = $colaborador && $colaborador->padrino_id === $currentColaboradorId;
+            $esSiMismo      = $targetId === $currentColaboradorId;
+
+            abort_unless($esSiMismo || $esSuApadrinado, 403, 'No tienes permiso para subir evidencias de este colaborador.');
+        }
+
         $record = ColaboradorPruebaPeriodo::firstOrCreate(
             [
                 'colaborador_id' => $request->input('colaborador_id'),
@@ -286,6 +301,23 @@ class SeguimientoPruebasController extends Controller
      */
     public function eliminarEvidencia(ColaboradorPruebaPeriodoEvidencia $evidencia): RedirectResponse
     {
+        // Un colaborador solo puede eliminar evidencias de su propia pareja
+        $user = request()->user();
+        $isManager = $user?->hasRole('Administrador') || $user?->hasRole('Gente');
+
+        if (! $isManager) {
+            $currentColaboradorId = $user?->colaborador?->id;
+            $colaboradorDueño = $evidencia->pruebaPeriodo?->colaborador_id;
+            $padrino = $colaboradorDueño
+                ? Colaborador::find($colaboradorDueño)?->padrino_id
+                : null;
+
+            $esSiMismo     = $colaboradorDueño === $currentColaboradorId;
+            $esSuApadrinado = $padrino === $currentColaboradorId;
+
+            abort_unless($esSiMismo || $esSuApadrinado, 403, 'No tienes permiso para eliminar esta evidencia.');
+        }
+
         Storage::disk('public')->delete($evidencia->path);
         $evidencia->delete();
 
@@ -911,20 +943,119 @@ class SeguimientoPruebasController extends Controller
         $padrinos = Colaborador::query()
             ->where('is_active', true)
             ->where('es_padrino', true)
-            ->select(['id', 'cedula', 'nombres', 'apellidos', 'cargo', 'imagen', 'mensaje_padrino', 'correo', 'celular_1'])
+            ->select(['id', 'cedula', 'nombres', 'apellidos', 'cargo', 'imagen', 'mensaje_padrino', 'correo', 'celular_1', 'fecha_ingreso_empresa'])
             ->orderBy('apellidos')
             ->orderBy('nombres')
             ->get()
-            ->map(fn ($c) => [
-                'id'              => $c->id,
-                'cedula'          => $c->cedula,
-                'nombre_completo' => $c->nombre_completo,
-                'cargo'           => $c->cargo ?? 'Sin cargo',
-                'imagen'          => $c->imagen,
-                'mensaje_padrino' => $c->mensaje_padrino,
-                'correo'          => $c->correo,
-                'celular'         => $c->celular_1,
-            ]);
+            ->map(function ($c) use ($hoy) {
+                // ── Fecha ingreso del colaborador ─────────────────────────────────
+                $fechaIngresoColaborador = $c->fecha_ingreso_empresa ?? $c->created_at;
+                $fechaIngresoTexto = $fechaIngresoColaborador
+                    ? \Carbon\Carbon::parse($fechaIngresoColaborador)->format('d/m/Y')
+                    : 'N/R';
+                $diasEnEmpresa = $fechaIngresoColaborador
+                    ? (int) \Carbon\Carbon::parse($fechaIngresoColaborador)->diffInDays($hoy)
+                    : 0;
+
+                // ── Historial como PADRINO (cada relación con fechas y días) ─────────
+                $historialComoPadrino = \DB::table('colaborador_padrino_historial')
+                    ->where('padrino_id', $c->id)
+                    ->orderBy('fecha_inicio')
+                    ->get();
+
+                $vecesPadrino = $historialComoPadrino->count();
+
+                // Mapa id → datos del apadrinado para enriquecer el historial
+                $apadrinadosMap = \App\Models\Seguridad\Colaborador::query()
+                    ->whereIn('id', $historialComoPadrino->pluck('colaborador_id'))
+                    ->get(['id', 'nombres', 'apellidos', 'cargo', 'imagen'])
+                    ->keyBy('id');
+
+                // Lista con fechas y días de cada relación como padrino
+                $apadrinadosLista = $historialComoPadrino->map(function ($h) use ($hoy, $apadrinadosMap) {
+                    $inicio = \Carbon\Carbon::parse($h->fecha_inicio);
+                    $fin    = $h->fecha_fin ? \Carbon\Carbon::parse($h->fecha_fin) : $hoy;
+                    $dias   = (int) $inicio->diffInDays($fin);
+                    $apad   = $apadrinadosMap->get($h->colaborador_id);
+                    return [
+                        'id'              => $h->colaborador_id,
+                        'nombre_completo' => $apad ? $apad->nombre_completo : 'Desconocido',
+                        'cargo'           => $apad ? ($apad->cargo ?? 'Sin cargo') : '—',
+                        'imagen'          => $apad ? $apad->imagen : null,
+                        'fecha_inicio'    => $inicio->format('d/m/Y'),
+                        'fecha_fin'       => $h->fecha_fin ? $fin->format('d/m/Y') : null,
+                        'dias'            => $dias,
+                        'activo'          => $h->fecha_fin === null,
+                    ];
+                })->values()->all();
+
+                // Tiempo total acumulado como padrino
+                $diasTotalPadrino = collect($apadrinadosLista)->sum('dias');
+
+                // ── Historial como APADRINADO (con fechas y padrino que lo guió) ────
+                $historialComoApadrinado = \DB::table('colaborador_padrino_historial')
+                    ->where('colaborador_id', $c->id)
+                    ->orderBy('fecha_inicio')
+                    ->get();
+
+                $vecesApadrinado = $historialComoApadrinado->count();
+
+                $padrinosMap = \App\Models\Seguridad\Colaborador::query()
+                    ->whereIn('id', $historialComoApadrinado->pluck('padrino_id'))
+                    ->get(['id', 'nombres', 'apellidos', 'cargo', 'imagen'])
+                    ->keyBy('id');
+
+                $historialApadrinadoLista = $historialComoApadrinado->map(function ($h) use ($hoy, $padrinosMap) {
+                    $inicio = \Carbon\Carbon::parse($h->fecha_inicio);
+                    $fin    = $h->fecha_fin ? \Carbon\Carbon::parse($h->fecha_fin) : $hoy;
+                    $dias   = (int) $inicio->diffInDays($fin);
+                    $pad    = $padrinosMap->get($h->padrino_id);
+                    return [
+                        'padrino_id'     => $h->padrino_id,
+                        'padrino_nombre' => $pad ? $pad->nombre_completo : 'Desconocido',
+                        'padrino_cargo'  => $pad ? ($pad->cargo ?? 'Sin cargo') : '—',
+                        'padrino_imagen' => $pad ? $pad->imagen : null,
+                        'fecha_inicio'   => $inicio->format('d/m/Y'),
+                        'fecha_fin'      => $h->fecha_fin ? $fin->format('d/m/Y') : null,
+                        'dias'           => $dias,
+                        'activo'         => $h->fecha_fin === null,
+                    ];
+                })->values()->all();
+
+                // Tiempo legible del total como padrino
+                $tiempoTexto = 'Sin actividad';
+                if ($diasTotalPadrino > 0) {
+                    $years  = intdiv($diasTotalPadrino, 365);
+                    $months = intdiv($diasTotalPadrino % 365, 30);
+                    $days   = $diasTotalPadrino % 365 % 30;
+                    $partes = [];
+                    if ($years > 0)  $partes[] = "{$years} " . ($years === 1 ? 'año' : 'años');
+                    if ($months > 0) $partes[] = "{$months} " . ($months === 1 ? 'mes' : 'meses');
+                    if ($days > 0)   $partes[] = "{$days} " . ($days === 1 ? 'día' : 'días');
+                    $tiempoTexto = implode(', ', $partes);
+                }
+
+                return [
+                    'id'                   => $c->id,
+                    'cedula'               => $c->cedula,
+                    'nombre_completo'      => $c->nombre_completo,
+                    'cargo'                => $c->cargo ?? 'Sin cargo',
+                    'imagen'               => $c->imagen,
+                    'mensaje_padrino'      => $c->mensaje_padrino,
+                    'correo'               => $c->correo,
+                    'celular'              => $c->celular_1,
+                    // ── ingreso ────────────────────────────────────────────────────
+                    'fecha_ingreso_texto'  => $fechaIngresoTexto,
+                    'dias_en_empresa'      => $diasEnEmpresa,
+                    // ── historial ──────────────────────────────────────────────────
+                    'veces_padrino'        => $vecesPadrino,
+                    'dias_total_padrino'   => $diasTotalPadrino,
+                    'tiempo_total_texto'   => $tiempoTexto,
+                    'apadrinados_lista'    => $apadrinadosLista,
+                    'veces_apadrinado'     => $vecesApadrinado,
+                    'historial_apadrinado' => $historialApadrinadoLista,
+                ];
+            });
 
         // Solo colaboradores SIN padrino asignado (para asignar nuevas parejas)
         $apadrinadosList = Colaborador::query()
@@ -976,13 +1107,16 @@ class SeguimientoPruebasController extends Controller
     {
         $search = $request->string('search')->trim()->toString();
         $hoy = Carbon::today();
+        $fechaLimite = $hoy->copy()->subDays(90);
 
-        // Muestra colaboradores marcados como Apadrinado pero SIN padrino asignado aún.
-        // Los que ya tienen padrino_id se muestran en la vista "Parejas".
+        // Muestra TODOS los colaboradores activos que ingresaron hace 90 días o menos
+        // y que aún NO tienen padrino asignado.
         $query = Colaborador::query()
             ->where('is_active', true)
-            ->where('tipo_padrino', 'Apadrinado')
-            ->whereNull('padrino_id')
+            ->whereNotNull('fecha_ingreso_empresa')
+            ->where('fecha_ingreso_empresa', '>=', $fechaLimite)
+            ->whereNull('fecha_retiro_empresa')
+            ->whereNull('padrino_id') // sin padrino asignado
             ->with(['padrino.apadrinados', 'padrino.padrino', 'pruebasPeriodo.evidencias'])
             ->orderByRaw('COALESCE(fecha_ingreso_empresa, created_at) DESC');
 
@@ -994,8 +1128,6 @@ class SeguimientoPruebasController extends Controller
                   ->orWhere('cargo', 'like', "%{$search}%");
             });
         }
-
-        // El filtro estado_asignacion ya no aplica: esta vista solo muestra sin padrino asignado.
 
         $colaboradoresDb = $query->get();
 
@@ -1179,8 +1311,16 @@ class SeguimientoPruebasController extends Controller
     public function parejas(Request $request): Response
     {
         $search = $request->string('search')->trim()->toString();
-        $padrinoIdFiltro = $request->integer('padrino_id') ?: null;
+                $padrinoIdFiltro = $request->integer('padrino_id') ?: null;
+        // estado: 'abiertos' (sin evidencias 90 dias) | 'cerrados' (con evidencias 90 dias)
+        // Los colaboradores solo pueden ver abiertos
+        $esColaborador = $request->user()?->hasRole('Colaborador') ?? false;
+        $estado = $esColaborador ? 'abiertos' : $request->string('estado', 'abiertos')->toString();
+        $soloActivos = ($estado === 'abiertos'); // true = abiertos, false = cerrados
         $hoy = Carbon::today();
+
+        // Colaborador del usuario logueado (para que un colaborador solo vea su propia pareja)
+        $currentColaboradorId = $request->user()?->colaborador?->id;
 
         // 1. Padrinos
         $padrinosList = Colaborador::query()
@@ -1227,6 +1367,19 @@ class SeguimientoPruebasController extends Controller
             ->whereNotNull('padrino_id')
             ->with(['padrino.apadrinados', 'padrino.padrino', 'pruebasPeriodo.evidencias'])
             ->orderByRaw('COALESCE(fecha_ingreso_empresa, created_at) DESC');
+
+        // Filtrar por estado del apadrinamiento.
+        // "Abierto" = no tiene evidencias en carpeta de 90 días.
+        // "Cerrado" = tiene al menos 1 evidencia en carpeta de 90 días.
+        if ($estado === 'abiertos') {
+            $query->whereDoesntHave('pruebasPeriodo', function ($q) {
+                $q->where('etapa', '90_dias')->whereHas('evidencias');
+            });
+        } elseif ($estado === 'cerrados') {
+            $query->whereHas('pruebasPeriodo', function ($q) {
+                $q->where('etapa', '90_dias')->whereHas('evidencias');
+            });
+        }
 
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
@@ -1332,12 +1485,14 @@ class SeguimientoPruebasController extends Controller
         ];
 
         return Inertia::render('gente/plan-padrinos/parejas', [
-            'padrinos' => $padrinosList,
-            'apadrinados' => $apadrinados->values(),
-            'metrics' => $metrics,
-            'filters' => [
-                'search' => $search,
+            'padrinos'               => $padrinosList,
+            'apadrinados'            => $apadrinados->values(),
+            'metrics'                => $metrics,
+            'current_colaborador_id' => $currentColaboradorId,
+            'filters'                => [
+                'search'     => $search,
                 'padrino_id' => $padrinoIdFiltro,
+                'estado'     => $estado,
             ],
         ]);
     }

@@ -14,18 +14,24 @@ class EnsureModuleAccess
     {
         $user = $request->user();
         $module = (string) $request->route('module');
+        $submodule = $request->route('submodule');
         $role = Role::forModuleSlug($module);
 
-        abort_unless(
-            $user && ($user->hasRole(Role::Administrador->value) || ($role && $user->hasRole($role->value))),
-            403
+        // Verificacion estandar de rol de modulo
+        $tieneRolModulo = $user && (
+            $user->hasRole(Role::Administrador->value)
+            || ($role && $user->hasRole($role->value))
         );
 
-        // Esta misma ruta genérica sirve /modules/{modulo} (sin submódulo,
-        // la vista general del pilar) y /modules/{modulo}/{submodulo} (la
-        // página de un submódulo puntual, ej. /modules/gente/plan-padrinos) —
-        // solo la segunda tiene un submódulo que verificar.
-        $submodule = $request->route('submodule');
+        // Excepcion: roles como Colaborador pueden acceder a submodulos especificos
+        // que los listan en config/modulos.php (ej. plan-padrinos con rol Colaborador).
+        if (! $tieneRolModulo && $user && $submodule !== null) {
+            $tieneRolModulo = ModuleAccessRegistry::canAccess($user, $module, (string) $submodule);
+        }
+
+        abort_unless($tieneRolModulo, 403);
+
+        // Verificacion granular de submodulo (rol + personalizacion por usuario).
         if ($submodule !== null) {
             abort_unless(ModuleAccessRegistry::canAccess($user, $module, (string) $submodule), 403);
         }
