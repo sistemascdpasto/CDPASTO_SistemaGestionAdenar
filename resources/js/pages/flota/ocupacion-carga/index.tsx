@@ -193,7 +193,7 @@ export default function OcupacionCargaIndex({
                     </div>
                 </div>
 
-                <KpiCardGrid className="sm:grid-cols-2 lg:grid-cols-5">
+                <KpiCardGrid className="sm:grid-cols-2 lg:grid-cols-6">
                     <KpiCard
                         label="Promedio de ocupación"
                         value={kpis.promedio_ocupacion ?? '—'}
@@ -205,6 +205,12 @@ export default function OcupacionCargaIndex({
                     <KpiCard label="Vehículos sin capacidad registrada" value={kpis.vehiculos_sin_capacidad} icon={PackageSearch} color="#d97706" />
                     <KpiCard label="Rutas evaluadas" value={kpis.total_rutas} icon={Weight} color="#15803d" />
                     <KpiCard label="Peso total transportado" value={kpis.peso_total_toneladas} suffix=" ton" icon={Scale} color="#7c3aed" />
+                    <KpiCard
+                        label="Rutas con ocupación baja (<50%)"
+                        value={filas.filter((f) => f.ocupacion_pct !== null && f.ocupacion_pct < 50).length}
+                        icon={Truck}
+                        color="#64748b"
+                    />
                 </KpiCardGrid>
 
                 <div className="grid gap-4 lg:grid-cols-2">
@@ -308,11 +314,7 @@ export default function OcupacionCargaIndex({
                                                         <Badge className="bg-red-600 text-white">{v.maximo}%</Badge>
                                                     </TableCell>
                                                     <TableCell>
-                                                        {rutasBajas > 0 ? (
-                                                            <Badge className="bg-slate-500 text-white">{rutasBajas}</Badge>
-                                                        ) : (
-                                                            <span className="text-muted-foreground">—</span>
-                                                        )}
+                                                        {rutasBajas > 0 ? rutasBajas : <span className="text-muted-foreground">—</span>}
                                                     </TableCell>
                                                 </TableRow>
                                             );
