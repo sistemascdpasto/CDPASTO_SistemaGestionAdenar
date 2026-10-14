@@ -982,4 +982,41 @@ class ModulacionController extends Controller
 
         return redirect()->back()->with('success', 'Novedad de colaborador actualizada.');
     }
+
+    /**
+     * Devuelve los datos de la �ltima ruta registrada para una placa (d�a anterior o fecha anterior disponible),
+     * excluyendo la fecha actual para no sobreescribir datos ya ingresados hoy.
+     */
+    public function ultimaRutaPlaca(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'placa'  => 'required|string|max:50',
+            'fecha'  => 'nullable|string|max:20',
+        ]);
+
+        $placa       = strtoupper(trim($validated['placa']));
+        $fechaActual = $validated['fecha'] ?? date('Y-m-d');
+
+        // Buscar el ModulacionItem m�s reciente para esta placa antes de la fecha actual
+        $item = ModulacionItem::join('modulaciones', 'modulaciones.id', '=', 'modulacion_items.modulacion_id')
+            ->whereNull('modulaciones.deleted_at')
+            ->whereDate('modulaciones.fecha', '<', $fechaActual)
+            ->where('modulacion_items.placa', $placa)
+            ->orderByDesc('modulaciones.fecha')
+            ->select('modulacion_items.*', 'modulaciones.fecha as fecha_modulacion')
+            ->first();
+
+        if (! $item) {
+            return response()->json(['found' => false]);
+        }
+
+        return response()->json([
+            'found'        => true,
+            'fecha_origen' => $item->fecha_modulacion,
+            'doc_tras'     => $item->doc_tras,
+            'cargo'        => $item->cargo,
+            'tripulacion'  => is_string($item->tripulacion) ? json_decode($item->tripulacion, true) ?? [] : ($item->tripulacion ?? []),
+            'viajes'       => is_string($item->viajes) ? json_decode($item->viajes, true) ?? [] : ($item->viajes ?? []),
+        ]);
+    }
 }

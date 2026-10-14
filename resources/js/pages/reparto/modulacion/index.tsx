@@ -813,6 +813,9 @@ export default function ModulacionIndex({
     // Estado de visibilidad para la Card de Personal Pendiente por Programar
     const [isPendientesCardOpen, setIsPendientesCardOpen] = useState(true);
 
+    // Estado de carga al precargar datos de una placa del día anterior
+    const [placaPrecargando, setPlacaPrecargando] = useState(false);
+
     // Flag para saber si la consulta de fecha fue iniciada manualmente por el usuario al crear/cambiar fecha
     const userInitiatedDateChange = React.useRef(false);
     const dateCheckController = useRef<AbortController | null>(null);
@@ -1094,7 +1097,7 @@ export default function ModulacionIndex({
         });
     };
 
-    const handlePlacaChange = (newPlaca: string) => {
+    const handlePlacaChange = async (newPlaca: string) => {
         const placaUpper = newPlaca.trim().toUpperCase();
         const currentPlacaUpper = currentRoute.placa.trim().toUpperCase();
 
@@ -1105,31 +1108,110 @@ export default function ModulacionIndex({
         );
         const rutaExistente = rutaExistenteIndex >= 0 ? rutas[rutaExistenteIndex] : null;
 
-        setCurrentRoute(rutaExistente
-            ? {
+        // Si ya existe la placa en la planeación de hoy, cargarla directamente
+        if (rutaExistente) {
+            setCurrentRoute({
                 ...rutaExistente,
                 tripulacion: [...rutaExistente.tripulacion],
                 viajes: [...rutaExistente.viajes],
-            }
-            : {
-                placa: placaUpper,
-                doc_tras: '',
-                cargo: '',
-                tripulacion: [],
-                viajes: [],
             });
-        setEditingIndex(rutaExistente ? rutaExistenteIndex : null);
-        setEditingViajeIndex(null);
-        setCurrentViajeForm({
-            lugares: '',
-            barrio: '',
-            cliente: '',
-            peso: '',
+            setEditingIndex(rutaExistenteIndex);
+            setEditingViajeIndex(null);
+            setCurrentViajeForm({ lugares: '', barrio: '', cliente: '', peso: '' });
+            setDestinosViajePendientes([]);
+            setHoraDestinoPendiente('');
+            setSearchQuery('');
+            setCargoFilter('todos');
+            return;
+        }
+
+        // Placa nueva para hoy → intentar precargar datos del día anterior
+        setPlacaPrecargando(true);
+        let rutaPrevia: { doc_tras: string; cargo: string; tripulacion: MiembroTripulacion[]; viajes: Viaje[]; fecha_origen?: string } | null = null;
+
+        try {
+            const res = await fetch(
+                `/modules/reparto/modulacion/ultima-ruta-placa?placa=${encodeURIComponent(placaUpper)}&fecha=${encodeURIComponent(fechaTexto)}`,
+                {
+                    headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    credentials: 'same-origin',
+                },
+            );
+            if (res.ok) {
+                const data = await res.json() as {
+                    found: boolean;
+                    fecha_origen?: string;
+                    doc_tras?: string | null;
+                    cargo?: string | null;
+                    tripulacion?: MiembroTripulacion[];
+                    viajes?: Viaje[];
+                };
+                if (data.found) {
+                    rutaPrevia = {
+                        fecha_origen: data.fecha_origen,
+                        doc_tras: data.doc_tras ?? '',
+                        cargo: data.cargo ?? '',
+                        tripulacion: Array.isArray(data.tripulacion) ? data.tripulacion : [],
+                        viajes: Array.isArray(data.viajes) ? data.viajes : [],
+                    };
+                }
+            }
+        } catch {
+            // Si falla la consulta, continuamos con formulario vacío — no bloqueamos al usuario
+        } finally {
+            setPlacaPrecargando(false);
+        }
+
+        // Normalizar los viajes precargados
+        const viajesPrecargados = (rutaPrevia?.viajes ?? []).map((viaje, index) => ({
+            ...viaje,
+            lugares: viaje.lugares ?? '',
+            barrio: viaje.barrio ?? '',
+            destinos: (viaje.destinos ?? []).map((d) => ({
+                lugares: d.lugares ?? '',
+                barrio: d.barrio ?? '',
+                hora: d.hora,
+            })),
+            cliente: viaje.cliente ?? '',
+            peso: viaje.peso ?? '',
+            id: viaje.id ?? `pre-${index}`,
+        }));
+
+        setCurrentRoute({
+            placa: placaUpper,
+            doc_tras: '',  // el documento de transporte es nuevo cada día
+            cargo: rutaPrevia?.cargo ?? '',
+            tripulacion: rutaPrevia?.tripulacion ?? [],
+            viajes: viajesPrecargados,
         });
-        setDestinosViajePendientes([]);
-        setHoraDestinoPendiente('');
+        setEditingIndex(null);
+        setEditingViajeIndex(null);
         setSearchQuery('');
         setCargoFilter('todos');
+
+        // Si hay viajes precargados, cargar el primer viaje en el formulario activo
+        // para que el usuario vea municipio, barrio, cliente y peso listos para editar
+        if (viajesPrecargados.length > 0) {
+            const primerViaje = viajesPrecargados[0];
+            const destinosPrimer = obtenerDestinosViaje(primerViaje).map((d) => ({
+                lugares: d.lugares ?? '',
+                barrio: d.barrio ?? '',
+                hora: d.hora,
+            }));
+            setCurrentViajeForm({
+                lugares: primerViaje.lugares,
+                barrio: primerViaje.barrio,
+                cliente: primerViaje.cliente,
+                peso: primerViaje.peso,
+            });
+            setDestinosViajePendientes(destinosPrimer);
+            setHoraDestinoPendiente(destinosPrimer[0]?.hora ?? '');
+            setEditingViajeIndex(0);
+        } else {
+            setCurrentViajeForm({ lugares: '', barrio: '', cliente: '', peso: '' });
+            setDestinosViajePendientes([]);
+            setHoraDestinoPendiente('');
+        }
     };
 
     // OBTENER LISTA DE COLABORADORES ASIGNADOS (EXCLUYENDO LA RUTA ACTUAL EN EDICIÓN)
@@ -2789,6 +2871,14 @@ export default function ModulacionIndex({
                                     )}
                                 </div>
                             </div>
+
+                            {/* Indicador precarga placa día anterior */}
+                            {placaPrecargando && (
+                                <div className="col-span-full flex items-center gap-2 rounded-md border border-border bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+                                    <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+                                    Cargando datos del día anterior para esta placa…
+                                </div>
+                            )}
 
                             {/* Documento Transporte */}
                             <div className="grid gap-1.5">

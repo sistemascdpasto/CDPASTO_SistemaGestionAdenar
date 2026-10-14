@@ -38,6 +38,8 @@ Route::middleware(['auth', 'active', 'submodule.access'])
             ->name('modulacion.referencias.barrios.registrar');
         Route::get('/modulacion/check-fecha', [ModulacionController::class, 'checkFecha'])
             ->name('modulacion.checkFecha');
+        Route::get('/modulacion/ultima-ruta-placa', [ModulacionController::class, 'ultimaRutaPlaca'])
+            ->name('modulacion.ultimaRutaPlaca');
         Route::get('/modulacion/historial', [ModulacionController::class, 'historial'])
             ->name('modulacion.historial');
         Route::get('/modulacion-historial', [ModulacionController::class, 'historial'])
