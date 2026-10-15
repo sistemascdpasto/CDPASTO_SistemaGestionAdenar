@@ -220,6 +220,43 @@ class PruebaAlcoholemiaTest extends TestCase
         $this->assertNull($prueba->evidenciaPrincipalPath());
     }
 
+    public function test_pdf_report_embeds_small_thumbnails_instead_of_full_photos(): void
+    {
+        Storage::fake('public');
+        Storage::fake('local');
+        $responsable = $this->seguridadUser();
+        $colaborador = $this->colaborador();
+
+        // Foto «de celular»: grande y con ruido para que el JPEG no se comprima casi nada.
+        $foto = imagecreatetruecolor(2400, 1800);
+        for ($i = 0; $i < 60000; $i++) {
+            imagesetpixel($foto, random_int(0, 2399), random_int(0, 1799), random_int(0, 0xFFFFFF));
+        }
+        ob_start();
+        imagejpeg($foto, null, 95);
+        Storage::disk('public')->put('evidencias/foto-grande.jpg', ob_get_clean());
+        $tamanoOriginal = Storage::disk('public')->size('evidencias/foto-grande.jpg');
+
+        foreach (range(1, 30) as $i) {
+            PruebaAlcoholemia::create([
+                'colaborador_id' => $colaborador->id,
+                'responsable_id' => $responsable->id,
+                'tipo' => 'pre_ruta',
+                'fecha_hora' => now()->subMinutes($i),
+                'estado' => 'realizada',
+                'evidencia_path' => 'evidencias/foto-grande.jpg',
+                'firma_path' => 'evidencias/foto-grande.jpg',
+            ]);
+        }
+
+        $html = view('seguridad.pruebas-pdf', ['pruebas' => PruebaAlcoholemia::with('evidencias')->get()])->render();
+
+        // Antes: 60 copias de la foto completa en base64 (decenas de MB). Ahora: miniaturas.
+        $this->assertSame(60, substr_count($html, 'data:image/jpeg;base64,'));
+        $this->assertLessThan($tamanoOriginal, strlen($html));
+        $this->assertCount(1, Storage::disk('local')->files('miniaturas-pdf'));
+    }
+
     public function test_pdf_and_excel_export_routes_render_without_error_for_mixed_evidence(): void
     {
         Storage::fake('public');

@@ -15,16 +15,9 @@
     </style>
 </head>
 @php
-    $fotoDataUri = function (?string $path) {
-        if (! $path || ! \Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
-            return null;
-        }
-
-        $mime = \Illuminate\Support\Facades\Storage::disk('public')->mimeType($path);
-        $contenido = \Illuminate\Support\Facades\Storage::disk('public')->get($path);
-
-        return "data:{$mime};base64,".base64_encode($contenido);
-    };
+    // Miniaturas en lugar de las fotos originales: con cientos de pruebas, incrustar cada foto
+    // completa agotaba la memoria del servidor.
+    $fotoDataUri = fn (?string $path) => \App\Support\ImagenPdf::miniatura($path);
 @endphp
 <body>
     <h1>Reporte de Pruebas de Alcoholemia</h1>
