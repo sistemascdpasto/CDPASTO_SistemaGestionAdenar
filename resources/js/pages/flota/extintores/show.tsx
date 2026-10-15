@@ -541,13 +541,6 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
     const setChecklistAsignar = (col: string, val: string) =>
         setFormAsignar(p => ({ ...p, checklist_colocacion: { ...p.checklist_colocacion, [col]: val } }));
 
-    const _abrirNuevaAsignacion = () => {
-        setEditAsignacion(null);
-        setFormAsignar({ placa: '', fecha_colocacion: new Date().toISOString().slice(0, 10), fecha_retiro: '', responsable_colocacion: '', observaciones_colocacion: '', responsable_retiro: '', observaciones_retiro: '', checklist_colocacion: checklistVacio() });
-        setErrorsAsignar({});
-        setModalAsignar(true);
-    };
-
     const abrirEditarAsignacion = (a: Asignacion) => {
         setEditAsignacion(a);
         setFormAsignar({
@@ -611,16 +604,6 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
     // ── Modal QR ──────────────────────────────────────────────────────────────
     const [modalQr, setModalQr] = useState(false);
     const qrRef = useRef<HTMLDivElement>(null);
-
-    const _descargarQr = () => {
-        const svg = qrRef.current?.querySelector('svg');
-        if (!svg) return;
-        const blob = new Blob([svg.outerHTML], { type: 'image/svg+xml' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = `extintor-${extintor.numero_serie}.svg`;
-        a.click(); URL.revokeObjectURL(url);
-    };
 
     const imprimirQr = () => {
         const svg = qrRef.current?.querySelector('svg');
