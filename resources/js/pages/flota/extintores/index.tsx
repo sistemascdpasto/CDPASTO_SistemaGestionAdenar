@@ -6,6 +6,7 @@ import { QrScanner } from '@/components/flota/QrScanner';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
+import type { RequestPayload } from '@inertiajs/core';
 import {
     AlertTriangle,
     Camera,
@@ -137,7 +138,7 @@ function FormExtintor({ initial, onSubmit, submitting, errors, onCancel }: {
     onCancel: () => void;
 }) {
     const [f, setF] = useState<FormData>(initial);
-    const set = (k: keyof FormData, v: any) => setF(p => ({ ...p, [k]: v }));
+    const set = (k: keyof FormData, v: FormData[keyof FormData]) => setF(p => ({ ...p, [k]: v }));
     const [previewUrl, setPreviewUrl] = useState<string | null>(initial.foto_preview ?? null);
     const fileRef = useRef<HTMLInputElement>(null);
 
@@ -476,18 +477,18 @@ export default function ExtintoresIndex({ extintores, placas, columnas_extra, fi
 
     const handleSubmit = (data: FormData) => {
         setSaving(true); setFormErrors({});
-        const payload: any = { ...data };
+        const payload: FormData & { _method?: string } = { ...data };
         delete payload.foto_preview;
         if (!payload.foto) delete payload.foto;
 
         if (editTarget) {
-            router.post(route('flota.extintores.update', editTarget.id), { ...payload, _method: 'put' }, {
+            router.post(route('flota.extintores.update', editTarget.id), { ...payload, _method: 'put' } as unknown as RequestPayload, {
                 forceFormData: true,
                 onSuccess: () => { setModalOpen(false); setEditTarget(null); setSaving(false); },
                 onError: (e) => { setFormErrors(e); setSaving(false); },
             });
         } else {
-            router.post(route('flota.extintores.store'), payload, {
+            router.post(route('flota.extintores.store'), payload as unknown as RequestPayload, {
                 forceFormData: true,
                 onSuccess: () => { setModalOpen(false); setSaving(false); },
                 onError: (e) => { setFormErrors(e); setSaving(false); },

@@ -62,6 +62,7 @@ interface ExtintorDetalle {
     placa_actual: string | null;
     asignacion_activa_id: number | null;
     fecha_colocacion_actual: string | null;
+    ultima_recarga: string | null;
     foto_url?: string | null;
 }
 
@@ -498,7 +499,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                 }
             );
         } else {
-            router.post(route('flota.extintores.inspecciones.store', extintor.id), fd as any, {
+            router.post(route('flota.extintores.inspecciones.store', extintor.id), fd, {
                 forceFormData: true,
                 onSuccess: () => {
                     setModalInspeccion(false); setSavingInspeccion(false);
@@ -540,7 +541,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
     const setChecklistAsignar = (col: string, val: string) =>
         setFormAsignar(p => ({ ...p, checklist_colocacion: { ...p.checklist_colocacion, [col]: val } }));
 
-    const abrirNuevaAsignacion = () => {
+    const _abrirNuevaAsignacion = () => {
         setEditAsignacion(null);
         setFormAsignar({ placa: '', fecha_colocacion: new Date().toISOString().slice(0, 10), fecha_retiro: '', responsable_colocacion: '', observaciones_colocacion: '', responsable_retiro: '', observaciones_retiro: '', checklist_colocacion: checklistVacio() });
         setErrorsAsignar({});
@@ -611,7 +612,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
     const [modalQr, setModalQr] = useState(false);
     const qrRef = useRef<HTMLDivElement>(null);
 
-    const descargarQr = () => {
+    const _descargarQr = () => {
         const svg = qrRef.current?.querySelector('svg');
         if (!svg) return;
         const blob = new Blob([svg.outerHTML], { type: 'image/svg+xml' });
@@ -632,7 +633,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
             p{font-size:14px;color:#555;margin:0}</style></head>
             <body>${svg.outerHTML}<p>${extintor.numero_serie}</p>
             <p style="font-size:11px">${extintor.qr_url ?? ''}</p>
-            <script>window.onload=()=>{window.print();window.close()}<\/script></body></html>
+            <script>window.onload=()=>{window.print();window.close()}</script></body></html>
         `);
         win.document.close();
     };

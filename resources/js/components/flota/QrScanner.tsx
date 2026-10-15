@@ -19,6 +19,10 @@ interface Props {
 export function QrScanner({ onResult, onClose }: Props) {
     const videoRef   = useRef<HTMLVideoElement>(null);
     const readerRef  = useRef<BrowserMultiFormatReader | null>(null);
+    const onResultRef = useRef(onResult);
+    const onCloseRef  = useRef(onClose);
+    onResultRef.current = onResult;
+    onCloseRef.current  = onClose;
     const [error, setError]       = useState<string | null>(null);
     const [scanning, setScanning] = useState(true);
     const [found, setFound]       = useState<string | null>(null);
@@ -50,8 +54,8 @@ export function QrScanner({ onResult, onClose }: Props) {
                             setFound(text);
                             codeReader.reset();
 
-                            if (onResult) {
-                                onResult(text);
+                            if (onResultRef.current) {
+                                onResultRef.current(text);
                                 return;
                             }
 
@@ -62,7 +66,7 @@ export function QrScanner({ onResult, onClose }: Props) {
                                 const appOrigin = window.location.origin;
                                 if (url.origin === appOrigin) {
                                     router.visit(url.pathname + url.search);
-                                    onClose();
+                                    onCloseRef.current();
                                 } else {
                                     window.open(text, '_blank', 'noopener');
                                 }
@@ -70,7 +74,7 @@ export function QrScanner({ onResult, onClose }: Props) {
                                 // No es una URL — el texto es el número de serie del extintor
                                 if (text && text.trim()) {
                                     router.visit(`/ext/${encodeURIComponent(text.trim())}`);
-                                    onClose();
+                                    onCloseRef.current();
                                 }
                             }
                         }
