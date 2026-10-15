@@ -16,6 +16,7 @@ import {
     DollarSign,
     FileSpreadsheet,
     FileStack,
+    FlameKindling,
     Gavel,
     GraduationCap,
     Grid3x3,
@@ -237,6 +238,7 @@ export const modules: ModuleDef[] = [
             { title: 'Control de Varadas', slug: 'varadas', icon: Wrench },
             { title: 'Actas de Taller', slug: 'actas-taller', icon: ClipboardList },
             { title: 'Ocupación de Carga', slug: 'ocupacion-carga', icon: Weight },
+            { title: 'Extintores', slug: 'extintores', icon: FlameKindling },
         ],
     },
 ];

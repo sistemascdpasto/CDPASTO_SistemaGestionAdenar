@@ -96,6 +96,7 @@ const combinarViajes = (...listas: Viaje[][]): Viaje[] => {
 interface RutaFormState {
     id?: number;
     placa: string;
+    placa_adicional?: string;   // placa extra (se muestra en rojo)
     doc_tras: string;
     cargo: string;
     tripulacion: MiembroTripulacion[];
@@ -106,6 +107,7 @@ interface ModulacionItemData {
     id: number;
     modulacion_id: number;
     placa: string;
+    placa_adicional?: string;
     cargo?: string;
     colaborador_id?: number;
     cedula?: string;
@@ -170,6 +172,7 @@ const mapModulacionItems = (items: ModulacionItemData[]): RutaFormState[] =>
     items.map((item) => ({
         id: item.id,
         placa: item.placa,
+        placa_adicional: item.placa_adicional ?? '',
         doc_tras: item.doc_tras ?? '',
         cargo: item.cargo ?? '',
         tripulacion: item.tripulacion ?? [],
@@ -809,9 +812,11 @@ export default function ModulacionIndex({
     const [showDespachadorDropdown, setShowDespachadorDropdown] = useState(false);
     const [placaSearch, setPlacaSearch] = useState('');
     const [showPlacaDropdown, setShowPlacaDropdown] = useState(false);
+    const [placaAdicionalSearch, setPlacaAdicionalSearch] = useState('');
+    const [showPlacaAdicionalDropdown, setShowPlacaAdicionalDropdown] = useState(false);
 
     // Estado de visibilidad para la Card de Personal Pendiente por Programar
-    const [isPendientesCardOpen, setIsPendientesCardOpen] = useState(true);
+    const [isPendientesCardOpen, setIsPendientesCardOpen] = useState(false);
 
     // Estado de carga al precargar datos de una placa del día anterior
     const [placaPrecargando, setPlacaPrecargando] = useState(false);
@@ -2045,6 +2050,24 @@ export default function ModulacionIndex({
         String(vehiculo).toUpperCase().includes(placaSearch.trim().toUpperCase()),
     );
 
+    // Placas disponibles para placa adicional: excluye la placa principal de la ruta actual
+    // y las placas ya asignadas en otras rutas, pero permite la que ya está seleccionada como adicional
+    const placasDisponiblesAdicional = vehiculos.filter((vehiculo) => {
+        const placaUpper = String(vehiculo).toUpperCase();
+        // Excluir la placa principal de la ruta actual
+        if (placaUpper === currentRoute.placa.toUpperCase()) return false;
+        // Permitir la que ya está seleccionada como adicional
+        if (placaUpper === (currentRoute.placa_adicional ?? '').toUpperCase()) return true;
+        // Excluir las asignadas como placa principal en otras rutas
+        return !rutas.some((ruta, index) => {
+            if (editingIndex !== null && index === editingIndex) return false;
+            return String(ruta.placa).toUpperCase() === placaUpper;
+        });
+    });
+    const placasAdicionalCoincidentes = placasDisponiblesAdicional.filter((vehiculo) =>
+        String(vehiculo).toUpperCase().includes(placaAdicionalSearch.trim().toUpperCase()),
+    );
+
     // LISTA ÚNICA DE PLACAS
     const uniquePlacasInRutas = useMemo(() => {
         const set = new Set<string>();
@@ -2105,12 +2128,12 @@ export default function ModulacionIndex({
         const FONT_HEADER = {
             bold: true,
             color: { rgb: 'FFFFFF' },
-            sz: 11,
+            sz: 14,
             name: 'Calibri',
         };
-        const FONT_BODY = { sz: 11, name: 'Calibri', color: { rgb: '000000' } };
-        const FONT_BODY_BOLD_BLACK = { sz: 11, name: 'Calibri', bold: true, color: { rgb: '000000' } };
-        const FONT_PLACA = { sz: 12, name: 'Calibri', bold: true, color: { rgb: 'FFFFFF' } };
+        const FONT_BODY = { sz: 14, name: 'Calibri', color: { rgb: '000000' } };
+        const FONT_BODY_BOLD_BLACK = { sz: 14, name: 'Calibri', bold: true, color: { rgb: '000000' } };
+        const FONT_PLACA = { sz: 14, name: 'Calibri', bold: true, color: { rgb: 'FFFFFF' } };
 
         const ALIGN_CENTER = { horizontal: 'center' as const, vertical: 'center' as const, wrapText: true };
         const ALIGN_LEFT = { horizontal: 'left' as const, vertical: 'center' as const, wrapText: true };
@@ -2237,7 +2260,7 @@ export default function ModulacionIndex({
                 setCell(0, c, cell(textoProgramado, {
                     s: {
                         fill: { patternType: 'solid', fgColor: { rgb: AZUL_OSCURO } },
-                        font: { ...FONT_HEADER, sz: 12 },
+                        font: { ...FONT_HEADER, sz: 14 },
                         alignment: ALIGN_CENTER,
                         border: BORDER_THIN,
                     },
@@ -2264,7 +2287,7 @@ export default function ModulacionIndex({
                     setCell(1, c, cell(textoDespachado, {
                         s: {
                             fill: { patternType: 'solid', fgColor: { rgb: AZUL_OSCURO } },
-                            font: { ...FONT_HEADER, sz: 12 },
+                            font: { ...FONT_HEADER, sz: 14 },
                             alignment: ALIGN_CENTER,
                             border: BORDER_THIN,
                         },
@@ -2327,25 +2350,42 @@ export default function ModulacionIndex({
             const numFilasMerge = Math.max(tripulacion.length, 1);
 
             // PLACA (merge sobre todas las filas de tripulantes)
+            // Si hay placa_adicional, se agrega UNA fila extra al final SOLO para la columna de placa
+            // Las demás columnas (doc_tras, tripulantes, viajes, cliente, peso) siguen con numFilasMerge normal.
+            const placaAdicional = (r.placa_adicional ?? '').trim().toUpperCase();
+            const numFilasPlaca = placaAdicional ? numFilasMerge + 1 : numFilasMerge;
+
+            const estiloPlacaPrincipal: XLSX.CellStyle = {
+                font: FONT_PLACA,
+                fill: { patternType: 'solid', fgColor: { rgb: NEGRO_PLACA } },
+                alignment: ALIGN_CENTER,
+                border: BORDER_THIN,
+            };
+            const estiloPlacaAdicional: XLSX.CellStyle = {
+                font: { sz: 14, name: 'Calibri', bold: true, color: { rgb: 'FFFFFF' } },
+                fill: { patternType: 'solid', fgColor: { rgb: 'CC0000' } },
+                alignment: ALIGN_CENTER,
+                border: BORDER_THIN,
+            };
+
+            // Filas del merge de placa principal (fondo negro)
             for (let fila = 0; fila < numFilasMerge; fila++) {
-                const estiloPlaca: XLSX.CellStyle = {
-                    font: FONT_PLACA,
-                    fill: { patternType: 'solid', fgColor: { rgb: NEGRO_PLACA } },
-                    alignment: ALIGN_CENTER,
-                    border: BORDER_THIN,
-                };
                 if (fila === 0) {
-                    setCell(r0 + fila, COL.PLACA, cell((r.placa || '').toUpperCase(), { s: estiloPlaca }));
+                    setCell(r0 + fila, COL.PLACA, cell((r.placa || '').toUpperCase(), { s: estiloPlacaPrincipal }));
                 } else {
-                    setCell(r0 + fila, COL.PLACA, cell('', { s: estiloPlaca }));
+                    setCell(r0 + fila, COL.PLACA, cell('', { s: estiloPlacaPrincipal }));
                 }
+            }
+            // Fila extra de placa adicional (fondo rojo)
+            if (placaAdicional) {
+                setCell(r0 + numFilasMerge, COL.PLACA, cell(placaAdicional, { s: estiloPlacaAdicional }));
             }
             merges.push({
                 s: { r: r0, c: COL.PLACA },
-                e: { r: r0 + numFilasMerge - 1, c: COL.PLACA },
+                e: { r: r0 + numFilasPlaca - 1, c: COL.PLACA },
             });
 
-            // DOC.T RAS (merge sobre todas las filas de tripulantes, rotado)
+            // DOC.T RAS (merge sobre todas las filas, incluyendo la fila extra de placa adicional)
             for (let fila = 0; fila < numFilasMerge; fila++) {
                 const estiloDocTras: XLSX.CellStyle = {
                     font: FONT_BODY_BOLD_BLACK,
@@ -2358,9 +2398,14 @@ export default function ModulacionIndex({
                     setCell(r0 + fila, COL.DOC_TRAS, cell('', { s: estiloDocTras }));
                 }
             }
+            if (placaAdicional) {
+                setCell(r0 + numFilasMerge, COL.DOC_TRAS, cell('', {
+                    s: { font: FONT_BODY_BOLD_BLACK, alignment: { ...ALIGN_CENTER, textRotation: 60 }, border: BORDER_THIN },
+                }));
+            }
             merges.push({
                 s: { r: r0, c: COL.DOC_TRAS },
-                e: { r: r0 + numFilasMerge - 1, c: COL.DOC_TRAS },
+                e: { r: r0 + numFilasPlaca - 1, c: COL.DOC_TRAS },
             });
 
             // TRIPULANTES (columna de color chica y columna de nombre al lado)
@@ -2408,35 +2453,27 @@ export default function ModulacionIndex({
                 }));
             }
 
-            // REUNION (merge sobre todas las filas de tripulantes)
-            for (let fila = 0; fila < numFilasMerge; fila++) {
+            // REUNION (merge sobre todas las filas, incluyendo fila extra de placa adicional)
+            for (let fila = 0; fila < numFilasPlaca; fila++) {
                 setCell(r0 + fila, COL.REUNION, cell('', {
-                    s: {
-                        font: FONT_BODY,
-                        alignment: ALIGN_CENTER,
-                        border: BORDER_THIN,
-                    },
+                    s: { font: FONT_BODY, alignment: ALIGN_CENTER, border: BORDER_THIN },
                 }));
             }
             merges.push({
                 s: { r: r0, c: COL.REUNION },
-                e: { r: r0 + numFilasMerge - 1, c: COL.REUNION },
+                e: { r: r0 + numFilasPlaca - 1, c: COL.REUNION },
             });
 
             // Llenar columnas entre REUNION y PRIMER_VIAJE con bordes
             for (let c = COL.REUNION + 1; c < COL.PRIMER_VIAJE; c++) {
-                for (let fila = 0; fila < numFilasMerge; fila++) {
+                for (let fila = 0; fila < numFilasPlaca; fila++) {
                     setCell(r0 + fila, c, cell('', {
-                        s: {
-                            font: FONT_BODY,
-                            alignment: ALIGN_CENTER,
-                            border: BORDER_THIN,
-                        },
+                        s: { font: FONT_BODY, alignment: ALIGN_CENTER, border: BORDER_THIN },
                     }));
                 }
                 merges.push({
                     s: { r: r0, c: c },
-                    e: { r: r0 + numFilasMerge - 1, c: c },
+                    e: { r: r0 + numFilasPlaca - 1, c: c },
                 });
             }
 
@@ -2460,12 +2497,11 @@ export default function ModulacionIndex({
                         .join('\n');
                 }
                 const colViaje = COL.PRIMER_VIAJE + v;
-                const numFilasMerge = Math.max(tripulacion.length, 1);
 
-                // Aplicar bordes a todas las celdas dentro del merge
-                for (let fila = 0; fila < numFilasMerge; fila++) {
+                // Aplicar bordes a todas las celdas dentro del merge (incluye fila extra de placa adicional)
+                for (let fila = 0; fila < numFilasPlaca; fila++) {
                     const estiloViaje: XLSX.CellStyle = {
-                        font: { ...FONT_BODY, bold: true, sz: 12 },
+                        font: { ...FONT_BODY, bold: true, sz: 14 },
                         alignment: { ...ALIGN_LEFT, wrapText: true },
                         border: BORDER_THIN,
                     };
@@ -2478,13 +2514,13 @@ export default function ModulacionIndex({
 
                 merges.push({
                     s: { r: r0, c: colViaje },
-                    e: { r: r0 + numFilasMerge - 1, c: colViaje },
+                    e: { r: r0 + numFilasPlaca - 1, c: colViaje },
                 });
             }
 
-            // CLIENTE y PESO (merge sobre filas de tripulantes)
-            // CLIENTE - aplicar bordes a todas las celdas del merge
-            for (let fila = 0; fila < numFilasMerge; fila++) {
+            // CLIENTE y PESO (merge sobre filas, incluye fila extra de placa adicional)
+            // CLIENTE
+            for (let fila = 0; fila < numFilasPlaca; fila++) {
                 const estiloCliente: XLSX.CellStyle = {
                     font: { ...FONT_BODY, bold: true },
                     alignment: ALIGN_CENTER,
@@ -2501,11 +2537,11 @@ export default function ModulacionIndex({
             }
             merges.push({
                 s: { r: r0, c: COL_CLIENTE },
-                e: { r: r0 + numFilasMerge - 1, c: COL_CLIENTE },
+                e: { r: r0 + numFilasPlaca - 1, c: COL_CLIENTE },
             });
 
-            // PESO - aplicar bordes a todas las celdas del merge
-            for (let fila = 0; fila < numFilasMerge; fila++) {
+            // PESO
+            for (let fila = 0; fila < numFilasPlaca; fila++) {
                 const estiloPeso: XLSX.CellStyle = {
                     font: { ...FONT_BODY, bold: true },
                     alignment: ALIGN_CENTER,
@@ -2522,10 +2558,10 @@ export default function ModulacionIndex({
             }
             merges.push({
                 s: { r: r0, c: COL_PESO },
-                e: { r: r0 + numFilasMerge - 1, c: COL_PESO },
+                e: { r: r0 + numFilasPlaca - 1, c: COL_PESO },
             });
 
-            currentRow += Math.max(tripulacion.length, 1);
+            currentRow += numFilasPlaca;
         });
 
         // ─── Merges de encabezados de la tabla de rutas
@@ -2543,23 +2579,22 @@ export default function ModulacionIndex({
 
         // ─── Anchos de columna ───────────────────────────────────────
         const colWidths: { wch: number }[] = [
-            { wch: 25 }, // A placa (rutas) / NOMBRE col 1 (novedades)
-            { wch: 25 }, // B DOC.T RAS (rutas) / NOMBRE col 2 (novedades)
-            { wch: 3 },  // C TRIP_COLOR (rutas) / OBSERVACIONES col 1 (novedades)
-            { wch: 40 }, // D TRIP_NOMBRE (rutas) / OBSERVACIONES col 2 (novedades)
-            { wch: 9 },  // E REUNION (rutas) / PERMISO (novedades)
+            { wch: 18 }, // A placa
+            { wch: 16 }, // B DOC.T RAS
+            { wch: 3 },  // C TRIP_COLOR
+            { wch: 46 }, // D TRIP_NOMBRE (nombres largos)
+            { wch: 11 }, // E REUNION
         ];
-        for (let v = 0; v < maxViajes; v++) colWidths.push({ wch: 30 }); // 1ER/2DO VIAJE...
-        colWidths.push({ wch: 14 }, { wch: 10 }); // CLIENTE, PESO
-        // Asegurar al menos 10 columnas para que los checks de novedades tengan ancho
-        while (colWidths.length < 10) colWidths.push({ wch: 9 });
+        for (let v = 0; v < maxViajes; v++) colWidths.push({ wch: 36 }); // viajes
+        colWidths.push({ wch: 16 }, { wch: 12 }); // CLIENTE, PESO
+        while (colWidths.length < 10) colWidths.push({ wch: 11 });
         ws['!cols'] = colWidths;
 
         // ─── Alturas de fila ─────────────────────────────────────────
         const rowHeights: { hpt: number }[] = [];
-        rowHeights.push({ hpt: 26 }); // fila 0 PROGRAMADO POR
-        rowHeights.push({ hpt: 26 }); // fila 1 DESPACHADO POR
-        rowHeights.push({ hpt: 60 }); // fila 2 encabezados
+        rowHeights.push({ hpt: 30 }); // fila 0 PROGRAMADO POR
+        rowHeights.push({ hpt: 30 }); // fila 1 DESPACHADO POR
+        rowHeights.push({ hpt: 66 }); // fila 2 encabezados
         // Alturas para filas de rutas (múltiples filas por ruta, una por tripulante)
         filteredRutasTable.forEach((r) => {
             const numTrip = Math.max((r.tripulacion || []).length, 1);
@@ -2572,9 +2607,13 @@ export default function ModulacionIndex({
                     ),
                 ),
             );
-            const alturaFila = Math.min(409, Math.max(22, Math.ceil((maxLineasDestino * 18 + 8) / numTrip)));
+            const alturaFila = Math.min(409, Math.max(28, Math.ceil((maxLineasDestino * 22 + 10) / numTrip)));
             for (let t = 0; t < numTrip; t++) {
                 rowHeights.push({ hpt: alturaFila });
+            }
+            // Fila extra de placa adicional (si aplica)
+            if ((r.placa_adicional ?? '').trim()) {
+                rowHeights.push({ hpt: 28 });
             }
         });
         ws['!rows'] = rowHeights;
@@ -2670,9 +2709,9 @@ export default function ModulacionIndex({
         while (rowHeightsActual.length < rowInicioNovedades) {
             rowHeightsActual.push({ hpt: 16 });
         }
-        rowHeightsActual.push({ hpt: 24 }); // encabezado novedades
+        rowHeightsActual.push({ hpt: 28 }); // encabezado novedades
         filasNovedades.forEach((fila) => {
-            rowHeightsActual.push({ hpt: Math.min(90, Math.max(22, Math.ceil(fila.observaciones.length / 55) * 18)) });
+            rowHeightsActual.push({ hpt: Math.min(90, Math.max(28, Math.ceil(fila.observaciones.length / 50) * 22)) });
         });
         ws['!rows'] = rowHeightsActual;
 
@@ -2880,8 +2919,7 @@ export default function ModulacionIndex({
                                 </div>
                             )}
 
-                            {/* Documento Transporte */}
-                            <div className="grid gap-1.5">
+                            {/* Documento Transporte */}                            <div className="grid gap-1.5">
                                 <Label htmlFor="documento-transporte" className="text-xs font-medium">Documento Transporte</Label>
                                 <Input
                                     id="documento-transporte"
@@ -2894,6 +2932,81 @@ export default function ModulacionIndex({
                                     required
                                 />
                             </div>
+
+                            {/* Placa Adicional — solo visible al editar una ruta existente */}
+                            {editingIndex !== null && (
+                                <div className="grid gap-1.5">
+                                    <Label htmlFor="placa-adicional" className="text-xs font-medium">
+                                        Placa Adicional{' '}
+                                        <span className="text-xs font-normal text-muted-foreground">(opcional)</span>
+                                    </Label>
+                                    <div className="relative">
+                                        <Input
+                                            id="placa-adicional"
+                                            name="placa_adicional"
+                                            type="text"
+                                            value={showPlacaAdicionalDropdown ? placaAdicionalSearch : (currentRoute.placa_adicional ?? '')}
+                                            onFocus={() => {
+                                                setPlacaAdicionalSearch('');
+                                                setShowPlacaAdicionalDropdown(true);
+                                            }}
+                                            onChange={(e) => {
+                                                setPlacaAdicionalSearch(e.target.value.toUpperCase());
+                                                setShowPlacaAdicionalDropdown(true);
+                                            }}
+                                            onBlur={() => setTimeout(() => {
+                                                setShowPlacaAdicionalDropdown(false);
+                                                setPlacaAdicionalSearch('');
+                                            }, 150)}
+                                            placeholder="Buscar placa libre..."
+                                            autoComplete="off"
+                                            className="h-10 font-mono text-sm uppercase text-red-600 placeholder:normal-case placeholder:text-muted-foreground"
+                                        />
+                                        {/* Botón limpiar */}
+                                        {currentRoute.placa_adicional?.trim() && !showPlacaAdicionalDropdown && (
+                                            <button
+                                                type="button"
+                                                onMouseDown={(e) => {
+                                                    e.preventDefault();
+                                                    handleCurrentRouteFieldChange('placa_adicional', '');
+                                                }}
+                                                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                                aria-label="Limpiar placa adicional"
+                                            >
+                                                <X className="size-3.5" />
+                                            </button>
+                                        )}
+                                        {showPlacaAdicionalDropdown && (
+                                            <div className="absolute left-0 right-0 top-full z-20 mt-0.5 max-h-48 overflow-y-auto rounded-lg border border-input bg-popover shadow-lg">
+                                                {placasAdicionalCoincidentes.map((vehiculo) => (
+                                                    <div
+                                                        key={vehiculo}
+                                                        onMouseDown={() => {
+                                                            handleCurrentRouteFieldChange('placa_adicional', String(vehiculo).toUpperCase());
+                                                            setPlacaAdicionalSearch('');
+                                                            setShowPlacaAdicionalDropdown(false);
+                                                        }}
+                                                        className="cursor-pointer border-b border-border px-3 py-2 font-mono text-sm font-semibold text-red-600 last:border-b-0 hover:bg-muted"
+                                                    >
+                                                        {String(vehiculo)}
+                                                    </div>
+                                                ))}
+                                                {placasAdicionalCoincidentes.length === 0 && (
+                                                    <p className="px-3 py-2 text-sm text-muted-foreground">
+                                                        No hay placas libres que coincidan.
+                                                    </p>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                    {currentRoute.placa_adicional?.trim() && (
+                                        <p className="text-xs text-red-500">
+                                            Se mostrará en rojo debajo de{' '}
+                                            <span className="font-semibold">{currentRoute.placa}</span>
+                                        </p>
+                                    )}
+                                </div>
+                            )}
 
                             {/* Despachado Por */}
                             <div className="grid gap-1.5">
@@ -3348,6 +3461,11 @@ export default function ModulacionIndex({
 
                                                 <TableCell className="text-sm font-semibold text-foreground">
                                                     {item.placa}
+                                                    {item.placa_adicional?.trim() && (
+                                                        <span className="block font-mono font-bold text-red-600">
+                                                            {item.placa_adicional.trim().toUpperCase()}
+                                                        </span>
+                                                    )}
                                                 </TableCell>
 
                                                 <TableCell className="text-sm text-foreground">

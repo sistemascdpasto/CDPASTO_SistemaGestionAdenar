@@ -28,6 +28,7 @@
     --color-gold-400: hsl(42, 88%, 58%);
     --color-gold-500: hsl(38, 85%, 50%);
 
+    --animate-scan-line: scan-line 1.8s ease-in-out infinite;
     --animate-float: float 6s ease-in-out infinite;
     --animate-blob: blob 16s ease-in-out infinite;
     --animate-shimmer: shimmer 3s linear infinite;
@@ -178,6 +179,12 @@
     body {
         @apply bg-background text-foreground;
     }
+}
+
+@keyframes scan-line {
+    0%   { transform: translateY(0); opacity: 1; }
+    50%  { transform: translateY(calc(100% - 2px)); opacity: 0.8; }
+    100% { transform: translateY(0); opacity: 1; }
 }
 
 @keyframes float {

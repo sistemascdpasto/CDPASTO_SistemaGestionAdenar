@@ -13,6 +13,7 @@ class ModulacionItem extends Model
     protected $fillable = [
         'modulacion_id',
         'placa',
+        'placa_adicional',
         'doc_tras',
         'ud',
         'cargo',
