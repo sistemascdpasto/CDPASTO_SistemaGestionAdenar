@@ -1167,20 +1167,9 @@ export default function ModulacionIndex({
             setPlacaPrecargando(false);
         }
 
-        // Normalizar los viajes precargados
-        const viajesPrecargados = (rutaPrevia?.viajes ?? []).map((viaje, index) => ({
-            ...viaje,
-            lugares: viaje.lugares ?? '',
-            barrio: viaje.barrio ?? '',
-            destinos: (viaje.destinos ?? []).map((d) => ({
-                lugares: d.lugares ?? '',
-                barrio: d.barrio ?? '',
-                hora: d.hora,
-            })),
-            cliente: viaje.cliente ?? '',
-            peso: viaje.peso ?? '',
-            id: viaje.id ?? `pre-${index}`,
-        }));
+        // Normalizar los viajes precargados — NO se precargan: los viajes, clientes y peso
+        // son nuevos cada día. Solo se mantiene la tripulación y el cargo.
+        const viajesPrecargados: Viaje[] = [];
 
         setCurrentRoute({
             placa: placaUpper,
@@ -1194,29 +1183,10 @@ export default function ModulacionIndex({
         setSearchQuery('');
         setCargoFilter('todos');
 
-        // Si hay viajes precargados, cargar el primer viaje en el formulario activo
-        // para que el usuario vea municipio, barrio, cliente y peso listos para editar
-        if (viajesPrecargados.length > 0) {
-            const primerViaje = viajesPrecargados[0];
-            const destinosPrimer = obtenerDestinosViaje(primerViaje).map((d) => ({
-                lugares: d.lugares ?? '',
-                barrio: d.barrio ?? '',
-                hora: d.hora,
-            }));
-            setCurrentViajeForm({
-                lugares: primerViaje.lugares,
-                barrio: primerViaje.barrio,
-                cliente: primerViaje.cliente,
-                peso: primerViaje.peso,
-            });
-            setDestinosViajePendientes(destinosPrimer);
-            setHoraDestinoPendiente(destinosPrimer[0]?.hora ?? '');
-            setEditingViajeIndex(0);
-        } else {
-            setCurrentViajeForm({ lugares: '', barrio: '', cliente: '', peso: '' });
-            setDestinosViajePendientes([]);
-            setHoraDestinoPendiente('');
-        }
+        // Formulario de viaje siempre vacío — el usuario ingresa los datos del día
+        setCurrentViajeForm({ lugares: '', barrio: '', cliente: '', peso: '' });
+        setDestinosViajePendientes([]);
+        setHoraDestinoPendiente('');
     };
 
     // OBTENER LISTA DE COLABORADORES ASIGNADOS (EXCLUYENDO LA RUTA ACTUAL EN EDICIÓN)
