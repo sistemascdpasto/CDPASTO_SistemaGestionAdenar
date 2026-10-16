@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Flota;
 
+use App\Exports\Flota\ExtintorInspeccionExport;
+use App\Exports\Flota\ExtintoresTablaExport;
 use App\Http\Controllers\Controller;
 use App\Models\Flota\Extintor;
 use App\Models\Flota\ExtintorAsignacion;
@@ -15,6 +17,8 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ExtintorController extends Controller
 {
@@ -49,26 +53,29 @@ class ExtintorController extends Controller
 
     private function formatearExtintor(Extintor $e): array
     {
-        $activa = $e->asignacionActiva;
+        $activa     = $e->asignacionActiva;
+        $inspeccion = $e->ultimaInspeccion;
         return [
             'id'                  => $e->id,
             'numero_serie'        => $e->numero_serie,
             'qr_token'            => $e->numero_serie,
-            'qr_url'              => url("/ext/{$e->numero_serie}"),
+            'qr_url'              => url("/modules/flota/extintores/{$e->id}"),
             'tipo_agente'         => $e->tipo_agente,
             'capacidad_kg'        => $e->capacidad_kg,
             'marca'               => $e->marca,
             'fecha_fabricacion'   => $e->fecha_fabricacion?->format('Y-m-d'),
             'fecha_vencimiento'   => $e->fecha_vencimiento?->format('Y-m-d'),
+            'fecha_creacion'      => $e->created_at?->format('Y-m-d'),
             'observaciones'       => $e->observaciones,
             'vencido'             => $e->vencido,
-            'condicion'           => $e->condicion,
-            'agente_impulsor'     => $e->agente_impulsor,
-            'parte_mantenimiento' => $e->parte_mantenimiento,
-            'senalizacion'        => $e->senalizacion,
-            'demarcacion'         => $e->demarcacion,
-            'funcionamiento'      => $e->funcionamiento,
-            'acceso'              => $e->acceso,
+            'condicion'           => $e->condicion ?? $inspeccion?->condicion,
+            'agente_impulsor'     => $e->agente_impulsor ?? $inspeccion?->agente_impulsor,
+            'parte_mantenimiento' => $e->parte_mantenimiento ?? $inspeccion?->parte_mantenimiento,
+            'senalizacion'        => $e->senalizacion ?? $inspeccion?->senalizacion,
+            'demarcacion'         => $e->demarcacion ?? $inspeccion?->demarcacion,
+            'funcionamiento'      => $e->funcionamiento ?? $inspeccion?->funcionamiento,
+            'acceso'              => $e->acceso ?? $inspeccion?->acceso,
+            'ultima_inspeccion_fecha' => $inspeccion?->fecha_inspeccion?->format('Y-m-d'),
             'ultima_recarga'      => $e->inspecciones_max_fecha_recarga
                 ? \Carbon\Carbon::parse($e->inspecciones_max_fecha_recarga)->format('Y-m-d')
                 : null,
@@ -103,7 +110,7 @@ class ExtintorController extends Controller
 
     public function index(Request $request): Response
     {
-        $extintores = Extintor::with(['asignacionActiva'])
+        $extintores = Extintor::with(['asignacionActiva', 'ultimaInspeccion'])
             ->withMax(['inspecciones' => fn ($q) => $q->where('incluye_recarga', true)], 'fecha_recarga')
             ->when($request->input('serie'), fn ($q, $v) => $q->where('numero_serie', 'like', "%{$v}%"))
             ->when($request->input('placa'), function ($q, $v) {
@@ -204,7 +211,7 @@ class ExtintorController extends Controller
 
         $extintor->update($data);
 
-        return redirect()->route('flota.extintores.index')
+        return redirect()->back()
             ->with('status', ['message' => 'Extintor actualizado.', 'type' => 'success']);
     }
 
@@ -407,12 +414,23 @@ class ExtintorController extends Controller
             'acceso'                   => ['nullable', 'string', 'max:255'],
             'observaciones_inspeccion' => ['nullable', 'string', 'max:2000'],
             'incluye_recarga'          => ['nullable', 'boolean'],
-            'fecha_recarga'            => ['nullable', 'date'],
+            'fecha_recarga'            => ['nullable', 'date', function ($attr, $value, $fail) use ($extintor) {
+                if (!$value) return;
+                $ultimaRecarga = $extintor->inspecciones()
+                    ->where('incluye_recarga', true)
+                    ->whereNotNull('fecha_recarga')
+                    ->max('fecha_recarga');
+                if ($ultimaRecarga && $value < $ultimaRecarga) {
+                    $fail('La fecha de recarga no puede ser anterior a la última recarga registrada ('.
+                        \Carbon\Carbon::parse($ultimaRecarga)->format('d/m/Y').').');
+                }
+            }],
             'fecha_proxima_recarga'    => ['nullable', 'date'],
             'observaciones_recarga'    => ['nullable', 'string', 'max:2000'],
             'registra_vehiculo'        => ['nullable', 'boolean'],
             'nueva_placa'              => ['nullable', 'string', 'max:20'],
             'observaciones_vehiculo'   => ['nullable', 'string', 'max:1000'],
+            'usar_firma_guardada'      => ['nullable', 'boolean'],
             'firma'                    => ['nullable', 'file', 'image', 'max:2048'],
             'evidencias'               => ['nullable', 'array', 'max:20'],
             'evidencias.*'             => ['file', 'mimes:jpg,jpeg,png,gif,webp,pdf', 'max:10240'],
@@ -449,6 +467,17 @@ class ExtintorController extends Controller
 
         if ($request->hasFile('firma')) {
             $inspeccionData['firma_path'] = $request->file('firma')->store('extintores/firmas', 'public');
+        } elseif (filter_var($request->input('usar_firma_guardada'), FILTER_VALIDATE_BOOLEAN)) {
+            $ultima = ExtintorInspeccion::where('user_id', $request->user()?->id)
+                ->whereNotNull('firma_path')
+                ->latest()
+                ->value('firma_path');
+            if ($ultima && Storage::disk('public')->exists($ultima)) {
+                $ext = pathinfo($ultima, PATHINFO_EXTENSION) ?: 'png';
+                $nuevoPath = 'extintores/firmas/' . \Illuminate\Support\Str::random(40) . '.' . $ext;
+                Storage::disk('public')->copy($ultima, $nuevoPath);
+                $inspeccionData['firma_path'] = $nuevoPath;
+            }
         }
 
         if ($editInspeccion) {
@@ -664,5 +693,45 @@ class ExtintorController extends Controller
             'message' => 'Foto del extintor eliminada.',
             'type'    => 'success',
         ]);
+    }
+
+    // ── Exportar Excel de inspecciones ────────────────────────────────────────
+
+    public function exportarExcel(Extintor $extintor): BinaryFileResponse
+    {
+        $extintor->load('inspecciones', 'asignacionActiva');
+
+        $nombre = 'Inspecciones_'.$extintor->numero_serie.'_'.now()->format('Ymd').'.xlsx';
+
+        return Excel::download(new ExtintorInspeccionExport($extintor), $nombre);
+    }
+
+    // ── Exportar Excel tabla general de extintores ────────────────────────────
+
+    public function exportarTabla(): BinaryFileResponse
+    {
+        $extintores = Extintor::with('asignacionActiva')
+            ->orderBy('numero_serie')
+            ->get()
+            ->map(function ($e) {
+                return (object) [
+                    'numero_serie'        => $e->numero_serie,
+                    'condicion'           => $e->condicion,
+                    'tipo_agente'         => $e->tipo_agente,
+                    'agente_impulsor'     => $e->agente_impulsor,
+                    'ultima_recarga'      => $e->ultima_recarga,
+                    'parte_mantenimiento' => $e->parte_mantenimiento,
+                    'senalizacion'        => $e->senalizacion,
+                    'demarcacion'         => $e->demarcacion,
+                    'funcionamiento'      => $e->funcionamiento,
+                    'acceso'              => $e->acceso,
+                    'placa_actual'        => $e->asignacionActiva?->placa,
+                    'observaciones'       => $e->observaciones,
+                ];
+            });
+
+        $nombre = 'Extintores_'.now()->format('Ymd').'.xlsx';
+
+        return Excel::download(new ExtintoresTablaExport($extintores), $nombre);
     }
 }

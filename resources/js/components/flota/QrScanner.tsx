@@ -72,8 +72,9 @@ export function QrScanner({ onResult, onClose }: Props) {
                                 }
                             } catch {
                                 // No es una URL — el texto es el número de serie del extintor
+                                // Buscamos el extintor por número de serie a través de la ruta autenticada
                                 if (text && text.trim()) {
-                                    router.visit(`/ext/${encodeURIComponent(text.trim())}`);
+                                    router.visit(`/modules/flota/extintores?serie=${encodeURIComponent(text.trim())}`);
                                     onCloseRef.current();
                                 }
                             }

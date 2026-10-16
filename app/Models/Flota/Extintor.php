@@ -85,6 +85,12 @@ class Extintor extends Model
         return $this->hasOne(ExtintorAsignacion::class)->whereNull('fecha_retiro');
     }
 
+    /** Última inspección realizada (por fecha_inspeccion DESC). */
+    public function ultimaInspeccion(): HasOne
+    {
+        return $this->hasOne(ExtintorInspeccion::class)->latestOfMany('fecha_inspeccion');
+    }
+
     public function creador(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');

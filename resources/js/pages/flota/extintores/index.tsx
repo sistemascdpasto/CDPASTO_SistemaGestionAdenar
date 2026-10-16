@@ -13,8 +13,10 @@ import {
     CheckCircle2,
     Columns3,
     Eye,
+    FileDown,
     FlameKindling,
     Loader2,
+    Maximize2,
     Pencil,
     Plus,
     ScanLine,
@@ -32,6 +34,33 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Flota', href: '/modules/flota' },
     { title: 'Extintores', href: '/modules/flota/extintores' },
 ];
+
+// ─── Mapa de codificación de partes ───────────────────────────────────────────
+
+const PARTES_LABELS: Record<string, string> = {
+    '1':'Asa Percutora','2':'Asa de Acarreo','3':'Manómetro',
+    '4':'Pasador de Seguridad','5':'Presinto de Seguridad',
+    '6':'Válvula de Seguridad','7':'Tapa del Cilindro',
+    '8':'Cartucho Impulsor','9':'Manguera',
+    '10':'Pitón, Boquilla o Tobera','11':'Válvula de descarga',
+    '12':'Cuello del Cilindro','13':'Cuerpo del cilindro',
+    '14':'Válvula Reguladora de Presión','15':'Falda o Base de Sustentación',
+    '16':'Fondo del Cilindro','17':'Soporte',
+    '18':'Gancho de Sujeción del Extintor','19':'Hombro del Cilindro',
+    '20':'Mecanismo de Punzado','21':'Ruedas o Neumáticos',
+    '22':'Empacaduras','23':'Soporte de la Manguera',
+    '24':'Rotulación','25':'Asa de Sujeción a la Pared',
+    '26':'Número y/o Siglas del Equipo',
+    '27':'Etiqueta con Fecha de Ultima Recarga',
+};
+
+function resolverPartes(valor: string | null): string {
+    if (!valor) return '—';
+    return valor.split(',').map(c => c.trim()).filter(Boolean).map(c => {
+        const label = PARTES_LABELS[c];
+        return label ? `${c} - ${label}` : c;
+    }).join(', ');
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -52,6 +81,7 @@ interface ExtintorRow {
     demarcacion: string | null;
     funcionamiento: string | null;
     acceso: string | null;
+    ultima_inspeccion_fecha: string | null;
     ultima_recarga: string | null;
     placa_actual: string | null;
     asignacion_activa_id: number | null;
@@ -92,9 +122,9 @@ function Modal({ open, onClose, title, children }: {
 
     if (!open) return null;
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-6">
             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-            <div ref={ref} className="relative z-10 w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-sidebar-border/70 bg-card shadow-2xl dark:border-sidebar-border mx-4">
+            <div ref={ref} className="relative z-10 w-full max-w-4xl max-h-[95vh] overflow-y-auto rounded-2xl border border-sidebar-border/70 bg-card shadow-2xl dark:border-sidebar-border mx-4">
                 <div className="flex items-center justify-between border-b border-sidebar-border/70 px-6 py-4 dark:border-sidebar-border">
                     <h2 className="text-base font-semibold text-foreground">{title}</h2>
                     <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
@@ -271,11 +301,7 @@ function FormExtintor({ initial, onSubmit, submitting, errors, onCancel }: {
                             <option value="N/A">N/A</option>
                         </select>
                     </div>
-                    <div className="col-span-2 grid gap-1">
-                        <Label className="text-[11px] font-semibold text-muted-foreground">Parte del Extintor que requiere Mantenimiento</Label>
-                        <Input value={f.parte_mantenimiento} onChange={e => set('parte_mantenimiento', e.target.value)}
-                            placeholder="Coloque el número de Codificación" className="h-9 text-sm" />
-                    </div>
+
                     <div className="grid gap-1">
                         <Label className="text-[11px] font-semibold text-muted-foreground">Señalización</Label>
                         <select value={f.senalizacion} onChange={e => set('senalizacion', e.target.value)} className={SELECT_CLS}>
@@ -517,6 +543,7 @@ export default function ExtintoresIndex({ extintores, placas, columnas_extra, fi
     const [localPreview2, setLocalPreview2] = useState<string | null>(null);
     const [img1Error, setImg1Error] = useState(false);
     const [img2Error, setImg2Error] = useState(false);
+    const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
     useEffect(() => {
         setLocalPreview1(null);
@@ -622,6 +649,11 @@ export default function ExtintoresIndex({ extintores, placas, columnas_extra, fi
                         <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setColModalOpen(true)}>
                             <Columns3 className="size-4" /> Columnas del checklist
                         </Button>
+                        <a href={route('flota.extintores.exportar-tabla')} target="_blank" rel="noopener noreferrer">
+                            <Button variant="outline" size="sm" className="gap-1.5">
+                                <FileDown className="size-4" /> Exportar Excel
+                            </Button>
+                        </a>
                         <Button size="sm" className="gap-1.5 bg-green-700 hover:bg-green-800 text-white"
                             onClick={() => { setEditTarget(null); setModalOpen(true); }}>
                             <Plus className="size-4" /> Nuevo extintor
@@ -683,8 +715,8 @@ export default function ExtintoresIndex({ extintores, placas, columnas_extra, fi
 
                             {/* Imagen 1 (Más ancha: flex-[1.4]) */}
                             <div
-                                onClick={() => fileInputRef1.current?.click()}
-                                title="Clic para subir o cambiar la imagen 1 (más ancha)"
+                                onClick={() => img1Src ? setLightboxSrc(img1Src) : fileInputRef1.current?.click()}
+                                title={img1Src ? 'Clic para ver la imagen en grande' : 'Clic para subir la imagen 1'}
                                 className="flex-[1.4] relative rounded-xl border-2 border-dashed border-sidebar-border/70 dark:border-sidebar-border hover:border-primary/60 bg-muted/20 hover:bg-muted/40 transition-all cursor-pointer overflow-hidden group flex flex-col items-center justify-center"
                             >
                                 {uploadingRef === 1 ? (
@@ -714,12 +746,19 @@ export default function ExtintoresIndex({ extintores, placas, columnas_extra, fi
                                         >
                                             <Trash2 className="size-3" />
                                         </button>
-                                        <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1 text-white p-2 text-center rounded-xl backdrop-blur-[0.5px]">
+                                        {/* Overlay: ver en grande + botón cambiar imagen */}
+                                        <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 text-white p-2 text-center rounded-xl backdrop-blur-[0.5px]">
                                             <div className="rounded-full bg-white/20 p-2 backdrop-blur-sm">
-                                                <Upload className="size-4 text-white" />
+                                                <Maximize2 className="size-4 text-white" />
                                             </div>
-                                            <span className="text-xs font-semibold leading-tight">Cambiar imagen</span>
-                                            <span className="text-[10px] text-white/80">Clic para subir nueva</span>
+                                            <span className="text-xs font-semibold leading-tight">Ver imagen</span>
+                                            <button
+                                                type="button"
+                                                onClick={(e) => { e.stopPropagation(); fileInputRef1.current?.click(); }}
+                                                className="mt-1 flex items-center gap-1 rounded-lg bg-white/20 hover:bg-white/30 px-2.5 py-1 text-[11px] font-medium text-white transition-colors backdrop-blur-sm"
+                                            >
+                                                <Upload className="size-3" /> Cambiar imagen
+                                            </button>
                                         </div>
                                     </div>
                                 ) : (
@@ -740,8 +779,8 @@ export default function ExtintoresIndex({ extintores, placas, columnas_extra, fi
 
                             {/* Imagen 2 (Más angosta: flex-1) */}
                             <div
-                                onClick={() => fileInputRef2.current?.click()}
-                                title="Clic para subir o cambiar la imagen 2 (más angosta)"
+                                onClick={() => img2Src ? setLightboxSrc(img2Src) : fileInputRef2.current?.click()}
+                                title={img2Src ? 'Clic para ver la imagen en grande' : 'Clic para subir la imagen 2'}
                                 className="flex-1 relative rounded-xl border-2 border-dashed border-sidebar-border/70 dark:border-sidebar-border hover:border-primary/60 bg-muted/20 hover:bg-muted/40 transition-all cursor-pointer overflow-hidden group flex flex-col items-center justify-center"
                             >
                                 {uploadingRef === 2 ? (
@@ -771,12 +810,19 @@ export default function ExtintoresIndex({ extintores, placas, columnas_extra, fi
                                         >
                                             <Trash2 className="size-3" />
                                         </button>
-                                        <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1 text-white p-2 text-center rounded-xl backdrop-blur-[0.5px]">
+                                        {/* Overlay: ver en grande + botón cambiar imagen */}
+                                        <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 text-white p-2 text-center rounded-xl backdrop-blur-[0.5px]">
                                             <div className="rounded-full bg-white/20 p-2 backdrop-blur-sm">
-                                                <Upload className="size-4 text-white" />
+                                                <Maximize2 className="size-4 text-white" />
                                             </div>
-                                            <span className="text-xs font-semibold leading-tight">Cambiar imagen</span>
-                                            <span className="text-[10px] text-white/80">Clic para subir nueva</span>
+                                            <span className="text-xs font-semibold leading-tight">Ver imagen</span>
+                                            <button
+                                                type="button"
+                                                onClick={(e) => { e.stopPropagation(); fileInputRef2.current?.click(); }}
+                                                className="mt-1 flex items-center gap-1 rounded-lg bg-white/20 hover:bg-white/30 px-2.5 py-1 text-[11px] font-medium text-white transition-colors backdrop-blur-sm"
+                                            >
+                                                <Upload className="size-3" /> Cambiar imagen
+                                            </button>
                                         </div>
                                     </div>
                                 ) : (
@@ -828,7 +874,7 @@ export default function ExtintoresIndex({ extintores, placas, columnas_extra, fi
                         <Table>
                             <TableHeader>
                                 <TableRow className="bg-muted dark:bg-muted">
-                                    {['Foto', 'N° Serie', 'Condición', 'Agente extintor', 'Agente impulsor', 'Última recarga', 'Parte Mantenimiento', 'Señalización', 'Demarcación', 'Funcionamiento', 'Acceso al Extintor', 'Placa actual', 'Observaciones', ''].map(h => (
+                                    {['Foto', 'N° Serie', 'Última Inspección', 'Condición', 'Agente extintor', 'Agente impulsor', 'Última recarga', 'Parte Mantenimiento', 'Señalización', 'Demarcación', 'Funcionamiento', 'Acceso al Extintor', 'Placa actual', 'Observaciones', ''].map(h => (
                                         <TableHead key={h} className="text-[11px] font-semibold text-muted-foreground whitespace-nowrap">{h}</TableHead>
                                     ))}
                                 </TableRow>
@@ -860,11 +906,16 @@ export default function ExtintoresIndex({ extintores, placas, columnas_extra, fi
                                                 {row.numero_serie}
                                             </Link>
                                         </TableCell>
+                                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                                            {row.ultima_inspeccion_fecha ?? '—'}
+                                        </TableCell>
                                         <TableCell className="text-xs text-muted-foreground capitalize">{row.condicion ?? '—'}</TableCell>
                                         <TableCell className="text-xs text-muted-foreground">{row.tipo_agente ?? '—'}</TableCell>
                                         <TableCell className="text-xs text-muted-foreground capitalize">{row.agente_impulsor ?? '—'}</TableCell>
                                         <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{row.ultima_recarga ?? '—'}</TableCell>
-                                        <TableCell className="text-xs text-muted-foreground max-w-[130px] truncate">{row.parte_mantenimiento ?? '—'}</TableCell>
+                                        <TableCell className="text-xs text-muted-foreground max-w-[200px]" title={resolverPartes(row.parte_mantenimiento)}>
+                                            <span className="line-clamp-2">{resolverPartes(row.parte_mantenimiento)}</span>
+                                        </TableCell>
                                         <TableCell className="text-xs text-muted-foreground max-w-[120px] truncate">{row.senalizacion ?? '—'}</TableCell>
                                         <TableCell className="text-xs text-muted-foreground">{row.demarcacion ?? '—'}</TableCell>
                                         <TableCell className="text-xs text-muted-foreground max-w-[120px] truncate">{row.funcionamiento ?? '—'}</TableCell>
@@ -877,6 +928,11 @@ export default function ExtintoresIndex({ extintores, placas, columnas_extra, fi
                                                     <Link href={route('flota.extintores.show', row.id)}>
                                                         <Eye className="size-3.5 text-muted-foreground hover:text-foreground transition-colors" />
                                                     </Link>
+                                                </Button>
+                                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" asChild title="Exportar Excel">
+                                                    <a href={route('flota.extintores.exportar-excel', row.id)} target="_blank" rel="noopener noreferrer">
+                                                        <FileDown className="size-3.5 text-muted-foreground hover:text-foreground transition-colors" />
+                                                    </a>
                                                 </Button>
                                                 <Button variant="ghost" size="sm" className="h-7 w-7 p-0"
                                                     onClick={() => { setEditTarget(row); setModalOpen(true); }}>
@@ -965,6 +1021,29 @@ export default function ExtintoresIndex({ extintores, placas, columnas_extra, fi
                         </div>
                         <QrScanner onClose={() => setScannerOpen(false)} />
                     </div>
+                </div>
+            )}
+
+            {/* ── Lightbox imágenes de referencia ──────────────────────── */}
+            {lightboxSrc && (
+                <div
+                    className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+                    onClick={() => setLightboxSrc(null)}
+                >
+                    <button
+                        type="button"
+                        onClick={() => setLightboxSrc(null)}
+                        className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/10 hover:bg-white/25 text-white transition-colors"
+                        title="Cerrar"
+                    >
+                        <X className="size-5" />
+                    </button>
+                    <img
+                        src={lightboxSrc}
+                        alt="Vista ampliada"
+                        className="max-h-[90vh] max-w-[90vw] rounded-xl object-contain shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                    />
                 </div>
             )}
         </AppLayout>

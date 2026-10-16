@@ -24,10 +24,6 @@ require __DIR__.'/reparto.php';
 require __DIR__.'/gente.php';
 require __DIR__.'/cinco-porques.php';
 
-// ── Vista pública de extintor (acceso por QR, sin autenticación) ──────────────
-Route::get('/ext/{token}', [\App\Http\Controllers\Flota\ExtintorPublicoController::class, 'show'])
-    ->name('extintores.publico');
-
 Route::middleware(['auth', 'active'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
 

@@ -81,12 +81,15 @@ Route::middleware(['auth', 'active', 'role:Administrador|Flota', 'submodule.acce
         Route::delete('extintores/columnas', [ExtintorController::class, 'eliminarColumna'])->name('extintores.columnas.destroy');
         Route::post('extintores/referencia-imagen',   [ExtintorController::class, 'subirImagenReferencia'])   ->name('extintores.referencia-imagen');
         Route::delete('extintores/referencia-imagen', [ExtintorController::class, 'eliminarImagenReferencia'])->name('extintores.referencia-imagen.destroy');
+        Route::get('extintores/exportar-tabla',       [ExtintorController::class, 'exportarTabla'])           ->name('extintores.exportar-tabla');
+        Route::get('extintores/ultima-firma-inspeccion', [ExtintorController::class, 'ultimaFirmaInspeccion'])->name('extintores.ultima-firma');
 
         Route::get('extintores',                               [ExtintorController::class, 'index'])          ->name('extintores.index');
         Route::post('extintores',                              [ExtintorController::class, 'store'])          ->name('extintores.store');
         Route::get('extintores/{extintor}',                    [ExtintorController::class, 'show'])           ->name('extintores.show');
         Route::put('extintores/{extintor}',                    [ExtintorController::class, 'update'])         ->name('extintores.update');
         Route::delete('extintores/{extintor}',                 [ExtintorController::class, 'destroy'])        ->name('extintores.destroy');
+        Route::get('extintores/{extintor}/exportar-excel',    [ExtintorController::class, 'exportarExcel'])  ->name('extintores.exportar-excel');
         Route::post('extintores/{extintor}/foto',              [ExtintorController::class, 'subirFoto'])      ->name('extintores.foto.store');
         Route::delete('extintores/{extintor}/foto',            [ExtintorController::class, 'eliminarFoto'])   ->name('extintores.foto.destroy');
         // Asignación a vehículo
@@ -96,7 +99,6 @@ Route::middleware(['auth', 'active', 'role:Administrador|Flota', 'submodule.acce
         // Retiro de vehículo
         Route::post('extintores/{extintor}/retirar',                         [ExtintorController::class, 'retirarVehiculo'])  ->name('extintores.retirar');
         // Inspecciones (inicio y periódicas) con evidencias
-        Route::get('extintores/ultima-firma-inspeccion',                         [ExtintorController::class, 'ultimaFirmaInspeccion'])->name('extintores.ultima-firma');
         Route::post('extintores/{extintor}/inspecciones',                        [ExtintorController::class, 'storeInspeccion']) ->name('extintores.inspecciones.store');
         Route::delete('extintores/{extintor}/inspecciones/{inspeccion}', [ExtintorController::class, 'destroyInspeccion'])->name('extintores.inspecciones.destroy');
     });
