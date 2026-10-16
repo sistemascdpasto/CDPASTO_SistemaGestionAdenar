@@ -488,22 +488,6 @@ class ExtintorController extends Controller
             $inspeccion = ExtintorInspeccion::create($inspeccionData);
         }
 
-        // Actualizar extintor con los datos más recientes de la inspección
-        $extintorFields = [
-            'condicion', 'tipo_agente', 'agente_impulsor',
-            'parte_mantenimiento', 'senalizacion', 'demarcacion',
-            'funcionamiento', 'acceso',
-        ];
-        $extintorUpdate = [];
-        foreach ($extintorFields as $field) {
-            if (array_key_exists($field, $data)) {
-                $extintorUpdate[$field] = $data[$field];
-            }
-        }
-        if (array_key_exists('observaciones_inspeccion', $data)) {
-            $extintorUpdate['observaciones'] = $data['observaciones_inspeccion'];
-        }
-
         // Guardar evidencias
         foreach ($request->file('evidencias', []) as $orden => $file) {
             $path = $file->store("extintores/{$extintor->id}/inspecciones/{$inspeccion->id}", 'public');
@@ -515,13 +499,11 @@ class ExtintorController extends Controller
             ]);
         }
 
-        // Actualizar próxima recarga y datos del extintor
+        // Solo actualizar fecha_vencimiento si se registra recarga con próxima fecha
+        // Los campos del extintor (condicion, tipo_agente, etc.) son independientes
+        // de las inspecciones y solo se editan desde el registro inicial.
         if ($incluyeRecarga && ! empty($data['fecha_proxima_recarga'])) {
-            $extintorUpdate['fecha_vencimiento'] = $data['fecha_proxima_recarga'];
-        }
-
-        if (! empty($extintorUpdate)) {
-            $extintor->update($extintorUpdate);
+            $extintor->update(['fecha_vencimiento' => $data['fecha_proxima_recarga']]);
         }
 
         // Gestión del vehículo: cerrar asignación activa y/o abrir una nueva

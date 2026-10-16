@@ -429,7 +429,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
     });
 
     const [formInspeccion, setFormInspeccion] = useState(formInspeccionVacio);
-    const setInsp = (k: string, v: string | boolean) => setFormInspeccion(p => ({ ...p, [k]: v }));
+    const setInsp = (k: string, v: string | boolean | string[]) => setFormInspeccion(p => ({ ...p, [k]: v }));
 
     const abrirNuevaInspeccion = () => {
         setEditInspeccion(null);
@@ -441,7 +441,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                 condicion: ultima.condicion ?? base.condicion,
                 tipo_agente: ultima.tipo_agente ?? base.tipo_agente,
                 agente_impulsor: ultima.agente_impulsor ?? base.agente_impulsor,
-                parte_mantenimiento: [] as unknown as string,
+                parte_mantenimiento: [],
                 senalizacion: ultima.senalizacion ?? base.senalizacion,
                 demarcacion: ultima.demarcacion ?? base.demarcacion,
                 funcionamiento: ultima.funcionamiento ?? base.funcionamiento,
@@ -1156,18 +1156,16 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                                                         </Button>
                                                         {confirmInsp === row.inspeccionOriginal.id ? (
                                                             <span className="flex items-center gap-1">
+                                                                <span className="text-[10px] font-semibold text-red-600 whitespace-nowrap">¿Eliminar inspección?</span>
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => handleDeleteInsp(row.inspeccionOriginal!.id)}
                                                                     className="rounded px-1.5 py-0.5 text-[10px] font-semibold bg-red-600 text-white hover:bg-red-700"
                                                                 >
-                                                                    Confirmar
+                                                                    Sí
                                                                 </button>
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => setConfirmInsp(null)}
-                                                                    className="text-muted-foreground hover:text-foreground"
-                                                                >
+                                                                <button type="button" onClick={() => setConfirmInsp(null)}
+                                                                    className="text-muted-foreground hover:text-foreground">
                                                                     <X className="size-3.5" />
                                                                 </button>
                                                             </span>
@@ -1196,18 +1194,16 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                                                         </Button>
                                                         {confirmExtintor ? (
                                                             <span className="flex items-center gap-1">
+                                                                <span className="text-[10px] font-semibold text-red-600 whitespace-nowrap">¿Eliminar extintor?</span>
                                                                 <button
                                                                     type="button"
                                                                     onClick={handleDeleteExtintor}
                                                                     className="rounded px-1.5 py-0.5 text-[10px] font-semibold bg-red-600 text-white hover:bg-red-700"
                                                                 >
-                                                                    Confirmar
+                                                                    Sí
                                                                 </button>
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => setConfirmExtintor(false)}
-                                                                    className="text-muted-foreground hover:text-foreground"
-                                                                >
+                                                                <button type="button" onClick={() => setConfirmExtintor(false)}
+                                                                    className="text-muted-foreground hover:text-foreground">
                                                                     <X className="size-3.5" />
                                                                 </button>
                                                             </span>
@@ -1293,9 +1289,10 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                                                             {/* Eliminar */}
                                                             {confirmInsp === ins.id ? (
                                                                 <span className="flex items-center gap-1">
+                                                                    <span className="text-[10px] font-semibold text-red-600 whitespace-nowrap">¿Eliminar inspección?</span>
                                                                     <button type="button" onClick={() => handleDeleteInsp(ins.id)}
                                                                         className="rounded px-1.5 py-0.5 text-[10px] font-semibold bg-red-600 text-white hover:bg-red-700">
-                                                                        Confirmar
+                                                                        Sí
                                                                     </button>
                                                                     <button type="button" onClick={() => setConfirmInsp(null)}
                                                                         className="text-muted-foreground hover:text-foreground">
@@ -1697,7 +1694,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                                                 onChange={e => {
                                                     setHayMantenimiento(e.target.checked);
                                                     if (!e.target.checked)
-                                                        setInsp('parte_mantenimiento', [] as unknown as string);
+                                                        setInsp('parte_mantenimiento', []);
                                                 }}
                                                 className="h-4 w-4 rounded border-sidebar-border/70 accent-primary"
                                             />
@@ -1717,7 +1714,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                                                     if (!val) return;
                                                     const current = formInspeccion.parte_mantenimiento as string[];
                                                     if (!current.includes(val))
-                                                        setInsp('parte_mantenimiento', [...current, val] as unknown as string);
+                                                        setInsp('parte_mantenimiento', [...current, val]);
                                                     e.target.value = '';
                                                 }}
                                             >
@@ -1781,7 +1778,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                                                                 <span className="text-muted-foreground">— {labels[n] ?? n}</span>
                                                                 <button
                                                                     type="button"
-                                                                    onClick={() => setInsp('parte_mantenimiento', (formInspeccion.parte_mantenimiento as string[]).filter(x => x !== n) as unknown as string)}
+                                                                    onClick={() => setInsp('parte_mantenimiento', (formInspeccion.parte_mantenimiento as string[]).filter(x => x !== n))}
                                                                     className="ml-0.5 text-muted-foreground hover:text-foreground transition-colors"
                                                                 >
                                                                     <X className="size-3" />
