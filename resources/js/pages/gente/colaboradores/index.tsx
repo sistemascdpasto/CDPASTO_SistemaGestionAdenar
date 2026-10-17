@@ -514,12 +514,48 @@ export default function ColaboradoresIndex({
                                         <TableCell className="text-right">
                                             {colaborador.estado_registro === 'borrador' ? (
                                                 canManageColaboradores && (
-                                                    <div className="flex justify-end">
+                                                    <div className="flex justify-end gap-1">
                                                         <IconActionButton
                                                             icon={ArrowRight}
                                                             label="Continuar registro"
                                                             href={route('gente.colaboradores.wizard', colaborador.id)}
                                                         />
+                                                        <Dialog>
+                                                            <TooltipProvider delayDuration={200}>
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <DialogTrigger asChild>
+                                                                            <Button
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                className="text-destructive hover:text-destructive"
+                                                                                aria-label="Eliminar borrador"
+                                                                            >
+                                                                                <Trash2 className="size-4" />
+                                                                            </Button>
+                                                                        </DialogTrigger>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent>Eliminar borrador</TooltipContent>
+                                                                </Tooltip>
+                                                            </TooltipProvider>
+                                                            <DialogContent>
+                                                                <DialogTitle>
+                                                                    ¿Eliminar el borrador de {colaborador.nombres} {colaborador.apellidos}?
+                                                                </DialogTitle>
+                                                                <DialogDescription>
+                                                                    Se perderá el progreso del registro (paso {colaborador.wizard_step ?? 1} de
+                                                                    4). Esta acción no se puede deshacer.
+                                                                </DialogDescription>
+                                                                <DialogFooter>
+                                                                    <DialogClose asChild>
+                                                                        <Button variant="secondary">Cancelar</Button>
+                                                                    </DialogClose>
+                                                                    <Button variant="destructive" onClick={() => destroyColaborador(colaborador)}>
+                                                                        Eliminar
+                                                                    </Button>
+                                                                </DialogFooter>
+                                                            </DialogContent>
+                                                        </Dialog>
                                                     </div>
                                                 )
                                             ) : (
@@ -645,13 +681,38 @@ export default function ColaboradoresIndex({
                                     </dl>
                                     {colaborador.estado_registro === 'borrador' ? (
                                         canManageColaboradores && (
-                                            <div className="mt-4">
+                                            <div className="mt-4 flex flex-wrap gap-1">
                                                 <IconActionButton
                                                     icon={ArrowRight}
                                                     label="Continuar registro"
                                                     variant="outline"
                                                     href={route('gente.colaboradores.wizard', colaborador.id)}
                                                 />
+                                                <Dialog>
+                                                    <DialogTrigger asChild>
+                                                        <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
+                                                            <Trash2 className="size-4" />
+                                                            Eliminar
+                                                        </Button>
+                                                    </DialogTrigger>
+                                                    <DialogContent>
+                                                        <DialogTitle>
+                                                            ¿Eliminar el borrador de {colaborador.nombres} {colaborador.apellidos}?
+                                                        </DialogTitle>
+                                                        <DialogDescription>
+                                                            Se perderá el progreso del registro (paso {colaborador.wizard_step ?? 1} de 4). Esta
+                                                            acción no se puede deshacer.
+                                                        </DialogDescription>
+                                                        <DialogFooter>
+                                                            <DialogClose asChild>
+                                                                <Button variant="secondary">Cancelar</Button>
+                                                            </DialogClose>
+                                                            <Button variant="destructive" onClick={() => destroyColaborador(colaborador)}>
+                                                                Eliminar
+                                                            </Button>
+                                                        </DialogFooter>
+                                                    </DialogContent>
+                                                </Dialog>
                                             </div>
                                         )
                                     ) : (
