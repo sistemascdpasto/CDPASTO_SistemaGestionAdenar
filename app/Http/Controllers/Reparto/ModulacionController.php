@@ -93,6 +93,12 @@ class ModulacionController extends Controller
                 $table->boolean('fijo')->default(false)->after('cargo');
             });
         }
+        // Columna placa_adicional en modulacion_items (migración defensiva)
+        if (Schema::hasTable('modulacion_items') && ! Schema::hasColumn('modulacion_items', 'placa_adicional')) {
+            Schema::table('modulacion_items', function (Blueprint $table) {
+                $table->string('placa_adicional')->nullable()->after('placa');
+            });
+        }
     }
 
     public function index(Request $request): Response
@@ -441,6 +447,7 @@ class ModulacionController extends Controller
             'readOnly' => 'nullable|boolean',
             'rutas' => 'required|array|min:1',
             'rutas.*.placa' => 'required|string|max:50',
+            'rutas.*.placa_adicional' => 'nullable|string|max:50',
             'rutas.*.doc_tras' => 'nullable|string|max:100',
             'rutas.*.ud' => 'nullable|string|max:100',
             'rutas.*.cargo' => 'nullable|string|max:100',
@@ -566,6 +573,7 @@ class ModulacionController extends Controller
 
             $modulacion->items()->create([
                 'placa' => $ruta['placa'],
+                'placa_adicional' => !empty($ruta['placa_adicional']) ? strtoupper(trim($ruta['placa_adicional'])) : null,
                 'doc_tras' => $ruta['doc_tras'] ?? null,
                 'ud' => $ruta['ud'] ?? null,
                 'cargo' => $ruta['cargo'] ?? ($firstMember['cargo'] ?? null),
@@ -746,6 +754,7 @@ class ModulacionController extends Controller
             'despachado_por_nombre' => 'nullable|string|max:255',
             'rutas' => 'required|array|min:1',
             'rutas.*.placa' => 'required|string|max:50',
+            'rutas.*.placa_adicional' => 'nullable|string|max:50',
             'rutas.*.doc_tras' => 'nullable|string|max:100',
             'rutas.*.ud' => 'nullable|string|max:100',
             'rutas.*.cargo' => 'nullable|string|max:100',
@@ -863,6 +872,7 @@ class ModulacionController extends Controller
 
             $modulacion->items()->create([
                 'placa' => $ruta['placa'],
+                'placa_adicional' => !empty($ruta['placa_adicional']) ? strtoupper(trim($ruta['placa_adicional'])) : null,
                 'doc_tras' => $ruta['doc_tras'] ?? null,
                 'ud' => $ruta['ud'] ?? null,
                 'cargo' => $ruta['cargo'] ?? ($firstMember['cargo'] ?? null),
@@ -1015,6 +1025,7 @@ class ModulacionController extends Controller
             'fecha_origen' => $item->fecha_modulacion,
             'doc_tras'     => $item->doc_tras,
             'cargo'        => $item->cargo,
+            'placa_adicional' => $item->placa_adicional,
             'tripulacion'  => is_string($item->tripulacion) ? json_decode($item->tripulacion, true) ?? [] : ($item->tripulacion ?? []),
             'viajes'       => is_string($item->viajes) ? json_decode($item->viajes, true) ?? [] : ($item->viajes ?? []),
         ]);

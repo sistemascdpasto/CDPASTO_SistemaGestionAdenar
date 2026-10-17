@@ -3,6 +3,7 @@
 use App\Http\Controllers\Flota\ActaTallerController;
 use App\Http\Controllers\Flota\CarretaController;
 use App\Http\Controllers\Flota\DisponibilidadFlotaController;
+use App\Http\Controllers\Flota\ExtintorController;
 use App\Http\Controllers\Flota\OcupacionCargaController;
 use App\Http\Controllers\Flota\SimitConsultaController;
 use App\Http\Controllers\Flota\VaradaController;
@@ -73,6 +74,33 @@ Route::middleware(['auth', 'active', 'role:Administrador|Flota', 'submodule.acce
             ->name('actas-taller.update');
         Route::delete('actas-taller/{actasTaller}', [ActaTallerController::class, 'destroy'])
             ->name('actas-taller.destroy');
+
+        // ── Extintores ─────────────────────────────────────────────────────────
+        // Rutas estáticas ANTES del wildcard {extintor} para evitar colisiones
+        Route::post('extintores/columnas',   [ExtintorController::class, 'agregarColumna']) ->name('extintores.columnas.store');
+        Route::delete('extintores/columnas', [ExtintorController::class, 'eliminarColumna'])->name('extintores.columnas.destroy');
+        Route::post('extintores/referencia-imagen',   [ExtintorController::class, 'subirImagenReferencia'])   ->name('extintores.referencia-imagen');
+        Route::delete('extintores/referencia-imagen', [ExtintorController::class, 'eliminarImagenReferencia'])->name('extintores.referencia-imagen.destroy');
+        Route::get('extintores/exportar-tabla',       [ExtintorController::class, 'exportarTabla'])           ->name('extintores.exportar-tabla');
+        Route::get('extintores/ultima-firma-inspeccion', [ExtintorController::class, 'ultimaFirmaInspeccion'])->name('extintores.ultima-firma');
+
+        Route::get('extintores',                               [ExtintorController::class, 'index'])          ->name('extintores.index');
+        Route::post('extintores',                              [ExtintorController::class, 'store'])          ->name('extintores.store');
+        Route::get('extintores/{extintor}',                    [ExtintorController::class, 'show'])           ->name('extintores.show');
+        Route::put('extintores/{extintor}',                    [ExtintorController::class, 'update'])         ->name('extintores.update');
+        Route::delete('extintores/{extintor}',                 [ExtintorController::class, 'destroy'])        ->name('extintores.destroy');
+        Route::get('extintores/{extintor}/exportar-excel',    [ExtintorController::class, 'exportarExcel'])  ->name('extintores.exportar-excel');
+        Route::post('extintores/{extintor}/foto',              [ExtintorController::class, 'subirFoto'])      ->name('extintores.foto.store');
+        Route::delete('extintores/{extintor}/foto',            [ExtintorController::class, 'eliminarFoto'])   ->name('extintores.foto.destroy');
+        // Asignación a vehículo
+        Route::post('extintores/{extintor}/asignar',                         [ExtintorController::class, 'asignarVehiculo'])  ->name('extintores.asignar');
+        Route::put('extintores/{extintor}/asignaciones/{asignacion}',        [ExtintorController::class, 'updateAsignacion']) ->name('extintores.asignaciones.update');
+        Route::delete('extintores/{extintor}/asignaciones/{asignacion}',     [ExtintorController::class, 'destroyAsignacion'])->name('extintores.asignaciones.destroy');
+        // Retiro de vehículo
+        Route::post('extintores/{extintor}/retirar',                         [ExtintorController::class, 'retirarVehiculo'])  ->name('extintores.retirar');
+        // Inspecciones (inicio y periódicas) con evidencias
+        Route::post('extintores/{extintor}/inspecciones',                        [ExtintorController::class, 'storeInspeccion']) ->name('extintores.inspecciones.store');
+        Route::delete('extintores/{extintor}/inspecciones/{inspeccion}', [ExtintorController::class, 'destroyInspeccion'])->name('extintores.inspecciones.destroy');
     });
 
 // Eliminar vehículos es exclusivo de Administrador; Flota conserva el resto

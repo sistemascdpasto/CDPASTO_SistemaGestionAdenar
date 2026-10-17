@@ -46,6 +46,8 @@
         "@types/react": "^19.0.3",
         "@types/react-dom": "^19.0.2",
         "@vitejs/plugin-react": "^4.3.4",
+        "@zxing/browser": "0.2.1",
+        "@zxing/library": "0.23.0",
         "chart.js": "^4.5.1",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
@@ -75,5 +77,6 @@
         "@rollup/rollup-linux-x64-gnu": "4.9.5",
         "@tailwindcss/oxide-linux-x64-gnu": "^4.0.1",
         "lightningcss-linux-x64-gnu": "^1.29.1"
-    }
+    },
+    "allowScripts": {}
 }
