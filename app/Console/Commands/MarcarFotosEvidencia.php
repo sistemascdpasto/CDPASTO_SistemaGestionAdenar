@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Seguridad\PruebaEvidencia;
+use App\Support\UbicacionPrueba;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
@@ -35,7 +36,7 @@ class MarcarFotosEvidencia extends Command
     {
         $dryRun   = $this->option('dry-run');
         $soloId   = $this->option('id') ? (int) $this->option('id') : null;
-        $ubicacion = config('app.ubicacion_pruebas', 'Pasto, Nariño · Colombia');
+        $ubicacion = UbicacionPrueba::predeterminada();
 
         // ── Verificar que la columna marca_agua_ok exista ─────────────────
         if (! $this->columnaExiste()) {
@@ -46,7 +47,7 @@ class MarcarFotosEvidencia extends Command
 
         // ── Construir query ───────────────────────────────────────────────
         $query = PruebaEvidencia::query()
-            ->with('pruebaAlcoholemia:id,fecha_hora')
+            ->with('pruebaAlcoholemia:id,fecha_hora,ubicacion')
             ->whereNotNull('path')
             ->where('path', 'not like', '%.pdf')
             ->where('path', 'not like', '%.PDF')
@@ -115,7 +116,8 @@ class MarcarFotosEvidencia extends Command
                     $fechaHora = $evidencia->pruebaAlcoholemia->fecha_hora;
                     $numero    = $evidencia->id; // número de verificación global único
 
-                    $this->sobreimprimirMarca($fullPath, $fechaHora, $numero, $ubicacion);
+                    // Ciudad donde se tomó la prueba; las anteriores a esta función usan la predeterminada.
+                    $this->sobreimprimirMarca($fullPath, $fechaHora, $numero, $evidencia->pruebaAlcoholemia->ubicacion ?? $ubicacion);
 
                     // Marcar como procesada
                     $evidencia->update([self::MARCA_COLUMN => true]);

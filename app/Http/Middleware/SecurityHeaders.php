@@ -25,9 +25,10 @@ class SecurityHeaders
         $response->headers->set('X-Frame-Options', 'SAMEORIGIN');
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
         // camera=(self): el registro de condiciones de salud usa
-        // getUserMedia() para tomar fotos; el resto de permisos sensibles
-        // del navegador no se usan en ninguna pantalla.
-        $response->headers->set('Permissions-Policy', 'geolocation=(), microphone=(), camera=(self)');
+        // getUserMedia() para tomar fotos. geolocation=(self): la ciudad de
+        // las pruebas de alcoholemia y la trazabilidad con Nexus (siempre con
+        // permiso del usuario). El resto de permisos sensibles no se usan.
+        $response->headers->set('Permissions-Policy', 'geolocation=(self), microphone=(), camera=(self)');
 
         if ($request->secure() && app()->environment('production')) {
             $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');

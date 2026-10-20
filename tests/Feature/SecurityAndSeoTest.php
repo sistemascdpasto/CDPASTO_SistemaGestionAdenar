@@ -16,7 +16,7 @@ class SecurityAndSeoTest extends TestCase
         $response->assertHeader('X-Content-Type-Options', 'nosniff');
         $response->assertHeader('X-Frame-Options', 'SAMEORIGIN');
         $response->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-        $response->assertHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=(self)');
+        $response->assertHeader('Permissions-Policy', 'geolocation=(self), microphone=(), camera=(self)');
     }
 
     public function test_home_page_is_not_marked_noindex(): void

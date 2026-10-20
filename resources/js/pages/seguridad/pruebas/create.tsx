@@ -383,7 +383,9 @@ export default function CreatePrueba({
     preselectedFecha,
     preselectedRutaAsignada,
     preselectedTipo,
+    ubicacionActual = 'Pasto, Nariño · Colombia',
 }: {
+    ubicacionActual?: string;
     colaboradores: ColaboradorOption[];
     dispositivosDisponibles: DispositivoOption[];
     prueba?: PruebaData;
@@ -395,6 +397,32 @@ export default function CreatePrueba({
     const breadcrumbs: BreadcrumbItem[] = prueba
         ? [...breadcrumbsBase, { title: 'Editar prueba', href: `/modules/seguridad/pruebas/${prueba.id}/edit` }]
         : [...breadcrumbsBase, { title: 'Registrar prueba', href: '/modules/seguridad/pruebas/create' }];
+    // Ubicación de la prueba (marca de agua): se refresca con la del dispositivo al abrir el
+    // formulario; el agente de Nexus la guarda en la sesión y el servidor la usa al registrar.
+    const [ubicacion, setUbicacion] = useState(ubicacionActual);
+
+    useEffect(() => {
+        if (prueba?.estado === 'realizada' || !navigator.geolocation) return;
+
+        const xsrf = decodeURIComponent(document.cookie.split('; ').find((c) => c.startsWith('XSRF-TOKEN='))?.split('=')[1] ?? '');
+        const enviar = (coords: Record<string, number>) =>
+            fetch('/nexus/ubicacion', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-XSRF-TOKEN': xsrf },
+                body: JSON.stringify(coords),
+            })
+                .then((r) => (r.ok ? r.json() : null))
+                .then((r) => r?.label && setUbicacion(r.label))
+                .catch(() => {});
+
+        navigator.geolocation.getCurrentPosition(
+            (pos) => enviar({ latitude: pos.coords.latitude, longitude: pos.coords.longitude, accuracy: pos.coords.accuracy }),
+            () => enviar({}),
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 },
+        );
+    }, [prueba?.estado]);
+
     const defaultFechaHora = () => {
         if (prueba?.fecha_hora) {
             return prueba.fecha_hora;
@@ -846,7 +874,7 @@ export default function CreatePrueba({
                                     <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
                                     <circle cx="12" cy="10" r="3"/>
                                 </svg>
-                                Pasto, Nariño · Colombia
+                                {ubicacion}
                             </span>
                         </div>
                     </div>

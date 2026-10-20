@@ -33,6 +33,10 @@ class PruebaAlcoholemia extends Model
         'pertenece_planeacion',
         'modulacion_id',
         'ruta_asignada',
+        'ubicacion',
+        'latitud',
+        'longitud',
+        'ubicacion_fuente',
     ];
 
     protected function casts(): array
@@ -44,6 +48,8 @@ class PruebaAlcoholemia extends Model
             'consentimiento_en' => 'datetime',
             'fecha_hora' => 'datetime',
             'programada_en' => 'datetime',
+            'latitud' => 'float',
+            'longitud' => 'float',
             'recordatorio_enviado_at' => 'datetime',
             'pertenece_planeacion' => 'boolean',
         ];

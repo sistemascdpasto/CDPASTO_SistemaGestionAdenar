@@ -11,6 +11,7 @@ use App\Models\Seguridad\Colaborador;
 use App\Models\Seguridad\PruebaAlcoholemia;
 use App\Models\Seguridad\PruebaAlcoholemiaRequisito;
 use App\Services\Seguridad\QrCodeGenerator;
+use App\Support\UbicacionPrueba;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -206,6 +207,7 @@ class PruebaAlcoholemiaController extends Controller
             'dispositivosDisponibles' => $dispositivosDisponibles,
             'dispositivoDefaultId'    => $dispositivoDefaultId,
             'preselectedColaboradorId' => $request->input('colaborador_id') ? (int) $request->input('colaborador_id') : null,
+            'ubicacionActual' => UbicacionPrueba::actual()['ubicacion'],
             'preselectedFecha' => $request->input('fecha') ?: null,
             'preselectedRutaAsignada' => $request->input('ruta_asignada') ?: null,
             'preselectedTipo' => in_array($request->input('tipo'), [
@@ -234,6 +236,8 @@ class PruebaAlcoholemiaController extends Controller
             'fecha_hora' => $esProgramacion ? $request->date('programada_en') : ($request->filled('fecha_hora') ? Carbon::parse($request->input('fecha_hora')) : Carbon::now()),
             'programada_en' => $esProgramacion ? $request->date('programada_en') : null,
             'estado' => $esProgramacion ? 'programada' : 'realizada',
+            // Dónde se tomó la prueba (ciudad real del responsable, no fija en Pasto).
+            ...($esProgramacion ? [] : UbicacionPrueba::actual()),
         ]);
 
         // Guardar evidencias principales
@@ -285,6 +289,7 @@ class PruebaAlcoholemiaController extends Controller
                 ->orderBy('nombres')
                 ->get(['id', 'nombres', 'apellidos', 'cedula', 'turno', 'cargo']),
             'dispositivosDisponibles' => $dispositivosDisponibles,
+            'ubicacionActual' => $prueba->ubicacion ?? UbicacionPrueba::actual()['ubicacion'],
             'prueba' => $pruebaData,
         ]);
     }
@@ -305,6 +310,11 @@ class PruebaAlcoholemiaController extends Controller
             'programada_en' => $esProgramacion ? $request->date('programada_en') : null,
             'estado' => $esProgramacion ? 'programada' : 'realizada',
         ]);
+
+        // Una prueba programada que se realiza ahora toma la ubicación del momento en que se hace.
+        if (! $esProgramacion && $prueba->ubicacion === null) {
+            $prueba->fill(UbicacionPrueba::actual());
+        }
 
         // Eliminar evidencias marcadas para eliminaciÃ³n
         $deletedIndices = $request->input('deleted_evidencias_indices', []);
@@ -361,7 +371,7 @@ class PruebaAlcoholemiaController extends Controller
                 'evaluacion' => $prueba->evaluacion(),
             ],
             'qrSvg' => $qrSvg,
-            'ubicacion' => config('app.ubicacion_pruebas', 'Pasto, Nariño · Colombia'),
+            'ubicacion' => $prueba->ubicacion ?? UbicacionPrueba::predeterminada(),
         ]);
     }
 

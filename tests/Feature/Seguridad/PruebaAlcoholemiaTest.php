@@ -220,6 +220,39 @@ class PruebaAlcoholemiaTest extends TestCase
         $this->assertNull($prueba->evidenciaPrincipalPath());
     }
 
+    public function test_la_prueba_guarda_la_ciudad_donde_se_tomo(): void
+    {
+        Storage::fake('public');
+        $user = $this->seguridadUser();
+        $dispositivo = $this->alcoholimetro();
+        $colaborador = $this->colaborador();
+        $datos = fn (string $tipo = 'pre_ruta') => [
+            'colaborador_id' => $colaborador->id,
+            'tipo' => $tipo,
+            'alcoholimetro_id' => $dispositivo->id,
+            'resultado' => '0.000',
+            'consentimiento_aceptado' => true,
+            'evidencia' => [UploadedFile::fake()->image('foto.jpg')],
+        ];
+
+        // Con la ubicación que el agente de Nexus dejó en la sesión (tomada del dispositivo).
+        $this->actingAs($user)
+            ->withSession(['nexus_location' => ['source' => 'gps', 'latitude' => 0.8301, 'longitude' => -77.6444, 'label' => 'Ipiales, Nariño · Colombia']])
+            ->post(route('seguridad.pruebas.store'), $datos());
+
+        $prueba = PruebaAlcoholemia::latest('id')->first();
+        $this->assertSame(['Ipiales, Nariño · Colombia', 'gps', 0.8301], [$prueba->ubicacion, $prueba->ubicacion_fuente, $prueba->latitud]);
+        $this->actingAs($user)->get(route('seguridad.pruebas.show', $prueba))
+            ->assertInertia(fn ($page) => $page->where('ubicacion', 'Ipiales, Nariño · Colombia'));
+
+        // Sin datos de ubicación: la predeterminada del CD.
+        $this->flushSession();
+        $this->actingAs($user)->post(route('seguridad.pruebas.store'), $datos('post_ruta'))->assertSessionHasNoErrors();
+        $this->assertSame(2, PruebaAlcoholemia::count());
+        $sinDatos = PruebaAlcoholemia::latest('id')->first();
+        $this->assertSame(['Pasto, Nariño · Colombia', 'predeterminada'], [$sinDatos->ubicacion, $sinDatos->ubicacion_fuente]);
+    }
+
     public function test_pdf_report_embeds_small_thumbnails_instead_of_full_photos(): void
     {
         Storage::fake('public');
