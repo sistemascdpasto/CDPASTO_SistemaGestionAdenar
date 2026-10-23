@@ -506,16 +506,6 @@ const COORDS_NARINO: Record<string, Coordenada> = {
     narino: { lat: 1.290676, lon: -77.357857 },
 };
 
-function _countDriversByLevel(data: Conductor[]): Record<Nivel, string[]> {
-    return data.reduce(
-        (counts, driver) => {
-            counts[clasificarRuta(driver.ruta)].push(driver.nombre);
-            return counts;
-        },
-        { alta: [], media: [], baja: [] } as Record<Nivel, string[]>,
-    );
-}
-
 function obtenerDiasSemana(
     fechaStr: string,
     datosPorFecha: Record<string, LugarRuta[]>,
@@ -577,7 +567,7 @@ export default function RutogramasIndex({
     mapaCalorData = [],
 }: RutogramasProps) {
     const [dailyData, setDailyData] = useState<DatosDiarios>({});
-    const [_dailyFileName, setDailyFileName] = useState('');
+    const [, setDailyFileName] = useState('');
     const [modoFuente, setModoFuente] = useState<'modulacion' | 'excel'>('modulacion');
     const [fechaSeleccionada, setFechaSeleccionada] = useState<string>(() => {
         if (fechaInicial) return fechaInicial;

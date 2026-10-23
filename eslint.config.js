@@ -35,6 +35,16 @@ export default [
         rules: {
             'react-hooks/rules-of-hooks': 'error',
             'react-hooks/exhaustive-deps': 'warn',
+            // Permitir variables/parámetros con prefijo _ como convención de "intencialmente no usado"
+            '@typescript-eslint/no-unused-vars': [
+                'error',
+                {
+                    varsIgnorePattern: '^_',
+                    argsIgnorePattern: '^_',
+                    caughtErrorsIgnorePattern: '^_',
+                    ignoreRestSiblings: true,
+                },
+            ],
         },
     },
     {

@@ -117,7 +117,7 @@ export function ReconocimientoFacialLiveDialog({
         if (wsRef.current) {
             try {
                 wsRef.current.close();
-            } catch (_) {
+            } catch {
                 // ignorar error al cerrar WebSocket
             }
             wsRef.current = null;
@@ -154,7 +154,7 @@ export function ReconocimientoFacialLiveDialog({
                     if (real?.deviceId) {
                         targetId = real.deviceId;
                     }
-                } catch (_) {
+                } catch {
                     // ignorar error al enumerar dispositivos
                 }
             }
@@ -234,7 +234,7 @@ export function ReconocimientoFacialLiveDialog({
             ws.onclose = () => {
                 setConectadoWs(false);
             };
-        } catch (_) {
+        } catch {
             // WebSocket no disponible; el estado conectadoWs ya es false
         }
 
