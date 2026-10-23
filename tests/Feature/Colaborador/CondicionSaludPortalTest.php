@@ -111,15 +111,15 @@ class CondicionSaludPortalTest extends TestCase
         [$user, $colaborador] = $this->colaboradorUser();
         $this->crearPruebaConFirma($colaborador, $user);
 
-        // Ingreso de ayer, sin salida.
+        // Ingreso de hace 10 horas sin salida (p. ej. turno nocturno): la jornada sigue abierta.
         CondicionSalud::create([
             'colaborador_id' => $colaborador->id,
             'momento' => 'ingreso',
             'estado' => 'Bueno',
             'responsable_id' => $user->id,
-            'fecha_hora' => now()->subDay(),
+            'fecha_hora' => now()->subHours(10),
             'consentimiento_aceptado' => true,
-            'consentimiento_en' => now()->subDay(),
+            'consentimiento_en' => now()->subHours(10),
         ]);
 
         $this->actingAs($user)->get(route('portal.condicion-salud'))
@@ -152,6 +152,46 @@ class CondicionSaludPortalTest extends TestCase
         ])->assertRedirect()->assertSessionDoesntHaveErrors();
 
         $this->assertSame(3, $colaborador->condicionesSalud()->count());
+    }
+
+    public function test_an_entry_whose_exit_was_forgotten_does_not_force_a_fake_exit_the_next_day(): void
+    {
+        [$user, $colaborador] = $this->colaboradorUser();
+        $this->crearPruebaConFirma($colaborador, $user);
+
+        // Ayer marcó la entrada y olvidó la salida (más de la jornada máxima de 16 h).
+        $ayer = CondicionSalud::create([
+            'colaborador_id' => $colaborador->id,
+            'momento' => 'ingreso',
+            'estado' => 'Bueno',
+            'responsable_id' => $user->id,
+            'fecha_hora' => now()->subHours(24),
+            'consentimiento_aceptado' => true,
+            'consentimiento_en' => now()->subHours(24),
+        ]);
+
+        // La pantalla ya no lo obliga a marcar salida: muestra el aviso y habilita la entrada.
+        $this->actingAs($user)->get(route('portal.condicion-salud'))
+            ->assertInertia(fn ($page) => $page
+                ->where('jornadaAbierta', false)
+                ->where('entradaAbierta', false)
+                ->where('entradaSinSalida.fecha_hora', $ayer->fecha_hora->format('d/m/Y H:i')));
+
+        // Una salida «tardía» para esa entrada ya no se acepta (falsearía la salud de salida).
+        $this->actingAs($user)->post(route('portal.condicion-salud.store'), [
+            'momento' => 'salida',
+            'estado' => 'Bueno',
+            'consentimiento_aceptado' => true,
+        ])->assertSessionHasErrors('momento');
+
+        // Puede registrar la entrada de hoy directamente.
+        $this->actingAs($user)->post(route('portal.condicion-salud.store'), [
+            'momento' => 'ingreso',
+            'estado' => 'Bueno',
+            'consentimiento_aceptado' => true,
+        ])->assertRedirect()->assertSessionDoesntHaveErrors();
+
+        $this->assertSame(['ingreso', 'ingreso'], $colaborador->condicionesSalud()->orderBy('fecha_hora')->pluck('momento')->all());
     }
 
     public function test_salida_is_rejected_without_open_entry(): void

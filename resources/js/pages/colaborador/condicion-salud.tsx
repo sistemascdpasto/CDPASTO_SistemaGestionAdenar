@@ -81,8 +81,10 @@ export default function CondicionSaludPortal({
     entradaAbierta = false,
     ultimoIngreso = null,
     jornadaAbierta,
+    entradaSinSalida = null,
     consentimiento,
 }: {
+    entradaSinSalida?: { fecha_hora: string } | null;
     colaborador: ColaboradorIdentidad;
     puedeFirmar: boolean;
     firmaPrueba: FirmaPrueba | null;
@@ -226,6 +228,12 @@ export default function CondicionSaludPortal({
                                 {ultimoIngreso?.es_de_hoy
                                     ? `Tienes una entrada abierta de hoy (${ultimoIngreso.hora}). Registra tu salida para cerrar este ciclo.`
                                     : `Tienes una entrada anterior abierta sin cerrar (del ${ultimoIngreso?.fecha_hora ?? 'día anterior'}). Registra tu salida para poder iniciar una nueva entrada.`}
+                            </p>
+                        )}
+                        {!tieneEntradaAbierta && entradaSinSalida && (
+                            <p className="flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-400">
+                                <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+                                {`Tu entrada del ${entradaSinSalida.fecha_hora} quedó sin salida registrada. Recuerda marcar la salida al terminar cada jornada; hoy puedes registrar tu entrada normalmente.`}
                             </p>
                         )}
                         {data.momento === 'salida' && esperaHoraIncompleta && (

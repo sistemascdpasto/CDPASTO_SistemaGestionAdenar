@@ -22,9 +22,12 @@ class CondicionSaludController extends Controller
 
         $firmaPrueba = $this->ultimaPruebaConFirma($colaborador);
 
-        $ultimoRegistro = $evaluacion->ultimoRegistro($colaborador);
+        // Solo cuenta como abierta una entrada dentro de la jornada máxima; una más vieja quedó
+        // sin salida registrada y no impide marcar la entrada de hoy.
+        $ultimoRegistro = $evaluacion->entradaAbierta($colaborador);
+        $sinSalida = $evaluacion->entradaSinSalida($colaborador);
 
-        $entradaAbierta = $ultimoRegistro?->momento === 'ingreso';
+        $entradaAbierta = $ultimoRegistro !== null;
         $minutosDesdeEntrada = $entradaAbierta ? (int) $ultimoRegistro->fecha_hora->diffInMinutes(Carbon::now()) : null;
 
         $registrosHoy = CondicionSalud::query()
@@ -58,6 +61,7 @@ class CondicionSaludController extends Controller
                 'minutos_transcurridos' => $minutosDesdeEntrada,
             ] : null,
             'jornadaAbierta' => $evaluacion->jornadaAbierta($colaborador),
+            'entradaSinSalida' => $sinSalida ? ['fecha_hora' => $sinSalida->fecha_hora->format('d/m/Y H:i')] : null,
             'consentimiento' => config('seguridad.consentimiento_condicion_salud'),
         ]);
     }
@@ -81,12 +85,13 @@ class CondicionSaludController extends Controller
             ]);
         }
 
-        $ultimoRegistro = $evaluacion->ultimoRegistro($colaborador);
+        // Entrada abierta dentro de la jornada máxima (ver EvaluacionCalculator::entradaAbierta).
+        $ultimoRegistro = $evaluacion->entradaAbierta($colaborador);
         $momento = $request->input('momento');
 
         if ($momento === 'ingreso') {
             // Regla: No se permite registrar una nueva entrada si hay una entrada anterior abierta sin cerrar.
-            if ($ultimoRegistro && $ultimoRegistro->momento === 'ingreso') {
+            if ($ultimoRegistro) {
                 $fechaEntrada = $ultimoRegistro->fecha_hora->format('d/m/Y H:i');
                 return back()->withErrors([
                     'momento' => "Tienes una entrada anterior abierta sin cerrar (del {$fechaEntrada}). Debes registrar primero la salida pendiente antes de registrar una nueva entrada.",
@@ -109,9 +114,13 @@ class CondicionSaludController extends Controller
 
         if ($momento === 'salida') {
             // Regla: Nunca se puede registrar una salida si no existe una entrada abierta a la cual pertenezca.
-            if (! $ultimoRegistro || $ultimoRegistro->momento !== 'ingreso') {
+            if (! $ultimoRegistro) {
+                $sinSalida = $evaluacion->entradaSinSalida($colaborador);
+
                 return back()->withErrors([
-                    'momento' => 'No puedes registrar una salida porque no existe una entrada abierta a la cual pertenezca.',
+                    'momento' => $sinSalida
+                        ? "Tu entrada del {$sinSalida->fecha_hora->format('d/m/Y H:i')} quedó sin salida registrada y ya no se puede cerrar. Registra tu entrada de hoy."
+                        : 'No puedes registrar una salida porque no existe una entrada abierta a la cual pertenezca.',
                 ]);
             }
 

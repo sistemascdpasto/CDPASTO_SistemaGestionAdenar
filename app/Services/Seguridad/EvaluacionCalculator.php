@@ -83,10 +83,37 @@ class EvaluacionCalculator
             ->first();
     }
 
+    /**
+     * Entrada sin salida que todavía está dentro de la jornada máxima: es la única a la que se
+     * le puede registrar la salida.
+     */
+    public function entradaAbierta(Colaborador $colaborador): ?CondicionSalud
+    {
+        $ultimo = $this->ultimoRegistro($colaborador);
+
+        return $ultimo?->momento === 'ingreso' && ! $this->jornadaVencida($ultimo) ? $ultimo : null;
+    }
+
+    /**
+     * Entrada a la que nunca se le registró la salida y ya superó la jornada máxima (p. ej. el
+     * colaborador olvidó marcar la salida ayer). No bloquea la entrada de hoy.
+     */
+    public function entradaSinSalida(Colaborador $colaborador): ?CondicionSalud
+    {
+        $ultimo = $this->ultimoRegistro($colaborador);
+
+        return $ultimo?->momento === 'ingreso' && $this->jornadaVencida($ultimo) ? $ultimo : null;
+    }
+
+    public function jornadaVencida(CondicionSalud $ingreso): bool
+    {
+        $maximo = (int) config('seguridad.horas_maximas_jornada', 16);
+
+        return $ingreso->fecha_hora->diffInMinutes(Carbon::now()) >= $maximo * 60;
+    }
+
     private function ultimoMomentoEsIngreso(Colaborador $colaborador): bool
     {
-        $ultimoRegistro = $this->ultimoRegistro($colaborador);
-
-        return $ultimoRegistro?->momento === 'ingreso';
+        return $this->entradaAbierta($colaborador) !== null;
     }
 }

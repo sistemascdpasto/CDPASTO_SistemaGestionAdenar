@@ -7,6 +7,12 @@ return [
     // Horas mínimas entre dos pruebas del mismo tipo para un mismo colaborador (HU029).
     'intervalo_minimo_horas' => 4,
 
+    // Condición de salud: una entrada sin salida deja de contar como jornada abierta después
+    // de estas horas (cubre turnos nocturnos y horas extra). Pasado ese tiempo la salida se
+    // considera no registrada y el colaborador puede marcar su entrada del día siguiente, en
+    // lugar de verse obligado a registrar una «salida» con su estado de salud de llegada.
+    'horas_maximas_jornada' => (int) env('SEGURIDAD_HORAS_MAXIMAS_JORNADA', 16),
+
     // Días de anticipación para alertar sobre calibración/certificado próximos a vencer (HU019).
     'dias_alerta_calibracion' => 15,
 
