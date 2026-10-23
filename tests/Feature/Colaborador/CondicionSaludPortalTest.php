@@ -108,6 +108,10 @@ class CondicionSaludPortalTest extends TestCase
 
     public function test_it_blocks_a_new_ingreso_when_there_is_an_open_jornada(): void
     {
+        // Hora fija (6:00 a. m.): la entrada de hace 10 horas queda en la noche anterior, como en
+        // un turno nocturno real, sin depender de la hora a la que corran las pruebas.
+        Carbon::setTestNow(Carbon::today()->setTime(6, 0));
+
         [$user, $colaborador] = $this->colaboradorUser();
         $this->crearPruebaConFirma($colaborador, $user);
 
@@ -152,6 +156,8 @@ class CondicionSaludPortalTest extends TestCase
         ])->assertRedirect()->assertSessionDoesntHaveErrors();
 
         $this->assertSame(3, $colaborador->condicionesSalud()->count());
+
+        Carbon::setTestNow();
     }
 
     public function test_an_entry_whose_exit_was_forgotten_does_not_force_a_fake_exit_the_next_day(): void
