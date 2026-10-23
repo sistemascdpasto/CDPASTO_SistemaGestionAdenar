@@ -115,7 +115,9 @@ export function ReconocimientoFacialLiveDialog({
         if (wsRef.current) {
             try {
                 wsRef.current.close();
-            } catch {}
+            } catch (_) {
+                // ignorar error al cerrar WebSocket
+            }
             wsRef.current = null;
         }
         streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -150,7 +152,9 @@ export function ReconocimientoFacialLiveDialog({
                     if (real?.deviceId) {
                         targetId = real.deviceId;
                     }
-                } catch {}
+                } catch (_) {
+                    // ignorar error al enumerar dispositivos
+                }
             }
 
             const constraints: MediaStreamConstraints = {
@@ -202,7 +206,6 @@ export function ReconocimientoFacialLiveDialog({
         void iniciarCamara();
 
         let ws: WebSocket | null = null;
-        let useHttpFallback = false;
 
         try {
             ws = new WebSocket(fastApiWsUrl);
@@ -223,15 +226,14 @@ export function ReconocimientoFacialLiveDialog({
             };
 
             ws.onerror = () => {
-                useHttpFallback = true;
                 setConectadoWs(false);
             };
 
             ws.onclose = () => {
                 setConectadoWs(false);
             };
-        } catch {
-            useHttpFallback = true;
+        } catch (_) {
+            // WebSocket no disponible; el estado conectadoWs ya es false
         }
 
         let lastTime = Date.now();

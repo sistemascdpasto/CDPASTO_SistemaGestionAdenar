@@ -506,7 +506,7 @@ const COORDS_NARINO: Record<string, Coordenada> = {
     narino: { lat: 1.290676, lon: -77.357857 },
 };
 
-function countDriversByLevel(data: Conductor[]): Record<Nivel, string[]> {
+function _countDriversByLevel(data: Conductor[]): Record<Nivel, string[]> {
     return data.reduce(
         (counts, driver) => {
             counts[clasificarRuta(driver.ruta)].push(driver.nombre);
@@ -577,7 +577,7 @@ export default function RutogramasIndex({
     mapaCalorData = [],
 }: RutogramasProps) {
     const [dailyData, setDailyData] = useState<DatosDiarios>({});
-    const [dailyFileName, setDailyFileName] = useState('');
+    const [_dailyFileName, setDailyFileName] = useState('');
     const [modoFuente, setModoFuente] = useState<'modulacion' | 'excel'>('modulacion');
     const [fechaSeleccionada, setFechaSeleccionada] = useState<string>(() => {
         if (fechaInicial) return fechaInicial;
@@ -724,7 +724,7 @@ export default function RutogramasIndex({
         () => new Set(rutasActivas.map((row) => `${row.ciudad}|${row.barrio}`)).size,
         [rutasActivas],
     );
-    const filteredCities = useMemo(() => {
+    const _filteredCities = useMemo(() => {
         const query = normalizar(buscarRuta);
         if (!query) return groupedRoutes;
         return Object.fromEntries(
@@ -750,11 +750,11 @@ export default function RutogramasIndex({
     }, [groupedRoutes, buscarRuta]);
 
     const criticidadCounts = useMemo(() => countByLevel(criticidad, (row) => clasificarCriticidad(row.criticidad)), [criticidad]);
-    const frecuencias = useMemo(
+    const _frecuencias = useMemo(
         () => [...new Set(criticidad.map((row) => row.frecuencia).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
         [criticidad],
     );
-    const filteredCriticidad = useMemo(() => {
+    const _filteredCriticidad = useMemo(() => {
         const city = normalizar(buscarCiudad);
         return criticidad.filter(
             (row) =>
@@ -835,7 +835,7 @@ export default function RutogramasIndex({
     };
 
 
-    const dailyCityChart = {
+    const _dailyCityChart = {
         labels: cityLabels,
         datasets: [
             {
@@ -897,7 +897,7 @@ export default function RutogramasIndex({
         });
     }, [viajesActivos, buscarRuta]);
 
-    const showPlaceDetails = useCallback((place: LugarRuta) => {
+    const _showPlaceDetails = useCallback((place: LugarRuta) => {
         setModal({
             titulo: `Entrega: ${place.nombre || place.codigo}`,
             descripcion: `${place.ciudad} · ${place.barrio}`,
@@ -917,7 +917,7 @@ export default function RutogramasIndex({
         });
     }, []);
 
-    const showViajeDetails = useCallback((viaje: ViajePlaneacion) => {
+    const _showViajeDetails = useCallback((viaje: ViajePlaneacion) => {
         setModal({
             titulo: `Viaje #${viaje.viaje_numero} · Vehículo ${viaje.placa}`,
             descripcion: `${viaje.municipio} · ${viaje.barrio}`,
@@ -940,7 +940,7 @@ export default function RutogramasIndex({
         });
     }, []);
 
-    const showCityDetails = useCallback((city: string, neighborhoods: Record<string, LugarRuta[]>) => {
+    const _showCityDetails = useCallback((city: string, neighborhoods: Record<string, LugarRuta[]>) => {
         const totalEntregas = Object.values(neighborhoods).reduce((sum, p) => sum + p.length, 0);
         const barriosList = Object.keys(neighborhoods);
         setModal({
@@ -957,7 +957,7 @@ export default function RutogramasIndex({
         });
     }, []);
 
-    const showNeighborhoodDetails = useCallback((city: string, neighborhood: string, places: LugarRuta[]) => {
+    const _showNeighborhoodDetails = useCallback((city: string, neighborhood: string, places: LugarRuta[]) => {
         setModal({
             titulo: `Barrio: ${neighborhood}`,
             descripcion: `${city} · ${places.length} entregas`,
@@ -973,7 +973,7 @@ export default function RutogramasIndex({
         });
     }, []);
 
-    const showTopNeighborhoods = useCallback(() => {
+    const _showTopNeighborhoods = useCallback(() => {
         setModal({
             titulo: 'Top Barrios con más entregas',
             descripcion: `${diaActivo.labelCompleto}`,
@@ -1447,7 +1447,7 @@ export default function RutogramasIndex({
                                     const isExpanded = (col: typeof columnaActiva) => columnaActiva === col;
                                     const isHidden = (col: typeof columnaActiva) => columnaActiva !== null && columnaActiva !== col;
 
-                                    const headerCls = (col: typeof columnaActiva, active: boolean) =>
+                                    const headerCls = (_col: typeof columnaActiva, _active: boolean) =>
                                         `flex items-center justify-between px-3 py-2.5 cursor-pointer select-none border-b border-white/20 text-xs font-semibold transition-colors text-white hover:brightness-110`;
 
                                     // Inline style for active header to match the dark-blue gradient
