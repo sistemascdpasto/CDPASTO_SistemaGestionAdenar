@@ -23,6 +23,30 @@ interface ColaboradorItem {
     cargo?: string;
 }
 
+// Construye las URLs del servicio facial a partir de VITE_FACIAL_SERVICE_URL.
+// En local (sin la variable) usa 127.0.0.1:8001.
+// En Railway se debe configurar VITE_FACIAL_SERVICE_URL=https://tu-servicio.up.railway.app
+// y VITE_FACIAL_API_KEY con el mismo valor que FACIAL_API_KEY del servicio Python.
+function buildFacialUrls(): { wsUrl: string; httpUrl: string } {
+    const base = (import.meta.env.VITE_FACIAL_SERVICE_URL as string | undefined)?.replace(/\/$/, '');
+    if (base) {
+        const wsBase = base.replace(/^https?:\/\//, (m) => (m === 'https://' ? 'wss://' : 'ws://'));
+        const apiKey = (import.meta.env.VITE_FACIAL_API_KEY as string | undefined) ?? '';
+        const token = apiKey ? `?token=${encodeURIComponent(apiKey)}` : '';
+        return {
+            wsUrl: `${wsBase}/ws/reconocer${token}`,
+            httpUrl: `${base}/frame`,
+        };
+    }
+    return {
+        wsUrl: 'ws://127.0.0.1:8001/ws/reconocer',
+        httpUrl: 'http://127.0.0.1:8001/frame',
+    };
+}
+
+const { wsUrl: DEFAULT_WS_URL, httpUrl: DEFAULT_HTTP_URL } = buildFacialUrls();
+const FACIAL_API_KEY = (import.meta.env.VITE_FACIAL_API_KEY as string | undefined) ?? '';
+
 interface LiveDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -75,8 +99,8 @@ export function ReconocimientoFacialLiveDialog({
     onOpenChange,
     colaboradores,
     onColaboradorSeleccionado,
-    fastApiWsUrl = 'ws://127.0.0.1:8001/ws/reconocer',
-    fastApiHttpUrl = 'http://127.0.0.1:8001/frame',
+    fastApiWsUrl = DEFAULT_WS_URL,
+    fastApiHttpUrl = DEFAULT_HTTP_URL,
 }: LiveDialogProps) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -219,6 +243,7 @@ export function ReconocimientoFacialLiveDialog({
 
             ws.onmessage = (event) => {
                 isSendingRef.current = false;
+                console.log('[Reconocimiento facial][WebSocket] mensaje completo recibido:', event.data);
                 try {
                     const data: FrameResponse = JSON.parse(event.data);
                     handleFrameResponseRef.current(data);
@@ -285,7 +310,16 @@ export function ReconocimientoFacialLiveDialog({
                                 try {
                                     const fd = new FormData();
                                     fd.append('foto', blob, 'frame.jpg');
-                                    const resp = await fetch(fastApiHttpUrl, { method: 'POST', body: fd });
+                                    const headers: Record<string, string> = {};
+                                    if (FACIAL_API_KEY) headers['X-Api-Key'] = FACIAL_API_KEY;
+                                    const resp = await fetch(fastApiHttpUrl, { method: 'POST', body: fd, headers });
+                                    const responseBody = await resp.clone().text();
+                                    console.log('[Reconocimiento facial][HTTP] respuesta completa:', {
+                                        url: fastApiHttpUrl,
+                                        status: resp.status,
+                                        statusText: resp.statusText,
+                                        body: responseBody,
+                                    });
                                     if (resp.ok) {
                                         errorCountRef.current = 0;
                                         setServicioOffline(false);
@@ -295,7 +329,8 @@ export function ReconocimientoFacialLiveDialog({
                                         errorCountRef.current++;
                                         if (errorCountRef.current >= 3) setServicioOffline(true);
                                     }
-                                } catch {
+                                } catch (e) {
+                                    console.error('[Reconocimiento facial][HTTP] error en la petición:', e);
                                     errorCountRef.current++;
                                     if (errorCountRef.current >= 3) setServicioOffline(true);
                                 }
