@@ -74,6 +74,8 @@ class HandleInertiaRequests extends Middleware
                 'isColaborador' => $isColaborador,
                 'accessibleModules' => $accessibleModules,
                 'accessibleSubmodules' => $accessibleSubmodules,
+                // ¿Ya activó el ingreso con huella / Face ID en algún dispositivo?
+                'hasPasskey' => fn () => $user ? $user->webAuthnCredentials()->whereEnabled()->exists() : false,
             ],
         ]);
     }

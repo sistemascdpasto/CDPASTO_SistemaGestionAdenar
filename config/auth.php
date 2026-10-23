@@ -61,8 +61,10 @@ return [
 
     'providers' => [
         'users' => [
-            'driver' => 'eloquent',
+            // Ingreso con huella / Face ID (passkeys) además de contraseña.
+            'driver' => 'eloquent-webauthn',
             'model' => env('AUTH_MODEL', App\Models\User::class),
+            'password_fallback' => true,
         ],
 
         // 'users' => [

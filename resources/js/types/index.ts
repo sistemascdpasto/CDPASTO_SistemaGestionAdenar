@@ -8,6 +8,8 @@ export interface Auth {
     accessibleModules: string[];
     /** module_slug -> submodule keys accesibles, ya resueltos (rol + personalización). */
     accessibleSubmodules: Record<string, string[]>;
+    /** ¿Ya activó el ingreso con huella / Face ID en algún dispositivo? */
+    hasPasskey?: boolean;
 }
 
 export interface BreadcrumbItem {

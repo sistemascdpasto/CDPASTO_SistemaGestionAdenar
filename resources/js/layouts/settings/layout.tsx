@@ -17,6 +17,11 @@ const sidebarNavItems: NavItem[] = [
         icon: null,
     },
     {
+        title: 'Ingreso con huella',
+        url: '/settings/passkeys',
+        icon: null,
+    },
+    {
         title: 'Apariencia',
         url: '/settings/appearance',
         icon: null,

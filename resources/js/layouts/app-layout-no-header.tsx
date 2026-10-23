@@ -7,6 +7,7 @@ import { AppContent } from '@/components/app-content';
 import { AppShell } from '@/components/app-shell';
 import { AppSidebar } from '@/components/app-sidebar';
 import { FlashToast } from '@/components/flash-toast';
+import { PasskeyPrompt } from '@/components/passkey-prompt';
 
 interface Props {
     children: React.ReactNode;
@@ -21,6 +22,7 @@ export default function AppLayoutNoHeader({ children }: Props) {
                 <FlashToast />
                 {children}
             </AppContent>
+            <PasskeyPrompt />
         </AppShell>
     );
 }

@@ -4,6 +4,7 @@ import { AppSidebar } from '@/components/app-sidebar';
 import { AppSidebarHeader } from '@/components/app-sidebar-header';
 import { ChatWidget } from '@/components/chatbot/chat-widget';
 import { FlashToast } from '@/components/flash-toast';
+import { PasskeyPrompt } from '@/components/passkey-prompt';
 import { type BreadcrumbItem } from '@/types';
 
 export default function AppSidebarLayout({ children, breadcrumbs = [] }: { children: React.ReactNode; breadcrumbs?: BreadcrumbItem[] }) {
@@ -16,6 +17,7 @@ export default function AppSidebarLayout({ children, breadcrumbs = [] }: { child
             </AppContent>
             <FlashToast />
             <ChatWidget />
+            <PasskeyPrompt />
         </AppShell>
     );
 }
