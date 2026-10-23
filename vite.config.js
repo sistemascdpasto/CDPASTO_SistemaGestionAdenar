@@ -71,7 +71,18 @@ export default defineConfig({
                 // que los datos (asistencias, revisiones, indicadores, etc.)
                 // nunca se sirven desde caché.
                 globDirectory: 'public',
+                // Se excluyen *.webmanifest y *.html del precache:
+                // - manifest.webmanifest no es un asset de app crítico
+                // - index.html no existe en Laravel (Blade lo sirve dinámicamente)
+                // Incluirlos causaba errores bad-precaching-response y
+                // non-precached-url en producción (Railway).
                 globPatterns: ['build/**/*.{js,css,woff2,woff,png,svg,ico}'],
+                globIgnores: ['**/*.webmanifest', '**/*.html'],
+                // Sin navigateFallback: Laravel sirve todas las rutas desde el
+                // servidor (Blade/Inertia). Un navigateFallback a index.html
+                // rompería la autenticación y causaría el error
+                // "non-precached-url: index.html".
+                navigateFallback: null,
                 cleanupOutdatedCaches: true,
                 clientsClaim: true,
                 skipWaiting: true,

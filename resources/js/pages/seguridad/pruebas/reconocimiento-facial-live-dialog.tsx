@@ -98,6 +98,8 @@ export function ReconocimientoFacialLiveDialog({
     const isMirroredRef = useRef<boolean>(false);
     isMirroredRef.current = isMirrored;
     const errorCountRef = useRef<number>(0);
+    // Ref para que el closure del useEffect siempre llame la versión actualizada
+    const handleFrameResponseRef = useRef<(data: FrameResponse) => void>(() => {});
 
     const colaboradoresMap = useRef<Map<number, ColaboradorItem>>(new Map());
 
@@ -219,7 +221,7 @@ export function ReconocimientoFacialLiveDialog({
                 isSendingRef.current = false;
                 try {
                     const data: FrameResponse = JSON.parse(event.data);
-                    handleFrameResponse(data);
+                    handleFrameResponseRef.current(data);
                 } catch (e) {
                     console.error('Error parseando frame live:', e);
                 }
@@ -288,7 +290,7 @@ export function ReconocimientoFacialLiveDialog({
                                         errorCountRef.current = 0;
                                         setServicioOffline(false);
                                         const resData: FrameResponse = await resp.json();
-                                        handleFrameResponse(resData);
+                                        handleFrameResponseRef.current(resData);
                                     } else {
                                         errorCountRef.current++;
                                         if (errorCountRef.current >= 3) setServicioOffline(true);
@@ -318,8 +320,7 @@ export function ReconocimientoFacialLiveDialog({
     }, [open, fastApiWsUrl, fastApiHttpUrl, iniciarCamara, detenerStream]);
 
     // Procesar respuesta del frame y dibujar en canvas
-    const handleFrameResponse = (data: FrameResponse) => {
-        const video = videoRef.current;
+    const handleFrameResponse = (data: FrameResponse) => {        const video = videoRef.current;
         const canvas = overlayCanvasRef.current;
         if (!video || !canvas || video.videoWidth === 0) return;
 
@@ -384,6 +385,7 @@ export function ReconocimientoFacialLiveDialog({
                     const nombre = colab ? `${colab.nombres}` : 'Incierto';
                     texto = `? ${nombre} (${faceIdentity.confidence ?? 0}%)`;
                     if (colab && !principalIdentificado) {
+                        principalIdentificado = colab;
                         principalInfo = faceIdentity;
                     }
                 } else {
@@ -451,8 +453,14 @@ export function ReconocimientoFacialLiveDialog({
         if (principalIdentificado) {
             setIdentificado(principalIdentificado);
             setInfoIdentidad(principalInfo);
+        } else if (faces.length === 0) {
+            // Limpiar identificación si no hay rostros en el frame
+            setIdentificado(null);
+            setInfoIdentidad(null);
         }
     };
+    // Mantener el ref siempre actualizado con la última versión de la función
+    handleFrameResponseRef.current = handleFrameResponse;
 
     const confirmarSeleccion = () => {
         if (!identificado) return;

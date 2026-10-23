@@ -6,7 +6,6 @@
     "skills": [
         "laravel-best-practices",
         "inertia-react-development",
-        "tailwindcss-development",
-        "deploying-laravel-cloud"
+        "tailwindcss-development"
     ]
 }
