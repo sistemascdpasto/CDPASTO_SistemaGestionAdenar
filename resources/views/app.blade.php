@@ -1,9 +1,4 @@
 <!DOCTYPE html>
-{{-- La app es 100% en español y no tiene i18n. Se fuerza lang="es" y se
-     desactiva la traducción automática del navegador: Google Translate
-     reescribe los nodos de texto del DOM (los envuelve en <font>), y cuando
-     React vuelve a reconciliar tras navegar rompe con errores de
-     insertBefore/removeChild → pantalla en blanco hasta recargar. --}}
 <html lang="es" translate="no" class="notranslate">
     <head>
         <meta charset="utf-8">
@@ -16,8 +11,6 @@
         <link rel="icon" href="/images/icono-square.png" type="image/png">
         <link rel="shortcut icon" href="/images/icono-square.png">
 
-        {{-- PWA: instalable, pantalla completa sin barra del navegador, propio
-             ícono y color de marca en la barra de estado/tareas. --}}
         <link rel="manifest" href="/build/manifest.webmanifest">
         <link rel="apple-touch-icon" href="/images/pwa/apple-touch-icon-180.png">
         <meta name="theme-color" content="#E41515">

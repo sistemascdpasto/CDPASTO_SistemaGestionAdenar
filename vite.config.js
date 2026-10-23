@@ -1,5 +1,6 @@
 import react from '@vitejs/plugin-react';
 import laravel from 'laravel-vite-plugin';
+import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
@@ -25,22 +26,9 @@ export default defineConfig({
         react(),
         tailwindcss(),
         VitePWA({
-            // Registrado a mano desde app.tsx (virtual:pwa-register) para
-            // controlar el momento, en vez de que el plugin inyecte su
-            // propio <script> — esta vista es un app.blade.php, no el
-            // index.html que el plugin espera gestionar.
             injectRegister: false,
             registerType: 'autoUpdate',
             devOptions: { enabled: false },
-            // El build normal de Laravel/Vite escribe los assets con hash en
-            // public/build/ (vite.base = "/build/"), pero un service worker
-            // solo puede controlar (scope) rutas por debajo de la carpeta
-            // donde se sirve su propio archivo. Si sw.js quedara en
-            // /build/sw.js jamás podría controlar /dashboard, /modules/...
-            // etc. Por eso se saca el service worker a la raíz pública
-            // (public/sw.js, servido en "/sw.js") y se fuerza base/scope a
-            // "/" para que el código de registro (virtual:pwa-register)
-            // apunte ahí en vez de a "/build/sw.js".
             outDir: 'public',
             base: '/',
             scope: '/',
@@ -49,10 +37,6 @@ export default defineConfig({
                 short_name: 'Adenar',
                 description: 'Sistema de gestión ADENAR: seguridad, reparto, gente y flota.',
                 lang: 'es',
-                // "/" renderiza welcome.tsx. No se usa /dashboard porque esa
-                // ruta exige sesión: para alguien sin login, abrir la app
-                // instalada terminaría cayendo directo en /login en vez de
-                // en la pantalla de bienvenida.
                 start_url: '/',
                 scope: '/',
                 display: 'standalone',
@@ -65,29 +49,38 @@ export default defineConfig({
                 ],
             },
             workbox: {
-                // Solo se cachean los assets estáticos versionados por hash
-                // (JS/CSS/fuentes/íconos del build). Nada de navigateFallback:
-                // cada navegación Inertia sigue yendo siempre al servidor, así
-                // que los datos (asistencias, revisiones, indicadores, etc.)
-                // nunca se sirven desde caché.
                 globDirectory: 'public',
-                // Se excluyen *.webmanifest y *.html del precache:
-                // - manifest.webmanifest no es un asset de app crítico
-                // - index.html no existe en Laravel (Blade lo sirve dinámicamente)
-                // Incluirlos causaba errores bad-precaching-response y
-                // non-precached-url en producción (Railway).
                 globPatterns: ['build/**/*.{js,css,woff2,woff,png,svg,ico}'],
                 globIgnores: ['**/*.webmanifest', '**/*.html'],
-                // Sin navigateFallback: Laravel sirve todas las rutas desde el
-                // servidor (Blade/Inertia). Un navigateFallback a index.html
-                // rompería la autenticación y causaría el error
-                // "non-precached-url: index.html".
+                manifestTransforms: [
+                    async (entries) => ({
+                        manifest: entries.filter((e) => !e.url.endsWith('.webmanifest')),
+                        warnings: [],
+                    }),
+                ],
                 navigateFallback: null,
                 cleanupOutdatedCaches: true,
                 clientsClaim: true,
                 skipWaiting: true,
             },
         }),
+        {
+            name: 'remove-manifest-from-sw-precache',
+            enforce: 'post',
+            closeBundle: {
+                order: 'post',
+                sequential: true,
+                handler() {
+                    const swPath = 'public/sw.js';
+                    if (!fs.existsSync(swPath)) return;
+                    const content = fs.readFileSync(swPath, 'utf-8');
+                    const cleaned = content.replace(/,?\{url:"manifest\.webmanifest",[^}]+\}/g, '');
+                    if (cleaned !== content) {
+                        fs.writeFileSync(swPath, cleaned);
+                    }
+                },
+            },
+        },
     ],
     esbuild: {
         jsx: 'automatic',
