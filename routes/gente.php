@@ -240,4 +240,3 @@ Route::middleware(['auth', 'active', 'role:Administrador|Seguridad|Reparto|Gente
         Route::get('correccion-marcaciones/exportar.csv', [CorreccionMarcacionController::class, 'exportar'])->name('correccion-marcaciones.exportar');
         Route::get('correccion-marcaciones/plantilla.csv', [CorreccionMarcacionController::class, 'plantilla'])->name('correccion-marcaciones.plantilla');
     });
-

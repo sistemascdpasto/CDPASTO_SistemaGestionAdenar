@@ -36,7 +36,6 @@ use App\Http\Controllers\Seguridad\RutaCriticaController;
 use App\Http\Controllers\Seguridad\RutogramasController;
 use Illuminate\Support\Facades\Route;
 
-// HU037: verificaciÃ³n pÃºblica del QR â€” intencionalmente fuera del grupo `auth`.
 Route::get('verificar-prueba/{prueba}/{token}', [PublicVerificationController::class, 'show'])->name('seguridad.verificacion');
 
 // Las rutas de colaboradores viven en routes/gente.php: el mÃ³dulo es
@@ -51,8 +50,9 @@ Route::middleware(['auth', 'active', 'role:Administrador|Seguridad', 'submodule.
         Route::post('dispositivos/{dispositivo}/mantenimientos', [AlcoholimetroController::class, 'storeMantenimiento'])
             ->name('dispositivos.mantenimientos.store');
 
-        // Rutas especÃ­ficas de "pruebas" antes del resource para que no choquen
-        // con la ruta comodÃ­n pruebas/{prueba}.
+        // Rutas específicas de "pruebas" antes del resource para que no choquen
+        // con la ruta comodín pruebas/{prueba}.
+        Route::post('pruebas/reconocer-rostro', [PruebaAlcoholemiaController::class, 'reconocerRostro'])->name('pruebas.reconocer-rostro');
         Route::get('pruebas/calendario', [PruebaAlcoholemiaController::class, 'calendario'])->name('pruebas.calendario');
         Route::get('pruebas/exportar/pdf', [PruebaAlcoholemiaController::class, 'exportarPdf'])->name('pruebas.exportar-pdf');
         Route::get('pruebas/exportar/excel', [PruebaAlcoholemiaController::class, 'exportarExcel'])->name('pruebas.exportar-excel');
@@ -111,7 +111,7 @@ Route::middleware(['auth', 'active', 'role:Administrador|Seguridad', 'submodule.
         Route::get('evaluaciones-owd', [EvaluacionOwdController::class, 'index'])->name('evaluaciones-owd.index');
         Route::get('evaluaciones-owd/{evaluacionOwd}', [EvaluacionOwdController::class, 'show'])->name('evaluaciones-owd.show');
 
-        // Planes de acciÃ³n generados a partir de incumplimientos OWD (HU-039/042).
+        // Planes de accion generados a partir de incumplimientos OWD (HU-039/042).
         Route::get('planes-accion-owd/priorizacion', [PlanAccionOwdController::class, 'priorizacion'])->name('planes-accion-owd.priorizacion');
         Route::get('planes-accion-owd/exportar', [EvaluacionOwdExportController::class, 'planesAccion'])->name('planes-accion-owd.exportar');
         Route::get('planes-accion-owd', [PlanAccionOwdController::class, 'index'])->name('planes-accion-owd.index');
@@ -120,23 +120,23 @@ Route::middleware(['auth', 'active', 'role:Administrador|Seguridad', 'submodule.
             ->name('planes-accion-owd.seguimientos.store');
 
         // Vista de consulta de SST para la Encuesta de Morbilidad Sentida
-        // (HU-01 a HU-10). La secciÃ³n psicosocial (9) solo es visible aquÃ­
+        // (HU-01 a HU-10). La seccion psicosocial (9) solo es visible aq
         // porque esta pantalla ya vive dentro del grupo role:Administrador|Seguridad.
         Route::get('encuestas-morbilidad', [EncuestaMorbilidadController::class, 'index'])->name('encuestas-morbilidad.index');
         Route::get('encuestas-morbilidad/{encuestaMorbilidad}', [EncuestaMorbilidadController::class, 'show'])->name('encuestas-morbilidad.show');
 
-        // GestiÃ³n dinÃ¡mica del catÃ¡logo de preguntas de morbilidad (solo Administrador | Seguridad)
+        // Gestion dinamica del catalogo de preguntas de morbilidad (solo Administrador | Seguridad)
         Route::get('encuestas-morbilidad-preguntas', [EncuestaMorbilidadPreguntaController::class, 'index'])->name('encuestas-morbilidad.preguntas.index');
         Route::post('encuestas-morbilidad-preguntas', [EncuestaMorbilidadPreguntaController::class, 'store'])->name('encuestas-morbilidad.preguntas.store');
         Route::patch('encuestas-morbilidad-preguntas/{pregunta}', [EncuestaMorbilidadPreguntaController::class, 'update'])->name('encuestas-morbilidad.preguntas.update');
         Route::delete('encuestas-morbilidad-preguntas/{pregunta}', [EncuestaMorbilidadPreguntaController::class, 'destroy'])->name('encuestas-morbilidad.preguntas.destroy');
 
-        // GestiÃ³n de secciones (imagen de portada)
+        // Gestion de secciones (imagen de portada)
         Route::get('encuestas-morbilidad-secciones', [EncuestaMorbilidadSeccionController::class, 'index'])->name('encuestas-morbilidad.secciones.index');
         Route::post('encuestas-morbilidad-secciones/{seccion}/portada', [EncuestaMorbilidadSeccionController::class, 'subirPortada'])->name('encuestas-morbilidad.secciones.portada');
         Route::delete('encuestas-morbilidad-secciones/{seccion}/portada', [EncuestaMorbilidadSeccionController::class, 'eliminarPortada'])->name('encuestas-morbilidad.secciones.portada.destroy');
 
-        // ExÃ¡menes mÃ©dicos ocupacionales (HU-045 y siguientes, Fase 1).
+        // Examenes medicos ocupacionales (HU-045 y siguientes, Fase 1).
         Route::get('examenes-medicos-indicadores', [ExamenMedicoIndicadorController::class, 'index'])->name('examenes-medicos.indicadores');
         Route::get('examenes-medicos-catalogo', [ExamenCatalogoController::class, 'index'])->name('examenes-medicos.catalogo.index');
         Route::post('examenes-medicos-catalogo', [ExamenCatalogoController::class, 'store'])->name('examenes-medicos.catalogo.store');
@@ -149,12 +149,12 @@ Route::middleware(['auth', 'active', 'role:Administrador|Seguridad', 'submodule.
         Route::post('examenes-medicos-conceptos', [ConceptoAptitudController::class, 'store'])->name('examenes-medicos.conceptos.store');
         Route::patch('examenes-medicos-conceptos/{conceptoAptitud}', [ConceptoAptitudController::class, 'update'])->name('examenes-medicos.conceptos.update');
 
-        // CatÃ¡logo de recomendaciones (HU-054, Fase 2).
+        // Catalogo de recomendaciones (HU-054, Fase 2).
         Route::get('examenes-medicos-recomendaciones', [RecomendacionCatalogoController::class, 'index'])->name('examenes-medicos.recomendaciones.catalogo.index');
         Route::post('examenes-medicos-recomendaciones', [RecomendacionCatalogoController::class, 'store'])->name('examenes-medicos.recomendaciones.catalogo.store');
         Route::patch('examenes-medicos-recomendaciones/{recomendacion}', [RecomendacionCatalogoController::class, 'update'])->name('examenes-medicos.recomendaciones.catalogo.update');
 
-        // Rutas especÃ­ficas antes del comodÃ­n examenes-medicos/{evaluacion}.
+        // Rutas especificas antes del comodin examenes-medicos/{evaluacion}.
         Route::get('examenes-medicos/exportar/basica', [EvaluacionMedicaExportController::class, 'basica'])->name('examenes-medicos.exportar.basica');
         Route::get('examenes-medicos/exportar/completa', [EvaluacionMedicaExportController::class, 'completa'])->name('examenes-medicos.exportar.completa');
         Route::get('examenes-medicos/crear', [EvaluacionMedicaController::class, 'create'])->name('examenes-medicos.create');
@@ -175,7 +175,7 @@ Route::middleware(['auth', 'active', 'role:Administrador|Seguridad', 'submodule.
         Route::patch('examenes-medicos/{evaluacion}/concepto-aptitud', [EvaluacionMedicaController::class, 'actualizarConceptoAptitud'])
             ->name('examenes-medicos.concepto-aptitud');
 
-        // Recomendaciones de una evaluaciÃ³n y su seguimiento (HU-054/055).
+        // Recomendaciones de una evaluacion y su seguimiento (HU-054/055).
         Route::post('examenes-medicos/{evaluacion}/recomendaciones', [EvaluacionRecomendacionController::class, 'store'])
             ->name('examenes-medicos.recomendaciones.store');
         Route::patch('examenes-medicos/{evaluacion}/recomendaciones/{evaluacionRecomendacion}/activa', [EvaluacionRecomendacionController::class, 'toggleActiva'])

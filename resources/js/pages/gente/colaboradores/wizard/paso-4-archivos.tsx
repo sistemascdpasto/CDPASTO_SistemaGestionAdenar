@@ -1,11 +1,13 @@
 import InputError from '@/components/input-error';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PillToggle, SeccionCard } from '@/pages/seguridad/colaboradores/colaborador-form-fields';
 import { useForm } from '@inertiajs/react';
 import { AlertTriangle, ArrowLeft, CheckCircle2, FolderOpen, LoaderCircle } from 'lucide-react';
-import { FormEventHandler } from 'react';
+import { FormEventHandler, useEffect, useMemo } from 'react';
 import { DocumentoGrupo, type DocumentoGrupoItem } from './components/documento-grupo';
 import { LicenciaConduccionCategorias } from './components/licencia-conduccion-categorias';
 import { SimpleFileField } from './components/simple-file-field';
@@ -108,15 +110,33 @@ export function Paso4Archivos({ colaborador, onBack }: Paso4Props) {
     const licenciaKeys = ['a1', 'a2', 'b1', 'b2', 'b3', 'c1', 'c2', 'c3'].map((c) => `documento_licencia_${c}`);
     const licenciaIniciales = Object.fromEntries(licenciaKeys.map((key) => [key, [] as File[]]));
 
-    const { data, setData, post, processing, errors, transform } = useForm<Paso4FormData>({
+    const { data, setData, post, processing, errors, transform, clearErrors } = useForm<Paso4FormData>({
         ...documentosIniciales,
         ...licenciaIniciales,
         documento_sena_carta_presentacion: [],
         documento_plan_padrino: [],
         licencia_conduccion_categorias: [],
+        fecha_licencia: (colaborador.fecha_licencia as string | null) ?? '',
+        fecha_vencimiento_licencia: (colaborador.fecha_vencimiento_licencia as string | null) ?? '',
+        restricciones_licencia: (colaborador.restricciones_licencia as string | null) ?? '',
         es_padrino: (colaborador.es_padrino as Paso4FormData['es_padrino']) ?? '',
         tipo_padrino: (colaborador.tipo_padrino as Paso4FormData['tipo_padrino']) ?? '',
     });
+
+    // Limpiar errores de pasos anteriores al montar este paso.
+    useEffect(() => {
+        clearErrors();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    /** Días que faltan desde hoy hasta la fecha de vencimiento. Negativo = ya venció. */
+    const diasPendientesLicencia = useMemo(() => {
+        if (!data.fecha_vencimiento_licencia) return null;
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
+        const vencimiento = new Date(data.fecha_vencimiento_licencia + 'T00:00:00');
+        return Math.round((vencimiento.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
+    }, [data.fecha_vencimiento_licencia]);
 
     const existing = (key: string) => (colaborador[key] as { path: string; fecha: string | null }[]) ?? [];
     const existingMap = Object.fromEntries(TODOS_LOS_DOCUMENTOS.map((key) => [key, existing(key)]));
@@ -132,8 +152,21 @@ export function Paso4Archivos({ colaborador, onBack }: Paso4Props) {
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        transform((formData) => ({ ...formData, _method: 'PATCH' }));
-        post(route('gente.colaboradores.paso4.update', colaborador.id), { forceFormData: true });
+        transform((formData) => {
+            // Eliminar arrays de archivos vacíos para no sobrecargar el validador
+            const cleaned: Record<string, unknown> = { _method: 'PATCH' };
+            for (const [key, value] of Object.entries(formData)) {
+                if (Array.isArray(value) && value.length === 0 && key.startsWith('documento_')) {
+                    continue;
+                }
+                cleaned[key] = value;
+            }
+            return cleaned as typeof formData;
+        });
+        post(route('gente.colaboradores.paso4.update', colaborador.id), {
+            forceFormData: true,
+            onError: (errs) => console.error('[Paso4] Errores de validación:', JSON.stringify(errs, null, 2)),
+        });
     };
 
     return (
@@ -155,6 +188,70 @@ export function Paso4Archivos({ colaborador, onBack }: Paso4Props) {
                     errors={errors}
                     disabled={processing}
                 />
+
+                {/* ── Fechas y días pendientes de licencia ── */}
+                <div className="mt-4 grid gap-4 sm:grid-cols-3">
+                    <div className="grid gap-2">
+                        <Label htmlFor="fecha_licencia">Fecha de licencia</Label>
+                        <Input
+                            id="fecha_licencia"
+                            type="date"
+                            value={data.fecha_licencia}
+                            onChange={(e) => setData('fecha_licencia', e.target.value)}
+                            disabled={processing}
+                        />
+                        <InputError message={errors.fecha_licencia} />
+                    </div>
+
+                    <div className="grid gap-2">
+                        <Label htmlFor="fecha_vencimiento_licencia">Fecha de vencimiento de licencia</Label>
+                        <Input
+                            id="fecha_vencimiento_licencia"
+                            type="date"
+                            value={data.fecha_vencimiento_licencia}
+                            onChange={(e) => setData('fecha_vencimiento_licencia', e.target.value)}
+                            disabled={processing}
+                        />
+                        <InputError message={errors.fecha_vencimiento_licencia} />
+                    </div>
+
+                    <div className="grid gap-2">
+                        <Label>Días ptes. licencia</Label>
+                        <div
+                            className={[
+                                'flex h-9 items-center rounded-md border px-3 text-sm font-semibold',
+                                diasPendientesLicencia === null
+                                    ? 'border-input bg-muted text-muted-foreground'
+                                    : diasPendientesLicencia < 0
+                                      ? 'border-red-300 bg-red-50 text-red-700 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-300'
+                                      : diasPendientesLicencia <= 30
+                                        ? 'border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300'
+                                        : 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-300',
+                            ].join(' ')}
+                        >
+                            {diasPendientesLicencia === null
+                                ? '—'
+                                : diasPendientesLicencia < 0
+                                  ? `Venció hace ${Math.abs(diasPendientesLicencia)} día${Math.abs(diasPendientesLicencia) === 1 ? '' : 's'}`
+                                  : `${diasPendientesLicencia} día${diasPendientesLicencia === 1 ? '' : 's'}`}
+                        </div>
+                    </div>
+                </div>
+
+                {/* ── Restricciones de licencia ── */}
+                <div className="mt-4 grid gap-2">
+                    <Label htmlFor="restricciones_licencia">Restricciones</Label>
+                    <Textarea
+                        id="restricciones_licencia"
+                        value={data.restricciones_licencia}
+                        onChange={(e) => setData('restricciones_licencia', e.target.value)}
+                        disabled={processing}
+                        placeholder="Ej: No conducir de noche, requiere lentes, restricción de carga…"
+                        rows={3}
+                        maxLength={500}
+                    />
+                    <InputError message={errors.restricciones_licencia} />
+                </div>
             </SeccionCard>
 
             {esAprendizSena && (

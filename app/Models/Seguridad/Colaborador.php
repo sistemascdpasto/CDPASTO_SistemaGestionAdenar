@@ -119,6 +119,11 @@ class Colaborador extends Model
         'vacaciones_pagadas_fecha_desde',
         'vacaciones_pagadas_fecha_hasta',
 
+        // Paso 4 — licencia de conducción
+        'fecha_licencia',
+        'fecha_vencimiento_licencia',
+        'restricciones_licencia',
+
         // Paso 4 — plan padrino (toggle; el archivo vive en colaborador_documentos)
         'es_padrino',
         'tipo_padrino',
@@ -144,6 +149,8 @@ class Colaborador extends Model
             'vacaciones_fecha_hasta' => 'date:Y-m-d',
             'vacaciones_pagadas_fecha_desde' => 'date:Y-m-d',
             'vacaciones_pagadas_fecha_hasta' => 'date:Y-m-d',
+            'fecha_licencia' => 'date:Y-m-d',
+            'fecha_vencimiento_licencia' => 'date:Y-m-d',
         ];
     }
 
@@ -252,6 +259,11 @@ class Colaborador extends Model
     public function eppEntregas(): HasMany
     {
         return $this->hasMany(EppEntrega::class)->orderByDesc('fecha_entrega');
+    }
+
+    public function asignacionConductor(): HasOne
+    {
+        return $this->hasOne(AsignacionConductor::class);
     }
 
     public function getEstadoSkapAttribute(): string

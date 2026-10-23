@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import AppLayout from '@/layouts/app-layout';
 import { SeccionCard } from '@/pages/seguridad/colaboradores/colaborador-form-fields';
 import { ColaboradorSearchSelect, type ColaboradorOption } from '@/pages/seguridad/pruebas/colaborador-search-select';
+import { ReconocimientoFacialSection } from '@/pages/seguridad/pruebas/reconocimiento-facial-section';
 import { FirmaPad, type FirmaPadHandle } from '@/components/firma-pad';
 import { type BreadcrumbItem } from '@/types';
 import { Head, useForm } from '@inertiajs/react';
@@ -642,7 +643,18 @@ export default function CreatePrueba({
 
                 <form onSubmit={submit} className="grid gap-6">
                     <SeccionCard icon={Users} titulo="Colaborador y tipo de prueba" tono="verde">
-                        <div className="grid gap-4 sm:grid-cols-2">
+                        <ReconocimientoFacialSection
+                            colaboradores={colaboradores}
+                            onColaboradorIdentificado={(id, foto) => {
+                                setData('colaborador_id', String(id));
+                                if (foto) {
+                                    setData('evidencias', [...(data.evidencias || []), foto]);
+                                }
+                            }}
+                            colaboradorSeleccionadoId={data.colaborador_id}
+                        />
+
+                        <div className="mt-6 grid gap-4 sm:grid-cols-2">
                             <ColaboradorSearchSelect
                                 id="colaborador_search"
                                 label="Colaborador"
@@ -673,7 +685,7 @@ export default function CreatePrueba({
                         </div>
 
                         {colaboradorSeleccionado && (
-                            <div className="mt-4 grid gap-3 rounded-lg border border-emerald-200 bg-white/60 p-3 text-sm sm:grid-cols-4 dark:border-emerald-500/20 dark:bg-black/10">
+                            <div className="mt-8 grid gap-3 rounded-lg border border-emerald-200 bg-white/60 p-3 text-sm sm:grid-cols-4 dark:border-emerald-500/20 dark:bg-black/10">
                                 <div>
                                     <p className="text-muted-foreground text-[11px] tracking-wide uppercase">Identificación</p>
                                     <p className="text-foreground font-medium">{colaboradorSeleccionado.cedula}</p>

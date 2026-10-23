@@ -154,10 +154,86 @@ class ClienteController extends Controller
                     $datos[$campo] = null;
                     continue;
                 }
-                // Coordenadas: limpiar comas europeas y convertir a float
+                // Coordenadas: normalizar y convertir a float
+                // Casos comunes en archivos Excel colombianos/europeos:
+                //   "1,234567"   → separador decimal con coma → "1.234567"
+                //   "1.234,567"  → miles con punto, decimal con coma → "1234.567"
+                //   "1,234.567"  → miles con coma, decimal con punto → "1234.567"
+                //   "1234567"    → entero sin decimales → válido directo
                 if (in_array($campo, ['longitud', 'latitud'], true)) {
-                    $limpio = str_replace(',', '.', (string) $valor);
-                    $datos[$campo] = is_numeric($limpio) ? (float) $limpio : null;
+                    $raw = trim((string) $valor);
+                    // Quitar espacios y símbolo de grado si alguien lo pone
+                    $raw = str_replace(['°', ' '], '', $raw);
+                    // Notación científica (ej: PhpSpreadsheet con formato aplicado)
+                    if (preg_match('/^-?\d+\.?\d*[eE][+\-]?\d+$/', $raw)) {
+                        $datos[$campo] = (float) $raw;
+                        continue;
+                    }
+
+                    $tienePunto   = str_contains($raw, '.');
+                    $tieneComa    = str_contains($raw, ',');
+                    $cantComas    = substr_count($raw, ',');
+                    $cantPuntos   = substr_count($raw, '.');
+
+                    if ($tienePunto && $tieneComa) {
+                        // Ambos separadores presentes: el que aparece último es el decimal
+                        $posUltimoPunto = strrpos($raw, '.');
+                        $posUltimaComa  = strrpos($raw, ',');
+                        if ($posUltimaComa > $posUltimoPunto) {
+                            // Europeo: -77.080.293,456 → quitar puntos, coma→punto
+                            $raw = str_replace(['.', ','], ['', '.'], $raw);
+                        } else {
+                            // Americano: -77,080,293.456 → quitar comas
+                            $raw = str_replace(',', '', $raw);
+                        }
+                    } elseif ($tieneComa) {
+                        if ($cantComas > 1) {
+                            // Múltiples comas → todas son separadores de miles: -77,080,293
+                            // La última porción tiene exactamente 3 dígitos en cada grupo
+                            $raw = str_replace(',', '', $raw);
+                        } else {
+                            // Una sola coma: decimal europeo si parte decimal ≠ 3 dígitos,
+                            // separador de miles si son exactamente 3 dígitos
+                            $partes = explode(',', $raw);
+                            $decimales = end($partes);
+                            if (strlen(ltrim($decimales, '-')) !== 3) {
+                                $raw = str_replace(',', '.', $raw);
+                            } else {
+                                $raw = str_replace(',', '', $raw);
+                            }
+                        }
+                    } elseif ($tienePunto && $cantPuntos > 1) {
+                        // Múltiples puntos → todos son separadores de miles: -77.080.293
+                        $raw = str_replace('.', '', $raw);
+                    }
+                    // Si solo tiene un punto → ya es formato estándar float
+
+                    $datos[$campo] = is_numeric($raw) ? (float) $raw : null;
+
+                    // Sanity check para coordenadas colombianas:
+                    // Si el valor resultante es un entero de magnitud irreal (>360 en abs),
+                    // probablemente el Excel tiene el punto decimal implícito (ej: -77080293 → -77.080293)
+                    if ($datos[$campo] !== null && abs($datos[$campo]) > 360) {
+                        $negativo = $datos[$campo] < 0;
+                        $digits   = ltrim((string) (int) abs($datos[$campo]), '0') ?: '0';
+                        // Coordenadas colombianas: lon [-79,-66], lat [-4,13]
+                        // Probar insertar el punto después de 1, 2 y 3 dígitos y elegir el primero válido
+                        $reconstruido = null;
+                        foreach ([1, 2, 3] as $enteraDigitos) {
+                            if (strlen($digits) <= $enteraDigitos) continue;
+                            $candidato = ($negativo ? '-' : '')
+                                . substr($digits, 0, $enteraDigitos)
+                                . '.'
+                                . substr($digits, $enteraDigitos);
+                            $f = (float) $candidato;
+                            // Rango válido global de coordenadas
+                            if ($f >= -180 && $f <= 180) {
+                                $reconstruido = $f;
+                                break;
+                            }
+                        }
+                        $datos[$campo] = $reconstruido;
+                    }
                 } else {
                     $datos[$campo] = trim((string) $valor);
                 }

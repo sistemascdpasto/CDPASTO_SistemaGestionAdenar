@@ -114,6 +114,9 @@ export type Paso3FormData = {
 
 export type Paso4FormData = {
     licencia_conduccion_categorias: string[];
+    fecha_licencia: string;
+    fecha_vencimiento_licencia: string;
+    restricciones_licencia: string;
     es_padrino: 'no_aplica' | 'aplica' | '';
     tipo_padrino: 'padrino' | 'plan_padrino_personal_nuevo' | '';
     documento_sena_carta_presentacion: File[];

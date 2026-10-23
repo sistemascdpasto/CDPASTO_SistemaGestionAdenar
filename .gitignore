@@ -27,3 +27,5 @@ Homestead.json
 Homestead.yaml
 npm-debug.log
 yarn-error.log
+.venv_facial*/
+storage/app/facial_cache.json

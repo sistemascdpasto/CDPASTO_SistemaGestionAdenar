@@ -1,15 +1,36 @@
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Camera, FlipHorizontal2, RefreshCw, Timer, TriangleAlert, X } from 'lucide-react';
+import { Camera, FlipHorizontal2, RefreshCw, Timer, TriangleAlert, Video, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 const OPCIONES_TIMER = [5, 10, 15] as const;
 type OpcionTimer = (typeof OPCIONES_TIMER)[number];
 type FacingMode  = 'environment' | 'user'; // trasera | frontal
 
+interface DispositivoCamara {
+    deviceId: string;
+    label: string;
+    isVirtual: boolean;
+}
+
+function esCamaraVirtual(label: string): boolean {
+    const l = label.toLowerCase();
+    return (
+        l.includes('virtual') ||
+        l.includes('obs') ||
+        l.includes('vcam') ||
+        l.includes('droidcam') ||
+        l.includes('manycam') ||
+        l.includes('snap camera') ||
+        l.includes('unity') ||
+        l.includes('ndi')
+    );
+}
+
 /**
  * Diálogo para tomar una fotografía con la cámara del dispositivo y devolverla
- * como `File` (JPEG). Incluye temporizador configurable: 5, 10 o 15 segundos.
+ * como `File` (JPEG). Incluye temporizador configurable: 5, 10 o 15 segundos,
+ * detección y omisión de cámaras virtuales, y selector de cámara.
  */
 export function CameraCaptureDialog({
     open,
@@ -27,11 +48,13 @@ export function CameraCaptureDialog({
     const fallbackInputRef = useRef<HTMLInputElement>(null);
     const countdownRef     = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    const [error,       setError]       = useState<string | null>(null);
-    const [listo,       setListo]       = useState(false);
-    const [cuenta,      setCuenta]      = useState<number | null>(null);
-    const [segundosSel, setSegundosSel] = useState<OpcionTimer>(5);
-    const [camara,      setCamara]      = useState<FacingMode>('environment');
+    const [error,              setError]              = useState<string | null>(null);
+    const [listo,              setListo]              = useState(false);
+    const [cuenta,             setCuenta]             = useState<number | null>(null);
+    const [segundosSel,        setSegundosSel]        = useState<OpcionTimer>(5);
+    const [camara,             setCamara]             = useState<FacingMode>('user');
+    const [dispositivos,       setDispositivos]       = useState<DispositivoCamara[]>([]);
+    const [selectedDeviceId,   setSelectedDeviceId]   = useState<string>('');
 
     const detener = useCallback(() => {
         streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -41,35 +64,100 @@ export function CameraCaptureDialog({
         if (countdownRef.current) { clearTimeout(countdownRef.current); countdownRef.current = null; }
     }, []);
 
-    const iniciar = useCallback(async (facing: FacingMode = camara) => {
+    const iniciar = useCallback(async (deviceIdToUse?: string, facing: FacingMode = camara) => {
         setError(null);
         setListo(false);
         setCuenta(null);
+
         // Detener stream anterior si existe
         streamRef.current?.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
+
         if (!navigator.mediaDevices?.getUserMedia) {
             setError('Este dispositivo o navegador no permite usar la cámara. Puedes adjuntar una foto desde el archivo.');
             return;
         }
+
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: { ideal: facing } },
+            let targetId = deviceIdToUse || selectedDeviceId;
+
+            // Si aún no tenemos targetId, buscar si ya podemos enumerar dispositivos físicos
+            if (!targetId && navigator.mediaDevices.enumerateDevices) {
+                try {
+                    const allDevs = await navigator.mediaDevices.enumerateDevices();
+                    const vDevs = allDevs.filter((d) => d.kind === 'videoinput');
+                    const realCam = vDevs.find((d) => d.label && !esCamaraVirtual(d.label));
+                    if (realCam && realCam.deviceId) {
+                        targetId = realCam.deviceId;
+                    }
+                } catch {
+                    // ignorar y seguir con constraints básicas
+                }
+            }
+
+            const constraints: MediaStreamConstraints = {
+                video: targetId
+                    ? { deviceId: { exact: targetId } }
+                    : { facingMode: { ideal: facing } },
                 audio: false,
-            });
+            };
+
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
             streamRef.current = stream;
+
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;
-                await videoRef.current.play();
+                try {
+                    await videoRef.current.play();
+                } catch (playErr) {
+                    console.warn('Video play interrupted:', playErr);
+                }
                 setListo(true);
             }
+
+            // Enumerar todos los dispositivos de video disponibles
+            if (navigator.mediaDevices.enumerateDevices) {
+                const devs = await navigator.mediaDevices.enumerateDevices();
+                const videoInputs: DispositivoCamara[] = devs
+                    .filter((d) => d.kind === 'videoinput')
+                    .map((d, index) => ({
+                        deviceId: d.deviceId,
+                        label: d.label || `Cámara ${index + 1}`,
+                        isVirtual: esCamaraVirtual(d.label || ''),
+                    }));
+
+                setDispositivos(videoInputs);
+
+                const activeTrack = stream.getVideoTracks()[0];
+                const activeLabel = activeTrack?.label || '';
+                const activeTrackSettings = activeTrack?.getSettings?.();
+                const currentActiveId = activeTrackSettings?.deviceId || targetId || (videoInputs[0]?.deviceId ?? '');
+
+                // Si la cámara activa es virtual y hay una cámara física disponible, cambiar automáticamente
+                if (esCamaraVirtual(activeLabel)) {
+                    const camaraFisica = videoInputs.find((d) => !d.isVirtual && d.deviceId);
+                    if (camaraFisica && camaraFisica.deviceId !== currentActiveId) {
+                        setSelectedDeviceId(camaraFisica.deviceId);
+                        void iniciar(camaraFisica.deviceId, facing);
+                        return;
+                    }
+                }
+
+                if (currentActiveId) {
+                    setSelectedDeviceId(currentActiveId);
+                }
+            }
         } catch {
-            setError('No se pudo acceder a la cámara. Revisa los permisos del navegador o adjunta una foto desde el archivo.');
+            setError('No se pudo acceder a la cámara. Revisa los permisos del navegador o selecciona otra cámara.');
         }
-    }, [camara]);
+    }, [camara, selectedDeviceId]);
 
     useEffect(() => {
-        if (open) { void iniciar(); } else { detener(); }
+        if (open) {
+            void iniciar();
+        } else {
+            detener();
+        }
         return () => detener();
     }, [open, iniciar, detener]);
 
@@ -117,9 +205,20 @@ export function CameraCaptureDialog({
     };
 
     const cambiarCamara = () => {
+        if (dispositivos.length > 1) {
+            // Ciclar a la siguiente cámara disponible
+            const currentIndex = dispositivos.findIndex((d) => d.deviceId === selectedDeviceId);
+            const nextIndex = (currentIndex + 1) % dispositivos.length;
+            const nextDev = dispositivos[nextIndex];
+            if (nextDev) {
+                setSelectedDeviceId(nextDev.deviceId);
+                void iniciar(nextDev.deviceId);
+                return;
+            }
+        }
         const nueva: FacingMode = camara === 'environment' ? 'user' : 'environment';
         setCamara(nueva);
-        void iniciar(nueva);
+        void iniciar(undefined, nueva);
     };
 
     const desdeArchivo = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -147,18 +246,20 @@ export function CameraCaptureDialog({
                     {error ? (
                         <div className="flex items-start gap-2 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
                             <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
-                            {error}
+                            <div className="flex-1">
+                                <p>{error}</p>
+                            </div>
                         </div>
                     ) : (
                         <div className="relative overflow-hidden rounded-lg border border-border bg-black">
-                            <video ref={videoRef} playsInline muted className="aspect-video w-full object-cover" />
+                            <video ref={videoRef} playsInline autoPlay muted className="aspect-video w-full object-cover" />
 
                             {/* Botón cambiar cámara — esquina superior derecha */}
-                            {listo && !enConteo && (
+                            {listo && !enConteo && dispositivos.length > 1 && (
                                 <button
                                     type="button"
                                     onClick={cambiarCamara}
-                                    title={camara === 'environment' ? 'Cambiar a cámara frontal' : 'Cambiar a cámara trasera'}
+                                    title="Cambiar a la siguiente cámara"
                                     className="absolute right-2 top-2 flex size-8 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm transition hover:bg-black/70"
                                 >
                                     <FlipHorizontal2 className="size-4" />
@@ -168,7 +269,6 @@ export function CameraCaptureDialog({
                             {/* Overlay cuenta regresiva */}
                             {enConteo && (
                                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50">
-                                    {/* Círculo SVG con arco de progreso */}
                                     <div className="relative flex items-center justify-center">
                                         <svg width="128" height="128" viewBox="0 0 128 128">
                                             <circle cx="64" cy="64" r={radio} fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="8" />
@@ -197,6 +297,29 @@ export function CameraCaptureDialog({
                     )}
 
                     <input ref={fallbackInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={desdeArchivo} />
+
+                    {/* Selector de cámara si hay más de una */}
+                    {dispositivos.length > 1 && !enConteo && (
+                        <div className="flex items-center gap-2">
+                            <Video className="size-3.5 shrink-0 text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground">Dispositivo:</span>
+                            <select
+                                value={selectedDeviceId}
+                                onChange={(e) => {
+                                    const id = e.target.value;
+                                    setSelectedDeviceId(id);
+                                    void iniciar(id);
+                                }}
+                                className="h-8 flex-1 rounded-md border border-input bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                            >
+                                {dispositivos.map((d) => (
+                                    <option key={d.deviceId} value={d.deviceId}>
+                                        {d.label} {d.isVirtual ? ' (Cámara Virtual)' : ''}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
 
                     {/* Selector de duración del temporizador */}
                     {!error && !enConteo && (

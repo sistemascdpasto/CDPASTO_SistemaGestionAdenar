@@ -55,4 +55,10 @@ return [
         'model' => env('GROQ_MODEL', 'openai/gpt-oss-120b'),
     ],
 
+    // Reconocimiento facial biométrico
+    'facial' => [
+        'url' => env('FACIAL_API_URL', 'http://127.0.0.1:8001'),
+        'python_path' => env('FACIAL_PYTHON_PATH', null),
+    ],
+
 ];

@@ -26,6 +26,7 @@ use Inertia\Response;
 use Maatwebsite\Excel\Facades\Excel;
 
 use App\Services\Seguridad\CoberturaPlaneacionService;
+use App\Services\Seguridad\FacialRecognitionService;
 
 class PruebaAlcoholemiaController extends Controller
 {
@@ -177,8 +178,26 @@ class PruebaAlcoholemiaController extends Controller
         return back()->with('success', 'Tipo de prueba requerido actualizado.');
     }
 
-    public function create(Request $request): Response
+    /**
+     * Compara una foto capturada con las fotografías de los colaboradores registrados.
+     */
+    public function reconocerRostro(Request $request, FacialRecognitionService $service): JsonResponse
     {
+        $request->validate([
+            'foto' => 'required|image|max:10240', // máx 10MB
+        ]);
+
+        $foto = $request->file('foto');
+        $resultado = $service->reconocer($foto);
+
+        return response()->json($resultado);
+    }
+
+    public function create(Request $request, FacialRecognitionService $service): Response
+    {
+        // Sincronizar en segundo plano la galería con FastAPI para reconocimiento en vivo
+        $service->sincronizarGaleria();
+
         $dispositivosDisponibles = Alcoholimetro::query()
             ->where('estado', 'Disponible')
             ->orderBy('codigo')

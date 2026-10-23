@@ -4,7 +4,9 @@
     "scripts": {
         "build": "vite build",
         "build:ssr": "vite build && vite build --ssr",
-        "dev": "vite",
+        "dev": "concurrently -k -c \"#38bdf8,#34d399\" \"npm:dev:vite\" \"npm:dev:facial\" --names=\"vite,facial\"",
+        "dev:vite": "vite",
+        "dev:facial": ".venv_facial2\\Scripts\\python.exe -m uvicorn facial_service.main:app --host 127.0.0.1 --port 8001",
         "format": "prettier --write resources/",
         "format:check": "prettier --check resources/",
         "lint": "eslint . --fix"

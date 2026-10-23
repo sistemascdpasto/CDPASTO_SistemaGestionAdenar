@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
-import { ChevronDown, Eye, FileSpreadsheet, FileText, Trash2, Truck, Users, X } from 'lucide-react';
+import { ChevronDown, Eye, FileSpreadsheet, FileText, MapPinned, Trash2, Truck, Users, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import * as XLSX from 'xlsx-js-style';
 
@@ -24,6 +24,9 @@ interface RutaDetalle {
     doc_tras: string;
     responsable: string;
     destino: string;
+    municipio?: string;
+    barrio?: string;
+    destinos?: { municipio: string; barrio: string }[];
     cliente: string;
     peso: string;
 }
@@ -276,6 +279,8 @@ export default function HistorialModulacion({ planeaciones, placas_disponibles =
                     '',
                     '',
                     '',
+                    '',
+                    '',
                 ]);
             } else {
                 rutas.forEach((r) => {
@@ -284,6 +289,8 @@ export default function HistorialModulacion({ planeaciones, placas_disponibles =
                         r.placa || '',
                         r.doc_tras || '',
                         r.responsable || '',
+                        r.municipio || '',
+                        r.barrio || '',
                         r.destino || '',
                         r.cliente || '',
                         r.peso || '',
@@ -298,7 +305,9 @@ export default function HistorialModulacion({ planeaciones, placas_disponibles =
                 'Placa',
                 'Documento de Transporte',
                 'Responsable',
-                'Destino',
+                'Municipio',
+                'Barrio',
+                'Destino Completo',
                 'Cliente',
                 'Peso',
             ],
@@ -338,7 +347,9 @@ export default function HistorialModulacion({ planeaciones, placas_disponibles =
             { wch: 14 },
             { wch: 24 },
             { wch: 28 },
+            { wch: 22 },
             { wch: 25 },
+            { wch: 32 },
             { wch: 25 },
             { wch: 16 },
         ];
@@ -361,7 +372,7 @@ export default function HistorialModulacion({ planeaciones, placas_disponibles =
                 if (R === 0) {
                     worksheet[cellRef].s = HEADER_STYLE;
                 } else {
-                    const isCenterCol = C === 0 || C === 1 || C === 2 || C === 6;
+                    const isCenterCol = C === 0 || C === 1 || C === 2 || C === 8;
                     worksheet[cellRef].s = isCenterCol ? BODY_STYLE_CENTER : BODY_STYLE_LEFT;
                 }
             }
@@ -436,7 +447,7 @@ export default function HistorialModulacion({ planeaciones, placas_disponibles =
                                 <TableHead className="min-w-[140px]">Doc. Transporte</TableHead>
                                 <TableHead className="min-w-[140px]">Programado por</TableHead>
                                 <TableHead className="min-w-[160px]">Responsable Ruta</TableHead>
-                                <TableHead className="min-w-[140px]">Destino</TableHead>
+                                <TableHead className="min-w-[160px]">Destino (Municipio / Barrio)</TableHead>
                                 <TableHead className="min-w-[140px]">Cliente</TableHead>
                                 <TableHead className="min-w-[100px]">Peso</TableHead>
                                 <TableHead className="min-w-[120px]">Vehículos</TableHead>
@@ -517,8 +528,16 @@ export default function HistorialModulacion({ planeaciones, placas_disponibles =
                                                         <span className="text-xs text-muted-foreground">—</span>
                                                     ) : (
                                                         visibleRutas.map((r, idx) => (
-                                                            <div key={idx} className="text-xs" title={r.destino || '—'}>
-                                                                {r.destino || <span className="text-muted-foreground/70">—</span>}
+                                                            <div key={idx} className="flex flex-col text-xs" title={r.destino || '—'}>
+                                                                {r.municipio ? (
+                                                                    <span className="font-semibold text-foreground flex items-center gap-1">
+                                                                        <span className="inline-block size-1.5 rounded-full bg-amber-500 shrink-0" />
+                                                                        <span>{r.municipio}</span>
+                                                                    </span>
+                                                                ) : null}
+                                                                <span className={r.municipio ? 'text-muted-foreground text-[11px]' : 'text-xs'}>
+                                                                    {r.barrio || r.destino || <span className="text-muted-foreground/70">—</span>}
+                                                                </span>
                                                             </div>
                                                         ))
                                                     )}
@@ -625,6 +644,17 @@ export default function HistorialModulacion({ planeaciones, placas_disponibles =
                                             </TableCell>
                                             <TableCell className="align-top" onClick={(e) => e.stopPropagation()}>
                                                 <div className="flex justify-end gap-1.5">
+                                                    <Button
+                                                        size="icon"
+                                                        variant="outline"
+                                                        className="size-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                                                        asChild
+                                                        title={`Ver Rutograma del ${formatFecha(plan.fecha)}`}
+                                                    >
+                                                        <Link href={`/modules/seguridad/rutogramas?fecha=${plan.fecha}`}>
+                                                            <MapPinned className="size-4" />
+                                                        </Link>
+                                                    </Button>
                                                     <Button
                                                         size="icon"
                                                         variant="outline"

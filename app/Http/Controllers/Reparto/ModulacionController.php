@@ -344,20 +344,19 @@ class ModulacionController extends Controller
                     }
                 }
 
-                $destino = '';
-                foreach ($destinosList as $d) {
-                    if ($d['barrio'] !== '') {
-                        $destino = $d['barrio'];
-                        break;
-                    }
-                }
-                if ($destino === '') {
-                    foreach ($destinosList as $d) {
-                        if ($d['municipio'] !== '') {
-                            $destino = $d['municipio'];
-                            break;
-                        }
-                    }
+                $municipiosList = array_values(array_filter(array_unique(array_map(fn($d) => $d['municipio'], $destinosList))));
+                $barriosList = array_values(array_filter(array_unique(array_map(fn($d) => $d['barrio'], $destinosList))));
+
+                $municipioStr = implode(', ', $municipiosList);
+                $barrioStr = implode(', ', $barriosList);
+
+                $destinoCompleto = '';
+                if (!empty($municipiosList) && !empty($barriosList)) {
+                    $destinoCompleto = implode(', ', $municipiosList) . ' - ' . implode(', ', $barriosList);
+                } elseif (!empty($barriosList)) {
+                    $destinoCompleto = implode(', ', $barriosList);
+                } elseif (!empty($municipiosList)) {
+                    $destinoCompleto = implode(', ', $municipiosList);
                 }
 
                 $clientes = [];
@@ -383,7 +382,10 @@ class ModulacionController extends Controller
                     'placa'       => $item->placa,
                     'doc_tras'    => $docTras,
                     'responsable' => $responsable,
-                    'destino'     => $destino,
+                    'destino'     => $destinoCompleto,
+                    'municipio'   => $municipioStr,
+                    'barrio'      => $barrioStr,
+                    'destinos'    => $destinosList,
                     'cliente'     => $clienteStr,
                     'peso'        => $pesoStr,
                 ];

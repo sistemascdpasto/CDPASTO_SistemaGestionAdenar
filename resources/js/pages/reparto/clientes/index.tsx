@@ -207,6 +207,8 @@ export default function ClientesIndex({
                                 <TableHead className="font-bold text-black dark:text-white">Cliente</TableHead>
                                 <TableHead className="font-bold text-black dark:text-white">Propietario</TableHead>
                                 <TableHead className="font-bold text-black dark:text-white">Identificación</TableHead>
+                                <TableHead className="font-bold text-black dark:text-white">Longitud</TableHead>
+                                <TableHead className="font-bold text-black dark:text-white">Latitud</TableHead>
                                 <TableHead className="font-bold text-black dark:text-white">Departamento</TableHead>
                                 <TableHead className="font-bold text-black dark:text-white">Municipio</TableHead>
                                 <TableHead className="font-bold text-black dark:text-white">Barrio</TableHead>
@@ -220,7 +222,7 @@ export default function ClientesIndex({
                         <TableBody>
                             {clientes.data.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={12} className="py-8 text-center text-muted-foreground">
+                                    <TableCell colSpan={14} className="py-8 text-center text-muted-foreground">
                                         {total === 0
                                             ? 'No hay clientes registrados. Importa un archivo Excel para comenzar.'
                                             : 'No se encontraron clientes con los filtros aplicados.'}
@@ -233,6 +235,8 @@ export default function ClientesIndex({
                                     <TableCell className="capitalize font-medium">{c.cliente?.toLowerCase() ?? '—'}</TableCell>
                                     <TableCell className="capitalize">{c.propietario?.toLowerCase() ?? '—'}</TableCell>
                                     <TableCell className="font-mono text-sm">{c.identificacion ?? '—'}</TableCell>
+                                    <TableCell className="font-mono text-sm">{c.longitud ?? '—'}</TableCell>
+                                    <TableCell className="font-mono text-sm">{c.latitud ?? '—'}</TableCell>
                                     <TableCell className="capitalize">{c.departamento?.toLowerCase() ?? '—'}</TableCell>
                                     <TableCell className="capitalize">{c.municipio?.toLowerCase() ?? '—'}</TableCell>
                                     <TableCell className="capitalize">{c.barrio?.toLowerCase() ?? '—'}</TableCell>
