@@ -105,20 +105,24 @@ export function AppSidebar() {
             url: '/dashboard',
             icon: LayoutGrid,
         },
-        ...visibleModules.map((mod) => ({
-            title: mod.title,
-            url: `/modules/${mod.slug}`,
-            icon: mod.icon,
-            color: mod.accent,
-            items: buildSubNavItems(
-                mod.submodules,
-                mod.slug,
-                mod.accent,
-                auth.isAdmin ? ['Administrador'] : auth.roles,
-                auth.isAdmin,
-                auth.accessibleSubmodules,
-            ),
-        })),
+        ...visibleModules
+            .map((mod) => ({
+                title: mod.title,
+                url: `/modules/${mod.slug}`,
+                icon: mod.icon,
+                color: mod.accent,
+                items: buildSubNavItems(
+                    mod.submodules,
+                    mod.slug,
+                    mod.accent,
+                    auth.isAdmin ? ['Administrador'] : auth.roles,
+                    auth.isAdmin,
+                    auth.accessibleSubmodules,
+                ),
+            }))
+            // Un pilar sin ningún submódulo propio otorgado (solo quedaría Capacitaciones,
+            // que es transversal) no se muestra: el usuario no tiene nada que hacer ahí.
+            .filter((item) => auth.isAdmin || item.items.some((sub) => !sub.shared)),
         ...(auth.isColaborador
             ? [
                   { title: 'Mi Perfil', url: '/portal/perfil', icon: User, color: '#3F7A22' },

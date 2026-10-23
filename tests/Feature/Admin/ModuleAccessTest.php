@@ -160,6 +160,44 @@ class ModuleAccessTest extends TestCase
         $this->assertCount(25, $registro['seguridad']);
         $this->assertCount(14, $registro['reparto']);
         $this->assertCount(9, $registro['gente']);
-        $this->assertCount(7, $registro['flota']);
+        $this->assertCount(8, $registro['flota']);
+    }
+
+    public function test_extintores_es_personalizable_y_su_ruta_respeta_la_personalizacion(): void
+    {
+        $this->assertTrue(ModuleAccessRegistry::exists('flota', 'extintores'));
+
+        // Sin personalizar, Flota lo ve como siempre.
+        $flota = $this->usuario('Flota');
+        $this->actingAs($flota)->get(route('flota.extintores.index'))->assertOk();
+
+        // Personalizado sin Extintores: no lo ve ni puede entrar.
+        $flota->update(['modulos_personalizados' => true]);
+        UserSubmoduleAccess::create(['user_id' => $flota->id, 'module_slug' => 'flota', 'submodule_key' => 'vehiculos']);
+        $this->actingAs($flota)->get(route('flota.extintores.index'))->assertForbidden();
+        $this->assertNotContains('extintores', ModuleAccessRegistry::accessibleSubmodules($flota->fresh())['flota'] ?? []);
+
+        // Con Extintores otorgado, sí.
+        UserSubmoduleAccess::create(['user_id' => $flota->id, 'module_slug' => 'flota', 'submodule_key' => 'extintores']);
+        $this->actingAs($flota)->get(route('flota.extintores.index'))->assertOk();
+    }
+
+    public function test_colaboradores_y_geovictoria_no_se_comparten_si_no_se_otorgan(): void
+    {
+        // Reparto personalizado solo con Planeación de Ruta: sin Colaboradores ni GeoVictoria.
+        $reparto = $this->usuario('Reparto');
+        $reparto->update(['modulos_personalizados' => true]);
+        UserSubmoduleAccess::create(['user_id' => $reparto->id, 'module_slug' => 'reparto', 'submodule_key' => 'modulacion']);
+
+        $accesibles = ModuleAccessRegistry::accessibleSubmodules($reparto->fresh());
+        $this->assertSame(['modulacion'], $accesibles['reparto'] ?? []);
+        $this->assertArrayNotHasKey('gente', $accesibles);
+
+        $this->actingAs($reparto)->get(route('gente.colaboradores.index'))->assertForbidden();
+        $this->actingAs($reparto)->get(route('gente.asistencia-geovictoria.index'))->assertForbidden();
+
+        // El sidebar recibe exactamente eso: sin gente/colaboradores ni gente/asistencia-geovictoria.
+        $this->actingAs($reparto)->get(route('dashboard'))
+            ->assertInertia(fn ($page) => $page->where('auth.accessibleSubmodules', ['reparto' => ['modulacion']]));
     }
 }

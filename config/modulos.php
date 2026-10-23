@@ -91,5 +91,6 @@ return [
         'varadas' => 'Control de Varadas',
         'actas-taller' => 'Actas de Taller',
         'ocupacion-carga' => 'Ocupación de Carga',
+        'extintores' => 'Extintores',
     ],
 ];

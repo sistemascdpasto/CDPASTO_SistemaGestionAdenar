@@ -2,7 +2,7 @@ import { PilarResumen, type PilarResumenData } from '@/components/dashboard/pila
 import { ModuleCard } from '@/components/module-card';
 import { Reveal } from '@/components/reveal';
 import { ShinyText } from '@/components/shiny-text';
-import { modules } from '@/data/modules';
+import { moduleHasAccessibleSubmodules, modules } from '@/data/modules';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Head, usePage } from '@inertiajs/react';
@@ -21,7 +21,10 @@ interface Resumen {
 
 export default function RoleDashboard({ modules: accessibleSlugs, resumen }: { modules: string[]; resumen: Resumen }) {
     const { auth } = usePage<SharedData>().props;
-    const accessibleModules = modules.filter((mod) => accessibleSlugs.includes(mod.slug));
+    // Por rol y, si está personalizado, solo los pilares donde tiene al menos un submódulo otorgado.
+    const accessibleModules = modules.filter(
+        (mod) => accessibleSlugs.includes(mod.slug) && moduleHasAccessibleSubmodules(mod, auth.roles, auth.isAdmin, auth.accessibleSubmodules),
+    );
     const conResumen = accessibleModules.filter((mod) => resumen.pilares[mod.slug]);
     const sinResumen = accessibleModules.filter((mod) => !resumen.pilares[mod.slug]);
 
