@@ -97,19 +97,6 @@ class CondicionSaludController extends Controller
                     'momento' => "Tienes una entrada anterior abierta sin cerrar (del {$fechaEntrada}). Debes registrar primero la salida pendiente antes de registrar una nueva entrada.",
                 ]);
             }
-
-            // Regla: No se permite registrar más de un ingreso en el mismo día actual
-            $existeIngresoHoy = CondicionSalud::query()
-                ->where('colaborador_id', $colaborador->id)
-                ->where('momento', 'ingreso')
-                ->whereDate('fecha_hora', Carbon::today())
-                ->exists();
-
-            if ($existeIngresoHoy) {
-                return back()->withErrors([
-                    'momento' => 'Ya registraste tu entrada de hoy. No es posible registrar otra entrada el mismo día.',
-                ]);
-            }
         }
 
         if ($momento === 'salida') {

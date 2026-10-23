@@ -36,7 +36,8 @@ class DpoAcademy extends Model
 
     protected static function booted(): void
     {
-        
+        //
+    }
 
     public function colaborador(): BelongsTo
     {
