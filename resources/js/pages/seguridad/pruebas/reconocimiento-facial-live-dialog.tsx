@@ -10,7 +10,7 @@ import {
     UserCheck,
     Video,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 // ─── Flag de logs de diagnóstico ─────────────────────────────────────────────
 // Solo activos en desarrollo Y con ?facial_debug en la URL, para evitar spam
@@ -147,18 +147,14 @@ export function ReconocimientoFacialLiveDialog({
     // de handleFrameResponse sin recrear el efecto completo.
     const handleFrameResponseRef = useRef<(data: FrameResponse) => void>(() => {});
 
-    // BUG 1 FIX: construir el mapa síncronamente con useMemo en lugar de
-    // useEffect. Así el mapa siempre está actualizado antes de que se dibuje
-    // cualquier fotograma, sin la ventana asíncrona del efecto.
-    const colaboradoresMap = useMemo<Map<number, ColaboradorItem>>(() => {
-        const map = new Map<number, ColaboradorItem>();
-        colaboradores.forEach((c) => {
-            // Normalizar el ID a número para que la búsqueda sea siempre compatible
-            // aunque el servidor devuelva el colaborador_id como string o como number.
-            map.set(Number(c.id), c);
-        });
-        return map;
-    }, [colaboradores]);
+    // BUG 1 FIX (revisado): usar un ref que se actualiza síncronamente en cada
+    // render. handleFrameResponse lo leerá siempre con el mapa más reciente,
+    // independientemente del ciclo de re-render o del requestAnimationFrame.
+    const colaboradoresMapRef = useRef<Map<number, ColaboradorItem>>(new Map());
+    // Reconstruir el mapa en cada render donde cambie el array (operación O(n), barata).
+    const nextMap = new Map<number, ColaboradorItem>();
+    colaboradores.forEach((c) => nextMap.set(Number(c.id), c));
+    colaboradoresMapRef.current = nextMap;
 
     // ── Detener stream, WS y temporizadores ──────────────────────────────────
     const detenerStream = useCallback(() => {
@@ -397,10 +393,8 @@ export function ReconocimientoFacialLiveDialog({
     }, [open, fastApiWsUrl, fastApiHttpUrl, detenerStream, iniciarCamara]);
 
     // ── Procesar respuesta del frame ──────────────────────────────────────────
-    // BUG 3 FIX: inline en el render y actualizado via ref-proxy.
-    // BUG 1 FIX: colaboradoresMap ahora es un useMemo (siempre actualizado).
-    // BUG 3: Resolución de identidad: se usa Number() para comparar IDs
-    //        independientemente de si el servidor devuelve number o string.
+    // Lee el mapa desde el ref (siempre la versión más reciente, incluso dentro
+    // de requestAnimationFrame o closures del WS).
     const handleFrameResponse = useCallback(
         (data: FrameResponse) => {
             const video = videoRef.current;
@@ -417,11 +411,14 @@ export function ReconocimientoFacialLiveDialog({
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+            // Leer el mapa desde el ref: siempre tiene los datos actuales
+            // aunque esta función se ejecute dentro de un requestAnimationFrame.
+            const cMap = colaboradoresMapRef.current;
+
             const faces = data.faces ?? [];
             let principalIdentificado: ColaboradorItem | null = null;
             let principalInfo: IdentityResult | null = null;
 
-            // data.w/data.h = resolución del fotograma enviado al backend
             const frameW = data.w && data.w > 0 ? data.w : 480;
             const frameH =
                 data.h && data.h > 0
@@ -437,30 +434,25 @@ export function ReconocimientoFacialLiveDialog({
                 const fw = f.box[2] * scaleX;
                 const fh = f.box[3] * scaleY;
 
-                // Modo espejo: invertir X para calzar exactamente con el video
                 const x = isMirroredRef.current ? canvas.width - rawX - fw : rawX;
                 const y = rawY;
 
-                // Identidad individual de este rostro.
-                // Si faces[i].identity es null pero hay una sola cara, usar la identidad
-                // global de la respuesta como fallback (comportamiento previo conservado).
                 const faceIdentity: IdentityResult | null | undefined =
                     f.identity ?? (faces.length === 1 ? data.identity : null);
 
-                let color = '#38bdf8'; // azul por defecto
+                let color = '#38bdf8';
                 let texto = 'Rostro detectado';
 
                 if (faceIdentity) {
                     if (faceIdentity.status === 'match') {
                         color = '#10b981';
-                        // BUG 3 FIX: normalizar el ID a Number para evitar mismatch string/number
                         const colab = faceIdentity.colaborador_id != null
-                            ? colaboradoresMap.get(Number(faceIdentity.colaborador_id))
+                            ? cMap.get(Number(faceIdentity.colaborador_id))
                             : undefined;
 
                         if (!colab && faceIdentity.colaborador_id != null && DEV_LOGS) {
                             console.warn(
-                                `[Facial] colaborador_id ${faceIdentity.colaborador_id} no encontrado en el mapa (${colaboradoresMap.size} colaboradores cargados).`,
+                                `[Facial] colaborador_id ${faceIdentity.colaborador_id} no encontrado en el mapa (${cMap.size} entradas).`,
                             );
                         }
 
@@ -480,7 +472,7 @@ export function ReconocimientoFacialLiveDialog({
                     } else if (faceIdentity.status === 'uncertain') {
                         color = '#f59e0b';
                         const colab = faceIdentity.colaborador_id != null
-                            ? colaboradoresMap.get(Number(faceIdentity.colaborador_id))
+                            ? cMap.get(Number(faceIdentity.colaborador_id))
                             : undefined;
                         const nombre = colab ? colab.nombres : 'Incierto';
                         texto = `? ${nombre} (${faceIdentity.confidence ?? 0}%)`;
@@ -489,7 +481,6 @@ export function ReconocimientoFacialLiveDialog({
                             principalInfo = faceIdentity;
                         }
                     } else {
-                        // no_match, spoof, liveness_uncertain, etc.
                         color = '#ef4444';
                         texto =
                             faceIdentity.status === 'no_match'
@@ -498,29 +489,24 @@ export function ReconocimientoFacialLiveDialog({
                     }
                 }
 
-                // Fondo sutil
-                ctx.fillStyle =
-                    color === '#10b981' ? 'rgba(16,185,129,0.08)' : 'rgba(56,189,248,0.05)';
+                ctx.fillStyle = color === '#10b981' ? 'rgba(16,185,129,0.08)' : 'rgba(56,189,248,0.05)';
                 ctx.fillRect(x, y, fw, fh);
 
-                // Borde del recuadro
                 ctx.strokeStyle = color;
                 ctx.lineWidth = 2.5;
                 ctx.beginPath();
                 ctx.roundRect(x, y, fw, fh, 8);
                 ctx.stroke();
 
-                // Esquinas resaltadas
                 const cornerLen = Math.min(24, fw * 0.2, fh * 0.2);
                 ctx.lineWidth = 4.5;
                 ctx.beginPath();
-                ctx.moveTo(x, y + cornerLen);          ctx.lineTo(x, y);             ctx.lineTo(x + cornerLen, y);
-                ctx.moveTo(x + fw - cornerLen, y);      ctx.lineTo(x + fw, y);        ctx.lineTo(x + fw, y + cornerLen);
-                ctx.moveTo(x, y + fh - cornerLen);      ctx.lineTo(x, y + fh);        ctx.lineTo(x + cornerLen, y + fh);
-                ctx.moveTo(x + fw - cornerLen, y + fh); ctx.lineTo(x + fw, y + fh);   ctx.lineTo(x + fw, y + fh - cornerLen);
+                ctx.moveTo(x, y + cornerLen);           ctx.lineTo(x, y);            ctx.lineTo(x + cornerLen, y);
+                ctx.moveTo(x + fw - cornerLen, y);       ctx.lineTo(x + fw, y);       ctx.lineTo(x + fw, y + cornerLen);
+                ctx.moveTo(x, y + fh - cornerLen);       ctx.lineTo(x, y + fh);       ctx.lineTo(x + cornerLen, y + fh);
+                ctx.moveTo(x + fw - cornerLen, y + fh);  ctx.lineTo(x + fw, y + fh);  ctx.lineTo(x + fw, y + fh - cornerLen);
                 ctx.stroke();
 
-                // Etiqueta
                 ctx.font = 'bold 14px sans-serif';
                 const textWidth = ctx.measureText(texto).width;
                 const badgeW = textWidth + 16;
@@ -542,19 +528,15 @@ export function ReconocimientoFacialLiveDialog({
                 ctx.fillText(texto, x + 8, badgeY + 18);
             });
 
-            // Actualizar el banner inferior del dialog
             if (principalIdentificado) {
                 setIdentificado(principalIdentificado);
                 setInfoIdentidad(principalInfo);
             } else if (faces.length === 0) {
-                // Sin rostros en el frame: limpiar el estado visual
                 setIdentificado(null);
                 setInfoIdentidad(null);
             }
-            // Si hay rostros pero ninguno resolvió un colaborador, NO limpiar el
-            // banner para evitar parpadeo entre frames.
         },
-        [colaboradoresMap],
+        [], // sin dependencias: lee todo desde refs
     );
 
     // BUG 5 FIX: una sola asignación al ref-proxy
