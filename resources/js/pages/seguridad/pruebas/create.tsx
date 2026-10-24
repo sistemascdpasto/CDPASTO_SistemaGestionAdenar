@@ -379,6 +379,8 @@ function EvidenciaAdicionalPlegada({
 export default function CreatePrueba({
     colaboradores,
     dispositivosDisponibles,
+    facialServiceUrl,
+    facialGalleryStatus,
     prueba,
     preselectedColaboradorId,
     preselectedFecha,
@@ -389,6 +391,8 @@ export default function CreatePrueba({
     ubicacionActual?: string;
     colaboradores: ColaboradorOption[];
     dispositivosDisponibles: DispositivoOption[];
+    facialServiceUrl: string;
+    facialGalleryStatus: { ready: boolean; loaded: number; message?: string | null };
     prueba?: PruebaData;
     preselectedColaboradorId?: number | null;
     preselectedFecha?: string | null;
@@ -645,6 +649,8 @@ export default function CreatePrueba({
                     <SeccionCard icon={Users} titulo="Colaborador y tipo de prueba" tono="verde">
                         <ReconocimientoFacialSection
                             colaboradores={colaboradores}
+                            facialServiceUrl={facialServiceUrl}
+                            facialGalleryStatus={facialGalleryStatus}
                             onColaboradorIdentificado={(id, foto) => {
                                 setData('colaborador_id', String(id));
                                 if (foto) {

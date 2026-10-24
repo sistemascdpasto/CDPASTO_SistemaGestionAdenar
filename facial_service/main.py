@@ -34,7 +34,7 @@ from typing import Optional
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from fastapi import (Depends, FastAPI, File, Form, Header, HTTPException, UploadFile,
+from fastapi import (Depends, FastAPI, File, Form, Header, HTTPException, Request, UploadFile,
                      WebSocket, WebSocketDisconnect)
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -122,14 +122,77 @@ def health(x_api_key: Optional[str] = Header(default=None)):
 
 
 @app.post("/galeria/sincronizar", dependencies=[Depends(require_key)])
-async def sincronizar(payload: dict):
-    """Body: {"candidates": [{"id": 1, "image_path": "/ruta/foto.jpg"}, ...]}"""
-    candidates = payload.get("candidates")
-    if not isinstance(candidates, list):
+async def sincronizar(request: Request):
+    """
+    Acepta dos formatos de petición:
+
+    1. Multipart (nuevo — usado por Laravel):
+       - Campo  "candidates_json": JSON con [{id, nombres, apellidos, cedula, cargo}, ...]
+       - Archivos "foto_{id}":     bytes de la fotografía de cada colaborador
+       No requiere acceso al sistema de archivos de Laravel.
+
+    2. JSON legacy (compatibilidad):
+       - Body: {"candidates": [{"id": 1, "image_path": "/ruta/foto.jpg"}, ...]}
+       Solo funciona cuando FastAPI corre en el mismo servidor que Laravel.
+    """
+    content_type = request.headers.get("content-type", "")
+
+    # ── Formato multipart (fotografías reales enviadas desde Laravel) ──────────
+    if "multipart/form-data" in content_type:
+        form = await request.form()
+
+        candidates_json_raw = form.get("candidates_json")
+        if not candidates_json_raw:
+            raise HTTPException(status_code=422, detail="Se espera el campo 'candidates_json'")
+
+        try:
+            meta_list = json.loads(candidates_json_raw)
+            if not isinstance(meta_list, list):
+                raise ValueError("debe ser una lista")
+        except Exception as e:
+            raise HTTPException(status_code=422, detail=f"candidates_json inválido: {e}")
+
+        if len(meta_list) > MAX_CANDIDATES:
+            raise HTTPException(status_code=413, detail=f"Máximo {MAX_CANDIDATES} candidatos por petición")
+
+        # Leer los bytes de cada foto adjunta (foto_{id}) e incluirlos en el candidato
+        candidates: list[dict] = []
+        for meta in meta_list:
+            cid = meta.get("id")
+            field_name = f"foto_{cid}"
+            upload: Optional[UploadFile] = form.get(field_name)  # type: ignore[assignment]
+            if upload is None:
+                log(f"[Aviso] /galeria/sincronizar: no se recibió '{field_name}' para el candidato {cid}")
+                continue
+            foto_bytes = await upload.read()
+            if not foto_bytes:
+                continue
+            candidates.append({
+                "id":         cid,
+                "nombres":    meta.get("nombres"),
+                "apellidos":  meta.get("apellidos"),
+                "cedula":     meta.get("cedula"),
+                "cargo":      meta.get("cargo"),
+                "image_bytes": foto_bytes,   # bytes crudos; facial_core los decodifica
+            })
+
+        if not candidates:
+            raise HTTPException(status_code=422, detail="No se recibió ninguna fotografía válida")
+
+        return await run(engine.load_gallery, candidates)
+
+    # ── Formato JSON legacy (image_path — solo mismo servidor) ────────────────
+    try:
+        payload = await request.json()
+    except Exception:
+        raise HTTPException(status_code=422, detail="Body inválido: se espera JSON o multipart/form-data")
+
+    candidates_legacy = payload.get("candidates")
+    if not isinstance(candidates_legacy, list):
         raise HTTPException(status_code=422, detail="Se espera 'candidates' como lista")
-    if len(candidates) > MAX_CANDIDATES:
+    if len(candidates_legacy) > MAX_CANDIDATES:
         raise HTTPException(status_code=413, detail=f"Máximo {MAX_CANDIDATES} candidatos por petición")
-    return await run(engine.load_gallery, candidates)
+    return await run(engine.load_gallery, candidates_legacy)
 
 
 @app.post("/reconocer", dependencies=[Depends(require_key)])
@@ -180,7 +243,7 @@ async def ws_reconocer(ws: WebSocket, token: Optional[str] = None):
     (así nunca se acumulan fotogramas viejos). Respuesta:
       {"type":"faces","v":1,"w":640,"h":480,
        "faces":[{"box":[x,y,w,h],"score":0.97,"identity":{...}|null}],
-       "identity":{"status":"match","colaborador_id":12,"confidence":87.5,"face_index":0,...}|null,
+       "identity":{"status":"match","colaborador_id":12,"nombres":"...","apellidos":"...","confidence":87.5,"face_index":0,...}|null,
        "ms":24}
     Errores: {"type":"error","v":1,"message":"..."}
     Códigos de cierre: 4401 no autorizado, 4403 origen no permitido, 4408 inactividad, 4429 sin cupo.

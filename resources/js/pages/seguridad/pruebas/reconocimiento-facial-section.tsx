@@ -25,7 +25,7 @@ export interface ColaboradorReconocido {
     nombres: string;
     apellidos: string;
     cedula: string;
-    cargo?: string;
+    cargo?: string | null;
 }
 
 /** Métricas reales de la identificación en vivo (el diálogo debe enviarlas). */
@@ -46,7 +46,7 @@ export interface ResultadoReconocimiento {
     nombres?: string;
     apellidos?: string;
     cedula?: string;
-    cargo?: string;
+    cargo?: string | null;
     colaborador_id?: number;
     message?: string;
     elapsed_seconds?: number;
@@ -54,6 +54,8 @@ export interface ResultadoReconocimiento {
 
 interface Props {
     colaboradores?: ColaboradorReconocido[];
+    facialServiceUrl: string;
+    facialGalleryStatus: { ready: boolean; loaded: number; message?: string | null };
     onColaboradorIdentificado: (colaboradorId: number, foto?: File) => void;
     colaboradorSeleccionadoId?: string;
 }
@@ -118,7 +120,7 @@ interface ColaboradorCardProps {
     resultado: ResultadoReconocimiento;
     nombre: string;
     cedula?: string;
-    cargo?: string;
+    cargo?: string | null;
     children?: ReactNode;
 }
 
@@ -188,6 +190,8 @@ function ColaboradorCard({ tipo, resultado, nombre, cedula, cargo, children }: C
 
 export function ReconocimientoFacialSection({
     colaboradores = [],
+    facialServiceUrl,
+    facialGalleryStatus,
     onColaboradorIdentificado,
     colaboradorSeleccionadoId,
 }: Props) {
@@ -412,9 +416,19 @@ export function ReconocimientoFacialSection({
                 <>
                     {/* Separador + botón de cámara en vivo */}
                     <div className="mt-3 flex flex-wrap items-center justify-end border-t border-emerald-100 pt-3 dark:border-emerald-900/40">
+                        <p
+                            role={facialGalleryStatus.ready ? 'status' : 'alert'}
+                            className={`mr-auto text-xs ${facialGalleryStatus.ready ? 'text-emerald-700 dark:text-emerald-300' : 'text-destructive'}`}
+                        >
+                            {facialGalleryStatus.ready
+                                ? `Galería sincronizada: ${facialGalleryStatus.loaded} colaboradores.`
+                                : facialGalleryStatus.message ||
+                                  'No se cargó la galería facial. Verifica FACIAL_API_URL y FACIAL_API_KEY en Railway.'}
+                        </p>
                         <Button
                             type="button"
                             onClick={() => setLiveAbierto(true)}
+                            disabled={!facialGalleryStatus.ready}
                             className="gap-1.5 bg-emerald-600 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700"
                         >
                             <Radio className="size-3.5 animate-pulse text-emerald-200" />
@@ -545,6 +559,7 @@ export function ReconocimientoFacialSection({
                 open={liveAbierto}
                 onOpenChange={setLiveAbierto}
                 colaboradores={colaboradores}
+                facialServiceUrl={facialServiceUrl}
                 onColaboradorSeleccionado={handleLiveIdentificado}
             />
 

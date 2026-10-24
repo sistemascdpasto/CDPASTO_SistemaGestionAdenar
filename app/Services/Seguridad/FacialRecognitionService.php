@@ -40,55 +40,54 @@ class FacialRecognitionService
      * Asegura que el microservicio FastAPI esté activo.
      * Si no responde en el puerto configurado, intenta levantarlo en segundo plano automáticamente.
      */
-    public function ensureServiceRunning(): bool
-    {
-        try {
-            $response = Http::timeout(1)->get("{$this->fastApiUrl}/health");
-            if ($response->successful()) {
-                return true;
-            }
-        } catch (\Throwable) {
-            // El servicio no está respondiendo
-        }
+    
+public function ensureServiceRunning(): bool
+{
+    try {
+        $response = Http::timeout(5)
+            ->withHeaders([
+                'X-API-Key' => $this->getApiKey(),
+            ])
+            ->get("{$this->fastApiUrl}/health");
 
-        try {
-            $python = $this->getPythonBinary();
-            $basePath = base_path();
-
-            if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-                $cmd = "start /B \"\" \"{$python}\" -m uvicorn facial_service.main:app --host 127.0.0.1 --port 8001 > nul 2>&1";
-                pclose(popen("cd /d \"{$basePath}\" && {$cmd}", "r"));
-            } else {
-                $cmd = "nohup \"{$python}\" -m uvicorn facial_service.main:app --host 127.0.0.1 --port 8001 > /dev/null 2>&1 &";
-                exec("cd \"{$basePath}\" && {$cmd}");
-            }
-
-            // Esperar brevemente (hasta 2.5s) a que el servidor inicialice
-            for ($i = 0; $i < 5; $i++) {
-                usleep(500000);
-                try {
-                    $res = Http::timeout(1)->get("{$this->fastApiUrl}/health");
-                    if ($res->successful()) {
-                        Log::info('[FacialRecognitionService] Microservicio FastAPI iniciado en segundo plano exitosamente.');
-                        return true;
-                    }
-                } catch (\Throwable) {
-                    continue;
-                }
-            }
-        } catch (\Throwable $e) {
-            Log::warning('[FacialRecognitionService] Error intentando arrancar FastAPI: ' . $e->getMessage());
-        }
+        return $response->successful();
+    } catch (\Throwable $e) {
+        Log::warning(
+            '[FacialRecognitionService] FastAPI no está disponible: '
+            . $e->getMessage()
+        );
 
         return false;
     }
+}
+
 
     /**
-     * Sincroniza la galería de colaboradores activos con FastAPI para reconocimiento en vivo.
+     * Devuelve la API key configurada para el microservicio facial.
      */
-    public function sincronizarGaleria(): array
-    {
-        $this->ensureServiceRunning();
+  protected function getApiKey(): string
+{
+    return (string) config('services.facial.api_key', '');
+}
+    /**
+     * Sincroniza la galería de colaboradores activos con FastAPI para reconocimiento en vivo.
+     *
+     * Envía las fotografías reales como archivos multipart (no rutas locales),
+     * y se autentica con el header X-API-Key.
+     *
+     * Contrato multipart:
+     *   - Campo "candidates_json": JSON con [{id, nombres, apellidos, cedula, cargo}, ...]
+     *   - Archivos "foto_{id}": bytes de la fotografía de cada colaborador
+     */
+   public function sincronizarGaleria(): array
+{
+    if (! $this->ensureServiceRunning()) {
+        return [
+            'success' => false,
+            'loaded' => 0,
+            'message' => 'El servicio de reconocimiento facial no está disponible.',
+        ];
+    }
 
         $colaboradores = Colaborador::query()
             ->completos()
@@ -96,29 +95,91 @@ class FacialRecognitionService
             ->whereNotNull('imagen')
             ->get(['id', 'nombres', 'apellidos', 'cedula', 'cargo', 'imagen']);
 
-        $candidates = [];
+        $candidatesMeta = [];
+        $attachments    = [];
+
         foreach ($colaboradores as $c) {
             $absPath = Storage::disk('public')->path($c->imagen);
-            if (file_exists($absPath)) {
-                $candidates[] = [
-                    'id' => $c->id,
-                    'image_path' => str_replace('\\', '/', $absPath),
-                ];
+            if (! file_exists($absPath)) {
+                continue;
             }
+
+            $bytes = @file_get_contents($absPath);
+            if ($bytes === false || $bytes === '') {
+                continue;
+            }
+
+            $candidatesMeta[] = [
+                'id'        => $c->id,
+                'nombres'   => $c->nombres,
+                'apellidos' => $c->apellidos,
+                'cedula'    => $c->cedula,
+                'cargo'     => $c->cargo,
+            ];
+
+            // Nombre del archivo adjunto: "foto_{id}" — FastAPI lo busca con este patrón
+            $attachments[] = [
+                'foto_' . $c->id,
+                $bytes,
+                basename($c->imagen),
+            ];
         }
 
-        if (empty($candidates)) {
+        if (empty($candidatesMeta)) {
             return ['success' => false, 'loaded' => 0, 'message' => 'Sin candidatos con foto'];
         }
 
         try {
-            $response = Http::timeout(6)->post("{$this->fastApiUrl}/galeria/sincronizar", [
-                'candidates' => $candidates,
-            ]);
+            $request = Http::timeout(30)
+                ->connectTimeout(5)
+                ->withHeaders(['X-API-Key' => $this->getApiKey()])
+                ->asMultipart();
 
-            return $response->json() ?? ['success' => false];
+            // Adjuntar metadatos como campo de texto
+            $request = $request->attach('candidates_json', json_encode($candidatesMeta, JSON_UNESCAPED_UNICODE));
+
+            // Adjuntar cada fotografía como archivo binario
+            foreach ($attachments as [$name, $bytes, $filename]) {
+                $request = $request->attach($name, $bytes, $filename);
+            }
+
+            $response = $request->post("{$this->fastApiUrl}/galeria/sincronizar");
+
+            if (! $response->successful()) {
+                Log::warning('[FacialRecognitionService] FastAPI rechazó la sincronización de la galería.', [
+                    'status' => $response->status(),
+                ]);
+
+                return [
+                    'success' => false,
+                    'loaded' => 0,
+                    'message' => 'No se pudo sincronizar la galería. Verifica la URL y FACIAL_API_KEY del servicio facial.',
+                ];
+            }
+
+            $result = $response->json();
+            if (! is_array($result) || ! ($result['success'] ?? false) || (int) ($result['loaded'] ?? 0) < 1) {
+                Log::warning('[FacialRecognitionService] FastAPI no cargó colaboradores en la galería.', [
+                    'status' => $response->status(),
+                    'loaded' => is_array($result) ? (int) ($result['loaded'] ?? 0) : 0,
+                ]);
+
+                return [
+                    'success' => false,
+                    'loaded' => 0,
+                    'message' => 'El servicio respondió, pero no cargó colaboradores con fotografías procesables.',
+                ];
+            }
+
+            return $result;
         } catch (\Throwable $e) {
-            return ['success' => false, 'message' => $e->getMessage()];
+            Log::error('[FacialRecognitionService] sincronizarGaleria falló: ' . $e->getMessage());
+
+            return [
+                'success' => false,
+                'loaded' => 0,
+                'message' => 'No fue posible conectar con el servicio para sincronizar la galería.',
+            ];
         }
     }
 
@@ -129,7 +190,7 @@ class FacialRecognitionService
     {
         $this->ensureServiceRunning();
 
-        // 1. Consultar colaboradores activos con imagen
+        // 2. Verificar que haya colaboradores registrados con foto (la galería ya está cargada en FastAPI)
         $colaboradores = Colaborador::query()
             ->completos()
             ->where('is_active', true)
@@ -146,39 +207,12 @@ class FacialRecognitionService
             ];
         }
 
-        // 2. Preparar lista de candidatos existentes en disco
-        $candidates = [];
-        foreach ($colaboradores as $c) {
-            $absPath = Storage::disk('public')->path($c->imagen);
-            if (file_exists($absPath)) {
-                $candidates[] = [
-                    'id' => $c->id,
-                    'nombres' => $c->nombres,
-                    'apellidos' => $c->apellidos,
-                    'cedula' => $c->cedula,
-                    'cargo' => $c->cargo,
-                    'image_path' => str_replace('\\', '/', $absPath),
-                ];
-            }
-        }
-
-        if (empty($candidates)) {
-            return [
-                'success' => false,
-                'status' => 'sin_candidatos',
-                'target_face_detected' => false,
-                'colaborador' => null,
-                'message' => 'Las fotografías de los colaboradores no se encuentran disponibles en el almacenamiento local.',
-            ];
-        }
-
         // 3. Procesar mediante el microservicio FastAPI
         try {
             $response = Http::timeout(25)
+                ->withHeaders(['X-API-Key' => $this->getApiKey()])
                 ->attach('foto', file_get_contents($foto->getRealPath()), $foto->getClientOriginalName() ?: 'captura.jpg')
-                ->post("{$this->fastApiUrl}/reconocer", [
-                    'candidates_json' => json_encode($candidates, JSON_UNESCAPED_SLASHES),
-                ]);
+                ->post("{$this->fastApiUrl}/reconocer");
 
             if ($response->successful()) {
                 $data = $response->json();

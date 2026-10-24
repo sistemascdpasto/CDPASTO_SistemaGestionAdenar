@@ -26,6 +26,7 @@ os.environ.setdefault("PYTHONUTF8", "1")
 os.environ.setdefault("PYTHONIOENCODING", "utf-8")
 os.environ.setdefault("OPENCV_IO_MAX_IMAGE_PIXELS", str(64_000_000))  # evita "decompression bombs"
 
+import hashlib
 import json
 import shutil
 import threading
@@ -294,7 +295,7 @@ class FaceEngine:
         if not LIVE_ENABLED:
             log("[ALERTA] Liveness DESACTIVADO: el sistema aceptará fotografías.")
         # Galería en memoria: (ids, matriz) se reemplaza de forma atómica
-        self._gallery: Tuple[list, Optional[np.ndarray]] = ([], None)
+        self._gallery: Tuple[list, Optional[np.ndarray], Dict[str, dict]] = ([], None, {})
         self._load_cache()
 
     # ------------------------------------------------------------------ caché
@@ -363,8 +364,9 @@ class FaceEngine:
         return self.embed(img, faces[0])
 
     # ---------------------------------------------------------------- galería
-    def _candidate_embedding(self, path: str) -> Optional[np.ndarray]:
-        """Requiere _cache_lock tomado (modifica self.cache y self._dirty)."""
+    def _candidate_embedding_from_path(self, path: str) -> Optional[np.ndarray]:
+        """Embedding desde archivo en disco, con caché por mtime.
+        Requiere _cache_lock tomado (modifica self.cache y self._dirty)."""
         real = os.path.realpath(path)
         mtime = os.path.getmtime(real)
         cached = self.cache.get(real)
@@ -380,8 +382,25 @@ class FaceEngine:
             self._dirty = True
         return emb
 
+    def _candidate_embedding_from_bytes(self, data: bytes, cache_key: str) -> Optional[np.ndarray]:
+        """Embedding desde bytes crudos recibidos en memoria, con caché por SHA-256.
+        Requiere _cache_lock tomado (modifica self.cache y self._dirty)."""
+        cached = self.cache.get(cache_key)
+        if cached and cached.get("model") == MODEL_TAG:
+            return np.asarray(cached["embedding"], dtype=np.float32)
+
+        img = decode_image(data)
+        if img is None:
+            return None
+        emb = self.embedding_largest(img)
+        if emb is not None:
+            self.cache[cache_key] = {"sha256": cache_key, "embedding": np.round(emb, 6).tolist(), "model": MODEL_TAG}
+            self._dirty = True
+        return emb
+
     def _build(self, candidates: List[dict], prune: bool = False) -> Tuple[list, Optional[np.ndarray], int]:
-        """Construye (ids, matriz) usando el caché. Devuelve también cuántas fotos fallaron."""
+        """Construye (ids, matriz) desde candidatos que pueden traer 'image_bytes' (bytes crudos)
+        o 'image_path' (ruta en disco). Devuelve también cuántas fotos fallaron."""
         ids, vectors, failed = [], [], 0
         with self._cache_lock:
             self._dirty = False
@@ -389,23 +408,41 @@ class FaceEngine:
                 self._load_cache()                  # otro proceso (CLI/API) lo actualizó
             used = set()
             for cand in candidates:
-                path = cand.get("image_path") if isinstance(cand, dict) else None
-                if not path or not os.path.isfile(path) or not path_allowed(path):
+                if not isinstance(cand, dict):
                     failed += 1
                     continue
+
+                image_bytes: Optional[bytes] = cand.get("image_bytes")
+                path: Optional[str] = cand.get("image_path")
+
                 try:
-                    emb = self._candidate_embedding(path)
+                    if image_bytes:
+                        # ── Nuevo camino: bytes recibidos directamente desde Laravel ──
+                        sha = hashlib.sha256(image_bytes).hexdigest()
+                        cache_key = f"sha256:{sha}"
+                        emb = self._candidate_embedding_from_bytes(image_bytes, cache_key)
+                        used.add(cache_key)
+                    elif path and os.path.isfile(path) and path_allowed(path):
+                        # ── Camino legacy: ruta en disco (mismo servidor) ──────────
+                        emb = self._candidate_embedding_from_path(path)
+                        used.add(os.path.realpath(path))
+                    else:
+                        log(f"[Aviso] Candidato {cand.get('id')} sin imagen válida (ni bytes ni ruta accesible)")
+                        failed += 1
+                        continue
                 except Exception as e:
                     log(f"[Aviso] Falló embedding del candidato {cand.get('id')}: {e}")
                     emb = None
+
                 if emb is None:
                     failed += 1
                     continue
-                used.add(os.path.realpath(path))
                 ids.append(cand.get("id"))
                 vectors.append(emb)
-            if prune:                               # depurar fotos de colaboradores que ya no existen
-                for key in [k for k in self.cache if k not in used]:
+
+            if prune:
+                # Solo eliminar entradas de ruta (no de sha256) que ya no están en uso
+                for key in [k for k in self.cache if not k.startswith("sha256:") and k not in used]:
                     del self.cache[key]
                     self._dirty = True
             if self._dirty:
@@ -417,7 +454,18 @@ class FaceEngine:
         """Carga la lista de colaboradores en memoria para identificar en tiempo real."""
         start = time.time()
         ids, matrix, failed = self._build(candidates, prune=True)
-        self._gallery = (ids, matrix)               # reemplazo atómico
+        valid_ids = {str(cid) for cid in ids}
+        names = {
+            str(candidate["id"]): {
+                "nombres": candidate.get("nombres"),
+                "apellidos": candidate.get("apellidos"),
+            }
+            for candidate in candidates
+            if isinstance(candidate, dict)
+            and candidate.get("id") is not None
+            and str(candidate["id"]) in valid_ids
+        }
+        self._gallery = (ids, matrix, names)         # reemplazo atómico
         return {"success": True, "loaded": len(ids), "failed": failed,
                 "elapsed_seconds": round(time.time() - start, 2)}
 
@@ -437,7 +485,7 @@ class FaceEngine:
         start = time.time()
         h, w = img.shape[:2]
         faces = self.detect(img)[:MAX_FACES]
-        ids, matrix = self._gallery
+        ids, matrix, names = self._gallery
         can_identify = identify and matrix is not None and len(ids) > 0
 
         out_faces = []
@@ -458,6 +506,9 @@ class FaceEngine:
                         identity = decide(ids, matrix, self.embed(img, f))
                         identity["live"] = True
                         identity["liveness_score"] = live["score"]
+                        collaborator_name = names.get(str(identity.get("colaborador_id")))
+                        if collaborator_name:
+                            identity.update(collaborator_name)
                     else:
                         identity = {"status": live["status"], "match": False, "live": False,
                                     "liveness_score": live["score"], "message": live.get("message")}
@@ -527,7 +578,7 @@ class FaceEngine:
         if candidates:
             ids, matrix, _ = self._build(candidates)
         else:
-            ids, matrix = self._gallery
+            ids, matrix, _ = self._gallery
 
         if matrix is None or not ids:
             return {"success": False, "status": "sin_candidatos", "target_face_detected": True,
