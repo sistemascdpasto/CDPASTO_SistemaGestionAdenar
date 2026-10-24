@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Colaborador\CapacitacionController;
+use App\Http\Controllers\Colaborador\CombustibleVoucherController;
 use App\Http\Controllers\Colaborador\CompensacionColaboradorController;
 use App\Http\Controllers\Colaborador\CompensacionVariableColaboradorController;
 use App\Http\Controllers\Colaborador\CondicionSaludController;
@@ -50,4 +51,7 @@ Route::middleware(['auth', 'active', 'role:Colaborador|Administrador|Seguridad']
 
         Route::get('mis-incidencias-geovictoria', [IncidenciaGeovictoriaController::class, 'index'])
             ->name('mis-incidencias-geovictoria.index');
+
+        Route::get('mis-tanqueadas', [CombustibleVoucherController::class, 'index'])->name('mis-tanqueadas.index');
+        Route::post('mis-tanqueadas', [CombustibleVoucherController::class, 'store'])->name('mis-tanqueadas.store');
     });

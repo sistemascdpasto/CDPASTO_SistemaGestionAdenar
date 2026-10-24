@@ -78,6 +78,7 @@ return [
     // de tanqueo en el módulo de análisis de combustible (pilar Flota).
     'gemini' => [
         'api_key' => env('GEMINI_API_KEY'),
+        'model' => env('GEMINI_MODEL', 'gemini-3.1-flash-lite'),
     ],
 
 ];

@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, router, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { AlertTriangle, CheckCircle2, Fuel, LoaderCircle, RefreshCw, Truck } from 'lucide-react';
 import { FormEventHandler, useState } from 'react';
 
@@ -51,10 +51,15 @@ export default function AnalisisCombustibleIndex({ por_placa: porPlaca, filters 
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Análisis de Combustible" />
             <div className="flex h-full flex-1 flex-col gap-6 rounded-xl p-4">
-                <HeadingSmall
-                    title="Análisis de Combustible"
-                    description="Kilómetros diarios por vehículo (MyGeotab). El cruce con tanqueadas y rendimiento km/gl llega en un próximo incremento."
-                />
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <HeadingSmall
+                        title="Análisis de Combustible"
+                        description="Kilómetros diarios por vehículo (MyGeotab). El cruce con tanqueadas y rendimiento km/gl llega en un próximo incremento."
+                    />
+                    <Button variant="outline" asChild>
+                        <Link href={route('flota.combustible.vouchers.index')}>Vouchers de Tanqueo</Link>
+                    </Button>
+                </div>
 
                 {flash?.status && (
                     <div

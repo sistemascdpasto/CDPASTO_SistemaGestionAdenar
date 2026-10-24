@@ -19,6 +19,7 @@ import {
     Calendar,
     Clock,
     DollarSign,
+    Fuel,
     GraduationCap,
     HeartPulse,
     KeyRound,
@@ -140,6 +141,7 @@ export function AppSidebar() {
                   { title: 'Encuesta de Morbilidad', url: '/portal/encuesta-morbilidad', icon: Stethoscope, color: '#3F7A22' },
                   { title: 'Mis Capacitaciones', url: '/portal/capacitaciones', icon: GraduationCap, color: '#0D9488' },
                   { title: 'Mis Incidencias GeoVictoria', url: '/portal/mis-incidencias-geovictoria', icon: AlertTriangle, color: '#D4102A' },
+                  { title: 'Mis Tanqueadas', url: '/portal/mis-tanqueadas', icon: Fuel, color: '#2B6CB0' },
                   { title: 'Alertas', url: '/portal/alertas', icon: BellRing, color: '#3F7A22' },
               ]
             : []),
