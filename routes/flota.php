@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Flota\ActaTallerController;
+use App\Http\Controllers\Flota\AnalisisCombustibleController;
 use App\Http\Controllers\Flota\CarretaController;
 use App\Http\Controllers\Flota\DisponibilidadFlotaController;
 use App\Http\Controllers\Flota\ExtintorController;
@@ -33,6 +34,12 @@ Route::middleware(['auth', 'active', 'role:Administrador|Flota', 'submodule.acce
         // ── Ocupación de Carga (peso de Planeación de ruta vs capacidad del vehículo) ──
         Route::get('ocupacion-carga', [OcupacionCargaController::class, 'index'])
             ->name('ocupacion-carga.index');
+
+        // ── Análisis de Combustible (km MyGeotab + tanqueadas + rendimiento) ────
+        Route::get('combustible', [AnalisisCombustibleController::class, 'index'])
+            ->name('combustible.index');
+        Route::post('combustible/sincronizar', [AnalisisCombustibleController::class, 'sincronizar'])
+            ->name('combustible.sincronizar');
 
         // "destroy" se registra aparte con role:Administrador (ver abajo).
         Route::resource('carretas', CarretaController::class)

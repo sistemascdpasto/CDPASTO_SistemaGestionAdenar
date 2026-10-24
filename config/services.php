@@ -61,4 +61,23 @@ return [
         'python_path' => env('FACIAL_PYTHON_PATH', null),
     ],
 
+    // MyGeotab: credenciales INICIALES/semilla (análisis de combustible,
+    // pilar Flota). El valor que la app realmente usa en tiempo de ejecución
+    // vive cifrado en base de datos y se administra desde el panel, porque
+    // la contraseña de MyGeotab rota periódicamente — estas quedan solo como
+    // respaldo para el primer arranque. Ver App\Support\MygeotabCredentials
+    // (o equivalente) una vez implementado.
+    'mygeotab' => [
+        'username' => env('MYGEOTAB_USERNAME'),
+        'password' => env('MYGEOTAB_PASSWORD'),
+        'database' => env('MYGEOTAB_DATABASE'),
+        'sync_token' => env('MYGEOTAB_SYNC_TOKEN'),
+    ],
+
+    // Gemini (Google AI Studio) para extraer datos de las fotos de vouchers
+    // de tanqueo en el módulo de análisis de combustible (pilar Flota).
+    'gemini' => [
+        'api_key' => env('GEMINI_API_KEY'),
+    ],
+
 ];

@@ -92,5 +92,6 @@ return [
         'actas-taller' => 'Actas de Taller',
         'ocupacion-carga' => 'Ocupación de Carga',
         'extintores' => 'Extintores',
+        'combustible' => 'Análisis de Combustible',
     ],
 ];

@@ -17,6 +17,7 @@ import {
     FileSpreadsheet,
     FileStack,
     FlameKindling,
+    Fuel,
     Gavel,
     GraduationCap,
     Grid3x3,
@@ -239,6 +240,7 @@ export const modules: ModuleDef[] = [
             { title: 'Actas de Taller', slug: 'actas-taller', icon: ClipboardList },
             { title: 'Ocupación de Carga', slug: 'ocupacion-carga', icon: Weight },
             { title: 'Extintores', slug: 'extintores', icon: FlameKindling },
+            { title: 'Análisis de Combustible', slug: 'combustible', icon: Fuel },
         ],
     },
 ];

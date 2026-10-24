@@ -21,6 +21,7 @@ import {
     DollarSign,
     GraduationCap,
     HeartPulse,
+    KeyRound,
     LayoutGrid,
     ListChecks,
     Route,
@@ -148,6 +149,12 @@ export function AppSidebar() {
                       title: 'Gestión de Usuarios',
                       url: '/admin/users',
                       icon: UserCog,
+                      color: '#6B21A8',
+                  },
+                  {
+                      title: 'Credenciales MyGeotab',
+                      url: '/admin/mygeotab-credenciales',
+                      icon: KeyRound,
                       color: '#6B21A8',
                   },
               ]
