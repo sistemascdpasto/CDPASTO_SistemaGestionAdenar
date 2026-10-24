@@ -49,6 +49,15 @@ class CombustibleVoucherController extends Controller
 
     public function store(Request $request, GeminiVoucherExtractorService $extractor): RedirectResponse
     {
+        // Subir + redimensionar + mandar a Gemini puede acercarse al límite
+        // de 30s por defecto del servidor — un timeout de PHP ahí es un
+        // fatal NO capturable por el try/catch de abajo (se vio en
+        // producción). Más margen aquí, además del timeout ya recortado de
+        // GeminiVoucherExtractorService. Mismo patrón que HojaCalculo::cargar().
+        if ((int) ini_get('max_execution_time') < 60) {
+            @set_time_limit(60);
+        }
+
         $colaborador = $this->colaboradorDeOFallar($request);
 
         $validado = $request->validate([

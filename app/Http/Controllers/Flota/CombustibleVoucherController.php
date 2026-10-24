@@ -74,6 +74,11 @@ class CombustibleVoucherController extends Controller
 
     public function reprocesar(CombustibleVoucher $voucher, GeminiVoucherExtractorService $extractor): RedirectResponse
     {
+        // Ver el mismo ajuste (y por qué) en Colaborador\CombustibleVoucherController::store().
+        if ((int) ini_get('max_execution_time') < 60) {
+            @set_time_limit(60);
+        }
+
         try {
             $datos = $extractor->extraer($voucher->foto_path);
 
