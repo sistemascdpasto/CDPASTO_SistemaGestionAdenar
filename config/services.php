@@ -2,8 +2,6 @@
 
 return [
 
-    
-
     'postmark' => [
         'token' => env('POSTMARK_TOKEN'),
     ],
@@ -46,15 +44,14 @@ return [
     ],
 
     // Reconocimiento facial biométrico
-    
-'facial' => [
-    'url' => env('FACIAL_API_URL', 'http://127.0.0.1:8001'),
-    'api_key' => env('FACIAL_API_KEY', ''),
-    'python_path' => env('FACIAL_PYTHON_PATH', null),
-    'cors' => env('FACIAL_CORS', ''),
-    'allowed_dir' => env('FACIAL_ALLOWED_DIR', ''),
-],
 
+    'facial' => [
+        'url' => env('FACIAL_API_URL', 'http://127.0.0.1:8001'),
+        'api_key' => env('FACIAL_API_KEY', ''),
+        'python_path' => env('FACIAL_PYTHON_PATH', null),
+        'cors' => env('FACIAL_CORS', ''),
+        'allowed_dir' => env('FACIAL_ALLOWED_DIR', ''),
+    ],
 
     // MyGeotab: credenciales INICIALES/semilla (análisis de combustible,
     // pilar Flota). El valor que la app realmente usa en tiempo de ejecución
