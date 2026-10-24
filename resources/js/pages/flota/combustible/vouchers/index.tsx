@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { AlertTriangle, CheckCircle2, LoaderCircle, RefreshCw } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, LoaderCircle, RefreshCw, ZoomIn } from 'lucide-react';
 import { FormEventHandler, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -67,6 +67,7 @@ export default function CombustibleVouchersIndex({ vouchers, filters }: { vouche
     const [form, setForm] = useState({ placa: '', galones: '', total_pagado: '', precio_galon: '', fecha_voucher: '' });
     const [guardando, setGuardando] = useState(false);
     const [reprocesandoId, setReprocesandoId] = useState<number | null>(null);
+    const [imagenAmpliada, setImagenAmpliada] = useState<string | null>(null);
 
     const abrirEdicion = (v: VoucherRow) => {
         setEditando(v);
@@ -158,9 +159,9 @@ export default function CombustibleVouchersIndex({ vouchers, filters }: { vouche
                             {vouchers.data.map((v) => (
                                 <TableRow key={v.id}>
                                     <TableCell>
-                                        <a href={v.foto_url} target="_blank" rel="noreferrer">
-                                            <img src={v.foto_url} alt="Voucher" className="h-12 w-12 rounded-md border border-border object-cover" />
-                                        </a>
+                                        <button type="button" onClick={() => setImagenAmpliada(v.foto_url)} aria-label="Ampliar imagen del voucher">
+                                            <img src={v.foto_url} alt="Voucher" className="h-12 w-12 cursor-zoom-in rounded-md border border-border object-cover" />
+                                        </button>
                                     </TableCell>
                                     <TableCell className="font-medium">{v.placa}</TableCell>
                                     <TableCell className="text-muted-foreground">{v.colaborador ?? '—'}</TableCell>
@@ -219,7 +220,22 @@ export default function CombustibleVouchersIndex({ vouchers, filters }: { vouche
                     <DialogTitle>Revisar voucher — {editando?.placa}</DialogTitle>
                     {editando && (
                         <form onSubmit={guardar} className="space-y-4">
-                            <img src={editando.foto_url} alt="Voucher" className="max-h-64 w-full rounded-md border border-border object-contain" />
+                            <button
+                                type="button"
+                                onClick={() => setImagenAmpliada(editando.foto_url)}
+                                className="group relative block w-full"
+                                aria-label="Ampliar imagen del voucher"
+                            >
+                                <img
+                                    src={editando.foto_url}
+                                    alt="Voucher"
+                                    className="max-h-64 w-full cursor-zoom-in rounded-md border border-border object-contain"
+                                />
+                                <span className="absolute right-2 bottom-2 flex items-center gap-1 rounded-md bg-black/60 px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100">
+                                    <ZoomIn className="size-3.5" />
+                                    Ampliar
+                                </span>
+                            </button>
 
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="grid gap-1">
@@ -271,6 +287,13 @@ export default function CombustibleVouchersIndex({ vouchers, filters }: { vouche
                             </DialogFooter>
                         </form>
                     )}
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={imagenAmpliada !== null} onOpenChange={(open) => !open && setImagenAmpliada(null)}>
+                <DialogContent className="max-h-[95vh] max-w-5xl overflow-y-auto p-2">
+                    <DialogTitle className="sr-only">Voucher ampliado</DialogTitle>
+                    {imagenAmpliada && <img src={imagenAmpliada} alt="Voucher ampliado" className="h-auto w-full rounded-md object-contain" />}
                 </DialogContent>
             </Dialog>
         </AppLayout>

@@ -53,7 +53,10 @@ class CombustibleVoucherController extends Controller
 
         $validado = $request->validate([
             'placa' => ['required', 'string', 'max:50'],
-            'foto' => ['required', 'image', 'mimes:jpeg,png,jpg,webp,heic', 'max:10240'],
+            // 20MB (no 10MB): la foto ahora viene de la cámara nativa del
+            // celular (mejor calidad para que la OCR lea bien), que pesa
+            // más que una captura comprimida por el navegador.
+            'foto' => ['required', 'image', 'mimes:jpeg,png,jpg,webp,heic', 'max:20480'],
         ]);
 
         $path = $request->file('foto')->store("flota/combustible/vouchers/{$colaborador->id}", 'public');

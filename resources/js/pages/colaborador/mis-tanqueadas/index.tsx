@@ -1,4 +1,3 @@
-import { CameraCaptureDialog } from '@/components/camera-capture-dialog';
 import HeadingSmall from '@/components/heading-small';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -46,9 +45,9 @@ export default function MisTanqueadasIndex({ vouchers, placas }: { vouchers: Vou
     const { flash } = usePage<{ flash?: { status?: { message: string; type: string } } }>().props;
     const [placa, setPlaca] = useState<string>('');
     const [foto, setFoto] = useState<{ file: File; preview: string } | null>(null);
-    const [camaraAbierta, setCamaraAbierta] = useState(false);
     const [enviando, setEnviando] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
+    const camaraRef = useRef<HTMLInputElement>(null);
     const [error, setError] = useState<string | null>(null);
 
     const elegirFoto = (file: File) => setFoto({ file, preview: URL.createObjectURL(file) });
@@ -133,11 +132,22 @@ export default function MisTanqueadasIndex({ vouchers, placas }: { vouchers: Vou
                                 className="hidden"
                                 onChange={(e) => e.target.files?.[0] && elegirFoto(e.target.files[0])}
                             />
+                            {/* capture="environment" abre la app de cámara nativa del celular (no
+                                la cámara web vía getUserMedia): la foto sale en la resolución y
+                                calidad reales del sensor, no comprimida por el navegador. */}
+                            <input
+                                ref={camaraRef}
+                                type="file"
+                                accept="image/*"
+                                capture="environment"
+                                className="hidden"
+                                onChange={(e) => e.target.files?.[0] && elegirFoto(e.target.files[0])}
+                            />
                             <Button type="button" variant="outline" onClick={() => inputRef.current?.click()}>
                                 <Upload className="size-4" />
                                 Subir foto
                             </Button>
-                            <Button type="button" variant="outline" onClick={() => setCamaraAbierta(true)}>
+                            <Button type="button" variant="outline" onClick={() => camaraRef.current?.click()}>
                                 <Camera className="size-4" />
                                 Tomar foto
                             </Button>
@@ -151,8 +161,6 @@ export default function MisTanqueadasIndex({ vouchers, placas }: { vouchers: Vou
                         Subir voucher
                     </Button>
                 </div>
-
-                <CameraCaptureDialog open={camaraAbierta} onOpenChange={setCamaraAbierta} onCapture={elegirFoto} titulo="Foto del voucher" />
 
                 <div className="rounded-lg border border-sidebar-border/70 dark:border-sidebar-border">
                     <Table>
