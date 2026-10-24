@@ -117,4 +117,65 @@ class AnalisisCombustibleTest extends TestCase
 
         $this->actingAs($colaborador)->get(route('flota.combustible.index'))->assertForbidden();
     }
+
+    public function test_la_tendencia_diaria_cruza_km_y_tanqueadas_del_mismo_dia_sin_duplicar_por_formato_de_fecha(): void
+    {
+        $flota = $this->usuarioConRol('Flota');
+
+        VehiculoKilometroDiario::create(['fecha' => '2026-10-20', 'placa' => 'COPSX001', 'distancia_km' => 150]);
+        VehiculoKilometroDiario::create(['fecha' => '2026-10-21', 'placa' => 'COPSX001', 'distancia_km' => 100]);
+        // Voucher el mismo día que ya tiene km: la fecha debe calzar exacto,
+        // no quedar como dos filas separadas por un formato de fecha distinto
+        // (esto rompía antes porque CombustibleVoucher::fecha_voucher es un
+        // cast a Carbon y agrupar por el nombre del atributo producía
+        // "2026-10-20 00:00:00" en vez de "2026-10-20").
+        $this->sembrarVoucher('COPSX001', 7.5, 100000, '2026-10-20');
+
+        $response = $this->actingAs($flota)->get(route('flota.combustible.index', ['desde' => '2026-10-01', 'hasta' => '2026-10-31']));
+
+        $response->assertOk()->assertInertia(fn ($page) => $page
+            ->has('tendencia_diaria', 2)
+            ->where('tendencia_diaria.0.fecha', '2026-10-20')
+            ->where('tendencia_diaria.0.km', 150)
+            ->where('tendencia_diaria.0.galones', 7.5)
+            ->where('tendencia_diaria.1.fecha', '2026-10-21')
+            ->where('tendencia_diaria.1.km', 100)
+            ->where('tendencia_diaria.1.galones', 0));
+    }
+
+    public function test_la_distribucion_de_cumplimiento_clasifica_cada_vehiculo_en_su_rango(): void
+    {
+        $flota = $this->usuarioConRol('Flota');
+
+        // Sin tanqueadas revisadas en el rango.
+        Vehiculo::create(['placa' => 'COSINDATOS', 'is_active' => true, 'meta_km_gl' => 20]);
+        VehiculoKilometroDiario::create(['fecha' => '2026-10-20', 'placa' => 'COSINDATOS', 'distancia_km' => 100]);
+
+        // Con rendimiento pero sin meta asignada.
+        Vehiculo::create(['placa' => 'COSINMETA', 'is_active' => true]);
+        VehiculoKilometroDiario::create(['fecha' => '2026-10-20', 'placa' => 'COSINMETA', 'distancia_km' => 100]);
+        $this->sembrarVoucher('COSINMETA', 5, 70000, '2026-10-20');
+
+        // Bajo meta (<85%): rendimiento 15 vs meta 20 = 75%.
+        Vehiculo::create(['placa' => 'COBAJOMETA', 'is_active' => true, 'meta_km_gl' => 20]);
+        VehiculoKilometroDiario::create(['fecha' => '2026-10-20', 'placa' => 'COBAJOMETA', 'distancia_km' => 75]);
+        $this->sembrarVoucher('COBAJOMETA', 5, 70000, '2026-10-20');
+
+        // Cumple la meta: rendimiento 20 vs meta 20 = 100%.
+        Vehiculo::create(['placa' => 'COCUMPLE', 'is_active' => true, 'meta_km_gl' => 20]);
+        VehiculoKilometroDiario::create(['fecha' => '2026-10-20', 'placa' => 'COCUMPLE', 'distancia_km' => 100]);
+        $this->sembrarVoucher('COCUMPLE', 5, 70000, '2026-10-20');
+
+        $response = $this->actingAs($flota)->get(route('flota.combustible.index', ['desde' => '2026-10-01', 'hasta' => '2026-10-31']));
+
+        $response->assertOk()->assertInertia(fn ($page) => $page
+            ->where('distribucion_cumplimiento.0.rango', 'Sin tanqueadas revisadas')
+            ->where('distribucion_cumplimiento.0.total', 1)
+            ->where('distribucion_cumplimiento.1.rango', 'Sin meta asignada')
+            ->where('distribucion_cumplimiento.1.total', 1)
+            ->where('distribucion_cumplimiento.2.rango', 'Bajo meta (<85%)')
+            ->where('distribucion_cumplimiento.2.total', 1)
+            ->where('distribucion_cumplimiento.4.rango', 'Cumple la meta (≥100%)')
+            ->where('distribucion_cumplimiento.4.total', 1));
+    }
 }

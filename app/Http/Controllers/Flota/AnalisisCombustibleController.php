@@ -31,11 +31,92 @@ class AnalisisCombustibleController extends Controller
         $hasta = $request->input('hasta', now()->toDateString());
 
         $filas = $this->filasPorPlaca($desde, $hasta);
+        $conRendimiento = $filas->filter(fn ($f) => $f['rendimiento_km_gl'] !== null);
 
         return Inertia::render('flota/combustible/index', [
             'por_placa' => $filas,
+            'kpis' => [
+                'vehiculos_con_datos' => $filas->count(),
+                'km_total' => round($filas->sum('km_total'), 0),
+                'galones_total' => round($filas->sum('galones_total'), 1),
+                'costo_total' => round($filas->sum('total_pagado'), 0),
+                'rendimiento_promedio' => $conRendimiento->isNotEmpty() ? round($conRendimiento->avg('rendimiento_km_gl'), 2) : null,
+                'vehiculos_bajo_meta' => $filas->filter(fn ($f) => $f['cumplimiento_pct'] !== null && $f['cumplimiento_pct'] < 100)->count(),
+            ],
+            'tendencia_diaria' => $this->tendenciaDiaria($desde, $hasta),
+            'distribucion_cumplimiento' => $this->distribucionCumplimiento($filas),
+            'ranking_rendimiento' => $conRendimiento->sortByDesc('rendimiento_km_gl')->take(10)->values(),
+            'ranking_bajo_rendimiento' => $conRendimiento->sortBy('rendimiento_km_gl')->take(5)->values(),
             'filters' => compact('desde', 'hasta'),
         ]);
+    }
+
+    /**
+     * Km recorridos y galones/costo tanqueados por día, para la tendencia
+     * de la flota completa en el rango — igual que
+     * OcupacionCargaController::tendenciaDiaria pero sumando km (MyGeotab)
+     * y combustible (vouchers revisados) en vez de ocupación de carga.
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function tendenciaDiaria(string $desde, string $hasta): Collection
+    {
+        $kmPorDia = VehiculoKilometroDiario::query()
+            ->whereDate('fecha', '>=', $desde)
+            ->whereDate('fecha', '<=', $hasta)
+            ->get()
+            ->groupBy(fn (VehiculoKilometroDiario $k) => $k->fecha->toDateString())
+            ->map(fn ($grupo) => (float) $grupo->sum('distancia_km'));
+
+        $combustiblePorDia = CombustibleVoucher::query()
+            ->where('estado', 'revisado')
+            ->whereDate('fecha_voucher', '>=', $desde)
+            ->whereDate('fecha_voucher', '<=', $hasta)
+            ->get()
+            // Agrupar por el nombre del atributo ('fecha_voucher') usaría
+            // el __toString() completo de Carbon ("...00:00:00") como
+            // clave, no el 'Y-m-d' del cast — no calzaría con $kmPorDia.
+            ->groupBy(fn (CombustibleVoucher $v) => $v->fecha_voucher->toDateString())
+            ->map(fn ($grupo) => [
+                'galones' => (float) $grupo->sum('galones'),
+                'costo' => (float) $grupo->sum('total_pagado'),
+            ]);
+
+        return $kmPorDia->keys()->merge($combustiblePorDia->keys())->unique()->sort()->values()
+            ->map(function (string $fecha) use ($kmPorDia, $combustiblePorDia) {
+                $km = $kmPorDia->get($fecha, 0.0);
+                $combustible = $combustiblePorDia->get($fecha, ['galones' => 0.0, 'costo' => 0.0]);
+
+                return [
+                    'fecha' => $fecha,
+                    'km' => round($km, 1),
+                    'galones' => round($combustible['galones'], 1),
+                    'costo' => round($combustible['costo'], 0),
+                ];
+            });
+    }
+
+    /**
+     * Cuántos vehículos caen en cada rango de cumplimiento de meta — misma
+     * idea que OcupacionCargaController::distribucionOcupacion.
+     *
+     * @param  Collection<int, array<string, mixed>>  $filas
+     * @return Collection<int, array{rango: string, total: int}>
+     */
+    private function distribucionCumplimiento(Collection $filas): Collection
+    {
+        $rangos = [
+            'Sin tanqueadas revisadas' => fn ($f) => $f['rendimiento_km_gl'] === null,
+            'Sin meta asignada' => fn ($f) => $f['rendimiento_km_gl'] !== null && $f['meta_km_gl'] === null,
+            'Bajo meta (<85%)' => fn ($f) => $f['cumplimiento_pct'] !== null && $f['cumplimiento_pct'] < 85,
+            'Cerca de la meta (85-99%)' => fn ($f) => $f['cumplimiento_pct'] !== null && $f['cumplimiento_pct'] >= 85 && $f['cumplimiento_pct'] < 100,
+            'Cumple la meta (≥100%)' => fn ($f) => $f['cumplimiento_pct'] !== null && $f['cumplimiento_pct'] >= 100,
+        ];
+
+        return collect($rangos)->map(fn ($condicion, $rango) => [
+            'rango' => $rango,
+            'total' => $filas->filter($condicion)->count(),
+        ])->values();
     }
 
     /**
