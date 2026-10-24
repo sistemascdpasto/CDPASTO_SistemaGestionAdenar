@@ -3,22 +3,25 @@
 namespace App\Http\Controllers\Flota;
 
 use App\Http\Controllers\Controller;
+use App\Models\Flota\CombustibleVoucher;
+use App\Models\Flota\Vehiculo;
 use App\Models\Flota\VehiculoKilometroDiario;
+use App\Models\Reparto\ModulacionItem;
 use App\Services\Flota\MygeotabKilometrosSyncService;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Primer entregable del análisis de combustible: por ahora solo muestra los
- * kilómetros diarios sincronizados desde MyGeotab, agregados por placa, con
- * un botón de respaldo para sincronizar un día manualmente (la vía principal
- * es la tarea programada en la PC local que llama a
- * POST /api/mygeotab/sincronizar-km — ver memoria del proyecto sobre el
- * scheduler/queue de Railway). El cruce con vouchers de combustible y con la
- * ruta de Modulación se agrega en un incremento posterior.
+ * Cruza kilómetros diarios (MyGeotab), tanqueadas confirmadas por Flota
+ * (vouchers 'revisado') y meta por vehículo para calcular rendimiento
+ * km/gl — reemplaza el Excel manual que llevaba el equipo. El detalle por
+ * día (ruta/conductor) se trae aparte (detallePlaca) cruzando por placa
+ * normalizada contra Modulación, igual que ya hace OcupacionCargaController.
  */
 class AnalisisCombustibleController extends Controller
 {
@@ -27,23 +30,131 @@ class AnalisisCombustibleController extends Controller
         $desde = $request->input('desde', now()->startOfMonth()->toDateString());
         $hasta = $request->input('hasta', now()->toDateString());
 
-        $porPlaca = VehiculoKilometroDiario::query()
+        $filas = $this->filasPorPlaca($desde, $hasta);
+
+        return Inertia::render('flota/combustible/index', [
+            'por_placa' => $filas,
+            'filters' => compact('desde', 'hasta'),
+        ]);
+    }
+
+    /**
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function filasPorPlaca(string $desde, string $hasta): Collection
+    {
+        $kmPorPlaca = VehiculoKilometroDiario::query()
             ->whereDate('fecha', '>=', $desde)
             ->whereDate('fecha', '<=', $hasta)
             ->get()
             ->groupBy('placa')
-            ->map(fn ($grupo, $placa) => [
-                'placa' => $placa,
-                'km_total' => round($grupo->sum('distancia_km'), 1),
+            ->map(fn ($grupo) => [
+                'km_total' => (float) $grupo->sum('distancia_km'),
                 'dias_con_datos' => $grupo->count(),
-            ])
+            ]);
+
+        $combustiblePorPlaca = CombustibleVoucher::query()
+            ->where('estado', 'revisado')
+            ->whereDate('fecha_voucher', '>=', $desde)
+            ->whereDate('fecha_voucher', '<=', $hasta)
+            ->get()
+            ->groupBy('placa')
+            ->map(fn ($grupo) => [
+                'galones_total' => (float) $grupo->sum('galones'),
+                'total_pagado' => (float) $grupo->sum('total_pagado'),
+            ]);
+
+        $metaPorPlaca = Vehiculo::query()
+            ->get(['placa', 'meta_km_gl'])
+            ->keyBy(fn (Vehiculo $v) => strtoupper(trim($v->placa)));
+
+        $placas = $kmPorPlaca->keys()->merge($combustiblePorPlaca->keys())->unique();
+
+        return $placas->map(function (string $placa) use ($kmPorPlaca, $combustiblePorPlaca, $metaPorPlaca) {
+            $km = $kmPorPlaca->get($placa, ['km_total' => 0.0, 'dias_con_datos' => 0]);
+            $combustible = $combustiblePorPlaca->get($placa, ['galones_total' => 0.0, 'total_pagado' => 0.0]);
+            $meta = $metaPorPlaca->get($placa)?->meta_km_gl;
+
+            // null (no 0) cuando todavía no hay tanqueadas revisadas en el
+            // rango: un costo/rendimiento en 0 se leería como "gratis", no
+            // como "sin datos".
+            $rendimiento = $combustible['galones_total'] > 0 ? $km['km_total'] / $combustible['galones_total'] : null;
+            $costoKm = $combustible['total_pagado'] > 0 && $km['km_total'] > 0 ? $combustible['total_pagado'] / $km['km_total'] : null;
+
+            return [
+                'placa' => $placa,
+                'km_total' => round($km['km_total'], 1),
+                'dias_con_datos' => $km['dias_con_datos'],
+                'galones_total' => round($combustible['galones_total'], 2),
+                'total_pagado' => round($combustible['total_pagado'], 0),
+                'rendimiento_km_gl' => $rendimiento !== null ? round($rendimiento, 2) : null,
+                'costo_km' => $costoKm !== null ? round($costoKm, 0) : null,
+                'meta_km_gl' => $meta !== null ? (float) $meta : null,
+                'cumplimiento_pct' => $rendimiento !== null && $meta > 0 ? round($rendimiento / $meta * 100, 1) : null,
+            ];
+        })
             ->sortByDesc('km_total')
             ->values();
+    }
 
-        return Inertia::render('flota/combustible/index', [
-            'por_placa' => $porPlaca,
-            'filters' => compact('desde', 'hasta'),
+    /**
+     * Detalle día por día de una placa (ruta/conductor desde Modulación +
+     * km de MyGeotab), para el drill-down de la tabla principal. Mismo
+     * cruce por placa normalizada + keyBy que OcupacionCargaController,
+     * aplicado aquí a una sola placa en vez de todas.
+     */
+    public function detallePlaca(Request $request): JsonResponse
+    {
+        $validado = $request->validate([
+            'placa' => ['required', 'string', 'max:50'],
+            'desde' => ['required', 'date_format:Y-m-d'],
+            'hasta' => ['required', 'date_format:Y-m-d'],
         ]);
+        $placa = strtoupper(trim($validado['placa']));
+
+        $kmPorFecha = VehiculoKilometroDiario::query()
+            ->where('placa', $placa)
+            ->whereDate('fecha', '>=', $validado['desde'])
+            ->whereDate('fecha', '<=', $validado['hasta'])
+            ->get()
+            ->keyBy(fn (VehiculoKilometroDiario $k) => $k->fecha->toDateString());
+
+        // modulacion_items.placa es texto libre sin FK (puede venir en
+        // minúsculas/con espacios) — se compara normalizada, igual que
+        // OcupacionCargaController. modulaciones.fecha es un string plano
+        // (no cast a date), por eso se usa directo como clave.
+        $rutasPorFecha = ModulacionItem::with('modulacion')
+            ->whereRaw('UPPER(TRIM(placa)) = ?', [$placa])
+            ->whereHas('modulacion', fn ($q) => $q->whereDate('fecha', '>=', $validado['desde'])->whereDate('fecha', '<=', $validado['hasta']))
+            ->get()
+            ->keyBy(fn (ModulacionItem $item) => $item->modulacion->fecha);
+
+        $fechas = $kmPorFecha->keys()->merge($rutasPorFecha->keys())->unique()->sort()->values();
+
+        $filas = $fechas->map(function (string $fecha) use ($kmPorFecha, $rutasPorFecha) {
+            $km = $kmPorFecha->get($fecha);
+            $ruta = $rutasPorFecha->get($fecha);
+
+            return [
+                'fecha' => $fecha,
+                'km' => $km ? round((float) $km->distancia_km, 1) : null,
+                'ruta' => $ruta?->ud,
+                'conductor' => $ruta?->nombres,
+            ];
+        })->values();
+
+        return response()->json(['filas' => $filas]);
+    }
+
+    public function actualizarMeta(Request $request, Vehiculo $vehiculo): RedirectResponse
+    {
+        $validado = $request->validate([
+            'meta_km_gl' => ['nullable', 'numeric', 'min:0', 'max:999.99'],
+        ]);
+
+        $vehiculo->update($validado);
+
+        return back()->with('status', ['type' => 'success', 'message' => "Meta de {$vehiculo->placa} actualizada."]);
     }
 
     /**

@@ -41,6 +41,10 @@ Route::middleware(['auth', 'active', 'role:Administrador|Flota', 'submodule.acce
             ->name('combustible.index');
         Route::post('combustible/sincronizar', [AnalisisCombustibleController::class, 'sincronizar'])
             ->name('combustible.sincronizar');
+        Route::get('combustible/detalle-placa', [AnalisisCombustibleController::class, 'detallePlaca'])
+            ->name('combustible.detalle-placa');
+        Route::patch('combustible/vehiculos/{vehiculo}/meta', [AnalisisCombustibleController::class, 'actualizarMeta'])
+            ->name('combustible.meta.update');
         Route::get('combustible/vouchers', [CombustibleVoucherController::class, 'index'])
             ->name('combustible.vouchers.index');
         Route::put('combustible/vouchers/{voucher}', [CombustibleVoucherController::class, 'update'])

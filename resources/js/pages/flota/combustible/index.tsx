@@ -7,8 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { AlertTriangle, CheckCircle2, Fuel, LoaderCircle, RefreshCw, Truck } from 'lucide-react';
-import { FormEventHandler, useState } from 'react';
+import { AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, Fuel, Gauge, LoaderCircle, RefreshCw, Truck } from 'lucide-react';
+import { Fragment, FormEventHandler, useEffect, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
@@ -20,9 +20,83 @@ interface FilaPlaca {
     placa: string;
     km_total: number;
     dias_con_datos: number;
+    galones_total: number;
+    total_pagado: number;
+    rendimiento_km_gl: number | null;
+    costo_km: number | null;
+    meta_km_gl: number | null;
+    cumplimiento_pct: number | null;
+}
+
+interface FilaDia {
+    fecha: string;
+    km: number | null;
+    ruta: string | null;
+    conductor: string | null;
 }
 
 type Filters = { desde: string; hasta: string };
+
+function cumplimientoColor(pct: number | null): string {
+    if (pct === null) return 'text-muted-foreground';
+    if (pct >= 100) return 'text-emerald-600 dark:text-emerald-400';
+    if (pct >= 85) return 'text-amber-600 dark:text-amber-400';
+    return 'text-rose-600 dark:text-rose-400';
+}
+
+function DetallePlacaRow({ placa, desde, hasta }: { placa: string; desde: string; hasta: string }) {
+    const [filas, setFilas] = useState<FilaDia[] | null>(null);
+    const [cargando, setCargando] = useState(true);
+
+    useEffect(() => {
+        fetch(`${route('flota.combustible.detalle-placa')}?${new URLSearchParams({ placa, desde, hasta })}`, {
+            credentials: 'same-origin',
+            headers: { Accept: 'application/json' },
+        })
+            .then((r) => r.json())
+            .then((data: { filas: FilaDia[] }) => setFilas(data.filas))
+            .finally(() => setCargando(false));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    return (
+        <TableRow>
+            <TableCell colSpan={9} className="bg-muted/30 p-0">
+                <div className="p-3">
+                    {cargando ? (
+                        <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
+                            <LoaderCircle className="size-4 animate-spin" />
+                            Cargando detalle por día...
+                        </div>
+                    ) : !filas || filas.length === 0 ? (
+                        <p className="py-4 text-center text-sm text-muted-foreground">Sin km ni rutas registradas en este rango.</p>
+                    ) : (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Fecha</TableHead>
+                                    <TableHead>Ruta</TableHead>
+                                    <TableHead>Conductor</TableHead>
+                                    <TableHead className="text-right">Km</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {filas.map((f) => (
+                                    <TableRow key={f.fecha}>
+                                        <TableCell>{f.fecha}</TableCell>
+                                        <TableCell>{f.ruta ?? '—'}</TableCell>
+                                        <TableCell>{f.conductor ?? '—'}</TableCell>
+                                        <TableCell className="text-right">{f.km ?? '—'}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    )}
+                </div>
+            </TableCell>
+        </TableRow>
+    );
+}
 
 export default function AnalisisCombustibleIndex({ por_placa: porPlaca, filters }: { por_placa: FilaPlaca[]; filters: Filters }) {
     const { flash } = usePage<{ flash?: { status?: { message: string; type: string } } }>().props;
@@ -30,6 +104,8 @@ export default function AnalisisCombustibleIndex({ por_placa: porPlaca, filters 
     const [hasta, setHasta] = useState(filters.hasta);
     const [fechaSync, setFechaSync] = useState(new Date(Date.now() - 86400000).toISOString().slice(0, 10));
     const [sincronizando, setSincronizando] = useState(false);
+    const [expandida, setExpandida] = useState<string | null>(null);
+    const [metas, setMetas] = useState<Record<string, string>>({});
 
     const applyFilters: FormEventHandler = (e) => {
         e.preventDefault();
@@ -45,7 +121,18 @@ export default function AnalisisCombustibleIndex({ por_placa: porPlaca, filters 
         );
     };
 
+    const guardarMeta = (placa: string) => {
+        const valor = metas[placa];
+        router.patch(
+            route('flota.combustible.meta.update', placa),
+            { meta_km_gl: valor === '' ? null : valor },
+            { preserveScroll: true, preserveState: true },
+        );
+    };
+
     const kmTotal = porPlaca.reduce((acc, f) => acc + f.km_total, 0);
+    const galonesTotal = porPlaca.reduce((acc, f) => acc + f.galones_total, 0);
+    const rendimientoPromedio = galonesTotal > 0 ? kmTotal / galonesTotal : null;
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -54,7 +141,7 @@ export default function AnalisisCombustibleIndex({ por_placa: porPlaca, filters 
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <HeadingSmall
                         title="Análisis de Combustible"
-                        description="Kilómetros diarios por vehículo (MyGeotab). El cruce con tanqueadas y rendimiento km/gl llega en un próximo incremento."
+                        description="Kilómetros (MyGeotab) cruzados con tanqueadas confirmadas — rendimiento km/gl por vehículo."
                     />
                     <Button variant="outline" asChild>
                         <Link href={route('flota.combustible.vouchers.index')}>Vouchers de Tanqueo</Link>
@@ -74,9 +161,16 @@ export default function AnalisisCombustibleIndex({ por_placa: porPlaca, filters 
                     </div>
                 )}
 
-                <KpiCardGrid className="sm:grid-cols-2 lg:grid-cols-3">
+                <KpiCardGrid className="sm:grid-cols-2 lg:grid-cols-4">
                     <KpiCard label="Vehículos con datos" value={porPlaca.length} icon={Truck} color="#2B6CB0" />
                     <KpiCard label="Km totales en el rango" value={Math.round(kmTotal).toLocaleString('es-CO')} icon={Fuel} color="#2B6CB0" />
+                    <KpiCard label="Galones tanqueados (revisados)" value={galonesTotal.toLocaleString('es-CO')} icon={Fuel} color="#D97706" />
+                    <KpiCard
+                        label="Rendimiento promedio"
+                        value={rendimientoPromedio ? `${rendimientoPromedio.toFixed(2)} km/gl` : '—'}
+                        icon={Gauge}
+                        color="#15803d"
+                    />
                 </KpiCardGrid>
 
                 <div className="flex flex-wrap items-end justify-between gap-4 rounded-lg border border-sidebar-border/70 p-4 dark:border-sidebar-border">
@@ -110,25 +204,57 @@ export default function AnalisisCombustibleIndex({ por_placa: porPlaca, filters 
                     <Table>
                         <TableHeader>
                             <TableRow>
+                                <TableHead></TableHead>
                                 <TableHead>Placa</TableHead>
-                                <TableHead>Días con datos</TableHead>
-                                <TableHead className="text-right">Km total</TableHead>
+                                <TableHead className="text-right">Km</TableHead>
+                                <TableHead className="text-right">Galones</TableHead>
+                                <TableHead className="text-right">Total pagado</TableHead>
+                                <TableHead className="text-right">Costo/km</TableHead>
+                                <TableHead className="text-right">Km/gl</TableHead>
+                                <TableHead className="text-right">Meta</TableHead>
+                                <TableHead className="text-right">Cumplimiento</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {porPlaca.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={3} className="py-6 text-center text-muted-foreground">
-                                        Todavía no hay kilómetros sincronizados en este rango.
+                                    <TableCell colSpan={9} className="py-6 text-center text-muted-foreground">
+                                        Todavía no hay datos en este rango.
                                     </TableCell>
                                 </TableRow>
                             )}
                             {porPlaca.map((fila) => (
-                                <TableRow key={fila.placa}>
-                                    <TableCell className="font-medium">{fila.placa}</TableCell>
-                                    <TableCell>{fila.dias_con_datos}</TableCell>
-                                    <TableCell className="text-right">{fila.km_total.toLocaleString('es-CO')}</TableCell>
-                                </TableRow>
+                                <Fragment key={fila.placa}>
+                                    <TableRow className="cursor-pointer" onClick={() => setExpandida(expandida === fila.placa ? null : fila.placa)}>
+                                        <TableCell>
+                                            {expandida === fila.placa ? (
+                                                <ChevronDown className="size-4 text-muted-foreground" />
+                                            ) : (
+                                                <ChevronRight className="size-4 text-muted-foreground" />
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="font-medium">{fila.placa}</TableCell>
+                                        <TableCell className="text-right">{fila.km_total.toLocaleString('es-CO')}</TableCell>
+                                        <TableCell className="text-right">{fila.galones_total.toLocaleString('es-CO')}</TableCell>
+                                        <TableCell className="text-right">{fila.total_pagado.toLocaleString('es-CO')}</TableCell>
+                                        <TableCell className="text-right">{fila.costo_km ? fila.costo_km.toLocaleString('es-CO') : '—'}</TableCell>
+                                        <TableCell className="text-right font-medium">{fila.rendimiento_km_gl ?? '—'}</TableCell>
+                                        <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                                            <Input
+                                                type="number"
+                                                step="0.01"
+                                                className="w-20 text-right"
+                                                defaultValue={fila.meta_km_gl ?? ''}
+                                                onChange={(e) => setMetas({ ...metas, [fila.placa]: e.target.value })}
+                                                onBlur={() => guardarMeta(fila.placa)}
+                                            />
+                                        </TableCell>
+                                        <TableCell className={`text-right font-medium ${cumplimientoColor(fila.cumplimiento_pct)}`}>
+                                            {fila.cumplimiento_pct !== null ? `${fila.cumplimiento_pct}%` : '—'}
+                                        </TableCell>
+                                    </TableRow>
+                                    {expandida === fila.placa && <DetallePlacaRow placa={fila.placa} desde={desde} hasta={hasta} />}
+                                </Fragment>
                             ))}
                         </TableBody>
                     </Table>
