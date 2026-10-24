@@ -10,7 +10,7 @@ import {
     UserCheck,
     Video,
 } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 // ─── Flag de logs de diagnóstico ─────────────────────────────────────────────
 // Solo activos en desarrollo Y con ?facial_debug en la URL, para evitar spam
@@ -27,7 +27,7 @@ interface ColaboradorItem {
     nombres: string;
     apellidos: string;
     cedula: string;
-    cargo?: string;
+    cargo?: string | null;
 }
 
 interface FaceBox {
@@ -40,6 +40,8 @@ interface IdentityResult {
     status: 'match' | 'uncertain' | 'no_match';
     match: boolean;
     colaborador_id?: number;
+    nombres?: string | null;
+    apellidos?: string | null;
     confidence?: number;
     similarity?: number;
     live?: boolean;
@@ -61,6 +63,7 @@ interface LiveDialogProps {
     onOpenChange: (open: boolean) => void;
     colaboradores: ColaboradorItem[];
     onColaboradorSeleccionado: (colaborador: ColaboradorItem, fotoCapturada?: File) => void;
+    facialServiceUrl?: string;
     fastApiWsUrl?: string;
     fastApiHttpUrl?: string;
 }
@@ -70,8 +73,8 @@ interface LiveDialogProps {
 // VITE_FACIAL_API_KEY      → token compartido con el servicio Python (FACIAL_API_KEY)
 // Sin variable configurada → usa el servicio local en 127.0.0.1:8001
 
-function buildFacialUrls(): { wsUrl: string; httpUrl: string } {
-    const configuredBase = (import.meta.env.VITE_FACIAL_SERVICE_URL as string | undefined)
+function buildFacialUrls(serviceUrl?: string): { wsUrl: string; httpUrl: string } {
+    const configuredBase = (serviceUrl || (import.meta.env.VITE_FACIAL_SERVICE_URL as string | undefined))
         ?.trim()
         .replace(/\/+$/, '');
 
@@ -88,8 +91,7 @@ function buildFacialUrls(): { wsUrl: string; httpUrl: string } {
     };
 }
 
-const { wsUrl: DEFAULT_WS_URL, httpUrl: DEFAULT_HTTP_URL } = buildFacialUrls();
-const FACIAL_API_KEY = (import.meta.env.VITE_FACIAL_API_KEY as string | undefined) ?? '';
+const FACIAL_API_KEY = (import.meta.env.VITE_FACIAL_API_KEY as string | undefined)?.trim() ?? '';
 
 // ─── Utilidades ──────────────────────────────────────────────────────────────
 
@@ -114,9 +116,13 @@ export function ReconocimientoFacialLiveDialog({
     onOpenChange,
     colaboradores,
     onColaboradorSeleccionado,
-    fastApiWsUrl = DEFAULT_WS_URL,
-    fastApiHttpUrl = DEFAULT_HTTP_URL,
+    facialServiceUrl,
+    fastApiWsUrl,
+    fastApiHttpUrl,
 }: LiveDialogProps) {
+    const defaultUrls = useMemo(() => buildFacialUrls(facialServiceUrl), [facialServiceUrl]);
+    const wsUrl = fastApiWsUrl ?? defaultUrls.wsUrl;
+    const httpUrl = fastApiHttpUrl ?? defaultUrls.httpUrl;
     const videoRef = useRef<HTMLVideoElement>(null);
     const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
     const hiddenCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -263,7 +269,7 @@ export function ReconocimientoFacialLiveDialog({
         let ws: WebSocket | null = null;
 
         try {
-            ws = new WebSocket(fastApiWsUrl);
+            ws = new WebSocket(wsUrl);
             wsRef.current = ws;
 
             ws.onopen = () => {
@@ -348,7 +354,7 @@ export function ReconocimientoFacialLiveDialog({
                                     fd.append('foto', blob, 'frame.jpg');
                                     const headers: Record<string, string> = {};
                                     if (FACIAL_API_KEY) headers['X-Api-Key'] = FACIAL_API_KEY;
-                                    const resp = await fetch(fastApiHttpUrl, {
+                                    const resp = await fetch(httpUrl, {
                                         method: 'POST',
                                         body: fd,
                                         headers,
@@ -390,7 +396,7 @@ export function ReconocimientoFacialLiveDialog({
         return () => {
             detenerStream();
         };
-    }, [open, fastApiWsUrl, fastApiHttpUrl, detenerStream, iniciarCamara]);
+    }, [open, wsUrl, httpUrl, detenerStream, iniciarCamara]);
 
     // ── Procesar respuesta del frame ──────────────────────────────────────────
     // Lee el mapa desde el ref (siempre la versión más reciente, incluso dentro
@@ -456,9 +462,12 @@ export function ReconocimientoFacialLiveDialog({
                             );
                         }
 
+                        const nombreServicio = [faceIdentity.nombres, faceIdentity.apellidos]
+                            .filter(Boolean)
+                            .join(' ');
                         const nombre = colab
                             ? `${colab.nombres} ${colab.apellidos}`
-                            : `Colaborador #${faceIdentity.colaborador_id ?? '?'}`;
+                            : nombreServicio || `Colaborador #${faceIdentity.colaborador_id ?? '?'}`;
                         texto = `✓ ${nombre} (${faceIdentity.confidence ?? 0}%)`;
 
                         if (
@@ -531,7 +540,7 @@ export function ReconocimientoFacialLiveDialog({
             if (principalIdentificado) {
                 setIdentificado(principalIdentificado);
                 setInfoIdentidad(principalInfo);
-            } else if (faces.length === 0) {
+            } else {
                 setIdentificado(null);
                 setInfoIdentidad(null);
             }

@@ -195,8 +195,7 @@ class PruebaAlcoholemiaController extends Controller
 
     public function create(Request $request, FacialRecognitionService $service): Response
     {
-        // Sincronizar en segundo plano la galería con FastAPI para reconocimiento en vivo
-        $service->sincronizarGaleria();
+        $facialGallery = $this->sincronizarGaleriaParaVista($service);
 
         $dispositivosDisponibles = Alcoholimetro::query()
             ->where('estado', 'Disponible')
@@ -218,6 +217,8 @@ class PruebaAlcoholemiaController extends Controller
         }
 
         return Inertia::render('seguridad/pruebas/create', [
+            'facialServiceUrl' => rtrim((string) config('services.facial.url'), '/'),
+            'facialGalleryStatus' => $facialGallery,
             'colaboradores' => Colaborador::query()
                 ->completos()
                 ->where('is_active', true)
@@ -275,8 +276,10 @@ class PruebaAlcoholemiaController extends Controller
         );
     }
 
-    public function edit(PruebaAlcoholemia $prueba): Response
+    public function edit(PruebaAlcoholemia $prueba, FacialRecognitionService $service): Response
     {
+        $facialGallery = $this->sincronizarGaleriaParaVista($service);
+
         $dispositivosDisponibles = Alcoholimetro::query()
             ->where(function ($query) use ($prueba) {
                 $query->where('estado', 'Disponible');
@@ -302,6 +305,8 @@ class PruebaAlcoholemiaController extends Controller
         $pruebaData['evidencias_paths'] = $prueba->evidencias()->pluck('path')->map(fn ($path) => '/storage/'.$path)->toArray();
 
         return Inertia::render('seguridad/pruebas/create', [
+            'facialServiceUrl' => rtrim((string) config('services.facial.url'), '/'),
+            'facialGalleryStatus' => $facialGallery,
             'colaboradores' => Colaborador::query()
                 ->completos()
                 ->where('is_active', true)
@@ -311,6 +316,21 @@ class PruebaAlcoholemiaController extends Controller
             'ubicacionActual' => $prueba->ubicacion ?? UbicacionPrueba::actual()['ubicacion'],
             'prueba' => $pruebaData,
         ]);
+    }
+
+    /**
+     * Informa si FastAPI tiene una galería utilizable para el reconocimiento en vivo.
+     */
+    private function sincronizarGaleriaParaVista(FacialRecognitionService $service): array
+    {
+        $result = $service->sincronizarGaleria();
+        $loaded = (int) ($result['loaded'] ?? 0);
+
+        return [
+            'ready' => (bool) ($result['success'] ?? false) && $loaded > 0,
+            'loaded' => $loaded,
+            'message' => $result['message'] ?? null,
+        ];
     }
 
     public function update(StorePruebaAlcoholemiaRequest $request, PruebaAlcoholemia $prueba): RedirectResponse

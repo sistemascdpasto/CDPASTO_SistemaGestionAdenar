@@ -131,6 +131,7 @@ public function ensureServiceRunning(): bool
 
         try {
             $request = Http::timeout(30)
+                ->connectTimeout(5)
                 ->withHeaders(['X-API-Key' => $this->getApiKey()])
                 ->asMultipart();
 
@@ -144,10 +145,41 @@ public function ensureServiceRunning(): bool
 
             $response = $request->post("{$this->fastApiUrl}/galeria/sincronizar");
 
-            return $response->json() ?? ['success' => false];
+            if (! $response->successful()) {
+                Log::warning('[FacialRecognitionService] FastAPI rechazó la sincronización de la galería.', [
+                    'status' => $response->status(),
+                ]);
+
+                return [
+                    'success' => false,
+                    'loaded' => 0,
+                    'message' => 'No se pudo sincronizar la galería. Verifica la URL y FACIAL_API_KEY del servicio facial.',
+                ];
+            }
+
+            $result = $response->json();
+            if (! is_array($result) || ! ($result['success'] ?? false) || (int) ($result['loaded'] ?? 0) < 1) {
+                Log::warning('[FacialRecognitionService] FastAPI no cargó colaboradores en la galería.', [
+                    'status' => $response->status(),
+                    'loaded' => is_array($result) ? (int) ($result['loaded'] ?? 0) : 0,
+                ]);
+
+                return [
+                    'success' => false,
+                    'loaded' => 0,
+                    'message' => 'El servicio respondió, pero no cargó colaboradores con fotografías procesables.',
+                ];
+            }
+
+            return $result;
         } catch (\Throwable $e) {
             Log::error('[FacialRecognitionService] sincronizarGaleria falló: ' . $e->getMessage());
-            return ['success' => false, 'message' => $e->getMessage()];
+
+            return [
+                'success' => false,
+                'loaded' => 0,
+                'message' => 'No fue posible conectar con el servicio para sincronizar la galería.',
+            ];
         }
     }
 

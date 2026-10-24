@@ -243,7 +243,7 @@ async def ws_reconocer(ws: WebSocket, token: Optional[str] = None):
     (así nunca se acumulan fotogramas viejos). Respuesta:
       {"type":"faces","v":1,"w":640,"h":480,
        "faces":[{"box":[x,y,w,h],"score":0.97,"identity":{...}|null}],
-       "identity":{"status":"match","colaborador_id":12,"confidence":87.5,"face_index":0,...}|null,
+       "identity":{"status":"match","colaborador_id":12,"nombres":"...","apellidos":"...","confidence":87.5,"face_index":0,...}|null,
        "ms":24}
     Errores: {"type":"error","v":1,"message":"..."}
     Códigos de cierre: 4401 no autorizado, 4403 origen no permitido, 4408 inactividad, 4429 sin cupo.

@@ -295,7 +295,7 @@ class FaceEngine:
         if not LIVE_ENABLED:
             log("[ALERTA] Liveness DESACTIVADO: el sistema aceptará fotografías.")
         # Galería en memoria: (ids, matriz) se reemplaza de forma atómica
-        self._gallery: Tuple[list, Optional[np.ndarray]] = ([], None)
+        self._gallery: Tuple[list, Optional[np.ndarray], Dict[str, dict]] = ([], None, {})
         self._load_cache()
 
     # ------------------------------------------------------------------ caché
@@ -454,7 +454,18 @@ class FaceEngine:
         """Carga la lista de colaboradores en memoria para identificar en tiempo real."""
         start = time.time()
         ids, matrix, failed = self._build(candidates, prune=True)
-        self._gallery = (ids, matrix)               # reemplazo atómico
+        valid_ids = {str(cid) for cid in ids}
+        names = {
+            str(candidate["id"]): {
+                "nombres": candidate.get("nombres"),
+                "apellidos": candidate.get("apellidos"),
+            }
+            for candidate in candidates
+            if isinstance(candidate, dict)
+            and candidate.get("id") is not None
+            and str(candidate["id"]) in valid_ids
+        }
+        self._gallery = (ids, matrix, names)         # reemplazo atómico
         return {"success": True, "loaded": len(ids), "failed": failed,
                 "elapsed_seconds": round(time.time() - start, 2)}
 
@@ -474,7 +485,7 @@ class FaceEngine:
         start = time.time()
         h, w = img.shape[:2]
         faces = self.detect(img)[:MAX_FACES]
-        ids, matrix = self._gallery
+        ids, matrix, names = self._gallery
         can_identify = identify and matrix is not None and len(ids) > 0
 
         out_faces = []
@@ -495,6 +506,9 @@ class FaceEngine:
                         identity = decide(ids, matrix, self.embed(img, f))
                         identity["live"] = True
                         identity["liveness_score"] = live["score"]
+                        collaborator_name = names.get(str(identity.get("colaborador_id")))
+                        if collaborator_name:
+                            identity.update(collaborator_name)
                     else:
                         identity = {"status": live["status"], "match": False, "live": False,
                                     "liveness_score": live["score"], "message": live.get("message")}
@@ -564,7 +578,7 @@ class FaceEngine:
         if candidates:
             ids, matrix, _ = self._build(candidates)
         else:
-            ids, matrix = self._gallery
+            ids, matrix, _ = self._gallery
 
         if matrix is None or not ids:
             return {"success": False, "status": "sin_candidatos", "target_face_detected": True,
