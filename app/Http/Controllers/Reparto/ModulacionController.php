@@ -112,10 +112,10 @@ class ModulacionController extends Controller
             ->orderByDesc('id')
             ->first();
 
-        // Pre-cargar colaboradores fijos (fijo_rescate o fijo_taller) si no existen aún en esta planeación
+        // Pre-cargar colaboradores fijos (fijo = true, fijo_rescate o fijo_taller) si no existen aún en esta planeación
         if ($modulacion) {
             $ultimaFecha = Modulacion::whereHas('novedades', function ($q) {
-                    $q->where('fijo_rescate', true)->orWhere('fijo_taller', true);
+                    $q->where('fijo', true)->orWhere('fijo_rescate', true)->orWhere('fijo_taller', true);
                 })
                 ->where('fecha', '<', $fecha)
                 ->orderByDesc('fecha')
@@ -128,7 +128,7 @@ class ModulacionController extends Controller
 
                 if ($ultimaModulacion) {
                     $fijosAnteriores = $ultimaModulacion->novedades
-                        ->filter(fn($n) => $n->fijo_rescate || $n->fijo_taller);
+                        ->filter(fn($n) => $n->fijo || $n->fijo_rescate || $n->fijo_taller);
 
                     foreach ($fijosAnteriores as $fijo) {
                         // Verificar si este colaborador ya existe en la planeación actual
@@ -150,8 +150,8 @@ class ModulacionController extends Controller
                                 'nombres'        => $fijo->nombres,
                                 'cargo'          => $fijo->cargo,
                                 'fijo'           => true,
-                                'fijo_rescate'   => $fijo->fijo_rescate,
-                                'fijo_taller'    => $fijo->fijo_taller,
+                                'fijo_rescate'   => $fijo->fijo_rescate ?? false,
+                                'fijo_taller'    => $fijo->fijo_taller ?? false,
                                 'permiso'        => false,
                                 'incapacidad'    => false,
                                 'vacaciones'     => false,
@@ -171,7 +171,7 @@ class ModulacionController extends Controller
         $fijosIniciales = [];
         if (!$modulacion) {
             $ultimaFechaFijos = Modulacion::whereHas('novedades', function ($q) {
-                    $q->where('fijo_rescate', true)->orWhere('fijo_taller', true);
+                    $q->where('fijo', true)->orWhere('fijo_rescate', true)->orWhere('fijo_taller', true);
                 })
                 ->where('fecha', '<', $fecha)
                 ->orderByDesc('fecha')
@@ -182,9 +182,9 @@ class ModulacionController extends Controller
                         $q->where('fecha', $ultimaFechaFijos);
                     })
                     ->where(function ($q) {
-                        $q->where('fijo_rescate', true)->orWhere('fijo_taller', true);
+                        $q->where('fijo', true)->orWhere('fijo_rescate', true)->orWhere('fijo_taller', true);
                     })
-                    ->get(['colaborador_id', 'cedula', 'nombres', 'cargo', 'observaciones', 'fijo_rescate', 'fijo_taller'])
+                    ->get(['colaborador_id', 'cedula', 'nombres', 'cargo', 'observaciones', 'fijo', 'fijo_rescate', 'fijo_taller'])
                     ->toArray();
             }
         }
@@ -221,6 +221,7 @@ class ModulacionController extends Controller
             'currentUser'    => $request->user()?->name ?? 'Usuario',
             'readOnly'       => $request->boolean('readOnly', false),
             'exportExcel'    => $request->boolean('exportExcel', false),
+            'isAdmin'        => $request->user()?->hasRole('Administrador') ?? false,
         ]);
     }
 
@@ -237,7 +238,7 @@ class ModulacionController extends Controller
         $fijosIniciales = [];
         if (!$modulacion) {
             $ultimaFechaFijos = Modulacion::whereHas('novedades', function ($q) {
-                    $q->where('fijo_rescate', true)->orWhere('fijo_taller', true);
+                    $q->where('fijo', true)->orWhere('fijo_rescate', true)->orWhere('fijo_taller', true);
                 })
                 ->whereDate('fecha', '<', $fecha)
                 ->orderByDesc('fecha')
@@ -248,9 +249,9 @@ class ModulacionController extends Controller
                         $q->whereDate('fecha', $ultimaFechaFijos);
                     })
                     ->where(function ($q) {
-                        $q->where('fijo_rescate', true)->orWhere('fijo_taller', true);
+                        $q->where('fijo', true)->orWhere('fijo_rescate', true)->orWhere('fijo_taller', true);
                     })
-                    ->get(['colaborador_id', 'cedula', 'nombres', 'cargo', 'observaciones', 'fijo_rescate', 'fijo_taller'])
+                    ->get(['colaborador_id', 'cedula', 'nombres', 'cargo', 'observaciones', 'fijo', 'fijo_rescate', 'fijo_taller'])
                     ->toArray();
             }
         }
@@ -593,10 +594,11 @@ class ModulacionController extends Controller
             foreach ($validated['novedades'] as $novItem) {
                 $fijoRescate = !empty($novItem['fijo_rescate']);
                 $fijoTaller  = !empty($novItem['fijo_taller']);
+                $fijoDirecto = !empty($novItem['fijo']);
                 $campos = [
                     'fijo_rescate' => $fijoRescate,
                     'fijo_taller'  => $fijoTaller,
-                    'fijo'         => $fijoRescate || $fijoTaller,
+                    'fijo'         => $fijoDirecto || $fijoRescate || $fijoTaller,
                     'permiso'      => !empty($novItem['permiso']),
                     'no_asitio'    => !empty($novItem['no_asitio']),
                     'incapacidad'  => !empty($novItem['incapacidad']),
@@ -892,10 +894,11 @@ class ModulacionController extends Controller
             foreach ($validated['novedades'] as $novItem) {
                 $fijoRescate = !empty($novItem['fijo_rescate']);
                 $fijoTaller = !empty($novItem['fijo_taller']);
+                $fijoDirecto = !empty($novItem['fijo']);
                 $campos = [
                     'fijo_rescate' => $fijoRescate,
                     'fijo_taller' => $fijoTaller,
-                    'fijo' => $fijoRescate || $fijoTaller,
+                    'fijo' => $fijoDirecto || $fijoRescate || $fijoTaller,
                     'permiso' => !empty($novItem['permiso']),
                     'no_asitio' => !empty($novItem['no_asitio']),
                     'incapacidad' => !empty($novItem['incapacidad']),
