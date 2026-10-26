@@ -227,15 +227,26 @@ class AnalisisCombustibleController extends Controller
         return response()->json(['filas' => $filas]);
     }
 
-    public function actualizarMeta(Request $request, Vehiculo $vehiculo): RedirectResponse
+    /**
+     * La tabla del dashboard está agrupada por placa (texto libre, viene de
+     * MyGeotab/vouchers), no por vehiculo_id — por eso la ruta recibe la
+     * placa, no un Vehiculo con route-model-binding (eso causaba un 404: el
+     * binding por defecto busca por id, y la placa nunca calza con un id
+     * numérico). firstOrCreate por si la placa todavía no tiene fila en
+     * Documentación (ej. un vehículo que ya reporta a MyGeotab pero aún no
+     * se ha registrado formalmente).
+     */
+    public function actualizarMeta(Request $request, string $placa): RedirectResponse
     {
         $validado = $request->validate([
             'meta_km_gl' => ['nullable', 'numeric', 'min:0', 'max:999.99'],
         ]);
 
+        $placa = strtoupper(trim($placa));
+        $vehiculo = Vehiculo::query()->firstOrCreate(['placa' => $placa]);
         $vehiculo->update($validado);
 
-        return back()->with('status', ['type' => 'success', 'message' => "Meta de {$vehiculo->placa} actualizada."]);
+        return back()->with('status', ['type' => 'success', 'message' => "Meta de {$placa} actualizada."]);
     }
 
     /**

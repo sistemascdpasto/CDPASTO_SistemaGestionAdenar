@@ -43,7 +43,10 @@ Route::middleware(['auth', 'active', 'role:Administrador|Flota', 'submodule.acce
             ->name('combustible.sincronizar');
         Route::get('combustible/detalle-placa', [AnalisisCombustibleController::class, 'detallePlaca'])
             ->name('combustible.detalle-placa');
-        Route::patch('combustible/vehiculos/{vehiculo}/meta', [AnalisisCombustibleController::class, 'actualizarMeta'])
+        // {placa}, no {vehiculo}: la tabla del dashboard está agrupada por
+        // placa (texto), no por vehiculo_id — ver el comentario en
+        // AnalisisCombustibleController::actualizarMeta().
+        Route::patch('combustible/placas/{placa}/meta', [AnalisisCombustibleController::class, 'actualizarMeta'])
             ->name('combustible.meta.update');
         Route::get('combustible/vouchers', [CombustibleVoucherController::class, 'index'])
             ->name('combustible.vouchers.index');
