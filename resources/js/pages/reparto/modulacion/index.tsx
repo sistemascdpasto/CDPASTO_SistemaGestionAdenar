@@ -148,6 +148,10 @@ interface FijoInicial {
     nombres?: string;
     cargo?: string;
     observaciones?: string;
+    permiso?: boolean;
+    no_asitio?: boolean;
+    incapacidad?: boolean;
+    vacaciones?: boolean;
 }
 
 interface Props {
@@ -946,12 +950,12 @@ export default function ModulacionIndex({
                             cedula: f.cedula,
                             nombres: f.nombres,
                             cargo: f.cargo,
-                            observaciones: '',
+                            observaciones: f.observaciones ?? '',
                             fijo: true,
-                            permiso: false,
-                            no_asitio: false,
-                            incapacidad: false,
-                            vacaciones: false,
+                            permiso: f.permiso ?? false,
+                            no_asitio: f.no_asitio ?? false,
+                            incapacidad: f.incapacidad ?? false,
+                            vacaciones: f.vacaciones ?? false,
                         }))
                     );
                 } else {
@@ -1701,12 +1705,12 @@ export default function ModulacionIndex({
                 cedula: f.cedula,
                 nombres: f.nombres,
                 cargo: f.cargo,
-                observaciones: '',
+                observaciones: f.observaciones ?? '',
                 fijo: true,
-                permiso: false,
-                no_asitio: false,
-                incapacidad: false,
-                vacaciones: false,
+                permiso: f.permiso ?? false,
+                no_asitio: f.no_asitio ?? false,
+                incapacidad: f.incapacidad ?? false,
+                vacaciones: f.vacaciones ?? false,
             }));
         }
         return [];
@@ -1726,12 +1730,12 @@ export default function ModulacionIndex({
                     cedula: f.cedula,
                     nombres: f.nombres,
                     cargo: f.cargo,
-                    observaciones: '',
+                    observaciones: f.observaciones ?? '',
                     fijo: true,
-                    permiso: false,
-                    no_asitio: false,
-                    incapacidad: false,
-                    vacaciones: false,
+                    permiso: f.permiso ?? false,
+                    no_asitio: f.no_asitio ?? false,
+                    incapacidad: f.incapacidad ?? false,
+                    vacaciones: f.vacaciones ?? false,
                 }))
             );
         } else {
@@ -1856,11 +1860,18 @@ export default function ModulacionIndex({
             return;
         }
         if (confirm('¿Desea eliminar este colaborador de la tabla de novedades?')) {
+            // Quitar del estado local inmediatamente
             setNovedadesLocal((prev) => prev.filter((n) => n.id !== id));
-            router.delete(route('reparto.modulacion.destroyNovedad', id), {
-                preserveScroll: true,
-                preserveState: true,
-            });
+            // Eliminar en BD sin navegar (fetch en lugar de router.delete)
+            fetch(route('reparto.modulacion.destroyNovedad', id), {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? '',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+            }).catch((err) => console.error('Error al eliminar novedad:', err));
         }
     };
 

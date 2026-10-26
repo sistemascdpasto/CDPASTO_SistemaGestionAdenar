@@ -152,9 +152,11 @@ class ModulacionController extends Controller
                                 'fijo'           => true,
                                 'fijo_rescate'   => $fijo->fijo_rescate ?? false,
                                 'fijo_taller'    => $fijo->fijo_taller ?? false,
-                                'permiso'        => false,
-                                'incapacidad'    => false,
-                                'vacaciones'     => false,
+                                'observaciones'  => $fijo->observaciones ?? null,
+                                'permiso'        => $fijo->permiso ?? false,
+                                'no_asitio'      => $fijo->no_asitio ?? false,
+                                'incapacidad'    => $fijo->incapacidad ?? false,
+                                'vacaciones'     => $fijo->vacaciones ?? false,
                             ]);
                         }
                     }
@@ -184,7 +186,7 @@ class ModulacionController extends Controller
                     ->where(function ($q) {
                         $q->where('fijo', true)->orWhere('fijo_rescate', true)->orWhere('fijo_taller', true);
                     })
-                    ->get(['colaborador_id', 'cedula', 'nombres', 'cargo', 'observaciones', 'fijo', 'fijo_rescate', 'fijo_taller'])
+                    ->get(['colaborador_id', 'cedula', 'nombres', 'cargo', 'observaciones', 'fijo', 'fijo_rescate', 'fijo_taller', 'permiso', 'no_asitio', 'incapacidad', 'vacaciones'])
                     ->toArray();
             }
         }
@@ -251,7 +253,7 @@ class ModulacionController extends Controller
                     ->where(function ($q) {
                         $q->where('fijo', true)->orWhere('fijo_rescate', true)->orWhere('fijo_taller', true);
                     })
-                    ->get(['colaborador_id', 'cedula', 'nombres', 'cargo', 'observaciones', 'fijo', 'fijo_rescate', 'fijo_taller'])
+                    ->get(['colaborador_id', 'cedula', 'nombres', 'cargo', 'observaciones', 'fijo', 'fijo_rescate', 'fijo_taller', 'permiso', 'no_asitio', 'incapacidad', 'vacaciones'])
                     ->toArray();
             }
         }
@@ -970,10 +972,14 @@ class ModulacionController extends Controller
         return redirect()->back()->with('success', 'Novedad agregada exitosamente.');
     }
 
-    public function destroyNovedad(int $id): RedirectResponse
+    public function destroyNovedad(int $id): mixed
     {
         $novedad = ModulacionNovedad::findOrFail($id);
         $novedad->delete();
+
+        if (request()->expectsJson()) {
+            return response()->json(['success' => true, 'message' => 'Novedad eliminada.']);
+        }
 
         return redirect()->back()->with('success', 'Novedad eliminada.');
     }
