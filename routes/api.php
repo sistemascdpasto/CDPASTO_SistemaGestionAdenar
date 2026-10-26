@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\GeovictoriaAsistenciaController;
+use App\Http\Controllers\Api\MygeotabSyncController;
 use App\Http\Controllers\Api\SimitConsultaController;
 use Illuminate\Support\Facades\Route;
 
@@ -16,3 +17,10 @@ Route::post('simit/consultas', [SimitConsultaController::class, 'store'])
 Route::post('geovictoria/asistencias', [GeovictoriaAsistenciaController::class, 'store'])
     ->middleware('geovictoria.token')
     ->name('api.geovictoria.asistencias.store');
+
+// Sincronización diaria de kilómetros por vehículo (MyGeotab), disparada por
+// una tarea programada en la PC local (no un usuario). Protegida por token
+// compartido (EnsureMygeotabApiToken), no por sesion/roles.
+Route::post('mygeotab/sincronizar-km', [MygeotabSyncController::class, 'store'])
+    ->middleware('mygeotab.token')
+    ->name('api.mygeotab.sincronizar-km');

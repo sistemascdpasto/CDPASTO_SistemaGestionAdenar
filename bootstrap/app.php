@@ -3,6 +3,7 @@
 use App\Http\Middleware\EnsureAccountIsActive;
 use App\Http\Middleware\EnsureGeovictoriaApiToken;
 use App\Http\Middleware\EnsureModuleAccess;
+use App\Http\Middleware\EnsureMygeotabApiToken;
 use App\Http\Middleware\EnsureSimitApiToken;
 use App\Http\Middleware\EnsureSubmoduleAccess;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -56,6 +57,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role_or_permission' => RoleOrPermissionMiddleware::class,
             'simit.token' => EnsureSimitApiToken::class,
             'geovictoria.token' => EnsureGeovictoriaApiToken::class,
+            'mygeotab.token' => EnsureMygeotabApiToken::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

@@ -2,6 +2,8 @@
 
 namespace App\Models\Seguridad;
 
+use App\Models\Flota\CombustibleVoucher;
+use App\Models\Gente\ColaboradorPadrinoCriterio;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -191,6 +193,11 @@ class Colaborador extends Model
         return $this->hasMany(Alerta::class);
     }
 
+    public function combustibleVouchers(): HasMany
+    {
+        return $this->hasMany(CombustibleVoucher::class);
+    }
+
     public function documentos(): HasMany
     {
         return $this->hasMany(ColaboradorDocumento::class);
@@ -213,7 +220,7 @@ class Colaborador extends Model
 
     public function padrinoCriterio(): HasOne
     {
-        return $this->hasOne(\App\Models\Gente\ColaboradorPadrinoCriterio::class);
+        return $this->hasOne(ColaboradorPadrinoCriterio::class);
     }
 
     public function padrino(): BelongsTo

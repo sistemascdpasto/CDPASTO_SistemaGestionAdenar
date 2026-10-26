@@ -2,8 +2,6 @@
 
 return [
 
-    
-
     'postmark' => [
         'token' => env('POSTMARK_TOKEN'),
     ],
@@ -46,14 +44,33 @@ return [
     ],
 
     // Reconocimiento facial biométrico
-    
-'facial' => [
-    'url' => env('FACIAL_API_URL', 'http://127.0.0.1:8001'),
-    'api_key' => env('FACIAL_API_KEY', ''),
-    'python_path' => env('FACIAL_PYTHON_PATH', null),
-    'cors' => env('FACIAL_CORS', ''),
-    'allowed_dir' => env('FACIAL_ALLOWED_DIR', ''),
-],
 
+    'facial' => [
+        'url' => env('FACIAL_API_URL', 'http://127.0.0.1:8001'),
+        'api_key' => env('FACIAL_API_KEY', ''),
+        'python_path' => env('FACIAL_PYTHON_PATH', null),
+        'cors' => env('FACIAL_CORS', ''),
+        'allowed_dir' => env('FACIAL_ALLOWED_DIR', ''),
+    ],
+
+    // MyGeotab: credenciales INICIALES/semilla (análisis de combustible,
+    // pilar Flota). El valor que la app realmente usa en tiempo de ejecución
+    // vive cifrado en base de datos y se administra desde el panel, porque
+    // la contraseña de MyGeotab rota periódicamente — estas quedan solo como
+    // respaldo para el primer arranque. Ver App\Support\MygeotabCredentials
+    // (o equivalente) una vez implementado.
+    'mygeotab' => [
+        'username' => env('MYGEOTAB_USERNAME'),
+        'password' => env('MYGEOTAB_PASSWORD'),
+        'database' => env('MYGEOTAB_DATABASE'),
+        'sync_token' => env('MYGEOTAB_SYNC_TOKEN'),
+    ],
+
+    // Gemini (Google AI Studio) para extraer datos de las fotos de vouchers
+    // de tanqueo en el módulo de análisis de combustible (pilar Flota).
+    'gemini' => [
+        'api_key' => env('GEMINI_API_KEY'),
+        'model' => env('GEMINI_MODEL', 'gemini-3.1-flash-lite'),
+    ],
 
 ];
