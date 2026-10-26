@@ -151,8 +151,10 @@ class AnalisisCombustibleTest extends TestCase
         Vehiculo::create(['placa' => 'COSINDATOS', 'is_active' => true, 'meta_km_gl' => 20]);
         VehiculoKilometroDiario::create(['fecha' => '2026-10-20', 'placa' => 'COSINDATOS', 'distancia_km' => 100]);
 
-        // Con rendimiento pero sin meta asignada.
-        Vehiculo::create(['placa' => 'COSINMETA', 'is_active' => true]);
+        // Con rendimiento pero sin meta asignada (explícito: vehiculos.meta_km_gl
+        // tiene default 11 desde que se estableció la meta estándar de la
+        // flota, así que "sin meta" ya no es lo que pasa si no se especifica).
+        Vehiculo::create(['placa' => 'COSINMETA', 'is_active' => true, 'meta_km_gl' => null]);
         VehiculoKilometroDiario::create(['fecha' => '2026-10-20', 'placa' => 'COSINMETA', 'distancia_km' => 100]);
         $this->sembrarVoucher('COSINMETA', 5, 70000, '2026-10-20');
 
