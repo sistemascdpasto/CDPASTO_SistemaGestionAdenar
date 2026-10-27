@@ -26,7 +26,7 @@ class AlertaGenerada extends Notification
         'no_apto' => 'Colaborador No Apto para laborar',
         'calibracion_proxima' => 'Calibración de alcoholímetro próxima',
         'certificado_vencido' => 'Certificado de alcoholímetro por vencer',
-        'contrato_proximo_vencer' => 'Contrato próximo a vencer',
+        'retiro_proximo' => 'Contrato próximo a vencer',
     ];
 
     public function toMail(object $notifiable): MailMessage

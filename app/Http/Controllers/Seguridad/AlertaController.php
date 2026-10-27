@@ -18,7 +18,7 @@ class AlertaController extends Controller
         $estado = $request->string('estado', 'pendientes')->toString();
 
         $alertas = Alerta::query()
-            ->with(['colaborador:id,nombres,apellidos', 'alcoholimetro:id,codigo'])
+            ->with(['colaborador:id,nombres,apellidos,fecha_retiro_empresa', 'alcoholimetro:id,codigo'])
             ->when($estado === 'pendientes', fn ($query) => $query->where('atendida', false))
             ->when($estado === 'atendidas', fn ($query) => $query->where('atendida', true))
             ->latest()

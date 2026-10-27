@@ -182,12 +182,12 @@ export function Paso3InformacionPuesto({ colaborador, catalogos, historialCargos
                         <InputError message={errors.centro_trabajo} />
                     </div>
                     <div className="grid gap-2">
-                        <Label htmlFor="fecha_ingreso_empresa">Fecha de ingreso a la empresa</Label>
+                        <Label htmlFor="fecha_ingreso_empresa">Fecha inicio de contrato</Label>
                         <Input id="fecha_ingreso_empresa" type="date" value={data.fecha_ingreso_empresa} onChange={(e) => setData('fecha_ingreso_empresa', e.target.value)} disabled={processing} />
                         <InputError message={errors.fecha_ingreso_empresa} />
                     </div>
                     <div className="grid gap-2">
-                        <Label htmlFor="fecha_retiro_empresa">Fecha de retiro de la empresa</Label>
+                        <Label htmlFor="fecha_retiro_empresa">Fecha finalización de contrato</Label>
                         <Input
                             id="fecha_retiro_empresa"
                             type="date"

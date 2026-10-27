@@ -346,6 +346,35 @@ class ColaboradorController extends Controller
     }
 
     /**
+     * Prorroga el contrato de un colaborador actualizando fecha_retiro_empresa
+     * y marcando como atendida cualquier alerta de retiro_proximo pendiente.
+     */
+    public function prorrogarContrato(Request $request, Colaborador $colaborador): RedirectResponse
+    {
+        $request->validate([
+            'fecha_retiro_empresa' => ['required', 'date', 'after:today'],
+        ]);
+
+        $colaborador->update([
+            'fecha_retiro_empresa' => $request->date('fecha_retiro_empresa'),
+        ]);
+
+        // Atender todas las alertas de retiro pendientes de este colaborador
+        // para que el scheduler no las reutilice en el próximo ciclo.
+        \App\Models\Seguridad\Alerta::query()
+            ->where('colaborador_id', $colaborador->id)
+            ->where('tipo', 'retiro_proximo')
+            ->where('atendida', false)
+            ->update([
+                'atendida' => true,
+                'atendida_por' => $request->user()->id,
+                'atendida_en' => now(),
+            ]);
+
+        return back()->with('status', 'Contrato prorrogado correctamente.');
+    }
+
+    /**
      * HU04: botón dedicado en la vista de detalle para activar/desactivar
      * al colaborador en el sistema. Se sincroniza en ambos sentidos con la
      * cuenta de usuario vinculada (si tiene una), para que no quede activa

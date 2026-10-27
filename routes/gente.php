@@ -1,6 +1,7 @@
 ﻿<?php
 
 use App\Http\Controllers\Gente\AusentismoController;
+use App\Http\Controllers\Gente\ContratosController;
 use App\Http\Controllers\Gente\ColaboradorCalificacionController;
 use App\Http\Controllers\Gente\ColaboradorController;
 use App\Http\Controllers\Gente\ColaboradorEntrenamientoController;
@@ -64,6 +65,10 @@ Route::middleware(['auth', 'active', 'role:Administrador|Gente', 'submodule.acce
         // HU04: activar/desactivar desde la vista de detalle.
         Route::patch('colaboradores/{colaborador}/toggle-activo', [ColaboradorController::class, 'toggleActivo'])
             ->name('colaboradores.toggle-activo');
+
+        // Prórroga de contrato: extiende fecha_retiro_empresa y marca la alerta como atendida.
+        Route::patch('colaboradores/{colaborador}/prorrogar-contrato', [ColaboradorController::class, 'prorrogarContrato'])
+            ->name('colaboradores.prorrogar-contrato');
 
         // Paso 5/6: registros que se acumulan durante la relación laboral,
         // gestionados desde la vista de detalle (show), no desde el wizard.
@@ -196,6 +201,14 @@ Route::middleware(['auth', 'active', 'role:Administrador|Seguridad|Reparto|Flota
             ->name('ausentismo.index');
         Route::get('ausentismo/exportar', [AusentismoController::class, 'exportar'])
             ->name('ausentismo.exportar');
+
+        // Contratos (Lectura)
+        Route::get('contratos', [ContratosController::class, 'index'])
+            ->name('contratos.index');
+
+        // Carta de prórroga de contrato en PDF
+        Route::get('contratos/{colaborador}/prorroga-pdf', [ContratosController::class, 'exportarProrrogaPdf'])
+            ->name('contratos.prorroga-pdf');
 
         // SAC (Lectura, Plantilla & Exportar)
         Route::get('sac', [SacController::class, 'index'])
