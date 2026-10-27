@@ -148,6 +148,10 @@ interface FijoInicial {
     nombres?: string;
     cargo?: string;
     observaciones?: string;
+    permiso?: boolean;
+    no_asitio?: boolean;
+    incapacidad?: boolean;
+    vacaciones?: boolean;
 }
 
 interface Props {
@@ -159,6 +163,7 @@ interface Props {
     readOnly?: boolean;
     exportExcel?: boolean;
     fijosIniciales?: FijoInicial[];
+    isAdmin?: boolean;
 }
 
 const esPersonalOperativoDeRuta = (area: string | null | undefined): boolean =>
@@ -772,6 +777,7 @@ export default function ModulacionIndex({
     readOnly = false,
     exportExcel = false,
     fijosIniciales = [],
+    isAdmin = false,
 }: Props) {
     // Modo edición: false por defecto si se llega en modo lectura
     const [isEditing, setIsEditing] = useState(() => !readOnly);
@@ -944,12 +950,12 @@ export default function ModulacionIndex({
                             cedula: f.cedula,
                             nombres: f.nombres,
                             cargo: f.cargo,
-                            observaciones: '',
+                            observaciones: f.observaciones ?? '',
                             fijo: true,
-                            permiso: false,
-                            no_asitio: false,
-                            incapacidad: false,
-                            vacaciones: false,
+                            permiso: f.permiso ?? false,
+                            no_asitio: f.no_asitio ?? false,
+                            incapacidad: f.incapacidad ?? false,
+                            vacaciones: f.vacaciones ?? false,
                         }))
                     );
                 } else {
@@ -1699,12 +1705,12 @@ export default function ModulacionIndex({
                 cedula: f.cedula,
                 nombres: f.nombres,
                 cargo: f.cargo,
-                observaciones: '',
+                observaciones: f.observaciones ?? '',
                 fijo: true,
-                permiso: false,
-                no_asitio: false,
-                incapacidad: false,
-                vacaciones: false,
+                permiso: f.permiso ?? false,
+                no_asitio: f.no_asitio ?? false,
+                incapacidad: f.incapacidad ?? false,
+                vacaciones: f.vacaciones ?? false,
             }));
         }
         return [];
@@ -1724,12 +1730,12 @@ export default function ModulacionIndex({
                     cedula: f.cedula,
                     nombres: f.nombres,
                     cargo: f.cargo,
-                    observaciones: '',
+                    observaciones: f.observaciones ?? '',
                     fijo: true,
-                    permiso: false,
-                    no_asitio: false,
-                    incapacidad: false,
-                    vacaciones: false,
+                    permiso: f.permiso ?? false,
+                    no_asitio: f.no_asitio ?? false,
+                    incapacidad: f.incapacidad ?? false,
+                    vacaciones: f.vacaciones ?? false,
                 }))
             );
         } else {
@@ -1854,11 +1860,18 @@ export default function ModulacionIndex({
             return;
         }
         if (confirm('¿Desea eliminar este colaborador de la tabla de novedades?')) {
+            // Quitar del estado local inmediatamente
             setNovedadesLocal((prev) => prev.filter((n) => n.id !== id));
-            router.delete(route('reparto.modulacion.destroyNovedad', id), {
-                preserveScroll: true,
-                preserveState: true,
-            });
+            // Eliminar en BD sin navegar (fetch en lugar de router.delete)
+            fetch(route('reparto.modulacion.destroyNovedad', id), {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? '',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+            }).catch((err) => console.error('Error al eliminar novedad:', err));
         }
     };
 
@@ -3622,6 +3635,7 @@ export default function ModulacionIndex({
                                         <TableHead className="font-semibold">Identificación</TableHead>
                                         <TableHead className="font-semibold">Nombres</TableHead>
                                         <TableHead className="font-semibold">Observaciones</TableHead>
+                                        {isAdmin && <TableHead className="text-center font-semibold">Fijo</TableHead>}
                                         <TableHead className="text-center font-semibold">Permiso</TableHead>
                                         <TableHead className="text-center font-semibold">No Asistio</TableHead>
                                         <TableHead className="text-center font-semibold">Incapacidad</TableHead>
@@ -3632,7 +3646,7 @@ export default function ModulacionIndex({
                                 <TableBody>
                                     {novedadesLocal.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={isEditing ? 8 : 7} className="py-8 text-center text-sm text-muted-foreground">
+                                            <TableCell colSpan={isEditing ? (isAdmin ? 9 : 8) : (isAdmin ? 8 : 7)} className="py-8 text-center text-sm text-muted-foreground">
                                                 No hay colaboradores en novedades. Use el formulario de arriba para agregar uno.
                                             </TableCell>
                                         </TableRow>
@@ -3656,6 +3670,20 @@ export default function ModulacionIndex({
                                                         <span>{nov.observaciones ?? '—'}</span>
                                                     )}
                                                 </TableCell>
+                                                {isAdmin && (
+                                                <TableCell className="text-center">
+                                                    {isEditing ? (
+                                                        <Checkbox
+                                                            id={`novedad-${nov.id}-fijo`}
+                                                            aria-label={`Fijo: ${nov.nombres ?? nov.cedula ?? nov.id}`}
+                                                            checked={Boolean(nov.fijo)}
+                                                            onCheckedChange={(c) => handleNovedadChange(nov.id, 'fijo', Boolean(c))}
+                                                        />
+                                                    ) : (
+                                                        <span>{nov.fijo ? '✓' : '—'}</span>
+                                                    )}
+                                                </TableCell>
+                                                )}
                                                 <TableCell className="text-center">
                                                     {isEditing ? (
                                                         <Checkbox id={`novedad-${nov.id}-permiso`} aria-label={`Permiso: ${nov.nombres ?? nov.cedula ?? nov.id}`} checked={Boolean(nov.permiso)} onCheckedChange={(c) => handleNovedadChange(nov.id, 'permiso', Boolean(c))} />
