@@ -98,8 +98,14 @@ class AnalisisCombustibleTest extends TestCase
         ModulacionItem::create([
             'modulacion_id' => $modulacion->id,
             'placa' => 'copsx001',
-            'ud' => 'RUTA-5',
             'nombres' => 'Juan Pérez',
+            // "la ruta" no es un campo suelto: son los viajes (destinos) del
+            // día — con y sin el array 'destinos' anidado, para probar el
+            // mismo fallback que ya usa el frontend de Modulación.
+            'viajes' => [
+                ['destinos' => [['lugares' => 'Cra 5 #10-20', 'barrio' => 'Centro'], ['lugares' => 'Cl 8 #4-12', 'barrio' => 'San Vicente']]],
+                ['lugares' => 'Cl 20 #3-45', 'barrio' => 'Centro'],
+            ],
         ]);
 
         $response = $this->actingAs($flota)->getJson(route('flota.combustible.detalle-placa', [
@@ -110,7 +116,7 @@ class AnalisisCombustibleTest extends TestCase
 
         $response->assertOk()->assertJson([
             'filas' => [
-                ['fecha' => '2026-10-20', 'km' => 120.5, 'ruta' => 'RUTA-5', 'conductor' => 'Juan Pérez'],
+                ['fecha' => '2026-10-20', 'km' => 120.5, 'ruta' => 'Centro, San Vicente', 'conductor' => 'Juan Pérez'],
             ],
         ]);
     }
