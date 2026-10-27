@@ -16,9 +16,13 @@ class IndicadoresEntregaRangoController extends Controller
     public function index(Request $request): Response
     {
         // ── Filtros ───────────────────────────────────────────────────────────
-        $fechaDesdeFiltro = $request->input('fecha_desde', '');
-        $fechaHastaFiltro = $request->input('fecha_hasta', '');
-        $filterCargo      = $request->input('cargo', '');
+        // (string) y no solo el default de input(): el middleware global
+        // ConvertEmptyStringsToNull convierte '' a null ANTES de llegar aquí, y
+        // Arr::get devuelve ese null tal cual (la llave ya existe) ignorando el
+        // default — sin el cast, un filtro vacío rompe el tipo string de abajo.
+        $fechaDesdeFiltro = (string) $request->input('fecha_desde', '');
+        $fechaHastaFiltro = (string) $request->input('fecha_hasta', '');
+        $filterCargo      = (string) $request->input('cargo', '');
         $filterPlacas     = array_filter(
             array_map('strtoupper', (array) $request->input('placas', []))
         );
