@@ -17,7 +17,7 @@ return [
     'dias_alerta_calibracion' => 15,
 
     // Días de anticipación para alertar sobre contratos próximos a vencer (HU03).
-    'dias_alerta_vencimiento_contrato' => 30,
+    'dias_alerta_vencimiento_contrato' => 35,
 
     // Días de historial considerados para el índice de riesgo del colaborador (HU045).
     'dias_indice_riesgo' => 90,

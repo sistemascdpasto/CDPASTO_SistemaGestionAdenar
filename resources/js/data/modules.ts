@@ -223,6 +223,7 @@ export const modules: ModuleDef[] = [
             { title: 'DPO Academy', slug: 'dpo-academy', icon: BookOpen },
             { title: 'Ausentismo', slug: 'ausentismo', icon: CalendarDays },
             { title: 'SAC', slug: 'sac', icon: FileSpreadsheet },
+            { title: 'Contratos', slug: 'contratos', icon: FileStack },
             { title: 'Asistencia GeoVictoria', slug: 'asistencia-geovictoria', icon: Clock },
         ],
     },

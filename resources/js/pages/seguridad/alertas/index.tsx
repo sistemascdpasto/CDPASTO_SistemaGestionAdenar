@@ -5,9 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
+import { ProrrogarContratoDialog } from '@/pages/gente/colaboradores/prorrogar-contrato-dialog';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
-import { Check } from 'lucide-react';
+import { CalendarPlus, Check, FileDown } from 'lucide-react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
@@ -21,7 +22,7 @@ const TIPO_LABELS: Record<string, string> = {
     no_apto: 'No apto para laborar',
     calibracion_proxima: 'Calibración próxima',
     certificado_vencido: 'Certificado por vencer',
-    contrato_proximo_vencer: 'Contrato próximo a vencer',
+    retiro_proximo: 'Contrato próximo a vencer',
 };
 
 interface AlertaRow {
@@ -30,7 +31,7 @@ interface AlertaRow {
     mensaje: string;
     atendida: boolean;
     created_at: string;
-    colaborador: { nombres: string; apellidos: string } | null;
+    colaborador: { id: number; nombres: string; apellidos: string; fecha_retiro_empresa: string | null } | null;
     alcoholimetro: { codigo: string } | null;
 }
 
@@ -102,7 +103,32 @@ export default function AlertasIndex({ alertas, filters }: { alertas: AlertasPag
                                     <TableCell>{alerta.atendida ? 'Atendida' : 'Pendiente'}</TableCell>
                                     <TableCell className="text-right">
                                         {!alerta.atendida && (
-                                            <div className="flex justify-end">
+                                            <div className="flex justify-end gap-1">
+                                                {alerta.tipo === 'retiro_proximo' && alerta.colaborador && (
+                                                    <>
+                                                        <ProrrogarContratoDialog
+                                                            colaboradorId={alerta.colaborador.id}
+                                                            nombreCompleto={`${alerta.colaborador.nombres} ${alerta.colaborador.apellidos}`}
+                                                            fechaActual={alerta.colaborador.fecha_retiro_empresa}
+                                                            trigger={
+                                                                <Button variant="outline" size="sm">
+                                                                    <CalendarPlus className="mr-1.5 h-3.5 w-3.5" />
+                                                                    Prorrogar
+                                                                </Button>
+                                                            }
+                                                        />
+                                                        <Button variant="outline" size="sm" asChild>
+                                                            <a
+                                                                href={`/modules/gente/contratos/${alerta.colaborador.id}/prorroga-pdf${alerta.colaborador.fecha_retiro_empresa ? `?fecha=${alerta.colaborador.fecha_retiro_empresa}` : ''}`}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                            >
+                                                                <FileDown className="mr-1.5 h-3.5 w-3.5" />
+                                                                PDF
+                                                            </a>
+                                                        </Button>
+                                                    </>
+                                                )}
                                                 <IconActionButton icon={Check} label="Marcar como atendida" onClick={() => atender(alerta)} />
                                             </div>
                                         )}
