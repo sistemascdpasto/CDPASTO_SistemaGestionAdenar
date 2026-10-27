@@ -9,6 +9,7 @@ use App\Models\Flota\VehiculoKilometroDiario;
 use App\Models\Reparto\ModulacionItem;
 use App\Services\Flota\MygeotabKilometrosSyncService;
 use App\Services\Flota\RendimientoCombustibleCalculator;
+use App\Support\ModulacionRuta;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -242,7 +243,7 @@ class AnalisisCombustibleController extends Controller
             return [
                 'fecha' => $fecha,
                 'km' => $km ? round((float) $km->distancia_km, 1) : null,
-                'ruta' => $ruta ? $this->resumenRuta($ruta->viajes) : null,
+                'ruta' => $ruta ? ModulacionRuta::resumen($ruta->viajes) : null,
                 'conductor' => $ruta?->nombres,
                 // Solo presente el día de una tanqueada: los galones de esa
                 // tanqueada y el rendimiento del tramo que cerró (km desde
@@ -253,37 +254,6 @@ class AnalisisCombustibleController extends Controller
         })->values();
 
         return response()->json(['filas' => $filas]);
-    }
-
-    /**
-     * "La ruta" de un ModulacionItem no vive en un campo suelto — son sus
-     * 'viajes' (cada uno con 'destinos': barrio/lugares, o si no tiene
-     * destinos, su propio barrio/lugares top-level — mismo fallback que
-     * obtenerDestinosViaje() en el frontend de Modulación). Se resume como
-     * la lista de barrios/lugares visitados ese día, sin repetir.
-     *
-     * @param  ?array<int, array<string, mixed>>  $viajes
-     */
-    private function resumenRuta(?array $viajes): ?string
-    {
-        if (empty($viajes)) {
-            return null;
-        }
-
-        $paradas = collect($viajes)
-            ->flatMap(function (array $viaje) {
-                $destinos = $viaje['destinos'] ?? [];
-                if (empty($destinos)) {
-                    $destinos = [['lugares' => $viaje['lugares'] ?? '', 'barrio' => $viaje['barrio'] ?? '']];
-                }
-
-                return collect($destinos)->map(fn ($destino) => trim($destino['barrio'] ?? '') ?: trim($destino['lugares'] ?? ''));
-            })
-            ->filter()
-            ->unique()
-            ->values();
-
-        return $paradas->isNotEmpty() ? $paradas->implode(', ') : null;
     }
 
     /**

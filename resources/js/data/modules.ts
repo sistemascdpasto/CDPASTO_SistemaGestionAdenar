@@ -33,6 +33,7 @@ import {
     Stethoscope,
     Star,
     TestTube,
+    Timer,
     Trophy,
     Truck,
     UserCheck,
@@ -196,6 +197,7 @@ export const modules: ModuleDef[] = [
             { title: 'Revisión Aleatoria', slug: 'revision-aleatoria', icon: Dices },
             { title: '5 Por Qué', slug: 'cinco-porques', href: '/cinco-porques', icon: ListChecks },
             { title: 'Catálogo de Clientes', slug: 'clientes', icon: Map, allowedRoles: ['Administrador', 'Reparto'] },
+            { title: 'Vehículos Detenidos', slug: 'vehiculos-detenidos', icon: Timer },
         ],
     },
     {
