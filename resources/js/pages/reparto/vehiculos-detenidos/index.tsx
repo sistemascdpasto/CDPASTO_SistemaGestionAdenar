@@ -127,6 +127,17 @@ export default function VehiculosDetenidosIndex({
         router.post(route('reparto.vehiculos-detenidos.actualizar'), {}, { preserveScroll: true, onFinish: () => setActualizando(false) });
     };
 
+    // Trae lo que ya sincronizó el comando programado (cada 2 min) sin tocar
+    // MyGeotab en vivo. router.reload() ya preserva scroll y estado por
+    // definición, así que no hay flash ni animación de refresco de página —
+    // el mapa y la tabla solo cambian sus datos in-place.
+    useEffect(() => {
+        const intervalo = setInterval(() => {
+            router.reload({ only: ['vehiculos', 'kpis'] });
+        }, 30000);
+        return () => clearInterval(intervalo);
+    }, []);
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Vehículos Detenidos" />
