@@ -54,9 +54,13 @@ class AnalisisCombustibleTest extends TestCase
         $flota = $this->usuarioConRol('Flota');
         Vehiculo::create(['placa' => 'COPSX001', 'is_active' => true, 'meta_km_gl' => 20]);
 
+        // El rendimiento se calcula tanqueada a tanqueada: hacen falta DOS
+        // vouchers 'revisado' para formar un intervalo medible (ver
+        // RendimientoCombustibleCalculatorTest para la cobertura directa
+        // del método). La primera tanqueada solo marca el punto de partida.
+        $this->sembrarVoucher('COPSX001', 5, 70000, '2026-10-19');
         VehiculoKilometroDiario::create(['fecha' => '2026-10-20', 'placa' => 'COPSX001', 'distancia_km' => 100]);
         VehiculoKilometroDiario::create(['fecha' => '2026-10-21', 'placa' => 'COPSX001', 'distancia_km' => 100]);
-
         // Voucher procesado pero sin revisar por Flota: no debe contar en el cruce.
         $this->sembrarVoucher('COPSX001', 5, 70000, '2026-10-20', 'procesado');
         $this->sembrarVoucher('COPSX001', 5, 70000, '2026-10-21', 'revisado');
@@ -66,7 +70,10 @@ class AnalisisCombustibleTest extends TestCase
         $response->assertOk()->assertInertia(fn ($page) => $page
             ->where('por_placa.0.placa', 'COPSX001')
             ->where('por_placa.0.km_total', 200)
-            ->where('por_placa.0.galones_total', 5)
+            ->where('por_placa.0.galones_total', 10)
+            // 200 km recorridos entre la tanqueada del 10-19 y la del
+            // 10-21, con los 5 galones de la que cerró el tramo (10-21) —
+            // no 10 (todos los galones comprados en el período).
             ->where('por_placa.0.rendimiento_km_gl', 40)
             ->where('por_placa.0.meta_km_gl', 20)
             ->where('por_placa.0.cumplimiento_pct', 200));
@@ -78,6 +85,7 @@ class AnalisisCombustibleTest extends TestCase
 
         // Sin Vehiculo::create — la placa solo existe porque MyGeotab reportó
         // kilómetros, nadie la ha registrado en Documentación todavía.
+        $this->sembrarVoucher('COSINREGISTRAR', 5, 70000, '2026-10-15');
         VehiculoKilometroDiario::create(['fecha' => '2026-10-20', 'placa' => 'COSINREGISTRAR', 'distancia_km' => 110]);
         $this->sembrarVoucher('COSINREGISTRAR', 10, 140000, '2026-10-20');
 
@@ -117,6 +125,32 @@ class AnalisisCombustibleTest extends TestCase
         $response->assertOk()->assertJson([
             'filas' => [
                 ['fecha' => '2026-10-20', 'km' => 120.5, 'ruta' => 'Centro, San Vicente', 'conductor' => 'Juan Pérez'],
+            ],
+        ]);
+    }
+
+    public function test_detalle_placa_muestra_galones_y_rendimiento_el_dia_de_cada_tanqueada(): void
+    {
+        $flota = $this->usuarioConRol('Flota');
+
+        $this->sembrarVoucher('COPSX001', 5, 70000, '2026-10-19');
+        VehiculoKilometroDiario::create(['fecha' => '2026-10-20', 'placa' => 'COPSX001', 'distancia_km' => 100]);
+        $this->sembrarVoucher('COPSX001', 5, 70000, '2026-10-20');
+
+        $response = $this->actingAs($flota)->getJson(route('flota.combustible.detalle-placa', [
+            'placa' => 'COPSX001',
+            'desde' => '2026-10-01',
+            'hasta' => '2026-10-31',
+        ]));
+
+        $response->assertOk()->assertJson([
+            'filas' => [
+                [
+                    'fecha' => '2026-10-20',
+                    'km' => 100,
+                    'galones_tanqueada' => 5,
+                    'rendimiento_tanqueada' => 20,
+                ],
             ],
         ]);
     }
@@ -193,17 +227,22 @@ class AnalisisCombustibleTest extends TestCase
         // Con rendimiento pero sin meta asignada (explícito: vehiculos.meta_km_gl
         // tiene default 11 desde que se estableció la meta estándar de la
         // flota, así que "sin meta" ya no es lo que pasa si no se especifica).
+        // Rendimiento tanqueada a tanqueada: hace falta una primera
+        // tanqueada que marque el punto de partida del intervalo.
         Vehiculo::create(['placa' => 'COSINMETA', 'is_active' => true, 'meta_km_gl' => null]);
+        $this->sembrarVoucher('COSINMETA', 5, 70000, '2026-10-19');
         VehiculoKilometroDiario::create(['fecha' => '2026-10-20', 'placa' => 'COSINMETA', 'distancia_km' => 100]);
         $this->sembrarVoucher('COSINMETA', 5, 70000, '2026-10-20');
 
         // Bajo meta (<85%): rendimiento 15 vs meta 20 = 75%.
         Vehiculo::create(['placa' => 'COBAJOMETA', 'is_active' => true, 'meta_km_gl' => 20]);
+        $this->sembrarVoucher('COBAJOMETA', 5, 70000, '2026-10-19');
         VehiculoKilometroDiario::create(['fecha' => '2026-10-20', 'placa' => 'COBAJOMETA', 'distancia_km' => 75]);
         $this->sembrarVoucher('COBAJOMETA', 5, 70000, '2026-10-20');
 
         // Cumple la meta: rendimiento 20 vs meta 20 = 100%.
         Vehiculo::create(['placa' => 'COCUMPLE', 'is_active' => true, 'meta_km_gl' => 20]);
+        $this->sembrarVoucher('COCUMPLE', 5, 70000, '2026-10-19');
         VehiculoKilometroDiario::create(['fecha' => '2026-10-20', 'placa' => 'COCUMPLE', 'distancia_km' => 100]);
         $this->sembrarVoucher('COCUMPLE', 5, 70000, '2026-10-20');
 

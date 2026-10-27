@@ -70,6 +70,11 @@ interface FilaDia {
     km: number | null;
     ruta: string | null;
     conductor: string | null;
+    // Solo presentes el día de una tanqueada: los galones de esa tanqueada
+    // y el rendimiento del tramo que cerró (km desde la tanqueada anterior
+    // ÷ estos galones) — ver RendimientoCombustibleCalculator.
+    galones_tanqueada: number | null;
+    rendimiento_tanqueada: number | null;
 }
 
 interface Kpis {
@@ -145,15 +150,21 @@ function DetallePlacaRow({ placa, desde, hasta }: { placa: string; desde: string
                                     <TableHead>Ruta</TableHead>
                                     <TableHead>Conductor</TableHead>
                                     <TableHead className="text-right">Km</TableHead>
+                                    <TableHead className="text-right">Tanqueada (gl)</TableHead>
+                                    <TableHead className="text-right">Rendimiento tramo</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {filas.map((f) => (
-                                    <TableRow key={f.fecha}>
+                                    <TableRow key={f.fecha} className={f.galones_tanqueada !== null ? 'bg-amber-50 dark:bg-amber-500/10' : undefined}>
                                         <TableCell>{f.fecha}</TableCell>
                                         <TableCell>{f.ruta ?? '—'}</TableCell>
                                         <TableCell>{f.conductor ?? '—'}</TableCell>
                                         <TableCell className="text-right">{f.km ?? '—'}</TableCell>
+                                        <TableCell className="text-right">{f.galones_tanqueada ?? '—'}</TableCell>
+                                        <TableCell className="text-right font-medium">
+                                            {f.rendimiento_tanqueada !== null ? `${f.rendimiento_tanqueada} km/gl` : '—'}
+                                        </TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>

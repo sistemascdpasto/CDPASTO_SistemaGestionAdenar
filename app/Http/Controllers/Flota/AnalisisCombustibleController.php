@@ -8,6 +8,7 @@ use App\Models\Flota\Vehiculo;
 use App\Models\Flota\VehiculoKilometroDiario;
 use App\Models\Reparto\ModulacionItem;
 use App\Services\Flota\MygeotabKilometrosSyncService;
+use App\Services\Flota\RendimientoCombustibleCalculator;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -19,18 +20,20 @@ use Inertia\Response;
 /**
  * Cruza kilómetros diarios (MyGeotab), tanqueadas confirmadas por Flota
  * (vouchers 'revisado') y meta por vehículo para calcular rendimiento
- * km/gl — reemplaza el Excel manual que llevaba el equipo. El detalle por
- * día (ruta/conductor) se trae aparte (detallePlaca) cruzando por placa
+ * km/gl — reemplaza el Excel manual que llevaba el equipo. El rendimiento
+ * se calcula "tanqueada a tanqueada" (ver RendimientoCombustibleCalculator),
+ * no como km totales del período ÷ galones totales del período. El detalle
+ * por día (ruta/conductor) se trae aparte (detallePlaca) cruzando por placa
  * normalizada contra Modulación, igual que ya hace OcupacionCargaController.
  */
 class AnalisisCombustibleController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request, RendimientoCombustibleCalculator $calculadora): Response
     {
         $desde = $request->input('desde', now()->startOfMonth()->toDateString());
         $hasta = $request->input('hasta', now()->toDateString());
 
-        $filas = $this->filasPorPlaca($desde, $hasta);
+        $filas = $this->filasPorPlaca($desde, $hasta, $calculadora);
         $conRendimiento = $filas->filter(fn ($f) => $f['rendimiento_km_gl'] !== null);
 
         return Inertia::render('flota/combustible/index', [
@@ -122,7 +125,7 @@ class AnalisisCombustibleController extends Controller
     /**
      * @return Collection<int, array<string, mixed>>
      */
-    private function filasPorPlaca(string $desde, string $hasta): Collection
+    private function filasPorPlaca(string $desde, string $hasta, RendimientoCombustibleCalculator $calculadora): Collection
     {
         $kmPorPlaca = VehiculoKilometroDiario::query()
             ->whereDate('fecha', '>=', $desde)
@@ -134,6 +137,10 @@ class AnalisisCombustibleController extends Controller
                 'dias_con_datos' => $grupo->count(),
             ]);
 
+        // Galones/total pagado "comprados en el período" (para las
+        // columnas de la tabla, informativo) — distinto del rendimiento,
+        // que usa $calculadora y NO se limita a esta misma ventana de
+        // fechas (ver RendimientoCombustibleCalculator).
         $combustiblePorPlaca = CombustibleVoucher::query()
             ->where('estado', 'revisado')
             ->whereDate('fecha_voucher', '>=', $desde)
@@ -151,7 +158,7 @@ class AnalisisCombustibleController extends Controller
 
         $placas = $kmPorPlaca->keys()->merge($combustiblePorPlaca->keys())->unique();
 
-        return $placas->map(function (string $placa) use ($kmPorPlaca, $combustiblePorPlaca, $metaPorPlaca) {
+        return $placas->map(function (string $placa) use ($kmPorPlaca, $combustiblePorPlaca, $metaPorPlaca, $calculadora, $desde, $hasta) {
             $km = $kmPorPlaca->get($placa, ['km_total' => 0.0, 'dias_con_datos' => 0]);
             $combustible = $combustiblePorPlaca->get($placa, ['galones_total' => 0.0, 'total_pagado' => 0.0]);
             // 11 (meta estándar de la flota) cuando la placa todavía no
@@ -160,11 +167,11 @@ class AnalisisCombustibleController extends Controller
             // meta es null se respeta como "sin meta asignada" intencional.
             $meta = $metaPorPlaca->has($placa) ? $metaPorPlaca->get($placa)->meta_km_gl : 11.0;
 
-            // null (no 0) cuando todavía no hay tanqueadas revisadas en el
-            // rango: un costo/rendimiento en 0 se leería como "gratis", no
-            // como "sin datos".
-            $rendimiento = $combustible['galones_total'] > 0 ? $km['km_total'] / $combustible['galones_total'] : null;
-            $costoKm = $combustible['total_pagado'] > 0 && $km['km_total'] > 0 ? $combustible['total_pagado'] / $km['km_total'] : null;
+            // Rendimiento/costo-por-km: "tanqueada a tanqueada", no km
+            // totales del período ÷ galones totales del período (ver
+            // RendimientoCombustibleCalculator).
+            $rendimientoTanqueadas = $calculadora->resumenEnRango($placa, $desde, $hasta);
+            $rendimiento = $rendimientoTanqueadas['rendimiento_km_gl'];
 
             return [
                 'placa' => $placa,
@@ -172,8 +179,8 @@ class AnalisisCombustibleController extends Controller
                 'dias_con_datos' => $km['dias_con_datos'],
                 'galones_total' => round($combustible['galones_total'], 2),
                 'total_pagado' => round($combustible['total_pagado'], 0),
-                'rendimiento_km_gl' => $rendimiento !== null ? round($rendimiento, 2) : null,
-                'costo_km' => $costoKm !== null ? round($costoKm, 0) : null,
+                'rendimiento_km_gl' => $rendimiento,
+                'costo_km' => $rendimientoTanqueadas['costo_km'],
                 'meta_km_gl' => $meta !== null ? (float) $meta : null,
                 'cumplimiento_pct' => $rendimiento !== null && $meta > 0 ? round($rendimiento / $meta * 100, 1) : null,
             ];
@@ -188,7 +195,7 @@ class AnalisisCombustibleController extends Controller
      * cruce por placa normalizada + keyBy que OcupacionCargaController,
      * aplicado aquí a una sola placa en vez de todas.
      */
-    public function detallePlaca(Request $request): JsonResponse
+    public function detallePlaca(Request $request, RendimientoCombustibleCalculator $calculadora): JsonResponse
     {
         $validado = $request->validate([
             'placa' => ['required', 'string', 'max:50'],
@@ -214,17 +221,34 @@ class AnalisisCombustibleController extends Controller
             ->get()
             ->keyBy(fn (ModulacionItem $item) => $item->modulacion->fecha);
 
-        $fechas = $kmPorFecha->keys()->merge($rutasPorFecha->keys())->unique()->sort()->values();
+        // Tanqueada a tanqueada (ver RendimientoCombustibleCalculator), no
+        // limitado al rango — así el día de una tanqueada dentro del rango
+        // sí puede mostrar su rendimiento aunque la tanqueada anterior que
+        // cerró ese intervalo haya sido antes del filtro.
+        $intervalosPorFecha = $calculadora->intervalosPorPlaca($placa)
+            ->filter(fn (array $i) => $i['fecha_hasta'] >= $validado['desde'] && $i['fecha_hasta'] <= $validado['hasta'])
+            ->keyBy('fecha_hasta');
 
-        $filas = $fechas->map(function (string $fecha) use ($kmPorFecha, $rutasPorFecha) {
+        $fechas = $kmPorFecha->keys()
+            ->merge($rutasPorFecha->keys())
+            ->merge($intervalosPorFecha->keys())
+            ->unique()->sort()->values();
+
+        $filas = $fechas->map(function (string $fecha) use ($kmPorFecha, $rutasPorFecha, $intervalosPorFecha) {
             $km = $kmPorFecha->get($fecha);
             $ruta = $rutasPorFecha->get($fecha);
+            $tanqueada = $intervalosPorFecha->get($fecha);
 
             return [
                 'fecha' => $fecha,
                 'km' => $km ? round((float) $km->distancia_km, 1) : null,
                 'ruta' => $ruta ? $this->resumenRuta($ruta->viajes) : null,
                 'conductor' => $ruta?->nombres,
+                // Solo presente el día de una tanqueada: los galones de esa
+                // tanqueada y el rendimiento del tramo que cerró (km desde
+                // la tanqueada anterior ÷ estos galones).
+                'galones_tanqueada' => $tanqueada['galones'] ?? null,
+                'rendimiento_tanqueada' => $tanqueada['rendimiento_km_gl'] ?? null,
             ];
         })->values();
 
