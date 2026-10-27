@@ -55,7 +55,7 @@ class MygeotabSyncTest extends TestCase
         });
     }
 
-    public function test_sincroniza_y_suma_km_por_dispositivo_normalizando_la_placa(): void
+    public function test_sincroniza_y_suma_km_por_dispositivo_quitando_el_prefijo_co_de_mygeotab(): void
     {
         $this->fakearMygeotab();
 
@@ -66,16 +66,50 @@ class MygeotabSyncTest extends TestCase
         $this->assertSame(2, $resumen['vehiculos_actualizados']);
         $this->assertSame(3, $resumen['viajes_procesados']);
 
+        // MyGeotab reporta "COPSX001"/"colju894", pero la placa real (la
+        // que usan Documentación, Planeación de Ruta y los vouchers) es
+        // "PSX001"/"LJU894" — sin el prefijo "CO" que antepone esta cuenta.
         $this->assertDatabaseHas('vehiculo_kilometros_diarios', [
             'fecha' => '2026-10-23',
-            'placa' => 'COPSX001',
+            'placa' => 'PSX001',
             'distancia_km' => 70.75,
         ]);
         $this->assertDatabaseHas('vehiculo_kilometros_diarios', [
             'fecha' => '2026-10-23',
-            'placa' => 'COLJU894',
+            'placa' => 'LJU894',
             'distancia_km' => 100,
         ]);
+    }
+
+    public function test_no_quita_co_de_una_placa_que_no_tiene_el_prefijo(): void
+    {
+        Http::fake(function ($request) {
+            $metodo = $request['method'] ?? null;
+
+            if ($metodo === 'Authenticate') {
+                return Http::response(['result' => ['credentials' => ['sessionId' => 'sesion-123']]]);
+            }
+
+            if ($metodo === 'Get' && ($request['params']['typeName'] ?? null) === 'Device') {
+                // 6 caracteres, sin prefijo "CO" de MyGeotab: debe quedar
+                // tal cual, sin truncarla por error.
+                return Http::response(['result' => [
+                    ['id' => 'b1', 'name' => 'ABC123', 'licensePlate' => 'ABC123'],
+                ]]);
+            }
+
+            if ($metodo === 'Get' && ($request['params']['typeName'] ?? null) === 'Trip') {
+                return Http::response(['result' => [
+                    ['device' => ['id' => 'b1'], 'distance' => 30, 'start' => '2026-10-23T10:00:00.000Z'],
+                ]]);
+            }
+
+            return Http::response(['error' => ['name' => 'Desconocido', 'message' => 'Método no mockeado']], 500);
+        });
+
+        app(MygeotabKilometrosSyncService::class)->sincronizarDia(Carbon::parse('2026-10-23', config('app.timezone')));
+
+        $this->assertDatabaseHas('vehiculo_kilometros_diarios', ['fecha' => '2026-10-23', 'placa' => 'ABC123']);
     }
 
     public function test_resincronizar_el_mismo_dia_actualiza_en_vez_de_duplicar(): void
