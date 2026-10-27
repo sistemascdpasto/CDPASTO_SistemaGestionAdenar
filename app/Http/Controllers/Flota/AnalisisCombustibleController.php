@@ -154,7 +154,11 @@ class AnalisisCombustibleController extends Controller
         return $placas->map(function (string $placa) use ($kmPorPlaca, $combustiblePorPlaca, $metaPorPlaca) {
             $km = $kmPorPlaca->get($placa, ['km_total' => 0.0, 'dias_con_datos' => 0]);
             $combustible = $combustiblePorPlaca->get($placa, ['galones_total' => 0.0, 'total_pagado' => 0.0]);
-            $meta = $metaPorPlaca->get($placa)?->meta_km_gl;
+            // 11 (meta estándar de la flota) cuando la placa todavía no
+            // tiene fila en Documentación (ej. la reporta MyGeotab pero
+            // nadie la ha registrado ahí) — solo si la fila SÍ existe y su
+            // meta es null se respeta como "sin meta asignada" intencional.
+            $meta = $metaPorPlaca->has($placa) ? $metaPorPlaca->get($placa)->meta_km_gl : 11.0;
 
             // null (no 0) cuando todavía no hay tanqueadas revisadas en el
             // rango: un costo/rendimiento en 0 se leería como "gratis", no
@@ -219,7 +223,7 @@ class AnalisisCombustibleController extends Controller
             return [
                 'fecha' => $fecha,
                 'km' => $km ? round((float) $km->distancia_km, 1) : null,
-                'ruta' => $ruta?->ud,
+                'ruta' => $ruta ? $this->resumenRuta($ruta->viajes) : null,
                 'conductor' => $ruta?->nombres,
             ];
         })->values();
@@ -227,15 +231,57 @@ class AnalisisCombustibleController extends Controller
         return response()->json(['filas' => $filas]);
     }
 
-    public function actualizarMeta(Request $request, Vehiculo $vehiculo): RedirectResponse
+    /**
+     * "La ruta" de un ModulacionItem no vive en un campo suelto — son sus
+     * 'viajes' (cada uno con 'destinos': barrio/lugares, o si no tiene
+     * destinos, su propio barrio/lugares top-level — mismo fallback que
+     * obtenerDestinosViaje() en el frontend de Modulación). Se resume como
+     * la lista de barrios/lugares visitados ese día, sin repetir.
+     *
+     * @param  ?array<int, array<string, mixed>>  $viajes
+     */
+    private function resumenRuta(?array $viajes): ?string
+    {
+        if (empty($viajes)) {
+            return null;
+        }
+
+        $paradas = collect($viajes)
+            ->flatMap(function (array $viaje) {
+                $destinos = $viaje['destinos'] ?? [];
+                if (empty($destinos)) {
+                    $destinos = [['lugares' => $viaje['lugares'] ?? '', 'barrio' => $viaje['barrio'] ?? '']];
+                }
+
+                return collect($destinos)->map(fn ($destino) => trim($destino['barrio'] ?? '') ?: trim($destino['lugares'] ?? ''));
+            })
+            ->filter()
+            ->unique()
+            ->values();
+
+        return $paradas->isNotEmpty() ? $paradas->implode(', ') : null;
+    }
+
+    /**
+     * La tabla del dashboard está agrupada por placa (texto libre, viene de
+     * MyGeotab/vouchers), no por vehiculo_id — por eso la ruta recibe la
+     * placa, no un Vehiculo con route-model-binding (eso causaba un 404: el
+     * binding por defecto busca por id, y la placa nunca calza con un id
+     * numérico). firstOrCreate por si la placa todavía no tiene fila en
+     * Documentación (ej. un vehículo que ya reporta a MyGeotab pero aún no
+     * se ha registrado formalmente).
+     */
+    public function actualizarMeta(Request $request, string $placa): RedirectResponse
     {
         $validado = $request->validate([
             'meta_km_gl' => ['nullable', 'numeric', 'min:0', 'max:999.99'],
         ]);
 
+        $placa = strtoupper(trim($placa));
+        $vehiculo = Vehiculo::query()->firstOrCreate(['placa' => $placa]);
         $vehiculo->update($validado);
 
-        return back()->with('status', ['type' => 'success', 'message' => "Meta de {$vehiculo->placa} actualizada."]);
+        return back()->with('status', ['type' => 'success', 'message' => "Meta de {$placa} actualizada."]);
     }
 
     /**

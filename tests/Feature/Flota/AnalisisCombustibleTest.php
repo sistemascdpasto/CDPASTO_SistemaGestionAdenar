@@ -72,6 +72,22 @@ class AnalisisCombustibleTest extends TestCase
             ->where('por_placa.0.cumplimiento_pct', 200));
     }
 
+    public function test_una_placa_sin_fila_en_documentacion_muestra_la_meta_estandar_de_11(): void
+    {
+        $flota = $this->usuarioConRol('Flota');
+
+        // Sin Vehiculo::create — la placa solo existe porque MyGeotab reportó
+        // kilómetros, nadie la ha registrado en Documentación todavía.
+        VehiculoKilometroDiario::create(['fecha' => '2026-10-20', 'placa' => 'COSINREGISTRAR', 'distancia_km' => 110]);
+        $this->sembrarVoucher('COSINREGISTRAR', 10, 140000, '2026-10-20');
+
+        $response = $this->actingAs($flota)->get(route('flota.combustible.index', ['desde' => '2026-10-01', 'hasta' => '2026-10-31']));
+
+        $response->assertOk()->assertInertia(fn ($page) => $page
+            ->where('por_placa.0.meta_km_gl', 11)
+            ->where('por_placa.0.cumplimiento_pct', 100));
+    }
+
     public function test_detalle_placa_cruza_km_con_la_ruta_de_modulacion_por_dia(): void
     {
         $flota = $this->usuarioConRol('Flota');
@@ -82,8 +98,14 @@ class AnalisisCombustibleTest extends TestCase
         ModulacionItem::create([
             'modulacion_id' => $modulacion->id,
             'placa' => 'copsx001',
-            'ud' => 'RUTA-5',
             'nombres' => 'Juan Pérez',
+            // "la ruta" no es un campo suelto: son los viajes (destinos) del
+            // día — con y sin el array 'destinos' anidado, para probar el
+            // mismo fallback que ya usa el frontend de Modulación.
+            'viajes' => [
+                ['destinos' => [['lugares' => 'Cra 5 #10-20', 'barrio' => 'Centro'], ['lugares' => 'Cl 8 #4-12', 'barrio' => 'San Vicente']]],
+                ['lugares' => 'Cl 20 #3-45', 'barrio' => 'Centro'],
+            ],
         ]);
 
         $response = $this->actingAs($flota)->getJson(route('flota.combustible.detalle-placa', [
@@ -94,7 +116,7 @@ class AnalisisCombustibleTest extends TestCase
 
         $response->assertOk()->assertJson([
             'filas' => [
-                ['fecha' => '2026-10-20', 'km' => 120.5, 'ruta' => 'RUTA-5', 'conductor' => 'Juan Pérez'],
+                ['fecha' => '2026-10-20', 'km' => 120.5, 'ruta' => 'Centro, San Vicente', 'conductor' => 'Juan Pérez'],
             ],
         ]);
     }
@@ -104,11 +126,28 @@ class AnalisisCombustibleTest extends TestCase
         $flota = $this->usuarioConRol('Flota');
         $vehiculo = Vehiculo::create(['placa' => 'COPSX001', 'is_active' => true]);
 
-        $this->actingAs($flota)->patch(route('flota.combustible.meta.update', $vehiculo), [
+        // La ruta recibe la placa (string), igual que la manda el frontend
+        // (la tabla del dashboard está agrupada por placa, no por
+        // vehiculo_id) — pasar el modelo aquí (que Laravel resolvería a su
+        // id) escondería el 404 real que esto tuvo en producción.
+        $this->actingAs($flota)->patch(route('flota.combustible.meta.update', 'COPSX001'), [
             'meta_km_gl' => 18.5,
         ])->assertRedirect();
 
         $this->assertEquals(18.5, $vehiculo->fresh()->meta_km_gl);
+    }
+
+    public function test_actualizar_la_meta_de_una_placa_sin_vehiculo_registrado_lo_crea(): void
+    {
+        $flota = $this->usuarioConRol('Flota');
+
+        // Una placa que MyGeotab reporta pero que todavía no está en
+        // Documentación (vehiculos): debe poder recibir una meta igual.
+        $this->actingAs($flota)->patch(route('flota.combustible.meta.update', 'conuevo123'), [
+            'meta_km_gl' => 9.5,
+        ])->assertRedirect();
+
+        $this->assertEquals(9.5, Vehiculo::where('placa', 'CONUEVO123')->first()?->meta_km_gl);
     }
 
     public function test_un_colaborador_no_puede_ver_el_dashboard_de_combustible(): void
@@ -179,5 +218,44 @@ class AnalisisCombustibleTest extends TestCase
             ->where('distribucion_cumplimiento.2.total', 1)
             ->where('distribucion_cumplimiento.4.rango', 'Cumple la meta (≥100%)')
             ->where('distribucion_cumplimiento.4.total', 1));
+    }
+
+    /**
+     * Confirma que borrar un voucher de verdad (no soft-delete:
+     * CombustibleVoucher no usa SoftDeletes) se refleja de inmediato en el
+     * dashboard — ni el modelo ni el controlador tienen ninguna capa de
+     * cache que pudiera dejar un valor viejo.
+     */
+    public function test_borrar_un_voucher_actualiza_el_dashboard_de_inmediato(): void
+    {
+        $flota = $this->usuarioConRol('Flota');
+
+        VehiculoKilometroDiario::create(['fecha' => '2026-10-20', 'placa' => 'COPSX001', 'distancia_km' => 100]);
+        $colaborador = Colaborador::create([
+            'cedula' => '1002003005',
+            'nombres' => 'Prueba',
+            'apellidos' => 'Voucher',
+            'cargo' => 'Conductor',
+            'turno' => 'manana',
+            'area' => 'Ruta Norte',
+            'is_active' => true,
+        ]);
+        $voucher = CombustibleVoucher::create([
+            'colaborador_id' => $colaborador->id,
+            'placa' => 'COPSX001',
+            'foto_path' => 'x.jpg',
+            'estado' => 'revisado',
+            'galones' => 5,
+            'total_pagado' => 70000,
+            'fecha_voucher' => '2026-10-20',
+        ]);
+
+        $antes = $this->actingAs($flota)->get(route('flota.combustible.index', ['desde' => '2026-10-01', 'hasta' => '2026-10-31']));
+        $antes->assertInertia(fn ($page) => $page->where('por_placa.0.galones_total', 5)->where('tendencia_diaria.0.galones', 5));
+
+        $voucher->delete();
+
+        $despues = $this->actingAs($flota)->get(route('flota.combustible.index', ['desde' => '2026-10-01', 'hasta' => '2026-10-31']));
+        $despues->assertInertia(fn ($page) => $page->where('por_placa.0.galones_total', 0)->where('tendencia_diaria.0.galones', 0));
     }
 }
