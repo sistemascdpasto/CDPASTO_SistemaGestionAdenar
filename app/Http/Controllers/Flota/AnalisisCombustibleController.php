@@ -154,7 +154,11 @@ class AnalisisCombustibleController extends Controller
         return $placas->map(function (string $placa) use ($kmPorPlaca, $combustiblePorPlaca, $metaPorPlaca) {
             $km = $kmPorPlaca->get($placa, ['km_total' => 0.0, 'dias_con_datos' => 0]);
             $combustible = $combustiblePorPlaca->get($placa, ['galones_total' => 0.0, 'total_pagado' => 0.0]);
-            $meta = $metaPorPlaca->get($placa)?->meta_km_gl;
+            // 11 (meta estándar de la flota) cuando la placa todavía no
+            // tiene fila en Documentación (ej. la reporta MyGeotab pero
+            // nadie la ha registrado ahí) — solo si la fila SÍ existe y su
+            // meta es null se respeta como "sin meta asignada" intencional.
+            $meta = $metaPorPlaca->has($placa) ? $metaPorPlaca->get($placa)->meta_km_gl : 11.0;
 
             // null (no 0) cuando todavía no hay tanqueadas revisadas en el
             // rango: un costo/rendimiento en 0 se leería como "gratis", no

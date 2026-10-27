@@ -464,7 +464,10 @@ export default function AnalisisCombustibleIndex({
                                             <Input
                                                 type="number"
                                                 step="0.01"
-                                                className="w-20 text-right"
+                                                // ml-auto (no solo text-right en el <TableCell>): el Input de
+                                                // shadcn es display:flex, y text-align del padre no afecta a
+                                                // elementos de bloque — sin esto quedaba pegado a la izquierda.
+                                                className="ml-auto w-20 text-right"
                                                 defaultValue={fila.meta_km_gl ?? ''}
                                                 onChange={(e) => setMetas({ ...metas, [fila.placa]: e.target.value })}
                                                 onBlur={() => guardarMeta(fila.placa)}

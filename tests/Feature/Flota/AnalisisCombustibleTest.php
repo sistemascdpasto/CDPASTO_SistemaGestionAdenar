@@ -72,6 +72,22 @@ class AnalisisCombustibleTest extends TestCase
             ->where('por_placa.0.cumplimiento_pct', 200));
     }
 
+    public function test_una_placa_sin_fila_en_documentacion_muestra_la_meta_estandar_de_11(): void
+    {
+        $flota = $this->usuarioConRol('Flota');
+
+        // Sin Vehiculo::create — la placa solo existe porque MyGeotab reportó
+        // kilómetros, nadie la ha registrado en Documentación todavía.
+        VehiculoKilometroDiario::create(['fecha' => '2026-10-20', 'placa' => 'COSINREGISTRAR', 'distancia_km' => 110]);
+        $this->sembrarVoucher('COSINREGISTRAR', 10, 140000, '2026-10-20');
+
+        $response = $this->actingAs($flota)->get(route('flota.combustible.index', ['desde' => '2026-10-01', 'hasta' => '2026-10-31']));
+
+        $response->assertOk()->assertInertia(fn ($page) => $page
+            ->where('por_placa.0.meta_km_gl', 11)
+            ->where('por_placa.0.cumplimiento_pct', 100));
+    }
+
     public function test_detalle_placa_cruza_km_con_la_ruta_de_modulacion_por_dia(): void
     {
         $flota = $this->usuarioConRol('Flota');
