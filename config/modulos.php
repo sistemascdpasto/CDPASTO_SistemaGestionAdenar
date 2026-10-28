@@ -82,9 +82,11 @@ return [
         'ausentismo' => ['label' => 'Ausentismo', 'roles' => ['Gente', 'Seguridad', 'Reparto', 'Flota']],
         'sac' => ['label' => 'SAC', 'roles' => ['Gente', 'Seguridad', 'Reparto', 'Flota']],
         'asistencia-geovictoria' => ['label' => 'Asistencia GeoVictoria', 'roles' => ['Gente', 'Reparto']],
+        'alertas' => 'Alertas',
     ],
 
     'flota' => [
+        'alertas' => 'Alertas',
         'vehiculos' => 'Documentación',
         'disponibilidad' => 'Disponibilidad',
         'carretas' => 'Carretas',

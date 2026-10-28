@@ -227,6 +227,7 @@ export const modules: ModuleDef[] = [
             { title: 'SAC', slug: 'sac', icon: FileSpreadsheet },
             { title: 'Contratos', slug: 'contratos', icon: FileStack },
             { title: 'Asistencia GeoVictoria', slug: 'asistencia-geovictoria', icon: Clock },
+            { title: 'Alertas', slug: 'alertas', icon: BellRing },
         ],
     },
     {
@@ -235,6 +236,7 @@ export const modules: ModuleDef[] = [
         icon: Car,
         accent: '#2B6CB0',
         submodules: [
+            { title: 'Alertas', slug: 'alertas', icon: BellRing },
             { title: 'Disponibilidad', slug: 'disponibilidad', icon: BarChart3 },
             { title: 'Documentación', slug: 'vehiculos', icon: Truck },
             { title: 'Carretas', slug: 'carretas', icon: Container },

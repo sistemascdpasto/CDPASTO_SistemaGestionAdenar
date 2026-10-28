@@ -3,14 +3,13 @@
 namespace App\Notifications\Seguridad;
 
 use App\Models\Seguridad\Alerta;
+use App\Support\AlertaCatalogo;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 class AlertaGenerada extends Notification
 {
-    public function __construct(private readonly Alerta $alerta)
-    {
-    }
+    public function __construct(private readonly Alerta $alerta) {}
 
     /**
      * @return array<int, string>
@@ -20,25 +19,44 @@ class AlertaGenerada extends Notification
         return ['mail'];
     }
 
-    private const TIPO_LABELS = [
-        'prueba_positiva' => 'Prueba de alcoholemia positiva',
-        'salud_mala' => 'Estado de salud: Malo',
-        'no_apto' => 'Colaborador No Apto para laborar',
-        'calibracion_proxima' => 'Calibración de alcoholímetro próxima',
-        'certificado_vencido' => 'Certificado de alcoholímetro por vencer',
-        'retiro_proximo' => 'Contrato próximo a vencer',
-    ];
-
     public function toMail(object $notifiable): MailMessage
     {
-        $titulo = self::TIPO_LABELS[$this->alerta->tipo] ?? 'Alerta del módulo de Seguridad';
+        $pilar = $this->alerta->pilar ?? AlertaCatalogo::pilarDeTipo($this->alerta->tipo);
+        $titulo = AlertaCatalogo::labelDeTipo($this->alerta->tipo);
+        $nombrePilar = AlertaCatalogo::nombrePilar($pilar);
+        [$textoAccion, $urlAccion] = $this->accion($pilar);
 
         return (new MailMessage)
-            ->subject("ADENAR Seguridad: {$titulo}")
-            ->greeting('Nueva alerta en el módulo de Seguridad')
+            ->subject("ADENAR {$nombrePilar}: {$titulo}")
+            ->greeting("Nueva alerta en el módulo de {$nombrePilar}")
             ->line($titulo)
             ->line($this->alerta->mensaje)
-            ->action('Ver alertas', route('seguridad.alertas.index'))
+            ->action($textoAccion, $urlAccion)
             ->line('Este es un mensaje automático del Sistema Integral de Gestión ADENAR.');
+    }
+
+    /**
+     * @return array{0: string, 1: string}
+     */
+    private function accion(string $pilar): array
+    {
+        $contexto = $this->alerta->contexto ?? [];
+
+        // Reparto no tiene pantalla de Alertas propia (ver plan) — se enlaza
+        // directo al dato más útil: el mapa, o si no hay coordenadas, al
+        // dashboard de Vehículos Detenidos que ya hace ese trabajo.
+        if ($pilar === 'reparto') {
+            if (isset($contexto['latitud'], $contexto['longitud'])) {
+                return ['Ver ubicación en el mapa', "https://www.google.com/maps?q={$contexto['latitud']},{$contexto['longitud']}"];
+            }
+
+            return ['Ver vehículos detenidos', route('reparto.vehiculos-detenidos.index')];
+        }
+
+        if ($pilar === 'flota' && isset($contexto['vehiculo_id'])) {
+            return ['Ver documentación del vehículo', route('flota.vehiculos.show', $contexto['vehiculo_id'])];
+        }
+
+        return ['Ver alertas', route("{$pilar}.alertas.index")];
     }
 }

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Flota\ActaTallerController;
+use App\Http\Controllers\Flota\AlertaController;
 use App\Http\Controllers\Flota\AnalisisCombustibleController;
 use App\Http\Controllers\Flota\CarretaController;
 use App\Http\Controllers\Flota\CombustibleVoucherController;
@@ -16,6 +17,9 @@ Route::middleware(['auth', 'active', 'role:Administrador|Flota', 'submodule.acce
     ->prefix('modules/flota')
     ->name('flota.')
     ->group(function () {
+        Route::get('alertas', [AlertaController::class, 'index'])->name('alertas.index');
+        Route::patch('alertas/{alerta}/atender', [AlertaController::class, 'atender'])->name('alertas.atender');
+
         // "destroy" se registra aparte con role:Administrador (ver abajo):
         // Flota puede ver/crear/editar/marcar disponibilidad, pero no eliminar.
         Route::resource('vehiculos', VehiculoController::class)

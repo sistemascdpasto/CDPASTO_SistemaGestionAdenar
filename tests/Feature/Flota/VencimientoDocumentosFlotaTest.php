@@ -3,8 +3,9 @@
 namespace Tests\Feature\Flota;
 
 use App\Models\Flota\Vehiculo;
+use App\Models\Seguridad\Alerta;
 use App\Models\User;
-use App\Notifications\Flota\VencimientoDocumentoVehiculo;
+use App\Notifications\Seguridad\AlertaGenerada;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Spatie\Permission\Models\Role;
@@ -23,7 +24,7 @@ class VencimientoDocumentosFlotaTest extends TestCase
     {
         parent::setUp();
 
-        foreach (['Administrador', 'Flota', 'Reparto', 'Seguridad'] as $rol) {
+        foreach (['Administrador', 'Flota', 'Reparto', 'Seguridad', 'Gente'] as $rol) {
             Role::create(['name' => $rol, 'guard_name' => 'web']);
             $user = User::factory()->create(['email' => strtolower($rol).'@adenar.test']);
             $user->assignRole($rol);
@@ -48,8 +49,14 @@ class VencimientoDocumentosFlotaTest extends TestCase
 
         $this->artisan('flota:revisar-vencimiento-documentos')->assertSuccessful();
 
-        Notification::assertSentTo($this->correoDestino(), VencimientoDocumentoVehiculo::class);
-        Notification::assertNotSentTo($this->usuarios['Seguridad'], VencimientoDocumentoVehiculo::class);
+        Notification::assertSentTo($this->correoDestino(), AlertaGenerada::class);
+        Notification::assertNotSentTo($this->usuarios['Seguridad'], AlertaGenerada::class);
+        Notification::assertNotSentTo($this->usuarios['Gente'], AlertaGenerada::class);
+
+        $this->assertDatabaseHas('alertas', [
+            'tipo' => 'vencimiento_soat',
+            'pilar' => 'flota',
+        ]);
     }
 
     public function test_it_does_not_notify_soat_still_far_from_expiring(): void
@@ -65,6 +72,7 @@ class VencimientoDocumentosFlotaTest extends TestCase
         $this->artisan('flota:revisar-vencimiento-documentos')->assertSuccessful();
 
         Notification::assertNothingSent();
+        $this->assertDatabaseCount('alertas', 0);
     }
 
     public function test_it_notifies_tecnomecanica_30_days_before_but_not_earlier(): void
@@ -84,8 +92,8 @@ class VencimientoDocumentosFlotaTest extends TestCase
 
         $this->artisan('flota:revisar-vencimiento-documentos')->assertSuccessful();
 
-        Notification::assertSentTo($this->usuarios['Flota'], VencimientoDocumentoVehiculo::class);
-        Notification::assertSentTimes(VencimientoDocumentoVehiculo::class, 3); // 1 vehículo (RTM30) x 3 destinatarios
+        Notification::assertSentTo($this->usuarios['Flota'], AlertaGenerada::class);
+        Notification::assertSentTimes(AlertaGenerada::class, 3); // 1 vehículo (RTM30) x 3 destinatarios
     }
 
     public function test_it_does_not_notify_twice_for_the_same_expiry_date(): void
@@ -101,7 +109,8 @@ class VencimientoDocumentosFlotaTest extends TestCase
         $this->artisan('flota:revisar-vencimiento-documentos');
         $this->artisan('flota:revisar-vencimiento-documentos');
 
-        Notification::assertSentTimes(VencimientoDocumentoVehiculo::class, 3);
+        Notification::assertSentTimes(AlertaGenerada::class, 3);
+        $this->assertDatabaseCount('alertas', 1);
     }
 
     public function test_it_notifies_again_when_the_expiry_date_changes(): void
@@ -115,12 +124,13 @@ class VencimientoDocumentosFlotaTest extends TestCase
         ]);
 
         $this->artisan('flota:revisar-vencimiento-documentos');
-        Notification::assertSentTimes(VencimientoDocumentoVehiculo::class, 3);
+        Notification::assertSentTimes(AlertaGenerada::class, 3);
 
         $vehiculo->update(['fecha_vencimiento_soat' => now()->addDays(12)->toDateString()]);
         $this->artisan('flota:revisar-vencimiento-documentos');
 
-        Notification::assertSentTimes(VencimientoDocumentoVehiculo::class, 6);
+        Notification::assertSentTimes(AlertaGenerada::class, 6);
+        $this->assertDatabaseCount('alertas', 2);
     }
 
     public function test_it_also_notifies_already_expired_documents(): void
@@ -135,7 +145,7 @@ class VencimientoDocumentosFlotaTest extends TestCase
 
         $this->artisan('flota:revisar-vencimiento-documentos')->assertSuccessful();
 
-        Notification::assertSentTimes(VencimientoDocumentoVehiculo::class, 3);
+        Notification::assertSentTimes(AlertaGenerada::class, 3);
     }
 
     public function test_the_mail_message_renders_with_the_placa_and_expiry_date(): void
@@ -146,14 +156,17 @@ class VencimientoDocumentosFlotaTest extends TestCase
             'fecha_vencimiento_soat' => now()->addDays(15)->toDateString(),
         ]);
 
-        $mail = (new VencimientoDocumentoVehiculo(
-            $vehiculo,
-            VencimientoDocumentoVehiculo::TIPO_SOAT,
-            $vehiculo->fecha_vencimiento_soat,
-        ))->toMail($this->usuarios['Flota']);
+        $alerta = Alerta::create([
+            'tipo' => 'vencimiento_soat',
+            'mensaje' => "El SOAT del vehículo con placa {$vehiculo->placa} vence en 15 días.",
+            'contexto' => ['vehiculo_id' => $vehiculo->id],
+        ]);
 
-        $this->assertStringContainsString('MAIL01', $mail->subject);
+        $mail = (new AlertaGenerada($alerta))->toMail($this->usuarios['Flota']);
+
         $this->assertStringContainsString('SOAT', $mail->subject);
+        $this->assertStringContainsString('MAIL01', $mail->introLines[1] ?? implode(' ', $mail->introLines));
         $this->assertNotEmpty($mail->actionUrl);
+        $this->assertStringContainsString((string) $vehiculo->id, $mail->actionUrl);
     }
 }

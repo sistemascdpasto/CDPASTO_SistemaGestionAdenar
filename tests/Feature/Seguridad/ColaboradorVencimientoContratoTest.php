@@ -4,6 +4,8 @@ namespace Tests\Feature\Seguridad;
 
 use App\Models\Seguridad\Alerta;
 use App\Models\Seguridad\Colaborador;
+use App\Models\User;
+use App\Notifications\Seguridad\AlertaGenerada;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Spatie\Permission\Models\Role;
@@ -17,9 +19,13 @@ class ColaboradorVencimientoContratoTest extends TestCase
     {
         parent::setUp();
 
-        // AlertaNotifier busca destinatarios con estos roles al notificar.
+        // AlertaNotifier busca destinatarios con estos roles al notificar:
+        // Administrador + Gente (dueño del tipo 'retiro_proximo'). Antes del
+        // fix se le notificaba por error a Seguridad en vez de a Gente — ver
+        // test_notifica_a_gente_y_no_a_seguridad.
         Role::create(['name' => 'Administrador', 'guard_name' => 'web']);
         Role::create(['name' => 'Seguridad', 'guard_name' => 'web']);
+        Role::create(['name' => 'Gente', 'guard_name' => 'web']);
     }
 
     private function colaborador(array $overrides = []): Colaborador
@@ -45,7 +51,25 @@ class ColaboradorVencimientoContratoTest extends TestCase
 
         $this->assertSame(1, Alerta::where('colaborador_id', $colaborador->id)
             ->where('tipo', 'retiro_proximo')
+            ->where('pilar', 'gente')
             ->count());
+    }
+
+    public function test_notifica_a_gente_y_no_a_seguridad(): void
+    {
+        Notification::fake();
+
+        $gente = User::factory()->create(['email' => 'gente@ejemplo.com']);
+        $gente->assignRole('Gente');
+        $seguridad = User::factory()->create(['email' => 'seguridad@ejemplo.com']);
+        $seguridad->assignRole('Seguridad');
+
+        $this->colaborador(['fecha_retiro_empresa' => now()->addDays(10)->toDateString()]);
+
+        $this->artisan('seguridad:revisar-vencimiento-contratos')->assertSuccessful();
+
+        Notification::assertSentTo($gente, AlertaGenerada::class);
+        Notification::assertNotSentTo($seguridad, AlertaGenerada::class);
     }
 
     public function test_it_does_not_duplicate_the_alert_on_a_second_run(): void

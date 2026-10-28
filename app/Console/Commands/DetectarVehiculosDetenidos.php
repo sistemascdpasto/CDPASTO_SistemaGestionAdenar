@@ -2,17 +2,13 @@
 
 namespace App\Console\Commands;
 
-use App\Enums\Role;
 use App\Models\Flota\VehiculoEstadoMygeotab;
 use App\Models\Reparto\ModulacionItem;
-use App\Models\User;
-use App\Notifications\Reparto\VehiculoDetenido;
+use App\Models\Seguridad\Alerta;
 use App\Services\Flota\VehiculoDetenidoDetector;
+use App\Services\Seguridad\AlertaNotifier;
 use App\Support\Distancia;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Notification;
-use Throwable;
 
 /**
  * Corre cada 5 minutos (ver routes/console.php): actualiza el estado de
@@ -60,10 +56,6 @@ class DetectarVehiculosDetenidos extends Command
             return self::SUCCESS;
         }
 
-        $destinatarios = User::role([Role::Reparto->value, Role::Administrador->value])
-            ->whereNotNull('email')
-            ->get();
-
         $notificados = 0;
 
         foreach ($candidatos as $estado) {
@@ -77,17 +69,18 @@ class DetectarVehiculosDetenidos extends Command
                 continue;
             }
 
-            foreach ($destinatarios as $destinatario) {
-                try {
-                    Notification::send($destinatario, new VehiculoDetenido($estado));
-                } catch (Throwable $e) {
-                    Log::warning('No se pudo enviar la notificación de vehículo detenido.', [
-                        'placa' => $estado->placa,
-                        'destinatario' => $destinatario->email,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
-            }
+            $minutos = (int) round($estado->detenido_desde->diffInMinutes(now()));
+
+            $alerta = Alerta::create([
+                'tipo' => 'vehiculo_detenido',
+                'mensaje' => "La placa {$estado->placa} lleva detenida {$minutos} minutos (desde las {$estado->detenido_desde->format('H:i')}).",
+                'contexto' => [
+                    'placa' => $estado->placa,
+                    'latitud' => $estado->latitud,
+                    'longitud' => $estado->longitud,
+                ],
+            ]);
+            AlertaNotifier::notificar($alerta);
 
             $notificados++;
         }

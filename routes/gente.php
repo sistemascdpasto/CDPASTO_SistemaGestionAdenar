@@ -1,11 +1,12 @@
-﻿<?php
+<?php
 
+use App\Http\Controllers\Gente\AlertaController;
 use App\Http\Controllers\Gente\AusentismoController;
-use App\Http\Controllers\Gente\ContratosController;
 use App\Http\Controllers\Gente\ColaboradorCalificacionController;
 use App\Http\Controllers\Gente\ColaboradorController;
 use App\Http\Controllers\Gente\ColaboradorEntrenamientoController;
 use App\Http\Controllers\Gente\ColaboradorImportController;
+use App\Http\Controllers\Gente\ContratosController;
 use App\Http\Controllers\Gente\CorreccionMarcacionController;
 use App\Http\Controllers\Gente\DpoAcademyController;
 use App\Http\Controllers\Gente\GeovictoriaAsistenciaController;
@@ -28,6 +29,9 @@ Route::middleware(['auth', 'active', 'role:Administrador|Gente', 'submodule.acce
     ->prefix('modules/gente')
     ->name('gente.')
     ->group(function () {
+        Route::get('alertas', [AlertaController::class, 'index'])->name('alertas.index');
+        Route::patch('alertas/{alerta}/atender', [AlertaController::class, 'atender'])->name('alertas.atender');
+
         // Rutas específicas de "colaboradores" antes del resource para que no
         // choquen con la ruta comodín colaboradores/{colaborador}.
         Route::get('colaboradores/referencias/departamentos', [ReferenciaExternaController::class, 'departamentos'])

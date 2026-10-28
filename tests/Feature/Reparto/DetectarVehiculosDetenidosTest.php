@@ -6,7 +6,7 @@ use App\Enums\Role as RoleEnum;
 use App\Models\Reparto\Modulacion;
 use App\Models\Reparto\ModulacionItem;
 use App\Models\User;
-use App\Notifications\Reparto\VehiculoDetenido;
+use App\Notifications\Seguridad\AlertaGenerada;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -101,9 +101,14 @@ class DetectarVehiculosDetenidosTest extends TestCase
         $this->artisan('reparto:detectar-vehiculos-detenidos')->assertSuccessful();
 
         // 2 destinatarios: Reparto + Administrador.
-        Notification::assertSentTimes(VehiculoDetenido::class, 2);
-        Notification::assertSentTo(User::where('email', 'reparto@ejemplo.com')->first(), VehiculoDetenido::class);
-        Notification::assertSentTo(User::where('email', 'admin@ejemplo.com')->first(), VehiculoDetenido::class);
+        Notification::assertSentTimes(AlertaGenerada::class, 2);
+        Notification::assertSentTo(User::where('email', 'reparto@ejemplo.com')->first(), AlertaGenerada::class);
+        Notification::assertSentTo(User::where('email', 'admin@ejemplo.com')->first(), AlertaGenerada::class);
+
+        $this->assertDatabaseHas('alertas', [
+            'tipo' => 'vehiculo_detenido',
+            'pilar' => 'reparto',
+        ]);
     }
 
     public function test_no_notifica_fuera_de_horario_laboral(): void
@@ -165,6 +170,6 @@ class DetectarVehiculosDetenidosTest extends TestCase
         $this->artisan('reparto:detectar-vehiculos-detenidos')->assertSuccessful();
 
         // 2 destinatarios en UNA sola corrida real; la segunda no repite.
-        Notification::assertSentTimes(VehiculoDetenido::class, 2);
+        Notification::assertSentTimes(AlertaGenerada::class, 2);
     }
 }

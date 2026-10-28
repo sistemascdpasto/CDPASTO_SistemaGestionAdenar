@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Seguridad;
 
 use App\Http\Controllers\Controller;
 use App\Models\Seguridad\Alerta;
+use App\Support\AlertasPorPilar;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -17,16 +18,8 @@ class AlertaController extends Controller
     {
         $estado = $request->string('estado', 'pendientes')->toString();
 
-        $alertas = Alerta::query()
-            ->with(['colaborador:id,nombres,apellidos,fecha_retiro_empresa', 'alcoholimetro:id,codigo'])
-            ->when($estado === 'pendientes', fn ($query) => $query->where('atendida', false))
-            ->when($estado === 'atendidas', fn ($query) => $query->where('atendida', true))
-            ->latest()
-            ->paginate(15)
-            ->withQueryString();
-
         return Inertia::render('seguridad/alertas/index', [
-            'alertas' => $alertas,
+            'alertas' => AlertasPorPilar::paginar('seguridad', $request->user(), $estado),
             'filters' => ['estado' => $estado],
         ]);
     }
@@ -45,19 +38,19 @@ class AlertaController extends Controller
             ->get();
 
         $items = $alertas->map(fn (Alerta $a) => [
-            'id'          => $a->id,
-            'tipo'        => $a->tipo,
-            'mensaje'     => $a->mensaje,
-            'created_at'  => $a->created_at?->diffForHumans(),
+            'id' => $a->id,
+            'tipo' => $a->tipo,
+            'mensaje' => $a->mensaje,
+            'created_at' => $a->created_at?->diffForHumans(),
             'colaborador' => $a->colaborador
-                ? $a->colaborador->nombres . ' ' . $a->colaborador->apellidos
+                ? $a->colaborador->nombres.' '.$a->colaborador->apellidos
                 : null,
-            'cedula'      => $a->colaborador?->cedula,
+            'cedula' => $a->colaborador?->cedula,
             'alcoholimetro' => $a->alcoholimetro?->codigo,
         ]);
 
         return response()->json([
-            'total'  => $alertas->count(),
+            'total' => $alertas->count(),
             'alertas' => $items,
         ]);
     }
