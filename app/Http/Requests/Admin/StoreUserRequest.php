@@ -35,6 +35,7 @@ class StoreUserRequest extends FormRequest
             'roles.*' => ['string', Rule::exists('roles', 'name')],
             'is_active' => ['boolean'],
             'modulos_personalizados' => ['boolean'],
+            'alertas_contratos_tres_veces_dia' => ['boolean'],
             'submodulos' => ['nullable', 'array'],
             'submodulos.*' => ['array'],
             'submodulos.*.*' => ['string'],

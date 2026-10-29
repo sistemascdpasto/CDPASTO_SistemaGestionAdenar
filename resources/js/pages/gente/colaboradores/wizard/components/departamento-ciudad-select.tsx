@@ -19,10 +19,8 @@ interface DepartamentoCiudadSelectProps {
  * valor real del campo (p. ej. "expedido_en", "ciudad_residencia"); el
  * departamento es únicamente el filtro que decide qué municipios ofrecer.
  *
- * Ambos campos siguen siendo texto libre con autocompletado (datalist), no
- * selects estrictos: así un valor ya guardado (p. ej. al editar) se sigue
- * mostrando aunque el usuario no vuelva a elegir el departamento, y si la
- * integración externa falla, el campo no bloquea el formulario.
+ * Al editar, si hay un valor guardado, se consulta el departamento al que
+ * pertenece la ciudad para precargar el campo de departamento.
  */
 export function DepartamentoCiudadSelect({ label, value, onValueChange, error, disabled }: DepartamentoCiudadSelectProps) {
     const baseId = useId();
@@ -30,6 +28,7 @@ export function DepartamentoCiudadSelect({ label, value, onValueChange, error, d
     const [departamentoInput, setDepartamentoInput] = useState('');
     const [ciudades, setCiudades] = useState<Opcion[]>([]);
 
+    // Carga la lista de departamentos.
     useEffect(() => {
         let cancelado = false;
 
@@ -46,6 +45,32 @@ export function DepartamentoCiudadSelect({ label, value, onValueChange, error, d
             cancelado = true;
         };
     }, []);
+
+    // Al montar con un valor guardado (edición), busca el departamento al
+    // que pertenece la ciudad para precargarlo.
+    useEffect(() => {
+        if (!value || departamentoInput) return;
+
+        let cancelado = false;
+
+        fetch(route('gente.colaboradores.referencias.buscar-departamento', { ciudad: value }), {
+            headers: { Accept: 'application/json' },
+        })
+            .then((response) => response.json())
+            .then((json: { data?: Opcion | null }) => {
+                if (!cancelado && json.data) {
+                    setDepartamentoInput(json.data.nombre);
+                }
+            })
+            .catch(() => {
+                // Fallo silencioso: el campo de ciudad ya muestra el valor.
+            });
+
+        return () => {
+            cancelado = true;
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [value]);
 
     const departamentoSeleccionado = departamentos.find((d) => d.nombre.toLowerCase() === departamentoInput.trim().toLowerCase());
 

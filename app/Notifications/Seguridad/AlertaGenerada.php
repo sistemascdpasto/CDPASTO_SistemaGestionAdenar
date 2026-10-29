@@ -42,6 +42,13 @@ class AlertaGenerada extends Notification
     {
         $contexto = $this->alerta->contexto ?? [];
 
+        // Contrato próximo a vencer: va directo a la ficha del contrato, no a
+        // una pantalla de Alertas (lo pidió Mary al construir el módulo de
+        // Contratos; el rol 'Contratos' no tiene pantalla de Alertas propia).
+        if ($this->alerta->tipo === 'retiro_proximo' && $this->alerta->colaborador_id) {
+            return ['Ver contrato', route('gente.contratos.show', $this->alerta->colaborador_id)];
+        }
+
         // Reparto no tiene pantalla de Alertas propia (ver plan) — se enlaza
         // directo al dato más útil: el mapa, o si no hay coordenadas, al
         // dashboard de Vehículos Detenidos que ya hace ese trabajo.

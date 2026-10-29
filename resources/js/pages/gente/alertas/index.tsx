@@ -15,7 +15,13 @@ export default function GenteAlertasIndex({ alertas, filters }: { alertas: Alert
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Alertas" />
             <HeadingSmall title="Alertas" description="Contratos próximos a vencer y demás avisos del pilar Gente." />
-            <AlertasIndex routeIndex="gente.alertas.index" routeAtender="gente.alertas.atender" alertas={alertas} filters={filters} />
+            <AlertasIndex
+                routeIndex="gente.alertas.index"
+                routeAtender="gente.alertas.atender"
+                routeDestroy="gente.alertas.destroy"
+                alertas={alertas}
+                filters={filters}
+            />
         </AppLayout>
     );
 }

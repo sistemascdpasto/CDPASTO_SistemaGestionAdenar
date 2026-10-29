@@ -19,13 +19,14 @@ class ColaboradorVencimientoContratoTest extends TestCase
     {
         parent::setUp();
 
-        // AlertaNotifier busca destinatarios con estos roles al notificar:
-        // Administrador + Gente (dueño del tipo 'retiro_proximo'). Antes del
-        // fix se le notificaba por error a Seguridad en vez de a Gente — ver
-        // test_notifica_a_gente_y_no_a_seguridad.
-        Role::create(['name' => 'Administrador', 'guard_name' => 'web']);
-        Role::create(['name' => 'Seguridad', 'guard_name' => 'web']);
-        Role::create(['name' => 'Gente', 'guard_name' => 'web']);
+        // AlertaNotifier manda 'retiro_proximo' exclusivamente al rol
+        // Contratos (no a Gente ni a Administrador) — ver
+        // test_notifica_solo_a_contratos. findOrCreate: la migración
+        // 2026_10_29_080000_create_contratos_role ya crea el rol Contratos.
+        Role::findOrCreate('Administrador', 'web');
+        Role::findOrCreate('Seguridad', 'web');
+        Role::findOrCreate('Gente', 'web');
+        Role::findOrCreate('Contratos', 'web');
     }
 
     private function colaborador(array $overrides = []): Colaborador
@@ -55,10 +56,12 @@ class ColaboradorVencimientoContratoTest extends TestCase
             ->count());
     }
 
-    public function test_notifica_a_gente_y_no_a_seguridad(): void
+    public function test_notifica_solo_a_contratos(): void
     {
         Notification::fake();
 
+        $contratos = User::factory()->create(['email' => 'contratos@ejemplo.com']);
+        $contratos->assignRole('Contratos');
         $gente = User::factory()->create(['email' => 'gente@ejemplo.com']);
         $gente->assignRole('Gente');
         $seguridad = User::factory()->create(['email' => 'seguridad@ejemplo.com']);
@@ -68,7 +71,8 @@ class ColaboradorVencimientoContratoTest extends TestCase
 
         $this->artisan('seguridad:revisar-vencimiento-contratos')->assertSuccessful();
 
-        Notification::assertSentTo($gente, AlertaGenerada::class);
+        Notification::assertSentTo($contratos, AlertaGenerada::class);
+        Notification::assertNotSentTo($gente, AlertaGenerada::class);
         Notification::assertNotSentTo($seguridad, AlertaGenerada::class);
     }
 

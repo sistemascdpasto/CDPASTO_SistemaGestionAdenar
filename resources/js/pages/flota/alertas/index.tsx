@@ -15,7 +15,13 @@ export default function FlotaAlertasIndex({ alertas, filters }: { alertas: Alert
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Alertas" />
             <HeadingSmall title="Alertas" description="Vencimientos de SOAT, tecnomecánica y demás avisos del pilar Flota." />
-            <AlertasIndex routeIndex="flota.alertas.index" routeAtender="flota.alertas.atender" alertas={alertas} filters={filters} />
+            <AlertasIndex
+                routeIndex="flota.alertas.index"
+                routeAtender="flota.alertas.atender"
+                routeDestroy="flota.alertas.destroy"
+                alertas={alertas}
+                filters={filters}
+            />
         </AppLayout>
     );
 }

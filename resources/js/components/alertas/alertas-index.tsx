@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ProrrogarContratoDialog } from '@/pages/gente/colaboradores/prorrogar-contrato-dialog';
 import { Link, router } from '@inertiajs/react';
-import { CalendarPlus, Check, FileDown } from 'lucide-react';
+import { CalendarPlus, Check, FileDown, X } from 'lucide-react';
 
 const PILAR_LABELS: Record<string, string> = {
     seguridad: 'Seguridad',
@@ -47,11 +47,13 @@ export interface AlertasPaginator {
 export default function AlertasIndex({
     routeIndex,
     routeAtender,
+    routeDestroy,
     alertas,
     filters,
 }: {
     routeIndex: string;
     routeAtender: string;
+    routeDestroy: string;
     alertas: AlertasPaginator;
     filters: { estado: string };
 }) {
@@ -61,6 +63,11 @@ export default function AlertasIndex({
 
     const atender = (alerta: AlertaRow) => {
         router.patch(route(routeAtender, alerta.id), {}, { preserveScroll: true });
+    };
+
+    const eliminar = (alerta: AlertaRow) => {
+        if (!confirm(`¿Estás seguro de eliminar esta alerta?\n\n"${alerta.mensaje}"\n\nEsta acción no se puede deshacer.`)) return;
+        router.delete(route(routeDestroy, alerta.id), { preserveScroll: true });
     };
 
     return (
@@ -108,36 +115,67 @@ export default function AlertasIndex({
                                 <TableCell className="max-w-md">{alerta.mensaje}</TableCell>
                                 <TableCell>{alerta.atendida ? 'Atendida' : 'Pendiente'}</TableCell>
                                 <TableCell className="text-right">
-                                    {!alerta.atendida && (
-                                        <div className="flex justify-end gap-1">
-                                            {alerta.tipo === 'retiro_proximo' && alerta.colaborador && (
-                                                <>
-                                                    <ProrrogarContratoDialog
-                                                        colaboradorId={alerta.colaborador.id}
-                                                        nombreCompleto={`${alerta.colaborador.nombres} ${alerta.colaborador.apellidos}`}
-                                                        fechaActual={alerta.colaborador.fecha_retiro_empresa}
-                                                        trigger={
-                                                            <Button variant="outline" size="sm">
-                                                                <CalendarPlus className="mr-1.5 h-3.5 w-3.5" />
-                                                                Prorrogar
-                                                            </Button>
-                                                        }
-                                                    />
-                                                    <Button variant="outline" size="sm" asChild>
-                                                        <a
-                                                            href={`/modules/gente/contratos/${alerta.colaborador.id}/prorroga-pdf${alerta.colaborador.fecha_retiro_empresa ? `?fecha=${alerta.colaborador.fecha_retiro_empresa}` : ''}`}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                        >
-                                                            <FileDown className="mr-1.5 h-3.5 w-3.5" />
-                                                            PDF
-                                                        </a>
-                                                    </Button>
-                                                </>
-                                            )}
-                                            <IconActionButton icon={Check} label="Marcar como atendida" onClick={() => atender(alerta)} />
-                                        </div>
-                                    )}
+                                    <div className="flex justify-end gap-1">
+                                        {!alerta.atendida && (
+                                            <>
+                                                {alerta.tipo === 'retiro_proximo' && alerta.colaborador && (
+                                                    <>
+                                                        <ProrrogarContratoDialog
+                                                            colaboradorId={alerta.colaborador.id}
+                                                            nombreCompleto={`${alerta.colaborador.nombres} ${alerta.colaborador.apellidos}`}
+                                                            fechaActual={alerta.colaborador.fecha_retiro_empresa}
+                                                            trigger={
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    className="gap-1.5 border-0 bg-amber-600 text-white hover:bg-amber-700"
+                                                                >
+                                                                    <CalendarPlus className="h-3.5 w-3.5" />
+                                                                    Prorrogar
+                                                                </Button>
+                                                            }
+                                                        />
+                                                        <ProrrogarContratoDialog
+                                                            colaboradorId={alerta.colaborador.id}
+                                                            nombreCompleto={`${alerta.colaborador.nombres} ${alerta.colaborador.apellidos}`}
+                                                            fechaActual={alerta.colaborador.fecha_retiro_empresa}
+                                                            trigger={
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    className="gap-1.5 border-red-300 text-red-700 hover:bg-red-50 dark:border-red-700 dark:text-red-400"
+                                                                >
+                                                                    Finalizar
+                                                                </Button>
+                                                            }
+                                                        />
+                                                        <Button variant="outline" size="sm" asChild>
+                                                            <Link href={`/modules/gente/contratos/${alerta.colaborador.id}`}>Ver</Link>
+                                                        </Button>
+                                                        <Button variant="outline" size="sm" asChild>
+                                                            <a
+                                                                href={`/modules/gente/contratos/${alerta.colaborador.id}/prorroga-pdf${alerta.colaborador.fecha_retiro_empresa ? `?fecha=${alerta.colaborador.fecha_retiro_empresa}` : ''}`}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                            >
+                                                                <FileDown className="h-3.5 w-3.5" />
+                                                                PDF
+                                                            </a>
+                                                        </Button>
+                                                    </>
+                                                )}
+                                                <IconActionButton icon={Check} label="Marcar como atendida" onClick={() => atender(alerta)} />
+                                            </>
+                                        )}
+                                        <button
+                                            type="button"
+                                            onClick={() => eliminar(alerta)}
+                                            title="Eliminar alerta"
+                                            className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30"
+                                        >
+                                            <X className="size-4" />
+                                        </button>
+                                    </div>
                                 </TableCell>
                             </TableRow>
                         ))}

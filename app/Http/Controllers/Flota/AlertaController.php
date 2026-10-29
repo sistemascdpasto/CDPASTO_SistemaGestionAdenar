@@ -33,4 +33,11 @@ class AlertaController extends Controller
 
         return back()->with('status', 'Alerta marcada como atendida.');
     }
+
+    public function destroy(Alerta $alerta): RedirectResponse
+    {
+        $alerta->delete();
+
+        return back()->with('status', 'Alerta eliminada.');
+    }
 }

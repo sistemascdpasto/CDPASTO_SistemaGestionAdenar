@@ -31,6 +31,19 @@ class ReferenciaExternaController extends Controller
         return response()->json(['data' => $service->ciudades($departamentoId)]);
     }
 
+    /**
+     * Dado el nombre de una ciudad, devuelve el departamento al que pertenece.
+     * Se usa al editar para precargar el campo de departamento.
+     */
+    public function buscarDepartamento(Request $request, UbicacionesColombiaService $service): JsonResponse
+    {
+        $request->validate(['ciudad' => ['required', 'string', 'max:100']]);
+
+        $departamento = $service->buscarDepartamentoDeCiudad($request->string('ciudad'));
+
+        return response()->json(['data' => $departamento]);
+    }
+
     public function institucionesSena(InstitucionesSenaService $service): JsonResponse
     {
         return response()->json(['data' => $service->instituciones()]);

@@ -21,6 +21,7 @@ interface EditableUser {
     is_active: boolean;
     roles: string[];
     modulos_personalizados: boolean;
+    alertas_contratos_tres_veces_dia?: boolean;
     submodulos_actuales: Record<string, string[]>;
 }
 
@@ -41,6 +42,7 @@ export default function EditUser({ user, roles, moduleRegistry }: { user: Editab
         roles: user.roles,
         is_active: user.is_active,
         modulos_personalizados: user.modulos_personalizados,
+        alertas_contratos_tres_veces_dia: Boolean(user.alertas_contratos_tres_veces_dia),
         submodulos: user.submodulos_actuales,
     });
 

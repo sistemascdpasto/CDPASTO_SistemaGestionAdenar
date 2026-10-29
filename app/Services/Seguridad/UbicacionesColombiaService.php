@@ -37,6 +37,31 @@ class UbicacionesColombiaService
     }
 
     /**
+     * Busca el departamento al que pertenece una ciudad/municipio por nombre.
+     * Recorre los departamentos en caché y sus ciudades hasta encontrarla.
+     *
+     * @return array{id: int, nombre: string}|null
+     */
+    public function buscarDepartamentoDeCiudad(string $ciudadNombre): ?array
+    {
+        $ciudadNormalizada = trim(mb_strtolower($ciudadNombre));
+
+        if ($ciudadNormalizada === '') {
+            return null;
+        }
+
+        foreach ($this->departamentos() as $departamento) {
+            foreach ($this->ciudades($departamento['id']) as $ciudad) {
+                if (mb_strtolower($ciudad['nombre']) === $ciudadNormalizada) {
+                    return $departamento;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * @return array<int, array{id: int, nombre: string}>
      */
     private function consultarConCache(string $clave, string $ruta): array

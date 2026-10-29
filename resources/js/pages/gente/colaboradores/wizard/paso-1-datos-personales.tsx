@@ -2,14 +2,13 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { calcularEdad, ESTADOS_CIVILES, PillToggle, SeccionCard } from '@/pages/seguridad/colaboradores/colaborador-form-fields';
-import { ArrowRight, GraduationCap, IdCard, LoaderCircle, MapPin, ShieldCheck, Stethoscope, User, UserCog } from 'lucide-react';
+import { calcularEdad, PillToggle, SeccionCard } from '@/pages/seguridad/colaboradores/colaborador-form-fields';
+import { ArrowRight, IdCard, LoaderCircle, MapPin, Phone, Plus, ShieldCheck, Stethoscope, Trash2, User, UserCog } from 'lucide-react';
 import { useForm } from '@inertiajs/react';
-import { FormEventHandler, useMemo } from 'react';
+import { FormEventHandler, useMemo, useState } from 'react';
 import { DepartamentoCiudadSelect } from './components/departamento-ciudad-select';
-import { ExternalSelect } from './components/external-select';
 import { PhotoUploader } from './components/photo-uploader';
 import { SelectConOtro } from './components/select-con-otro';
 import { SimpleFileField } from './components/simple-file-field';
@@ -25,8 +24,6 @@ interface Paso1Props {
 
 export function Paso1DatosPersonales({ colaborador, catalogos, usuarios }: Paso1Props) {
     const esNuevo = !colaborador;
-    const cargoActual = (colaborador?.cargo as string | null) ?? '';
-    const esAprendizSena = cargoActual === 'APRENDIZ SENA';
 
     const { data, setData, post, processing, errors, transform } = useForm<Paso1FormData>({
         user_id: colaborador?.user_id?.toString() ?? '',
@@ -47,6 +44,18 @@ export function Paso1DatosPersonales({ colaborador, catalogos, usuarios }: Paso1
         celular_2: (colaborador?.celular_2 as string) ?? '',
         correo: (colaborador?.correo as string) ?? '',
         estado_civil: (colaborador?.estado_civil as string) ?? '',
+        estado_civil_otro: (colaborador?.estado_civil_otro as string) ?? '',
+
+        // Información personal
+        nombre_pareja: (colaborador?.nombre_pareja as string) ?? '',
+
+        // Contactos de emergencia
+        emergencia_parentezco_1: (colaborador?.emergencia_parentezco_1 as string) ?? '',
+        emergencia_nombre_1: (colaborador?.emergencia_nombre_1 as string) ?? '',
+        emergencia_telefono_1: (colaborador?.emergencia_telefono_1 as string) ?? '',
+        emergencia_parentezco_2: (colaborador?.emergencia_parentezco_2 as string) ?? '',
+        emergencia_nombre_2: (colaborador?.emergencia_nombre_2 as string) ?? '',
+        emergencia_telefono_2: (colaborador?.emergencia_telefono_2 as string) ?? '',
 
         discapacidad: (colaborador?.discapacidad as Paso1FormData['discapacidad']) ?? '',
         discapacidad_tipo: (colaborador?.discapacidad_tipo as string) ?? '',
@@ -63,32 +72,53 @@ export function Paso1DatosPersonales({ colaborador, catalogos, usuarios }: Paso1
         arl: (colaborador?.arl as string) ?? 'ARL SURA',
         arl_otro: (colaborador?.arl_otro as string) ?? '',
 
-        sena_especialidad: (colaborador?.sena_especialidad as string) ?? '',
-        sena_numero_grupo: colaborador?.sena_numero_grupo?.toString() ?? '',
-        sena_institucion: (colaborador?.sena_institucion as string) ?? '',
-        sena_nit: (colaborador?.sena_nit as string) ?? '',
-        sena_centro_formacion: (colaborador?.sena_centro_formacion as string) ?? '',
-
         documento_tipo_identificacion: [],
         documento_libreta_militar: [],
         documento_eps: [],
         documento_pension: [],
         documento_arl: [],
         documento_runt: [],
-        documento_sena_carta_presentacion: [],
     });
 
     const edadCalculada = useMemo(() => calcularEdad(data.fecha_nacimiento), [data.fecha_nacimiento]);
 
+    // ── Hijos (lista dinámica) ───────────────────────────────────────────────
+    type Hijo = { nombre: string; fecha_nacimiento: string; edad: string };
+
+    const calcularEdadHijo = (fechaNac: string): string => {
+        if (!fechaNac) return '';
+        const nac = new Date(fechaNac);
+        if (isNaN(nac.getTime())) return '';
+        const hoy = new Date();
+        let edad = hoy.getFullYear() - nac.getFullYear();
+        const aun = hoy.getMonth() < nac.getMonth() || (hoy.getMonth() === nac.getMonth() && hoy.getDate() < nac.getDate());
+        if (aun) edad -= 1;
+        return edad >= 0 ? String(edad) : '';
+    };
+    const [hijosList, setHijosList] = useState<Hijo[]>(
+        Array.isArray(colaborador?.hijos) ? (colaborador.hijos as Hijo[]) : [],
+    );
+
+    const agregarHijo = () => setHijosList((prev) => [...prev, { nombre: '', fecha_nacimiento: '', edad: '' }]);
+    const removerHijo = (index: number) => setHijosList((prev) => prev.filter((_, i) => i !== index));
+    const actualizarHijo = (index: number, campo: keyof Hijo, valor: string) =>
+        setHijosList((prev) => prev.map((h, i) => (i === index ? { ...h, [campo]: valor } : h)));
+
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
 
+        const conHijos = (formData: Record<string, unknown>) => ({
+            ...formData,
+            hijos: hijosList.filter((h) => h.nombre.trim() || h.edad.trim()),
+        });
+
         if (esNuevo) {
+            transform(conHijos);
             post(route('gente.colaboradores.store'), { forceFormData: true });
             return;
         }
 
-        transform((formData) => ({ ...formData, _method: 'PATCH' }));
+        transform((formData) => ({ ...conHijos(formData), _method: 'PATCH' }));
         post(route('gente.colaboradores.paso1.update', colaborador.id), { forceFormData: true });
     };
 
@@ -97,10 +127,23 @@ export function Paso1DatosPersonales({ colaborador, catalogos, usuarios }: Paso1
     return (
         <form onSubmit={submit} className="grid gap-6">
             <SeccionCard icon={IdCard} titulo="Identificación" subtitulo="Documento de identidad del colaborador" tono="verde">
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="mb-5 flex justify-center">
+                    <PhotoUploader
+                        file={data.imagen}
+                        existingPath={(colaborador?.imagen as string | null | undefined) ?? null}
+                        onChange={(file) => setData('imagen', file)}
+                        error={errors.imagen}
+                        disabled={processing}
+                    />
+                </div>
+                <div className="flex-1 grid gap-4 sm:grid-cols-3 content-start">
                     <div className="grid gap-2">
-                        <Label htmlFor="tipo_documento">Tipo de documento</Label>
-                        <Select value={data.tipo_documento} onValueChange={(value) => setData('tipo_documento', value)} disabled={processing}>
+                        <Label htmlFor="tipo_documento">Tipo de documento <span className="text-red-600">*</span></Label>
+                        <Select
+                            value={data.tipo_documento}
+                            onValueChange={(value) => setData('tipo_documento', value)}
+                            disabled={processing}
+                        >
                             <SelectTrigger id="tipo_documento">
                                 <SelectValue placeholder="Selecciona el tipo de documento" />
                             </SelectTrigger>
@@ -110,23 +153,30 @@ export function Paso1DatosPersonales({ colaborador, catalogos, usuarios }: Paso1
                                         {tipo}
                                     </SelectItem>
                                 ))}
-                                <SelectItem value="Otro">Otro</SelectItem>
+                                <SelectSeparator />
+                                <SelectItem value="Otro" className="text-sky-600 font-medium">
+                                    <span className="flex items-center gap-1.5">
+                                        <Plus className="size-3.5" />
+                                        Agregar otro…
+                                    </span>
+                                </SelectItem>
                             </SelectContent>
                         </Select>
                         <InputError message={errors.tipo_documento} />
+
+                        {data.tipo_documento === 'Otro' && (
+                            <div className="grid gap-1.5 border-l-2 border-sky-300 pl-3 dark:border-sky-500/30">
+                                <Input
+                                    placeholder="Escribe el tipo de documento"
+                                    value={data.tipo_documento_otro_label}
+                                    onChange={(e) => setData('tipo_documento_otro_label', e.target.value)}
+                                    disabled={processing}
+                                />
+                                <InputError message={errors.tipo_documento_otro_label} />
+                            </div>
+                        )}
                     </div>
-                    {data.tipo_documento === 'Otro' && (
-                        <div className="grid gap-2">
-                            <Label htmlFor="tipo_documento_otro_label">¿Cuál?</Label>
-                            <Input
-                                id="tipo_documento_otro_label"
-                                value={data.tipo_documento_otro_label}
-                                onChange={(e) => setData('tipo_documento_otro_label', e.target.value)}
-                                disabled={processing}
-                            />
-                            <InputError message={errors.tipo_documento_otro_label} />
-                        </div>
-                    )}
+
                     <div className="grid gap-2">
                         <Label htmlFor="cedula">
                             Número de documento <span className="text-red-600">*</span>
@@ -154,16 +204,7 @@ export function Paso1DatosPersonales({ colaborador, catalogos, usuarios }: Paso1
                 </div>
             </SeccionCard>
 
-            <SeccionCard icon={User} titulo="Datos básicos" subtitulo="Foto, nombres, sexo y fecha de nacimiento" tono="verde">
-                <div className="mb-6">
-                    <PhotoUploader
-                        file={data.imagen}
-                        existingPath={(colaborador?.imagen as string | null | undefined) ?? null}
-                        onChange={(file) => setData('imagen', file)}
-                        error={errors.imagen}
-                        disabled={processing}
-                    />
-                </div>
+            <SeccionCard icon={User} titulo="Datos básicos" subtitulo="Nombres, sexo y fecha de nacimiento" tono="verde">
                 <div className="grid gap-4 sm:grid-cols-2">
                     <div className="grid gap-2">
                         <Label htmlFor="nombres">
@@ -204,7 +245,7 @@ export function Paso1DatosPersonales({ colaborador, catalogos, usuarios }: Paso1
             </SeccionCard>
 
             <SeccionCard icon={MapPin} titulo="Contacto y ubicación" tono="azul">
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 sm:grid-cols-3">
                     <DepartamentoCiudadSelect
                         label="Ciudad de residencia"
                         value={data.ciudad_residencia}
@@ -228,7 +269,7 @@ export function Paso1DatosPersonales({ colaborador, catalogos, usuarios }: Paso1
                         </Select>
                         <InputError message={errors.estrato} />
                     </div>
-                    <div className="grid gap-2 sm:col-span-2">
+                    <div className="grid gap-2">
                         <Label htmlFor="direccion">Dirección</Label>
                         <Input id="direccion" value={data.direccion} onChange={(e) => setData('direccion', e.target.value)} disabled={processing} />
                         <InputError message={errors.direccion} />
@@ -257,11 +298,18 @@ export function Paso1DatosPersonales({ colaborador, catalogos, usuarios }: Paso1
                         />
                         <InputError message={errors.celular_2} />
                     </div>
-                    <div className="grid gap-2 sm:col-span-2">
+                    <div className="grid gap-2">
                         <Label htmlFor="correo">Correo electrónico</Label>
                         <Input id="correo" type="email" value={data.correo} onChange={(e) => setData('correo', e.target.value)} disabled={processing} />
                         <InputError message={errors.correo} />
                     </div>
+                </div>
+            </SeccionCard>
+
+            {/* ── Información personal ── */}
+            <SeccionCard icon={User} titulo="Información personal" tono="azul">
+                <div className="grid gap-4">
+                    <div className="grid gap-4 sm:grid-cols-3">
                     <div className="grid gap-2">
                         <Label htmlFor="estado_civil">Estado civil</Label>
                         <Select value={data.estado_civil} onValueChange={(value) => setData('estado_civil', value)} disabled={processing}>
@@ -269,20 +317,182 @@ export function Paso1DatosPersonales({ colaborador, catalogos, usuarios }: Paso1
                                 <SelectValue placeholder="Selecciona el estado civil" />
                             </SelectTrigger>
                             <SelectContent>
-                                {ESTADOS_CIVILES.map((estado) => (
-                                    <SelectItem key={estado.value} value={estado.value}>
-                                        {estado.label}
+                                {catalogos.estadosCiviles.map((estado) => (
+                                    <SelectItem key={estado} value={estado}>
+                                        {estado}
                                     </SelectItem>
                                 ))}
+                                <SelectSeparator />
+                                <SelectItem value="Otro" className="text-sky-600 font-medium">
+                                    <span className="flex items-center gap-1.5">
+                                        <Plus className="size-3.5" />
+                                        Agregar otro…
+                                    </span>
+                                </SelectItem>
                             </SelectContent>
                         </Select>
                         <InputError message={errors.estado_civil} />
+                        {data.estado_civil === 'Otro' && (
+                            <div className="grid gap-1.5 border-l-2 border-sky-300 pl-3 dark:border-sky-500/30">
+                                <Input
+                                    placeholder="Escribe el estado civil"
+                                    value={data.estado_civil_otro}
+                                    onChange={(e) => setData('estado_civil_otro', e.target.value)}
+                                    disabled={processing}
+                                />
+                                <InputError message={errors.estado_civil_otro} />
+                            </div>
+                        )}
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="nombre_pareja">Nombre del cónyuge o compañero(a) permanente</Label>
+                        <Input
+                            id="nombre_pareja"
+                            value={data.nombre_pareja}
+                            onChange={(e) => setData('nombre_pareja', e.target.value)}
+                            disabled={processing}
+                        />
+                    </div>
+
+                    {/* Tercera columna: Hijos (label + botón) */}
+                    <div className="grid gap-2">
+                        <Label>Hijos</Label>
+                        <Button type="button" variant="outline" onClick={agregarHijo} disabled={processing} className="w-full">
+                            <Plus className="size-4" />
+                            Agregar hijo
+                        </Button>
+                    </div>
+                    </div>
+
+                    {/* Campos de hijos ya agregados (debajo, full width) */}
+                    {hijosList.length > 0 && (
+                        <div className="grid gap-3">
+                            {hijosList.map((hijo, index) => (
+                                <div key={index} className="grid grid-cols-3 items-end gap-3">
+                                    <div className="grid gap-1">
+                                        <Label className="text-xs text-muted-foreground">Nombre</Label>
+                                        <Input
+                                            value={hijo.nombre}
+                                            onChange={(e) => actualizarHijo(index, 'nombre', e.target.value)}
+                                            disabled={processing}
+                                            placeholder="Nombre del hijo/a"
+                                        />
+                                    </div>
+                                    <div className="grid gap-1">
+                                        <Label className="text-xs text-muted-foreground">Fecha de nacimiento</Label>
+                                        <Input
+                                            type="date"
+                                            value={hijo.fecha_nacimiento}
+                                            onChange={(e) => {
+                                                const fn = e.target.value;
+                                                const edadCalc = calcularEdadHijo(fn);
+                                                setHijosList((prev) => prev.map((h, i) =>
+                                                    i === index ? { ...h, fecha_nacimiento: fn, edad: edadCalc } : h
+                                                ));
+                                            }}
+                                            disabled={processing}
+                                        />
+                                    </div>
+                                    <div className="flex items-end gap-2">
+                                        <div className="grid flex-1 gap-1">
+                                            <Label className="text-xs text-muted-foreground">
+                                                Edad {hijo.fecha_nacimiento && <span className="text-muted-foreground/60">(calculada)</span>}
+                                            </Label>
+                                            <Input
+                                                type="number"
+                                                min="0"
+                                                max="120"
+                                                value={hijo.edad}
+                                                onChange={(e) => actualizarHijo(index, 'edad', e.target.value)}
+                                                disabled={processing || !!hijo.fecha_nacimiento}
+                                                placeholder="Edad"
+                                            />
+                                        </div>
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => removerHijo(index)}
+                                            disabled={processing}
+                                        >
+                                            <Trash2 className="size-4 text-red-500" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </SeccionCard>
+
+            {/* ── Contactos de emergencia ── */}
+            <SeccionCard icon={Phone} titulo="Contactos de emergencia" tono="azul">
+                <div className="grid gap-4 sm:grid-cols-3">
+                    <div className="grid gap-2">
+                        <Label htmlFor="emergencia_parentezco_1">Parentezco 1</Label>
+                        <Input
+                            id="emergencia_parentezco_1"
+                            value={data.emergencia_parentezco_1}
+                            onChange={(e) => setData('emergencia_parentezco_1', e.target.value)}
+                            disabled={processing}
+                            placeholder="Ej: Esposo/a, Padre, Madre"
+                        />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="emergencia_nombre_1">Nombre completo 1</Label>
+                        <Input
+                            id="emergencia_nombre_1"
+                            value={data.emergencia_nombre_1}
+                            onChange={(e) => setData('emergencia_nombre_1', e.target.value)}
+                            disabled={processing}
+                        />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="emergencia_telefono_1">Teléfono 1</Label>
+                        <Input
+                            id="emergencia_telefono_1"
+                            inputMode="numeric"
+                            value={data.emergencia_telefono_1}
+                            onChange={(e) => setData('emergencia_telefono_1', e.target.value.replace(/\D/g, ''))}
+                            disabled={processing}
+                            placeholder="Número de teléfono"
+                        />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="emergencia_parentezco_2">Parentezco 2</Label>
+                        <Input
+                            id="emergencia_parentezco_2"
+                            value={data.emergencia_parentezco_2}
+                            onChange={(e) => setData('emergencia_parentezco_2', e.target.value)}
+                            disabled={processing}
+                            placeholder="Ej: Esposo/a, Padre, Madre"
+                        />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="emergencia_nombre_2">Nombre completo 2</Label>
+                        <Input
+                            id="emergencia_nombre_2"
+                            value={data.emergencia_nombre_2}
+                            onChange={(e) => setData('emergencia_nombre_2', e.target.value)}
+                            disabled={processing}
+                        />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="emergencia_telefono_2">Teléfono 2</Label>
+                        <Input
+                            id="emergencia_telefono_2"
+                            inputMode="numeric"
+                            value={data.emergencia_telefono_2}
+                            onChange={(e) => setData('emergencia_telefono_2', e.target.value.replace(/\D/g, ''))}
+                            disabled={processing}
+                            placeholder="Número de teléfono"
+                        />
                     </div>
                 </div>
             </SeccionCard>
 
             <SeccionCard icon={ShieldCheck} titulo="Condiciones particulares" tono="verde">
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 sm:grid-cols-3">
                     <div className="grid gap-3">
                         <PillToggle
                             label="Discapacidad"
@@ -348,24 +558,6 @@ export function Paso1DatosPersonales({ colaborador, catalogos, usuarios }: Paso1
                             />
                         )}
                     </div>
-                    <div className="grid gap-3">
-                        <PillToggle
-                            label="RUNT"
-                            value={data.runt_aplica}
-                            onChange={(value) => setData('runt_aplica', value)}
-                            disabled={processing}
-                            options={[{ value: 'no_aplica', label: 'No aplica' }, { value: 'aplica', label: 'Aplica' }]}
-                        />
-                        {data.runt_aplica === 'aplica' && (
-                            <SimpleFileField
-                                files={data.documento_runt}
-                                existing={existing('documento_runt')}
-                                onChange={(files) => setData('documento_runt', files)}
-                                error={errorDeArchivo(errors, 'documento_runt')}
-                                disabled={processing}
-                            />
-                        )}
-                    </div>
                 </div>
             </SeccionCard>
 
@@ -419,72 +611,29 @@ export function Paso1DatosPersonales({ colaborador, catalogos, usuarios }: Paso1
                 </div>
             </SeccionCard>
 
-            {esAprendizSena && (
-                <SeccionCard icon={GraduationCap} titulo="Información aprendiz SENA" subtitulo="Solo visible porque el cargo asignado es Aprendiz SENA" tono="verde">
-                    <div className="grid gap-4 sm:grid-cols-2">
-                        <div className="grid gap-2">
-                            <Label htmlFor="sena_especialidad">Especialidad o programa de formación</Label>
-                            <Input id="sena_especialidad" value={data.sena_especialidad} onChange={(e) => setData('sena_especialidad', e.target.value)} disabled={processing} />
-                            <InputError message={errors.sena_especialidad} />
+            <div className="hidden">
+                {usuarios && (
+                    <SeccionCard icon={UserCog} titulo="Usuario del sistema" subtitulo="Corrige el vínculo con la cuenta del portal si es necesario" tono="azul">
+                        <div className="grid gap-2 sm:max-w-md">
+                            <Label htmlFor="user_id">Cuenta de colaborador</Label>
+                            <Select value={data.user_id || 'none'} onValueChange={(value) => setData('user_id', value === 'none' ? '' : value)} disabled={processing}>
+                                <SelectTrigger id="user_id">
+                                    <SelectValue placeholder="Sin vincular" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="none">Sin vincular</SelectItem>
+                                    {usuarios.map((usuario) => (
+                                        <SelectItem key={usuario.id} value={String(usuario.id)}>
+                                            {usuario.name} · {usuario.identification_number}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <InputError message={errors.user_id} />
                         </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="sena_numero_grupo">Número de grupo</Label>
-                            <Input id="sena_numero_grupo" type="number" value={data.sena_numero_grupo} onChange={(e) => setData('sena_numero_grupo', e.target.value)} disabled={processing} />
-                            <InputError message={errors.sena_numero_grupo} />
-                        </div>
-                        <ExternalSelect
-                            label="Institución de formación"
-                            value={data.sena_institucion}
-                            onValueChange={(value) => setData('sena_institucion', value)}
-                            fetchUrl={route('gente.colaboradores.referencias.instituciones-sena')}
-                            error={errors.sena_institucion}
-                            disabled={processing}
-                        />
-                        <div className="grid gap-2">
-                            <Label htmlFor="sena_nit">NIT</Label>
-                            <Input id="sena_nit" value={data.sena_nit} onChange={(e) => setData('sena_nit', e.target.value)} disabled={processing} />
-                            <InputError message={errors.sena_nit} />
-                        </div>
-                        <div className="grid gap-2 sm:col-span-2">
-                            <Label htmlFor="sena_centro_formacion">Centro de formación</Label>
-                            <Input id="sena_centro_formacion" value={data.sena_centro_formacion} onChange={(e) => setData('sena_centro_formacion', e.target.value)} disabled={processing} />
-                            <InputError message={errors.sena_centro_formacion} />
-                        </div>
-                    </div>
-                    <div className="mt-4">
-                        <SimpleFileField
-                            label="Carta de presentación"
-                            files={data.documento_sena_carta_presentacion}
-                            existing={existing('documento_sena_carta_presentacion')}
-                            onChange={(files) => setData('documento_sena_carta_presentacion', files)}
-                            error={errorDeArchivo(errors, 'documento_sena_carta_presentacion')}
-                            disabled={processing}
-                        />
-                    </div>
-                </SeccionCard>
-            )}
-
-            {usuarios && (
-                <SeccionCard icon={UserCog} titulo="Usuario del sistema" subtitulo="Corrige el vínculo con la cuenta del portal si es necesario" tono="azul">
-                    <div className="grid gap-2 sm:max-w-md">
-                        <Label htmlFor="user_id">Cuenta de colaborador</Label>
-                        <Select value={data.user_id || 'none'} onValueChange={(value) => setData('user_id', value === 'none' ? '' : value)} disabled={processing}>
-                            <SelectTrigger id="user_id">
-                                <SelectValue placeholder="Sin vincular" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="none">Sin vincular</SelectItem>
-                                {usuarios.map((usuario) => (
-                                    <SelectItem key={usuario.id} value={String(usuario.id)}>
-                                        {usuario.name} · {usuario.identification_number}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <InputError message={errors.user_id} />
-                    </div>
-                </SeccionCard>
-            )}
+                    </SeccionCard>
+                )}
+            </div>
 
             <div className="flex justify-end">
                 <Button type="submit" disabled={processing}>

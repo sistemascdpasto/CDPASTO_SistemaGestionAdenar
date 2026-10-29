@@ -23,6 +23,7 @@ interface UserRow {
     is_active: boolean;
     roles: string[];
     modulos_personalizados: boolean;
+    alertas_contratos_tres_veces_dia?: boolean;
 }
 
 interface PaginationLink {
@@ -118,6 +119,11 @@ export default function UsersIndex({ users, filters }: { users: UsersPaginator; 
                                             {user.modulos_personalizados && (
                                                 <Badge variant="outline" className="border-amber-400 text-amber-700 dark:text-amber-400">
                                                     Acceso personalizado
+                                                </Badge>
+                                            )}
+                                            {user.alertas_contratos_tres_veces_dia && (
+                                                <Badge variant="outline" className="border-amber-500 bg-amber-50 text-amber-800 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                                                    Alertas 3x/día
                                                 </Badge>
                                             )}
                                         </div>

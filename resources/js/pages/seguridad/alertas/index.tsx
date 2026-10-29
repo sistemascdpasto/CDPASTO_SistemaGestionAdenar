@@ -15,7 +15,13 @@ export default function SeguridadAlertasIndex({ alertas, filters }: { alertas: A
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Alertas" />
             <HeadingSmall title="Alertas" description="Pruebas positivas, salud crítica, y dispositivos que requieren atención." />
-            <AlertasIndex routeIndex="seguridad.alertas.index" routeAtender="seguridad.alertas.atender" alertas={alertas} filters={filters} />
+            <AlertasIndex
+                routeIndex="seguridad.alertas.index"
+                routeAtender="seguridad.alertas.atender"
+                routeDestroy="seguridad.alertas.destroy"
+                alertas={alertas}
+                filters={filters}
+            />
         </AppLayout>
     );
 }

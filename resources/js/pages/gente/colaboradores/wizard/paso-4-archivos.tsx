@@ -57,16 +57,6 @@ const GRUPOS: { numero: string; titulo: string; items: DocumentoGrupoItem[] }[] 
         ],
     },
     {
-        numero: '4.4',
-        titulo: 'Documentación contrato',
-        items: [
-            { key: 'documento_contrato', label: 'Contrato' },
-            { key: 'documento_carnet_ingreso_cd', label: 'Carnet de ingreso empresarial' },
-            { key: 'documento_preaviso_terminacion', label: 'Preaviso de terminación de relación laboral' },
-            { key: 'documento_prorroga', label: 'Prórroga' },
-        ],
-    },
-    {
         numero: '4.6',
         titulo: 'Documentación People',
         items: [
@@ -104,7 +94,7 @@ interface Paso4Props {
 
 export function Paso4Archivos({ colaborador, onBack }: Paso4Props) {
     const cargoActual = (colaborador.cargo as string | null) ?? '';
-    const esAprendizSena = cargoActual === 'APRENDIZ SENA';
+    const esAprendizSena = cargoActual.toUpperCase().includes('APRENDIZ');
 
     const documentosIniciales = Object.fromEntries(TODOS_LOS_DOCUMENTOS.map((key) => [key, [] as File[]]));
     const licenciaKeys = ['a1', 'a2', 'b1', 'b2', 'b3', 'c1', 'c2', 'c3'].map((c) => `documento_licencia_${c}`);
@@ -267,43 +257,45 @@ export function Paso4Archivos({ colaborador, onBack }: Paso4Props) {
                 </SeccionCard>
             )}
 
-            <SeccionCard titulo="Documentación Plan padrino — 4.7" tono="azul">
-                <div className="grid gap-4">
-                    <PillToggle
-                        label="¿Es padrino?"
-                        value={data.es_padrino}
-                        onChange={(value) => setData('es_padrino', value)}
-                        disabled={processing}
-                        options={[{ value: 'no_aplica', label: 'No aplica' }, { value: 'aplica', label: 'Aplica' }]}
-                    />
-                    {data.es_padrino === 'aplica' && (
-                        <div className="grid gap-3 border-l-2 border-emerald-300 pl-3 dark:border-emerald-500/30">
-                            <div className="grid gap-2 sm:max-w-xs">
-                                <Label htmlFor="tipo_padrino">Tipo</Label>
-                                <Select value={data.tipo_padrino} onValueChange={(value) => setData('tipo_padrino', value as Paso4FormData['tipo_padrino'])} disabled={processing}>
-                                    <SelectTrigger id="tipo_padrino">
-                                        <SelectValue placeholder="Selecciona el tipo" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="padrino">Padrino</SelectItem>
-                                        <SelectItem value="plan_padrino_personal_nuevo">Plan padrino personal nuevo</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <InputError message={errors.tipo_padrino} />
+            <div className="hidden">
+                <SeccionCard titulo="Documentación Plan padrino — 4.7" tono="azul">
+                    <div className="grid gap-4">
+                        <PillToggle
+                            label="¿Es padrino?"
+                            value={data.es_padrino}
+                            onChange={(value) => setData('es_padrino', value)}
+                            disabled={processing}
+                            options={[{ value: 'no_aplica', label: 'No aplica' }, { value: 'aplica', label: 'Aplica' }]}
+                        />
+                        {data.es_padrino === 'aplica' && (
+                            <div className="grid gap-3 border-l-2 border-emerald-300 pl-3 dark:border-emerald-500/30">
+                                <div className="grid gap-2 sm:max-w-xs">
+                                    <Label htmlFor="tipo_padrino">Tipo</Label>
+                                    <Select value={data.tipo_padrino} onValueChange={(value) => setData('tipo_padrino', value as Paso4FormData['tipo_padrino'])} disabled={processing}>
+                                        <SelectTrigger id="tipo_padrino">
+                                            <SelectValue placeholder="Selecciona el tipo" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="padrino">Padrino</SelectItem>
+                                            <SelectItem value="plan_padrino_personal_nuevo">Plan padrino personal nuevo</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <InputError message={errors.tipo_padrino} />
+                                </div>
+                                {data.tipo_padrino === 'plan_padrino_personal_nuevo' && (
+                                    <SimpleFileField
+                                        files={data.documento_plan_padrino}
+                                        existing={existing('documento_plan_padrino')}
+                                        onChange={(files) => setData('documento_plan_padrino', files)}
+                                        error={errorDeArchivo(errors, 'documento_plan_padrino')}
+                                        disabled={processing}
+                                    />
+                                )}
                             </div>
-                            {data.tipo_padrino === 'plan_padrino_personal_nuevo' && (
-                                <SimpleFileField
-                                    files={data.documento_plan_padrino}
-                                    existing={existing('documento_plan_padrino')}
-                                    onChange={(files) => setData('documento_plan_padrino', files)}
-                                    error={errorDeArchivo(errors, 'documento_plan_padrino')}
-                                    disabled={processing}
-                                />
-                            )}
-                        </div>
-                    )}
-                </div>
-            </SeccionCard>
+                        )}
+                    </div>
+                </SeccionCard>
+            </div>
 
             {GRUPOS.map((grupo) => (
                 <DocumentoGrupo

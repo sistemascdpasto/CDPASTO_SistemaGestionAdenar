@@ -1,7 +1,8 @@
 import InputError from '@/components/input-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Plus } from 'lucide-react';
 import { type DocumentInfo } from '@/pages/seguridad/colaboradores/colaborador-form-fields';
 import { SimpleFileField } from './simple-file-field';
 
@@ -53,7 +54,12 @@ export function SelectConOtro({
                             {option}
                         </SelectItem>
                     ))}
-                    <SelectItem value="Otro">Otro</SelectItem>
+                    <SelectItem value="Otro" className="text-sky-600 font-medium">
+                        <span className="flex items-center gap-1.5">
+                            <Plus className="size-3.5" />
+                            Agregar otro…
+                        </span>
+                    </SelectItem>
                 </SelectContent>
             </Select>
             <InputError message={error} />

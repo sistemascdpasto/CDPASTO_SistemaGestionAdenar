@@ -19,6 +19,7 @@ Route::middleware(['auth', 'active', 'role:Administrador|Flota', 'submodule.acce
     ->group(function () {
         Route::get('alertas', [AlertaController::class, 'index'])->name('alertas.index');
         Route::patch('alertas/{alerta}/atender', [AlertaController::class, 'atender'])->name('alertas.atender');
+        Route::delete('alertas/{alerta}', [AlertaController::class, 'destroy'])->name('alertas.destroy');
 
         // "destroy" se registra aparte con role:Administrador (ver abajo):
         // Flota puede ver/crear/editar/marcar disponibilidad, pero no eliminar.

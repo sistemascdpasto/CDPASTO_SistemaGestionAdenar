@@ -4,6 +4,7 @@ namespace App\Http\Requests\Gente;
 
 use App\Http\Requests\Gente\Concerns\ValidatesColaboradorDocumentos;
 use App\Http\Requests\Seguridad\Concerns\ValidatesFutureDates;
+use App\Models\Gente\TipoDocumento;
 use App\Support\Seguridad\ColaboradorDocumentoCampos;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -40,7 +41,7 @@ class UpdateColaboradorRequest extends FormRequest
             'imagen' => ['nullable', 'image', 'max:2048'],
 
             // Paso 1
-            'tipo_documento' => ['nullable', Rule::in([...config('seguridad.colaboradores.tipos_documento'), 'Otro'])],
+            'tipo_documento' => ['nullable', Rule::in([...(TipoDocumento::pluck('nombre')->all()), 'Otro'])],
             'tipo_documento_otro_label' => ['nullable', 'required_if:tipo_documento,Otro', 'string', 'max:100'],
             'expedido_en' => ['nullable', 'string', 'max:100'],
             'sexo' => ['nullable', Rule::in(['femenino', 'masculino'])],
@@ -51,7 +52,23 @@ class UpdateColaboradorRequest extends FormRequest
             'celular_1' => ['nullable', 'digits_between:1,10'],
             'celular_2' => ['nullable', 'digits_between:1,10'],
             'correo' => ['nullable', 'email', 'max:255'],
-            'estado_civil' => ['nullable', Rule::in(['soltero', 'union_libre', 'casado', 'divorciado', 'viudo'])],
+            'estado_civil' => ['nullable', 'string', 'max:100'],
+            'estado_civil_otro' => ['nullable', 'string', 'max:100'],
+
+            // Información personal
+            'nombre_pareja' => ['nullable', 'string', 'max:100'],
+            'hijos' => ['nullable', 'array'],
+            'hijos.*.nombre' => ['nullable', 'string', 'max:100'],
+            'hijos.*.fecha_nacimiento' => ['nullable', 'date'],
+            'hijos.*.edad' => ['nullable', 'integer', 'min:0', 'max:120'],
+
+            // Contactos de emergencia
+            'emergencia_parentezco_1' => ['nullable', 'string', 'max:50'],
+            'emergencia_nombre_1' => ['nullable', 'string', 'max:100'],
+            'emergencia_telefono_1' => ['nullable', 'string', 'max:20'],
+            'emergencia_parentezco_2' => ['nullable', 'string', 'max:50'],
+            'emergencia_nombre_2' => ['nullable', 'string', 'max:100'],
+            'emergencia_telefono_2' => ['nullable', 'string', 'max:20'],
             'discapacidad' => ['nullable', Rule::in(['no_aplica', 'aplica'])],
             'discapacidad_tipo' => ['nullable', 'required_if:discapacidad,aplica', 'string', 'max:150'],
             'discapacidad_observaciones' => ['nullable', 'required_if:discapacidad,aplica', 'string', 'max:2000'],
@@ -84,7 +101,7 @@ class UpdateColaboradorRequest extends FormRequest
 
             // Paso 3 (el historial de cargos lo gestiona CargoHistorialService)
             'area' => ['nullable', Rule::in(['Administrativa', 'Operativa'])],
-            'cargo' => ['nullable', Rule::in(config('seguridad.colaboradores.cargos'))],
+            'cargo' => ['nullable', 'string', 'max:100'],
             'cargo_fecha_inicio' => [
                 'nullable',
                 'date',
@@ -95,7 +112,9 @@ class UpdateColaboradorRequest extends FormRequest
             'fecha_ingreso_empresa' => ['nullable', 'date'],
             'fecha_retiro_empresa' => ['nullable', 'date', $this->futureUnlessUnchanged($colaborador, 'fecha_retiro_empresa')],
             'motivo_retiro' => ['nullable', Rule::in(config('seguridad.colaboradores.motivos_retiro'))],
-            'tipo_contrato' => ['nullable', Rule::in(config('seguridad.colaboradores.tipos_contrato'))],
+            'motivo_retiro_observaciones' => ['nullable', 'string', 'max:2000'],
+            'tipo_contrato' => ['nullable', 'string', 'max:100'],
+            'tipo_contrato_otro' => ['nullable', 'string', 'max:100'],
             'codigo_qr_skap' => ['nullable', 'string', 'max:100'],
             'vacaciones_aplica' => ['nullable', Rule::in(['no_aplica', 'aplica'])],
             'vacaciones_fecha_desde' => ['nullable', 'date', $this->futureUnlessUnchanged($colaborador, 'vacaciones_fecha_desde')],
