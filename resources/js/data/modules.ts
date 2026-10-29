@@ -33,6 +33,7 @@ import {
     Stethoscope,
     Star,
     TestTube,
+    Timer,
     Trophy,
     Truck,
     UserCheck,
@@ -196,6 +197,8 @@ export const modules: ModuleDef[] = [
             { title: 'Revisión Aleatoria', slug: 'revision-aleatoria', icon: Dices },
             { title: '5 Por Qué', slug: 'cinco-porques', href: '/cinco-porques', icon: ListChecks },
             { title: 'Catálogo de Clientes', slug: 'clientes', icon: Map, allowedRoles: ['Administrador', 'Reparto'] },
+            { title: 'Vehículos Detenidos', slug: 'vehiculos-detenidos', icon: Timer },
+            { title: 'Alertas', slug: 'alertas', icon: BellRing },
         ],
     },
     {
@@ -225,6 +228,7 @@ export const modules: ModuleDef[] = [
             { title: 'SAC', slug: 'sac', icon: FileSpreadsheet },
             { title: 'Contratos', slug: 'contratos', icon: FileStack },
             { title: 'Asistencia GeoVictoria', slug: 'asistencia-geovictoria', icon: Clock },
+            { title: 'Alertas', slug: 'alertas', icon: BellRing },
         ],
     },
     {
@@ -233,6 +237,7 @@ export const modules: ModuleDef[] = [
         icon: Car,
         accent: '#2B6CB0',
         submodules: [
+            { title: 'Alertas', slug: 'alertas', icon: BellRing },
             { title: 'Disponibilidad', slug: 'disponibilidad', icon: BarChart3 },
             { title: 'Documentación', slug: 'vehiculos', icon: Truck },
             { title: 'Carretas', slug: 'carretas', icon: Container },

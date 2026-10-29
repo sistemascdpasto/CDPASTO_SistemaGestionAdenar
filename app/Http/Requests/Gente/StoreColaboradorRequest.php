@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Gente;
 
 use App\Http\Requests\Gente\Concerns\ValidatesColaboradorDocumentos;
+use App\Models\Gente\TipoDocumento;
 use App\Support\Seguridad\ColaboradorDocumentoCampos;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -35,7 +36,7 @@ class StoreColaboradorRequest extends FormRequest
 
             'tipo_documento' => ['required', Rule::in([
                 ...config('seguridad.colaboradores.tipos_documento', []),
-                ...\App\Models\Gente\TipoDocumento::pluck('nombre')->all(),
+                ...TipoDocumento::pluck('nombre')->all(),
                 'Otro',
             ])],
             'tipo_documento_otro_label' => ['nullable', 'required_if:tipo_documento,Otro', 'string', 'max:100'],

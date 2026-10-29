@@ -5,7 +5,6 @@
  * La usa ColaboradorDocumentoCampos (backend) y se envía al frontend vía
  * catalogos() para que el listado se renderice sin hardcoded en el cliente.
  */
-
 $categoriasLicencia = ['a1', 'a2', 'b1', 'b2', 'b3', 'c1', 'c2', 'c3'];
 
 return [

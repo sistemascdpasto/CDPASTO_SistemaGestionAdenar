@@ -7,6 +7,8 @@ use App\Models\Gente\ContratoProrroga;
 use App\Models\Seguridad\Colaborador;
 use App\Models\Seguridad\ColaboradorDocumento;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
@@ -98,7 +100,7 @@ class ContratosController extends Controller
             ];
         }
 
-        $formatFecha = fn ($val) => $val instanceof \Carbon\CarbonInterface
+        $formatFecha = fn ($val) => $val instanceof CarbonInterface
             ? $val->format('Y-m-d')
             : ($val ? (string) $val : null);
 
@@ -140,7 +142,7 @@ class ContratosController extends Controller
                 'tipo' => 'activacion',
                 'fecha' => $formatFecha($colaborador->fecha_ingreso_empresa) ?? $formatFecha($colaborador->created_at),
                 'motivo' => 'Reactivación para reingreso a la empresa (Entrada)',
-                'observaciones' => "Reactivado en el sistema para nueva vinculación laboral. Cargo: " . ($colaborador->cargo ?: 'Asignado') . ($colaborador->tipo_contrato ? " ({$colaborador->tipo_contrato})" : ''),
+                'observaciones' => 'Reactivado en el sistema para nueva vinculación laboral. Cargo: '.($colaborador->cargo ?: 'Asignado').($colaborador->tipo_contrato ? " ({$colaborador->tipo_contrato})" : ''),
                 'usuario' => 'Reingreso registrado',
             ];
         }
@@ -166,13 +168,13 @@ class ContratosController extends Controller
 
         // 1. Fecha de retiro actual del colaborador
         if ($colaborador->fecha_retiro_empresa) {
-            $fechaActual = \Carbon\Carbon::parse($colaborador->fecha_retiro_empresa);
+            $fechaActual = Carbon::parse($colaborador->fecha_retiro_empresa);
             $fechaActualStr = $fechaActual->format('Y-m-d');
             $fechasFinalizacion->put($fechaActualStr, [
-                'fecha'            => $fechaActualStr,
+                'fecha' => $fechaActualStr,
                 'fecha_formateada' => $fechaActual->format('d/m/Y'),
-                'es_actual'        => true,
-                'estado'           => $colaborador->prorrogas()->where('tipo', 'finalizacion')->exists()
+                'es_actual' => true,
+                'estado' => $colaborador->prorrogas()->where('tipo', 'finalizacion')->exists()
                     ? 'Finalización confirmada'
                     : 'Fecha actual de vencimiento',
             ]);
@@ -181,16 +183,16 @@ class ContratosController extends Controller
         // 2. Fechas de finalización anteriores provenientes del historial de prórrogas
         foreach ($colaborador->prorrogas()->orderByDesc('created_at')->get() as $p) {
             if ($p->fecha_anterior) {
-                $fechaAnt = \Carbon\Carbon::parse($p->fecha_anterior);
+                $fechaAnt = Carbon::parse($p->fecha_anterior);
                 $fechaAntStr = $fechaAnt->format('Y-m-d');
                 if (! $fechasFinalizacion->has($fechaAntStr)) {
                     $fechasFinalizacion->put($fechaAntStr, [
-                        'fecha'            => $fechaAntStr,
+                        'fecha' => $fechaAntStr,
                         'fecha_formateada' => $fechaAnt->format('d/m/Y'),
-                        'es_actual'        => false,
-                        'estado'           => $p->tipo === 'finalizacion'
+                        'es_actual' => false,
+                        'estado' => $p->tipo === 'finalizacion'
                             ? 'Finalización'
-                            : 'Prorrogado al ' . ($p->fecha_nueva ? \Carbon\Carbon::parse($p->fecha_nueva)->format('d/m/Y') : 'siguiente fecha'),
+                            : 'Prorrogado al '.($p->fecha_nueva ? Carbon::parse($p->fecha_nueva)->format('d/m/Y') : 'siguiente fecha'),
                     ]);
                 }
             }
@@ -210,9 +212,9 @@ class ContratosController extends Controller
 
             return array_merge($item, [
                 'documento' => $doc ? [
-                    'id'    => $doc->id,
-                    'name'  => basename($doc->path),
-                    'path'  => Storage::url($doc->path),
+                    'id' => $doc->id,
+                    'name' => basename($doc->path),
+                    'path' => Storage::url($doc->path),
                     'fecha' => $doc->fecha_documento?->format('Y-m-d'),
                 ] : null,
             ]);
@@ -223,9 +225,9 @@ class ContratosController extends Controller
         $otrosPreavisos = $preavisosDocs->filter(function ($d) use ($fechasConocidas) {
             return ! $d->fecha_documento || ! in_array($d->fecha_documento->format('Y-m-d'), $fechasConocidas, true);
         })->map(fn ($doc) => [
-            'id'    => $doc->id,
-            'name'  => basename($doc->path),
-            'path'  => Storage::url($doc->path),
+            'id' => $doc->id,
+            'name' => basename($doc->path),
+            'path' => Storage::url($doc->path),
             'fecha' => $doc->fecha_documento?->format('Y-m-d'),
         ])->values()->all();
 
@@ -266,15 +268,15 @@ class ContratosController extends Controller
                     ->orderByDesc('created_at')
                     ->get()
                     ->map(fn ($p) => [
-                        'id'               => $p->id,
-                        'fecha_anterior'   => $p->fecha_anterior?->format('Y-m-d'),
-                        'fecha_nueva'      => $p->fecha_nueva?->format('Y-m-d'),
-                        'tipo'             => $p->tipo,
-                        'observaciones'    => $p->observaciones,
-                        'documento_path'   => $p->documento_path ? Storage::url($p->documento_path) : null,
+                        'id' => $p->id,
+                        'fecha_anterior' => $p->fecha_anterior?->format('Y-m-d'),
+                        'fecha_nueva' => $p->fecha_nueva?->format('Y-m-d'),
+                        'tipo' => $p->tipo,
+                        'observaciones' => $p->observaciones,
+                        'documento_path' => $p->documento_path ? Storage::url($p->documento_path) : null,
                         'documento_nombre' => $p->documento_nombre ?? ($p->documento_path ? basename($p->documento_path) : null),
-                        'registrado_por'   => $p->registradoPor?->name,
-                        'fecha_registro'   => $p->created_at->format('d/m/Y H:i'),
+                        'registrado_por' => $p->registradoPor?->name,
+                        'fecha_registro' => $p->created_at->format('d/m/Y H:i'),
                     ])
                     ->values()
                     ->all(),
@@ -369,10 +371,10 @@ class ContratosController extends Controller
     {
         $request->validate([
             'documento' => ['required', 'file', 'mimes:pdf,doc,docx,jpg,jpeg,png', 'max:10240'],
-            'fecha'     => ['required', 'date'],
+            'fecha' => ['required', 'date'],
         ]);
 
-        $fechaStr = \Carbon\Carbon::parse($request->input('fecha'))->format('Y-m-d');
+        $fechaStr = Carbon::parse($request->input('fecha'))->format('Y-m-d');
         $archivo = $request->file('documento');
         $path = $archivo->store('colaboradores/documentos', 'public');
 
@@ -470,12 +472,12 @@ class ContratosController extends Controller
         $fechaEmision = now()->locale('es')->isoFormat('D [de] MMMM [de] YYYY');
 
         $pdf = Pdf::loadView('gente.prorroga-contrato-pdf', [
-            'colaborador'           => $colaborador,
+            'colaborador' => $colaborador,
             'nuevaFechaFinalizacion' => $nuevaFechaFinalizacion,
-            'fechaEmision'          => $fechaEmision,
+            'fechaEmision' => $fechaEmision,
         ])->setPaper('a4', 'portrait');
 
-        $nombreArchivo = 'prorroga-contrato-' . str($colaborador->nombre_completo)->slug() . '.pdf';
+        $nombreArchivo = 'prorroga-contrato-'.str($colaborador->nombre_completo)->slug().'.pdf';
 
         return $pdf->download($nombreArchivo);
     }

@@ -2,21 +2,22 @@
 
 namespace App\Console\Commands;
 
-use App\Enums\Role;
 use App\Models\Flota\Vehiculo;
-use App\Models\User;
-use App\Notifications\Flota\VencimientoDocumentoVehiculo;
+use App\Models\Seguridad\Alerta;
+use App\Services\Seguridad\AlertaNotifier;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Notification;
-use Throwable;
 
 class RevisarVencimientoDocumentosFlota extends Command
 {
     protected $signature = 'flota:revisar-vencimiento-documentos';
 
-    protected $description = 'Notifica por correo a Flota/Administrador/Reparto los vehículos con SOAT (15 días antes) o tecnomecánica (30 días antes) próximos a vencer.';
+    protected $description = 'Genera alertas (pantalla + correo a Flota/Administrador) por vehículos con SOAT (15 días antes) o tecnomecánica (30 días antes) próximos a vencer.';
+
+    private const LABELS = [
+        'vencimiento_soat' => 'SOAT',
+        'vencimiento_tecnomecanica' => 'revisión tecnicomecánica (RTM)',
+    ];
 
     /**
      * Configuración por tipo de documento: columna con la fecha de
@@ -26,12 +27,12 @@ class RevisarVencimientoDocumentosFlota extends Command
      * @var array<string, array{fecha: string, control: string, dias_config: string}>
      */
     private const DOCUMENTOS = [
-        VencimientoDocumentoVehiculo::TIPO_SOAT => [
+        'vencimiento_soat' => [
             'fecha' => 'fecha_vencimiento_soat',
             'control' => 'soat_alerta_enviada_para',
             'dias_config' => 'flota.dias_alerta_soat',
         ],
-        VencimientoDocumentoVehiculo::TIPO_TECNOMECANICA => [
+        'vencimiento_tecnomecanica' => [
             'fecha' => 'fecha_vencimiento_tecnomecanica',
             'control' => 'tecnomecanica_alerta_enviada_para',
             'dias_config' => 'flota.dias_alerta_tecnomecanica',
@@ -40,22 +41,8 @@ class RevisarVencimientoDocumentosFlota extends Command
 
     public function handle(): int
     {
-        $destinatarios = User::role([
-            Role::Flota->value,
-            Role::Administrador->value,
-            Role::Reparto->value,
-        ])
-            ->whereNotNull('email')
-            ->get();
-
-        if ($destinatarios->isEmpty()) {
-            $this->warn('No hay usuarios con rol Flota, Administrador o Reparto con correo registrado.');
-
-            return self::SUCCESS;
-        }
-
         $hoy = Carbon::today();
-        $enviadas = 0;
+        $creadas = 0;
 
         foreach (self::DOCUMENTOS as $tipo => $config) {
             $limite = $hoy->copy()->addDays((int) config($config['dias_config']));
@@ -67,35 +54,42 @@ class RevisarVencimientoDocumentosFlota extends Command
                     $query->whereNull($config['control'])
                         ->orWhereColumn($config['control'], '!=', $config['fecha']);
                 })
-                ->each(function (Vehiculo $vehiculo) use ($tipo, $config, $destinatarios, &$enviadas) {
+                ->each(function (Vehiculo $vehiculo) use ($tipo, $config, &$creadas) {
                     $fechaVencimiento = $vehiculo->{$config['fecha']};
 
-                    foreach ($destinatarios as $destinatario) {
-                        try {
-                            Notification::send(
-                                $destinatario,
-                                new VencimientoDocumentoVehiculo($vehiculo, $tipo, $fechaVencimiento)
-                            );
-                        } catch (Throwable $e) {
-                            Log::warning('No se pudo enviar el aviso de vencimiento de documento de flota.', [
-                                'vehiculo_id' => $vehiculo->id,
-                                'tipo' => $tipo,
-                                'destinatario' => $destinatario->email,
-                                'error' => $e->getMessage(),
-                            ]);
-                        }
-                    }
+                    $alerta = Alerta::create([
+                        'tipo' => $tipo,
+                        'mensaje' => $this->mensaje($vehiculo->placa, $tipo, $fechaVencimiento),
+                        'contexto' => ['vehiculo_id' => $vehiculo->id],
+                    ]);
+                    AlertaNotifier::notificar($alerta);
 
                     $vehiculo->forceFill([
                         $config['control'] => $fechaVencimiento->toDateString(),
                     ])->save();
 
-                    $enviadas++;
+                    $creadas++;
                 });
         }
 
-        $this->info("Vehículos notificados por vencimiento de documentos: {$enviadas}");
+        $this->info("Alertas de vencimiento de documentos generadas: {$creadas}");
 
         return self::SUCCESS;
+    }
+
+    private function mensaje(string $placa, string $tipo, Carbon $fechaVencimiento): string
+    {
+        $label = self::LABELS[$tipo] ?? 'documento';
+        $fecha = $fechaVencimiento->copy()->locale('es')->isoFormat('D [de] MMMM [de] YYYY');
+        $dias = (int) Carbon::today()->diffInDays($fechaVencimiento->copy()->startOfDay(), false);
+
+        $cuandoVence = match (true) {
+            $dias < 0 => 'ya está vencido',
+            $dias === 0 => 'vence hoy',
+            $dias === 1 => 'vence mañana',
+            default => "vence en {$dias} días",
+        };
+
+        return "El {$label} del vehículo con placa {$placa} {$cuandoVence}. Fecha de vencimiento: {$fecha}.";
     }
 }

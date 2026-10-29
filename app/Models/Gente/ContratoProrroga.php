@@ -24,7 +24,7 @@ class ContratoProrroga extends Model
 
     protected $casts = [
         'fecha_anterior' => 'date:Y-m-d',
-        'fecha_nueva'    => 'date:Y-m-d',
+        'fecha_nueva' => 'date:Y-m-d',
     ];
 
     public function colaborador(): BelongsTo

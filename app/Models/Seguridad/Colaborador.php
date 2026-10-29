@@ -4,6 +4,7 @@ namespace App\Models\Seguridad;
 
 use App\Models\Flota\CombustibleVoucher;
 use App\Models\Gente\ColaboradorPadrinoCriterio;
+use App\Models\Gente\ContratoProrroga;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -177,9 +178,9 @@ class Colaborador extends Model
         return $query->where('estado_registro', 'completo');
     }
 
-    public function prorrogas(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function prorrogas(): HasMany
     {
-        return $this->hasMany(\App\Models\Gente\ContratoProrroga::class)->orderByDesc('created_at');
+        return $this->hasMany(ContratoProrroga::class)->orderByDesc('created_at');
     }
 
     public function condicionesSalud(): HasMany

@@ -31,9 +31,9 @@ class UpdateColaboradorPaso4Request extends FormRequest
             'licencia_conduccion_categorias' => ['nullable', 'array'],
             'licencia_conduccion_categorias.*' => [Rule::in(config('seguridad.colaboradores.licencia_conduccion_categorias'))],
 
-            'fecha_licencia'            => ['nullable', 'date'],
+            'fecha_licencia' => ['nullable', 'date'],
             'fecha_vencimiento_licencia' => ['nullable', 'date'],
-            'restricciones_licencia'     => ['nullable', 'string', 'max:500'],
+            'restricciones_licencia' => ['nullable', 'string', 'max:500'],
 
             'es_padrino' => ['nullable', Rule::in(['no_aplica', 'aplica'])],
             'tipo_padrino' => ['nullable', 'required_if:es_padrino,aplica', Rule::in(['padrino', 'plan_padrino_personal_nuevo'])],

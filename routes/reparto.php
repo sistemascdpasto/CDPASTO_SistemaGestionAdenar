@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Reparto\AlertaController;
 use App\Http\Controllers\Reparto\AlertaVelocidadCurvaController;
 use App\Http\Controllers\Reparto\BarrioController;
 use App\Http\Controllers\Reparto\ChecklistImportController;
@@ -17,12 +18,17 @@ use App\Http\Controllers\Reparto\ModulacionController;
 use App\Http\Controllers\Reparto\RevisionAleatoriaController;
 use App\Http\Controllers\Reparto\RevisionCausalController;
 use App\Http\Controllers\Reparto\RevisionResponsableController;
+use App\Http\Controllers\Reparto\VehiculosDetenidosController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'active', 'submodule.access'])
     ->prefix('modules/reparto')
     ->name('reparto.')
     ->group(function () {
+        Route::get('alertas', [AlertaController::class, 'index'])->name('alertas.index');
+        Route::patch('alertas/{alerta}/atender', [AlertaController::class, 'atender'])->name('alertas.atender');
+        Route::delete('alertas/{alerta}', [AlertaController::class, 'destroy'])->name('alertas.destroy');
+
         // Modulación
         Route::get('/modulacion', [ModulacionController::class, 'index'])
             ->name('modulacion.index');
@@ -250,4 +256,10 @@ Route::middleware(['auth', 'active', 'submodule.access'])
             ->name('clientes.destroyAll');
         Route::delete('/clientes/{cliente}', [ClienteController::class, 'destroy'])
             ->name('clientes.destroy');
+
+        // Vehículos Detenidos (MyGeotab en vivo + alerta por correo 30+ min)
+        Route::get('/vehiculos-detenidos', [VehiculosDetenidosController::class, 'index'])
+            ->name('vehiculos-detenidos.index');
+        Route::post('/vehiculos-detenidos/actualizar', [VehiculosDetenidosController::class, 'actualizar'])
+            ->name('vehiculos-detenidos.actualizar');
     });

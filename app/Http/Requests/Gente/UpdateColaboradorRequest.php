@@ -4,6 +4,7 @@ namespace App\Http\Requests\Gente;
 
 use App\Http\Requests\Gente\Concerns\ValidatesColaboradorDocumentos;
 use App\Http\Requests\Seguridad\Concerns\ValidatesFutureDates;
+use App\Models\Gente\TipoDocumento;
 use App\Support\Seguridad\ColaboradorDocumentoCampos;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -40,7 +41,7 @@ class UpdateColaboradorRequest extends FormRequest
             'imagen' => ['nullable', 'image', 'max:2048'],
 
             // Paso 1
-            'tipo_documento' => ['nullable', Rule::in([...(\App\Models\Gente\TipoDocumento::pluck('nombre')->all()), 'Otro'])],
+            'tipo_documento' => ['nullable', Rule::in([...(TipoDocumento::pluck('nombre')->all()), 'Otro'])],
             'tipo_documento_otro_label' => ['nullable', 'required_if:tipo_documento,Otro', 'string', 'max:100'],
             'expedido_en' => ['nullable', 'string', 'max:100'],
             'sexo' => ['nullable', Rule::in(['femenino', 'masculino'])],

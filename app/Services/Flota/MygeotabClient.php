@@ -88,6 +88,18 @@ class MygeotabClient
     }
 
     /**
+     * Estado actual por dispositivo (velocidad, posición, y hace cuánto
+     * está en ese estado vía 'currentStateDuration') — para detectar
+     * vehículos detenidos sin tener que inferirlo comparando sondeos.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function estadosDispositivos(): array
+    {
+        return $this->get('DeviceStatusInfo');
+    }
+
+    /**
      * @param  array<string, mixed>  $search
      * @return array<int, array<string, mixed>>
      */

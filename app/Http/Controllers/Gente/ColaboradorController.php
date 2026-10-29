@@ -10,8 +10,11 @@ use App\Http\Requests\Gente\UpdateColaboradorPaso2Request;
 use App\Http\Requests\Gente\UpdateColaboradorPaso3Request;
 use App\Http\Requests\Gente\UpdateColaboradorPaso4Request;
 use App\Http\Requests\Gente\UpdateColaboradorRequest;
+use App\Models\Gente\ContratoProrroga;
 use App\Models\Gente\OpcionCatalogo;
 use App\Models\Gente\TipoDocumento;
+use App\Models\GeovictoriaAsistencia;
+use App\Models\Seguridad\Alerta;
 use App\Models\Seguridad\Colaborador;
 use App\Models\Seguridad\Entrenamiento;
 use App\Models\User;
@@ -87,14 +90,14 @@ class ColaboradorController extends Controller
 
         // Resumen global (siempre sobre todos los registros, sin filtros activos)
         $limiteProximoVencerResumen = now()->addDays((int) config('seguridad.dias_alerta_vencimiento_contrato'));
-        $totalCompletos  = Colaborador::completos()->count();
+        $totalCompletos = Colaborador::completos()->count();
         $resumen = [
-            'total'              => $totalCompletos,
-            'activos'            => Colaborador::completos()->where('is_active', true)->count(),
-            'inactivos'          => Colaborador::completos()->where('is_active', false)->count(),
-            'borradores'         => Colaborador::where('estado_registro', 'borrador')->count(),
-            'area_operativa'     => Colaborador::completos()->where('area', 'Operativa')->count(),
-            'area_administrativa'=> Colaborador::completos()->where('area', 'Administrativa')->count(),
+            'total' => $totalCompletos,
+            'activos' => Colaborador::completos()->where('is_active', true)->count(),
+            'inactivos' => Colaborador::completos()->where('is_active', false)->count(),
+            'borradores' => Colaborador::where('estado_registro', 'borrador')->count(),
+            'area_operativa' => Colaborador::completos()->where('area', 'Operativa')->count(),
+            'area_administrativa' => Colaborador::completos()->where('area', 'Administrativa')->count(),
             'contratos_proximos' => Colaborador::completos()
                 ->whereNotNull('fecha_retiro_empresa')
                 ->whereBetween('fecha_retiro_empresa', [now(), $limiteProximoVencerResumen])
@@ -107,7 +110,7 @@ class ColaboradorController extends Controller
 
         return Inertia::render('gente/colaboradores/index', [
             'colaboradores' => $colaboradores,
-            'resumen'        => $resumen,
+            'resumen' => $resumen,
             'filters' => [
                 'search' => $search,
                 'registro' => $registro,
@@ -208,9 +211,9 @@ class ColaboradorController extends Controller
      * reemplaza el valor por el nombre real para que quede guardado
      * en la columna del colaborador.
      *
-     * @param  array<string, mixed>  $data   Datos validados del request
-     * @param  array<string, string>  $mapa   campo => [categoria, campoLabel]
-     * @return array<string, mixed>          $data con los valores resueltos
+     * @param  array<string, mixed>  $data  Datos validados del request
+     * @param  array<string, string>  $mapa  campo => [categoria, campoLabel]
+     * @return array<string, mixed> $data con los valores resueltos
      */
     private function resolverOtros(array $data, array $mapa): array
     {
@@ -257,7 +260,7 @@ class ColaboradorController extends Controller
             'cargosAnteriores' => OpcionCatalogo::opcionesDe('cargo_anterior'),
             'cargos' => collect(config('seguridad.colaboradores.cargos', []))
                 ->merge(Colaborador::whereNotNull('cargo')->where('cargo', '!=', '')->distinct()->pluck('cargo'))
-                ->merge(\App\Models\GeovictoriaAsistencia::whereNotNull('cargo')->where('cargo', '!=', '')->distinct()->pluck('cargo'))
+                ->merge(GeovictoriaAsistencia::whereNotNull('cargo')->where('cargo', '!=', '')->distinct()->pluck('cargo'))
                 ->unique()
                 ->sort()
                 ->values()
@@ -435,9 +438,9 @@ class ColaboradorController extends Controller
     {
         $request->validate([
             'fecha_retiro_empresa' => ['required', 'date', 'after:today'],
-            'tipo'                 => ['nullable', 'in:prorroga,finalizacion'],
-            'observaciones'        => ['nullable', 'string', 'max:500'],
-            'documento'            => ['nullable', 'file', 'mimes:pdf,doc,docx,jpg,jpeg,png', 'max:10240'],
+            'tipo' => ['nullable', 'in:prorroga,finalizacion'],
+            'observaciones' => ['nullable', 'string', 'max:500'],
+            'documento' => ['nullable', 'file', 'mimes:pdf,doc,docx,jpg,jpeg,png', 'max:10240'],
         ]);
 
         $fechaAnterior = $colaborador->fecha_retiro_empresa
@@ -448,7 +451,7 @@ class ColaboradorController extends Controller
 
         $colaborador->update([
             'fecha_retiro_empresa' => $request->date('fecha_retiro_empresa'),
-            'is_active'            => $esFinalizacion ? false : $colaborador->is_active,
+            'is_active' => $esFinalizacion ? false : $colaborador->is_active,
         ]);
 
         if ($esFinalizacion && $colaborador->user) {
@@ -464,26 +467,26 @@ class ColaboradorController extends Controller
         }
 
         // Registrar en el historial de prórrogas
-        \App\Models\Gente\ContratoProrroga::create([
-            'colaborador_id'   => $colaborador->id,
-            'registrado_por'   => $request->user()->id,
-            'fecha_anterior'   => $fechaAnterior ?? $request->date('fecha_retiro_empresa'),
-            'fecha_nueva'      => $request->date('fecha_retiro_empresa'),
-            'tipo'             => $request->input('tipo', 'prorroga'),
-            'observaciones'    => $request->input('observaciones'),
-            'documento_path'   => $documentoPath,
+        ContratoProrroga::create([
+            'colaborador_id' => $colaborador->id,
+            'registrado_por' => $request->user()->id,
+            'fecha_anterior' => $fechaAnterior ?? $request->date('fecha_retiro_empresa'),
+            'fecha_nueva' => $request->date('fecha_retiro_empresa'),
+            'tipo' => $request->input('tipo', 'prorroga'),
+            'observaciones' => $request->input('observaciones'),
+            'documento_path' => $documentoPath,
             'documento_nombre' => $documentoNombre,
         ]);
 
         // Atender todas las alertas de retiro pendientes de este colaborador
-        \App\Models\Seguridad\Alerta::query()
+        Alerta::query()
             ->where('colaborador_id', $colaborador->id)
             ->where('tipo', 'retiro_proximo')
             ->where('atendida', false)
             ->update([
-                'atendida'     => true,
+                'atendida' => true,
                 'atendida_por' => $request->user()->id,
-                'atendida_en'  => now(),
+                'atendida_en' => now(),
             ]);
 
         return back()->with('status', 'Contrato actualizado correctamente.');

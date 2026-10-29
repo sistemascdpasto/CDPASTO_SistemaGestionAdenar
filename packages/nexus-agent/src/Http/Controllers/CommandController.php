@@ -3,6 +3,7 @@
 namespace Cdpasto\NexusAgent\Http\Controllers;
 
 use Cdpasto\NexusAgent\Blocks;
+use Cdpasto\NexusAgent\Location;
 use Cdpasto\NexusAgent\Recorder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -13,7 +14,7 @@ use Throwable;
 
 /**
  * Órdenes de Nexus: sobre usuarios (cerrar sesión, bloquear, desbloquear) y sobre la app
- * (mantenimiento, limpiar caché, reintentar trabajos fallidos).
+ * (mantenimiento, limpiar caché, reintentar trabajos fallidos, ubicación obligatoria).
  */
 class CommandController
 {
@@ -22,7 +23,7 @@ class CommandController
     public function __invoke(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'type' => ['required', 'in:logout,block,unblock,maintenance_on,maintenance_off,cache_clear,queue_retry'],
+            'type' => ['required', 'in:logout,logout_all,block,unblock,maintenance_on,maintenance_off,cache_clear,queue_retry,location_on,location_off'],
             'user_id' => ['nullable', 'required_if:type,'.implode(',', self::USER_COMMANDS), 'string', 'max:64'],
             'minutes' => ['nullable', 'integer', 'min:1'],
             'reason' => ['nullable', 'string', 'max:255'],
@@ -31,12 +32,15 @@ class CommandController
         try {
             $message = match ($data['type']) {
                 'logout' => $this->logout($data['user_id']),
+                'logout_all' => $this->logoutAll(),
                 'block' => $this->block($data['user_id'], $data['minutes'] ?? null, $data['reason'] ?? null),
                 'unblock' => $this->unblock($data['user_id']),
                 'maintenance_on' => $this->maintenanceOn(),
                 'maintenance_off' => $this->maintenanceOff(),
                 'cache_clear' => $this->artisan('cache:clear', [], 'Caché de la aplicación limpiada.'),
                 'queue_retry' => $this->artisan('queue:retry', ['id' => ['all']], 'Trabajos fallidos enviados de nuevo a la cola.'),
+                'location_on' => $this->locationPolicy(true),
+                'location_off' => $this->locationPolicy(false),
             };
         } catch (Throwable $e) {
             return response()->json(['ok' => false, 'message' => $e->getMessage()], 500);
@@ -70,6 +74,35 @@ class CommandController
         return $closed > 0 ? "Se cerraron {$closed} sesiones." : 'El usuario no tenía sesiones abiertas.';
     }
 
+    /**
+     * Cierre masivo: todas las sesiones con usuario y todas las cookies de «recordarme».
+     */
+    private function logoutAll(): string
+    {
+        $closed = 0;
+
+        if (config('session.driver') === 'database') {
+            $closed = DB::connection(config('session.connection'))
+                ->table(config('session.table', 'sessions'))
+                ->whereNotNull('user_id')
+                ->delete();
+        }
+
+        $model = config('auth.providers.users.model');
+
+        if ($model && class_exists($model)) {
+            $user = new $model;
+
+            if (Schema::hasColumn($user->getTable(), 'remember_token')) {
+                DB::table($user->getTable())->whereNotNull('remember_token')->update(['remember_token' => null]);
+            }
+        }
+
+        return config('session.driver') === 'database'
+            ? "Se cerraron {$closed} sesiones."
+            : 'Se invalidaron las cookies de «recordarme» (el driver de sesión '.config('session.driver').' no permite cerrar las sesiones abiertas).';
+    }
+
     private function block(string $userId, ?int $minutes, ?string $reason): string
     {
         Blocks::block($userId, $minutes, $reason);
@@ -86,6 +119,13 @@ class CommandController
         ]);
 
         return $minutes ? "Usuario bloqueado por {$minutes} minutos." : 'Usuario bloqueado hasta nuevo aviso.';
+    }
+
+    private function locationPolicy(bool $required): string
+    {
+        Location::storePolicy($required);
+
+        return $required ? 'Ubicación obligatoria activada.' : 'Ubicación obligatoria desactivada.';
     }
 
     private function maintenanceOn(): string

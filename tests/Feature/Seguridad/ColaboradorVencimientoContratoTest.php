@@ -4,6 +4,8 @@ namespace Tests\Feature\Seguridad;
 
 use App\Models\Seguridad\Alerta;
 use App\Models\Seguridad\Colaborador;
+use App\Models\User;
+use App\Notifications\Seguridad\AlertaGenerada;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Spatie\Permission\Models\Role;
@@ -17,9 +19,14 @@ class ColaboradorVencimientoContratoTest extends TestCase
     {
         parent::setUp();
 
-        // AlertaNotifier busca destinatarios con estos roles al notificar.
-        Role::create(['name' => 'Administrador', 'guard_name' => 'web']);
-        Role::create(['name' => 'Seguridad', 'guard_name' => 'web']);
+        // AlertaNotifier manda 'retiro_proximo' exclusivamente al rol
+        // Contratos (no a Gente ni a Administrador) — ver
+        // test_notifica_solo_a_contratos. findOrCreate: la migración
+        // 2026_10_29_080000_create_contratos_role ya crea el rol Contratos.
+        Role::findOrCreate('Administrador', 'web');
+        Role::findOrCreate('Seguridad', 'web');
+        Role::findOrCreate('Gente', 'web');
+        Role::findOrCreate('Contratos', 'web');
     }
 
     private function colaborador(array $overrides = []): Colaborador
@@ -45,7 +52,28 @@ class ColaboradorVencimientoContratoTest extends TestCase
 
         $this->assertSame(1, Alerta::where('colaborador_id', $colaborador->id)
             ->where('tipo', 'retiro_proximo')
+            ->where('pilar', 'gente')
             ->count());
+    }
+
+    public function test_notifica_solo_a_contratos(): void
+    {
+        Notification::fake();
+
+        $contratos = User::factory()->create(['email' => 'contratos@ejemplo.com']);
+        $contratos->assignRole('Contratos');
+        $gente = User::factory()->create(['email' => 'gente@ejemplo.com']);
+        $gente->assignRole('Gente');
+        $seguridad = User::factory()->create(['email' => 'seguridad@ejemplo.com']);
+        $seguridad->assignRole('Seguridad');
+
+        $this->colaborador(['fecha_retiro_empresa' => now()->addDays(10)->toDateString()]);
+
+        $this->artisan('seguridad:revisar-vencimiento-contratos')->assertSuccessful();
+
+        Notification::assertSentTo($contratos, AlertaGenerada::class);
+        Notification::assertNotSentTo($gente, AlertaGenerada::class);
+        Notification::assertNotSentTo($seguridad, AlertaGenerada::class);
     }
 
     public function test_it_does_not_duplicate_the_alert_on_a_second_run(): void

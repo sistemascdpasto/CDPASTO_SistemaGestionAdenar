@@ -12,6 +12,7 @@ use App\Models\Seguridad\CondicionSalud;
 use App\Models\Seguridad\EvaluacionMedica;
 use App\Models\User;
 use App\Services\Seguridad\EppEstadoService;
+use App\Support\AlertaCatalogo;
 use Illuminate\Support\Carbon;
 
 /**
@@ -23,9 +24,7 @@ class NotificacionesService
 {
     private const MAX_ITEMS = 8;
 
-    public function __construct(private readonly EppEstadoService $eppEstado)
-    {
-    }
+    public function __construct(private readonly EppEstadoService $eppEstado) {}
 
     public function paraUsuario(User $user): array
     {
@@ -38,9 +37,10 @@ class NotificacionesService
         }
         if ($es('Gente')) {
             $constructores[] = fn () => $this->sacSinResolver();
+            $constructores[] = fn () => $this->alertasDeTabla('gente', 'alertas_gente', 'Alertas de Gente', 'file-warning', '#B45309', '/modules/gente/alertas');
         }
         if ($es('Seguridad')) {
-            $constructores[] = fn () => $this->alertasSeguridad();
+            $constructores[] = fn () => $this->alertasDeTabla('seguridad', 'alertas_seguridad', 'Alertas de Seguridad', 'shield-alert', '#D4102A', '/modules/seguridad/alertas');
             $constructores[] = fn () => $this->condicionesSaludConNovedad();
             $constructores[] = fn () => $this->examenesPorVencer();
             $constructores[] = fn () => $this->dotacionEppPorVencer();
@@ -48,9 +48,11 @@ class NotificacionesService
         if ($es('Flota')) {
             $constructores[] = fn () => $this->documentosVehiculos();
             $constructores[] = fn () => $this->varadasAbiertas();
+            $constructores[] = fn () => $this->alertasDeTabla('flota', 'alertas_flota', 'Alertas de Flota', 'truck', '#2B6CB0', '/modules/flota/alertas');
         }
         if ($es('Reparto')) {
             $constructores[] = fn () => $this->cincoPorquesSinPlan();
+            $constructores[] = fn () => $this->alertasDeTabla('reparto', 'alertas_reparto', 'Alertas de Reparto', 'map-pin', '#D4102A', '/modules/reparto/alertas');
         }
 
         $grupos = array_values(array_filter(array_map(fn ($c) => $c(), $constructores)));
@@ -136,36 +138,34 @@ class NotificacionesService
         ], $total);
     }
 
-    private function alertasSeguridad(): ?array
+    /**
+     * Grupo genérico desde la tabla `alertas`, filtrado por pilar — antes
+     * solo existía para Seguridad (y sin filtrar, por lo que Gente nunca
+     * veía "contrato por vencer" aquí). Un tipo nuevo en AlertaCatalogo
+     * aparece aquí solo, sin tocar este archivo.
+     */
+    private function alertasDeTabla(string $pilar, string $key, string $titulo, string $icono, string $color, string $url): ?array
     {
         $alertas = Alerta::query()
             ->with(['colaborador:id,nombres,apellidos', 'alcoholimetro:id,codigo'])
+            ->where('pilar', $pilar)
             ->where('atendida', false)
             ->latest()
             ->limit(self::MAX_ITEMS)
             ->get();
-        $total = Alerta::query()->where('atendida', false)->count();
-
-        $labels = [
-            'prueba_positiva' => 'Prueba positiva',
-            'salud_mala' => 'Salud: Malo',
-            'no_apto' => 'No apto',
-            'calibracion_proxima' => 'Calibración próxima',
-            'certificado_vencido' => 'Certificado vencido',
-            'retiro_proximo' => 'Contrato por vencer',
-        ];
+        $total = Alerta::query()->where('pilar', $pilar)->where('atendida', false)->count();
 
         $items = $alertas->map(fn (Alerta $a) => [
-            'titulo' => $labels[$a->tipo] ?? $a->tipo,
+            'titulo' => AlertaCatalogo::labelDeTipo($a->tipo),
             'detalle' => $a->mensaje,
             'fecha' => $a->created_at?->diffForHumans(),
-            'url' => '/modules/seguridad/alertas',
+            'url' => $url,
             'critico' => in_array($a->tipo, ['prueba_positiva', 'no_apto', 'salud_mala'], true),
         ])->all();
 
-        return $this->grupo('alertas_seguridad', 'Alertas de Seguridad', 'shield-alert', '#D4102A', $items, [
-            'label' => 'Ver todas las alertas de seguridad',
-            'url' => '/modules/seguridad/alertas',
+        return $this->grupo($key, $titulo, $icono, $color, $items, [
+            'label' => "Ver todas las {$titulo}",
+            'url' => $url,
         ], $total);
     }
 

@@ -65,6 +65,8 @@ return [
         'revision-aleatoria' => ['label' => 'Revisión Aleatoria', 'roles' => ['Reparto']],
         'cinco-porques' => ['label' => '5 Por Qué', 'roles' => ['Reparto', 'Colaborador']],
         'clientes' => ['label' => 'Catálogo de Clientes', 'roles' => ['Reparto']],
+        'vehiculos-detenidos' => 'Vehículos Detenidos',
+        'alertas' => 'Alertas',
     ],
 
     'gente' => [
@@ -82,9 +84,11 @@ return [
         'sac' => ['label' => 'SAC', 'roles' => ['Gente', 'Seguridad', 'Reparto', 'Flota']],
         'contratos' => ['label' => 'Contratos', 'roles' => ['Gente', 'Contratos']],
         'asistencia-geovictoria' => ['label' => 'Asistencia GeoVictoria', 'roles' => ['Gente', 'Reparto']],
+        'alertas' => 'Alertas',
     ],
 
     'flota' => [
+        'alertas' => 'Alertas',
         'vehiculos' => 'Documentación',
         'disponibilidad' => 'Disponibilidad',
         'carretas' => 'Carretas',
