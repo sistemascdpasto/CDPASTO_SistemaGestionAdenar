@@ -198,6 +198,7 @@ export const modules: ModuleDef[] = [
             { title: '5 Por Qué', slug: 'cinco-porques', href: '/cinco-porques', icon: ListChecks },
             { title: 'Catálogo de Clientes', slug: 'clientes', icon: Map, allowedRoles: ['Administrador', 'Reparto'] },
             { title: 'Vehículos Detenidos', slug: 'vehiculos-detenidos', icon: Timer },
+            { title: 'Alertas', slug: 'alertas', icon: BellRing },
         ],
     },
     {

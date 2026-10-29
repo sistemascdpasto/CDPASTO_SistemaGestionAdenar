@@ -66,6 +66,7 @@ return [
         'cinco-porques' => ['label' => '5 Por Qué', 'roles' => ['Reparto', 'Colaborador']],
         'clientes' => ['label' => 'Catálogo de Clientes', 'roles' => ['Reparto']],
         'vehiculos-detenidos' => 'Vehículos Detenidos',
+        'alertas' => 'Alertas',
     ],
 
     'gente' => [

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Reparto\AlertaController;
 use App\Http\Controllers\Reparto\AlertaVelocidadCurvaController;
 use App\Http\Controllers\Reparto\BarrioController;
 use App\Http\Controllers\Reparto\ChecklistImportController;
@@ -24,6 +25,10 @@ Route::middleware(['auth', 'active', 'submodule.access'])
     ->prefix('modules/reparto')
     ->name('reparto.')
     ->group(function () {
+        Route::get('alertas', [AlertaController::class, 'index'])->name('alertas.index');
+        Route::patch('alertas/{alerta}/atender', [AlertaController::class, 'atender'])->name('alertas.atender');
+        Route::delete('alertas/{alerta}', [AlertaController::class, 'destroy'])->name('alertas.destroy');
+
         // Modulación
         Route::get('/modulacion', [ModulacionController::class, 'index'])
             ->name('modulacion.index');

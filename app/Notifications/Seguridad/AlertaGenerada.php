@@ -49,15 +49,11 @@ class AlertaGenerada extends Notification
             return ['Ver contrato', route('gente.contratos.show', $this->alerta->colaborador_id)];
         }
 
-        // Reparto no tiene pantalla de Alertas propia (ver plan) — se enlaza
-        // directo al dato más útil: el mapa, o si no hay coordenadas, al
-        // dashboard de Vehículos Detenidos que ya hace ese trabajo.
-        if ($pilar === 'reparto') {
-            if (isset($contexto['latitud'], $contexto['longitud'])) {
-                return ['Ver ubicación en el mapa', "https://www.google.com/maps?q={$contexto['latitud']},{$contexto['longitud']}"];
-            }
-
-            return ['Ver vehículos detenidos', route('reparto.vehiculos-detenidos.index')];
+        // Vehículo detenido: el mapa es el dato más útil cuando hay
+        // coordenadas; si no, cae al flujo genérico de abajo (pantalla de
+        // Alertas de Reparto).
+        if ($pilar === 'reparto' && isset($contexto['latitud'], $contexto['longitud'])) {
+            return ['Ver ubicación en el mapa', "https://www.google.com/maps?q={$contexto['latitud']},{$contexto['longitud']}"];
         }
 
         if ($pilar === 'flota' && isset($contexto['vehiculo_id'])) {

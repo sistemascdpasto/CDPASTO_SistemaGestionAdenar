@@ -52,7 +52,7 @@ class NotificacionesService
         }
         if ($es('Reparto')) {
             $constructores[] = fn () => $this->cincoPorquesSinPlan();
-            $constructores[] = fn () => $this->alertasDeTabla('reparto', 'alertas_reparto', 'Alertas de Reparto', 'map-pin', '#D4102A', '/modules/reparto/vehiculos-detenidos');
+            $constructores[] = fn () => $this->alertasDeTabla('reparto', 'alertas_reparto', 'Alertas de Reparto', 'map-pin', '#D4102A', '/modules/reparto/alertas');
         }
 
         $grupos = array_values(array_filter(array_map(fn ($c) => $c(), $constructores)));
