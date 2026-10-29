@@ -1,15 +1,7 @@
 ﻿import { ChevronDown, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
-/**
- * CargoCombobox — input con búsqueda en tiempo real sobre un listado de cargos.
- *
- * Permite:
- *  · Escribir libremente para filtrar las opciones.
- *  · Seleccionar una opción de la lista desplegable.
- *  · Limpiar la selección con el botón X.
- *  · Aceptar el texto escrito aunque no esté en el catálogo (valor libre).
- */
+
 interface CargoComboboxProps {
     value: string;
     onChange: (value: string) => void;

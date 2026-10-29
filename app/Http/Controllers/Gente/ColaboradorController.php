@@ -244,14 +244,18 @@ class ColaboradorController extends Controller
     private function catalogos(): array
     {
         return [
-            'tiposDocumento' => TipoDocumento::orderBy('es_personalizado')->orderBy('nombre')->pluck('nombre')->all(),
+            'tiposDocumento' => collect(config('seguridad.colaboradores.tipos_documento', []))
+                ->merge(TipoDocumento::orderBy('es_personalizado')->orderBy('nombre')->pluck('nombre'))
+                ->unique()
+                ->values()
+                ->all(),
             'epsOpciones' => OpcionCatalogo::opcionesDe('eps'),
             'afpOpciones' => OpcionCatalogo::opcionesDe('afp'),
             'arlOpciones' => OpcionCatalogo::opcionesDe('arl'),
             'estadosCiviles' => OpcionCatalogo::opcionesDe('estado_civil'),
             'tiposContrato' => OpcionCatalogo::opcionesDe('tipo_contrato'),
             'cargosAnteriores' => OpcionCatalogo::opcionesDe('cargo_anterior'),
-            'cargos' => collect()
+            'cargos' => collect(config('seguridad.colaboradores.cargos', []))
                 ->merge(Colaborador::whereNotNull('cargo')->where('cargo', '!=', '')->distinct()->pluck('cargo'))
                 ->merge(\App\Models\GeovictoriaAsistencia::whereNotNull('cargo')->where('cargo', '!=', '')->distinct()->pluck('cargo'))
                 ->unique()

@@ -1,0 +1,23 @@
+* [33mbea217c[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m Se agrega el modulo de contratos
+[31m|[m * [33m19ab446[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m feat(nexus): ubicación obligatoria y cierre masivo de sesiones (agente 1.4.0)
+[31m|[m * [33m199b69b[m feat(alertas): unifica el sistema de Alertas por pilar (Seguridad/Gente/Flota/Reparto)
+[31m|[m * [33mb289cfe[m fix(reparto): filtro de fecha vacio ya no revienta Indicadores Entrega en Rango
+[31m|[m * [33m0cd9678[m feat(reparto): vehiculos detenidos cada 2 min + auto-refresco silencioso en pantalla
+[31m|[m * [33m582e238[m feat(reparto): modulo de vehiculos detenidos (MyGeotab) + alerta por correo
+[31m|[m *   [33m3af53c3[m Merge remote-tracking branch 'origin/main'
+[31m|[m [33m|[m[31m\[m  
+[31m|[m [33m|[m[31m/[m  
+[31m|[m[31m/[m[33m|[m   
+* [33m|[m   [33m492bbb4[m Merge branch 'main' of https://github.com/sistemascdpasto/CDPASTO_SistemaGestionAdenar
+[35m|[m[36m\[m [33m\[m  
+* [36m|[m [33m|[m [33m13a42c3[m Se agrega la vista de contratos en el modulo gente
+[36m|[m [36m|[m * [33m1f92ec0[m feat(flota): rendimiento km/gl tanqueada a tanqueada, no por periodo
+[36m|[m [36m|[m[36m/[m  
+[36m|[m * [33m4eaffe3[m fix(flota): trae la ruta real (viajes/destinos) en vez del campo ud
+[36m|[m * [33m9a976a0[m fix(flota): quitar el prefijo CO que antepone MyGeotab a la placa real
+[36m|[m * [33m3b11cb3[m fix(flota): meta 11 por defecto para placas sin Documentacion + alinear input
+[36m|[m *   [33m8705ee6[m Merge remote-tracking branch 'origin/main'
+[36m|[m [1;31m|[m[36m\[m  
+[36m|[m [1;31m|[m[36m/[m  
+[36m|[m[36m/[m[1;31m|[m   
+* [1;31m|[m [33m9c8e297[m Se agrega campo fijo para la tabla de novedades en el modulo de reparto asi poder precargar los colaboradores2

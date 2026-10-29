@@ -33,7 +33,12 @@ class UpdateColaboradorPaso3Request extends FormRequest
             'cargo_fecha_inicio' => [
                 'nullable',
                 'date',
-                Rule::requiredIf(fn () => $this->input('guardar_historial_cargo') === 'si'),
+                Rule::requiredIf(fn () => $this->input('guardar_historial_cargo') === 'si'
+                    || (
+                        $this->input('guardar_historial_cargo') !== 'no'
+                        && $this->filled('cargo')
+                        && $this->input('cargo') !== $colaborador?->cargo
+                    )),
             ],
 
             'sena_especialidad' => ['nullable', 'string', 'max:150'],

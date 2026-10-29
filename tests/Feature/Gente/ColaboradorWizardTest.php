@@ -32,6 +32,7 @@ class ColaboradorWizardTest extends TestCase
             'cedula' => '900100200',
             'nombres' => 'Ana',
             'apellidos' => 'Torres',
+            'tipo_documento' => 'Cédula de ciudadanía',
             'eps' => 'SANITAS',
             'arl' => 'ARL SURA',
         ]);
@@ -102,6 +103,7 @@ class ColaboradorWizardTest extends TestCase
             'cedula' => '900100201',
             'nombres' => 'Borrador',
             'apellidos' => 'Sin Terminar',
+            'tipo_documento' => 'Cédula de ciudadanía',
         ]);
 
         $response = $this->actingAs($user)->get(route('gente.colaboradores.index'));
@@ -152,6 +154,7 @@ class ColaboradorWizardTest extends TestCase
             'cedula' => '900100203',
             'nombres' => 'Pedro',
             'apellidos' => 'Gómez',
+            'tipo_documento' => 'Cédula de ciudadanía',
             'user_id' => $cuenta->id,
         ])->assertRedirect(route('gente.colaboradores.wizard', ['colaborador' => $colaborador, 'paso' => 2]));
 
@@ -177,6 +180,7 @@ class ColaboradorWizardTest extends TestCase
             'cedula' => '900100204',
             'nombres' => 'Laura',
             'apellidos' => 'Vega',
+            'tipo_documento' => 'Cédula de ciudadanía',
             'imagen' => '',
         ])->assertRedirect(route('gente.colaboradores.wizard', ['colaborador' => $colaborador, 'paso' => 2]));
 

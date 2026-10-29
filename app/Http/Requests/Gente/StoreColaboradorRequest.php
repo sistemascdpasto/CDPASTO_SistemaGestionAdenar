@@ -33,7 +33,11 @@ class StoreColaboradorRequest extends FormRequest
             'apellidos' => ['required', 'string', 'max:100'],
             'imagen' => ['nullable', 'image', 'max:2048'],
 
-            'tipo_documento' => ['required', Rule::in([...(\App\Models\Gente\TipoDocumento::pluck('nombre')->all()), 'Otro'])],
+            'tipo_documento' => ['required', Rule::in([
+                ...config('seguridad.colaboradores.tipos_documento', []),
+                ...\App\Models\Gente\TipoDocumento::pluck('nombre')->all(),
+                'Otro',
+            ])],
             'tipo_documento_otro_label' => ['nullable', 'required_if:tipo_documento,Otro', 'string', 'max:100'],
 
             'expedido_en' => ['nullable', 'string', 'max:100'],

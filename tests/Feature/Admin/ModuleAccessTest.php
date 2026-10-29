@@ -159,7 +159,7 @@ class ModuleAccessTest extends TestCase
 
         $this->assertCount(25, $registro['seguridad']);
         $this->assertCount(14, $registro['reparto']);
-        $this->assertCount(9, $registro['gente']);
+        $this->assertCount(10, $registro['gente']);
         $this->assertCount(9, $registro['flota']);
     }
 

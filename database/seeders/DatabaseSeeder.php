@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
         $this->call(GlosarioInviasSeeder::class);
         $this->call(WebScrapingSourceSeeder::class);
         $this->call(RecomendacionSeeder::class);
+        $this->call(TipoDocumentoSeeder::class);
 
         $demoUsers = [
             ['id_number' => '1000000001', 'first' => 'Brian', 'last' => 'Administrador', 'role' => RoleEnum::Administrador],

@@ -31,6 +31,7 @@ class ColaboradorAutoprovisionTest extends TestCase
             'cedula' => '1002003004',
             'nombres' => 'Laura',
             'apellidos' => 'Portal',
+            'tipo_documento' => 'Cédula de ciudadanía',
             'is_active' => true,
         ])->assertRedirectContains('/wizard');
 
@@ -60,6 +61,7 @@ class ColaboradorAutoprovisionTest extends TestCase
             'cedula' => '1002003004',
             'nombres' => 'Laura',
             'apellidos' => 'Portal',
+            'tipo_documento' => 'Cédula de ciudadanía',
             'correo' => 'laura.portal@example.com',
             'is_active' => true,
         ])->assertRedirectContains('/wizard');
@@ -80,6 +82,7 @@ class ColaboradorAutoprovisionTest extends TestCase
             'cedula' => '1002003004',
             'nombres' => 'Laura',
             'apellidos' => 'Portal',
+            'tipo_documento' => 'Cédula de ciudadanía',
             'correo' => 'laura.portal@example.com',
             'is_active' => true,
         ])->assertRedirectContains('/wizard');
@@ -98,6 +101,7 @@ class ColaboradorAutoprovisionTest extends TestCase
             'cedula' => '1002003004',
             'nombres' => 'Laura',
             'apellidos' => 'Portal',
+            'tipo_documento' => 'Cédula de ciudadanía',
             'is_active' => true,
         ]);
 
@@ -123,6 +127,7 @@ class ColaboradorAutoprovisionTest extends TestCase
             'cedula' => '1002003004',
             'nombres' => 'Laura',
             'apellidos' => 'Portal',
+            'tipo_documento' => 'Cédula de ciudadanía',
             'is_active' => true,
         ]);
 
@@ -143,6 +148,7 @@ class ColaboradorAutoprovisionTest extends TestCase
             'cedula' => '1002003004',
             'nombres' => 'Laura',
             'apellidos' => 'Portal',
+            'tipo_documento' => 'Cédula de ciudadanía',
             'is_active' => true,
         ])->assertRedirectContains('/wizard');
 
@@ -165,6 +171,7 @@ class ColaboradorAutoprovisionTest extends TestCase
             'cedula' => '1002003004',
             'nombres' => 'Laura',
             'apellidos' => 'Portal',
+            'tipo_documento' => 'Cédula de ciudadanía',
             'is_active' => true,
             'user_id' => $cuenta->id,
         ])->assertRedirectContains('/wizard');
