@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Gente;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Gente\UpdateContratoColaboradorRequest;
+use App\Http\Requests\Gente\UpdateContratoProrrogaRequest;
 use App\Models\Gente\ContratoProrroga;
 use App\Models\Seguridad\Colaborador;
 use App\Models\Seguridad\ColaboradorDocumento;
@@ -13,6 +15,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -327,6 +330,12 @@ class ContratosController extends Controller
             $rules["{$campo}.*"] = ['file', 'mimes:pdf,doc,docx,jpg,jpeg,png', 'max:5120'];
         }
 
+        if (! $request->hasFile('documento_contrato') && ! $request->hasFile('documento_prorroga')) {
+            return back()->withErrors([
+                'documentos' => 'No se recibió ningún archivo. Intenta adjuntarlo nuevamente o usa un archivo de máximo 5 MB.',
+            ]);
+        }
+
         $request->validate($rules);
 
         foreach ($camposPermitidos as $campo) {
@@ -451,6 +460,51 @@ class ContratosController extends Controller
         ]);
 
         return back()->with('status', 'Documento de prórroga eliminado correctamente.');
+    }
+
+    public function updateProrroga(
+        UpdateContratoProrrogaRequest $request,
+        Colaborador $colaborador,
+        ContratoProrroga $prorroga,
+    ): RedirectResponse {
+        $datos = $request->validated();
+
+        DB::transaction(function () use ($colaborador, $prorroga, $datos) {
+            $esRegistroActual = $colaborador->prorrogas()
+                ->orderByDesc('created_at')
+                ->orderByDesc('id')
+                ->first()
+                ?->is($prorroga) ?? false;
+
+            $prorroga->update($datos);
+
+            if (! $esRegistroActual) {
+                return;
+            }
+
+            $actualizacionColaborador = ['fecha_retiro_empresa' => $datos['fecha_nueva']];
+
+            if ($datos['tipo'] === 'finalizacion') {
+                $actualizacionColaborador['is_active'] = false;
+            }
+
+            $colaborador->update($actualizacionColaborador);
+
+            if ($datos['tipo'] === 'finalizacion' && $colaborador->user) {
+                $colaborador->user->update(['is_active' => false]);
+            }
+        });
+
+        return back()->with('status', 'Historial de contrato actualizado correctamente.');
+    }
+
+    public function updateDatosContrato(
+        UpdateContratoColaboradorRequest $request,
+        Colaborador $colaborador,
+    ): RedirectResponse {
+        $colaborador->update($request->validated());
+
+        return back()->with('status', 'Datos del contrato actualizados correctamente.');
     }
 
     /**

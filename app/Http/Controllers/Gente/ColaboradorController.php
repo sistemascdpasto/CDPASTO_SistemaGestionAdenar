@@ -437,7 +437,7 @@ class ColaboradorController extends Controller
     public function prorrogarContrato(Request $request, Colaborador $colaborador): RedirectResponse
     {
         $request->validate([
-            'fecha_retiro_empresa' => ['required', 'date', 'after:today'],
+            'fecha_retiro_empresa' => ['required', 'date'],
             'tipo' => ['nullable', 'in:prorroga,finalizacion'],
             'observaciones' => ['nullable', 'string', 'max:500'],
             'documento' => ['nullable', 'file', 'mimes:pdf,doc,docx,jpg,jpeg,png', 'max:10240'],
@@ -560,8 +560,12 @@ class ColaboradorController extends Controller
             'is_active' => $request->boolean('is_active', true),
         ]);
 
-        if ($cargo && $cargoFechaInicio && $cargo !== $colaborador->cargoActual?->cargo) {
-            $cargoHistorial->asignar($colaborador, $cargo, $cargoFechaInicio);
+        if ($cargo && $cargo !== $colaborador->cargoActual?->cargo) {
+            if ($cargoFechaInicio) {
+                $cargoHistorial->asignar($colaborador, $cargo, $cargoFechaInicio);
+            } else {
+                $cargoHistorial->actualizarSinHistorial($colaborador, $cargo);
+            }
         }
 
         if ($colaborador->user_id) {

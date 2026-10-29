@@ -3,8 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PillToggle, SeccionCard } from '@/pages/seguridad/colaboradores/colaborador-form-fields';
+import { SeccionCard } from '@/pages/seguridad/colaboradores/colaborador-form-fields';
 import { useForm } from '@inertiajs/react';
 import { AlertTriangle, ArrowLeft, CheckCircle2, FolderOpen, LoaderCircle } from 'lucide-react';
 import { FormEventHandler, useEffect, useMemo } from 'react';
@@ -104,13 +103,10 @@ export function Paso4Archivos({ colaborador, onBack }: Paso4Props) {
         ...documentosIniciales,
         ...licenciaIniciales,
         documento_sena_carta_presentacion: [],
-        documento_plan_padrino: [],
         licencia_conduccion_categorias: [],
         fecha_licencia: (colaborador.fecha_licencia as string | null) ?? '',
         fecha_vencimiento_licencia: (colaborador.fecha_vencimiento_licencia as string | null) ?? '',
         restricciones_licencia: (colaborador.restricciones_licencia as string | null) ?? '',
-        es_padrino: (colaborador.es_padrino as Paso4FormData['es_padrino']) ?? '',
-        tipo_padrino: (colaborador.tipo_padrino as Paso4FormData['tipo_padrino']) ?? '',
     });
 
     // Limpiar errores de pasos anteriores al montar este paso.
@@ -256,46 +252,6 @@ export function Paso4Archivos({ colaborador, onBack }: Paso4Props) {
                     />
                 </SeccionCard>
             )}
-
-            <div className="hidden">
-                <SeccionCard titulo="Documentación Plan padrino — 4.7" tono="azul">
-                    <div className="grid gap-4">
-                        <PillToggle
-                            label="¿Es padrino?"
-                            value={data.es_padrino}
-                            onChange={(value) => setData('es_padrino', value)}
-                            disabled={processing}
-                            options={[{ value: 'no_aplica', label: 'No aplica' }, { value: 'aplica', label: 'Aplica' }]}
-                        />
-                        {data.es_padrino === 'aplica' && (
-                            <div className="grid gap-3 border-l-2 border-emerald-300 pl-3 dark:border-emerald-500/30">
-                                <div className="grid gap-2 sm:max-w-xs">
-                                    <Label htmlFor="tipo_padrino">Tipo</Label>
-                                    <Select value={data.tipo_padrino} onValueChange={(value) => setData('tipo_padrino', value as Paso4FormData['tipo_padrino'])} disabled={processing}>
-                                        <SelectTrigger id="tipo_padrino">
-                                            <SelectValue placeholder="Selecciona el tipo" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="padrino">Padrino</SelectItem>
-                                            <SelectItem value="plan_padrino_personal_nuevo">Plan padrino personal nuevo</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                    <InputError message={errors.tipo_padrino} />
-                                </div>
-                                {data.tipo_padrino === 'plan_padrino_personal_nuevo' && (
-                                    <SimpleFileField
-                                        files={data.documento_plan_padrino}
-                                        existing={existing('documento_plan_padrino')}
-                                        onChange={(files) => setData('documento_plan_padrino', files)}
-                                        error={errorDeArchivo(errors, 'documento_plan_padrino')}
-                                        disabled={processing}
-                                    />
-                                )}
-                            </div>
-                        )}
-                    </div>
-                </SeccionCard>
-            </div>
 
             {GRUPOS.map((grupo) => (
                 <DocumentoGrupo

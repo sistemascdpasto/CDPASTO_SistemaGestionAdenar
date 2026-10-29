@@ -102,11 +102,7 @@ class UpdateColaboradorRequest extends FormRequest
             // Paso 3 (el historial de cargos lo gestiona CargoHistorialService)
             'area' => ['nullable', Rule::in(['Administrativa', 'Operativa'])],
             'cargo' => ['nullable', 'string', 'max:100'],
-            'cargo_fecha_inicio' => [
-                'nullable',
-                'date',
-                Rule::requiredIf(fn () => $this->input('cargo') && $this->input('cargo') !== $colaborador?->cargoActual?->cargo),
-            ],
+            'cargo_fecha_inicio' => ['nullable', 'date'],
             'centro' => ['nullable', Rule::in(config('seguridad.colaboradores.centros'))],
             'centro_trabajo' => ['nullable', Rule::in(config('seguridad.colaboradores.centros_trabajo'))],
             'fecha_ingreso_empresa' => ['nullable', 'date'],
@@ -125,8 +121,6 @@ class UpdateColaboradorRequest extends FormRequest
             // Paso 4
             'licencia_conduccion_categorias' => ['nullable', 'array'],
             'licencia_conduccion_categorias.*' => [Rule::in(config('seguridad.colaboradores.licencia_conduccion_categorias'))],
-            'es_padrino' => ['nullable', Rule::in(['no_aplica', 'aplica'])],
-            'tipo_padrino' => ['nullable', 'required_if:es_padrino,aplica', Rule::in(['padrino', 'plan_padrino_personal_nuevo'])],
 
             'is_active' => ['boolean'],
 

@@ -295,7 +295,7 @@ class ColaboradorWizardTest extends TestCase
         $this->assertSame($fechaRetiro, $colaborador->fresh()->fecha_retiro_empresa->toDateString());
     }
 
-    public function test_paso3_update_still_requires_a_start_date_when_the_cargo_actually_changes(): void
+    public function test_paso3_update_accepts_a_cargo_change_without_a_start_date(): void
     {
         $user = $this->genteUser();
 
@@ -316,7 +316,12 @@ class ColaboradorWizardTest extends TestCase
         $this->actingAs($user)->patch(route('gente.colaboradores.paso3.update', $colaborador), [
             'cargo' => 'SUPERVISOR DE ÁREA',
             'cargo_fecha_inicio' => '',
-        ])->assertSessionHasErrors('cargo_fecha_inicio');
+        ])->assertSessionHasNoErrors()
+            ->assertRedirect(route('gente.colaboradores.wizard', ['colaborador' => $colaborador, 'paso' => 4]));
+
+        $this->assertSame('SUPERVISOR DE ÁREA', $colaborador->fresh()->cargo);
+        $this->assertSame('SUPERVISOR DE ÁREA', $colaborador->cargoActual->fresh()->cargo);
+        $this->assertSame(1, $colaborador->cargos()->count());
     }
 
     /**
@@ -381,5 +386,29 @@ class ColaboradorWizardTest extends TestCase
 
         $response->assertSessionHasErrors('documento_cedula.0');
         $this->assertSame('borrador', $colaborador->fresh()->estado_registro);
+    }
+
+    public function test_paso4_does_not_revalidate_legacy_padrino_values_when_saving_documents(): void
+    {
+        $user = $this->genteUser();
+
+        $colaborador = Colaborador::create([
+            'cedula' => '900100211',
+            'nombres' => 'Padrino',
+            'apellidos' => 'Legado',
+            'estado_registro' => 'borrador',
+            'wizard_step' => 3,
+            'es_padrino' => '1',
+            'tipo_padrino' => 'Apadrinado',
+        ]);
+
+        $this->actingAs($user)->patch(route('gente.colaboradores.paso4.update', $colaborador), [
+            'es_padrino' => '1',
+            'tipo_padrino' => 'Apadrinado',
+        ])->assertSessionHasNoErrors()
+            ->assertRedirect(route('gente.colaboradores.show', $colaborador));
+
+        $this->assertSame('1', $colaborador->fresh()->es_padrino);
+        $this->assertSame('Apadrinado', $colaborador->fresh()->tipo_padrino);
     }
 }

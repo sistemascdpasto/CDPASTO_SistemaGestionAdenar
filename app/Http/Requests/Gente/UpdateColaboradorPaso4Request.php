@@ -35,9 +35,6 @@ class UpdateColaboradorPaso4Request extends FormRequest
             'fecha_vencimiento_licencia' => ['nullable', 'date'],
             'restricciones_licencia' => ['nullable', 'string', 'max:500'],
 
-            'es_padrino' => ['nullable', Rule::in(['no_aplica', 'aplica'])],
-            'tipo_padrino' => ['nullable', 'required_if:es_padrino,aplica', Rule::in(['padrino', 'plan_padrino_personal_nuevo'])],
-
             ...$this->documentoRules(ColaboradorDocumentoCampos::paso4()),
         ];
     }

@@ -154,7 +154,7 @@ export function Paso3InformacionPuesto({ colaborador, catalogos, historialCargos
 
                             {data.guardar_historial_cargo === 'si' && (
                                 <div className="grid gap-2">
-                                    <Label htmlFor="cargo_fecha_inicio">Fecha de inicio del nuevo cargo</Label>
+                                    <Label htmlFor="cargo_fecha_inicio">Fecha de inicio del nuevo cargo (opcional)</Label>
                                     <Input
                                         id="cargo_fecha_inicio"
                                         type="date"

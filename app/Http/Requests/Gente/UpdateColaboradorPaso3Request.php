@@ -30,16 +30,7 @@ class UpdateColaboradorPaso3Request extends FormRequest
             'area' => ['nullable', Rule::in(['Administrativa', 'Operativa'])],
             'cargo' => ['nullable', 'string', 'max:100'],
             'guardar_historial_cargo' => ['nullable', Rule::in(['si', 'no'])],
-            'cargo_fecha_inicio' => [
-                'nullable',
-                'date',
-                Rule::requiredIf(fn () => $this->input('guardar_historial_cargo') === 'si'
-                    || (
-                        $this->input('guardar_historial_cargo') !== 'no'
-                        && $this->filled('cargo')
-                        && $this->input('cargo') !== $colaborador?->cargo
-                    )),
-            ],
+            'cargo_fecha_inicio' => ['nullable', 'date'],
 
             'sena_especialidad' => ['nullable', 'string', 'max:150'],
             'sena_numero_grupo' => ['nullable', 'integer'],

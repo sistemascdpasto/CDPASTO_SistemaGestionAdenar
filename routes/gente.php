@@ -152,6 +152,10 @@ Route::middleware(['auth', 'active', 'role:Administrador|Gente|Contratos', 'subm
             ->name('contratos.preavisos.store');
         Route::post('contratos/{colaborador}/prorrogas/{prorroga}/documento', [ContratosController::class, 'storeDocumentoProrroga'])
             ->name('contratos.prorrogas.documento.store');
+        Route::patch('contratos/{colaborador}/prorrogas/{prorroga}', [ContratosController::class, 'updateProrroga'])
+            ->name('contratos.prorrogas.update');
+        Route::patch('contratos/{colaborador}/datos', [ContratosController::class, 'updateDatosContrato'])
+            ->name('contratos.datos.update');
         Route::delete('contratos/{colaborador}/prorrogas/{prorroga}/documento', [ContratosController::class, 'destroyDocumentoProrroga'])
             ->name('contratos.prorrogas.documento.destroy');
 

@@ -59,11 +59,6 @@ export function ProrrogarContratoDialog({ colaboradorId, nombreCompleto, fechaAc
         });
     };
 
-    // Fecha mínima: mañana
-    const hoy = new Date();
-    hoy.setDate(hoy.getDate() + 1);
-    const minFecha = hoy.toISOString().slice(0, 10);
-
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
@@ -126,7 +121,6 @@ export function ProrrogarContratoDialog({ colaboradorId, nombreCompleto, fechaAc
                         <Input
                             id="fecha_personalizada"
                             type="date"
-                            min={minFecha}
                             value={modoPersonalizado ? data.fecha_retiro_empresa : ''}
                             onChange={(e) => {
                                 setModoPersonalizado(true);
