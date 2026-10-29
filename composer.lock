@@ -269,11 +269,11 @@
         },
         {
             "name": "cdpasto/nexus-agent",
-            "version": "1.4.0",
+            "version": "1.5.0",
             "dist": {
                 "type": "path",
                 "url": "packages/nexus-agent",
-                "reference": "22e4d6bbd3f93795af4f8b10d46b1d7f7f103e9e"
+                "reference": "d31c417bcbbcda52d924b2b3804eb8a219b3d637"
             },
             "require": {
                 "illuminate/database": "^11.0|^12.0",
