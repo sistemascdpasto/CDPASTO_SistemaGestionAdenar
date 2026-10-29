@@ -274,7 +274,7 @@ class ColaboradorWizardTest extends TestCase
         ])->assertRedirect(route('gente.colaboradores.wizard', ['colaborador' => $colaborador, 'paso' => 4]));
     }
 
-    public function test_paso3_update_still_rejects_a_new_past_date(): void
+    public function test_paso3_update_accepts_a_new_past_contract_end_date(): void
     {
         $user = $this->genteUser();
 
@@ -286,11 +286,13 @@ class ColaboradorWizardTest extends TestCase
             'wizard_step' => 2,
         ]);
 
-        $this->actingAs($user)->patch(route('gente.colaboradores.paso3.update', $colaborador), [
-            'fecha_retiro_empresa' => now()->subDay()->toDateString(),
-        ])->assertSessionHasErrors('fecha_retiro_empresa');
+        $fechaRetiro = now()->subDay()->toDateString();
 
-        $this->assertNull($colaborador->fresh()->fecha_retiro_empresa);
+        $this->actingAs($user)->patch(route('gente.colaboradores.paso3.update', $colaborador), [
+            'fecha_retiro_empresa' => $fechaRetiro,
+        ])->assertRedirect(route('gente.colaboradores.wizard', ['colaborador' => $colaborador, 'paso' => 4]));
+
+        $this->assertSame($fechaRetiro, $colaborador->fresh()->fecha_retiro_empresa->toDateString());
     }
 
     public function test_paso3_update_still_requires_a_start_date_when_the_cargo_actually_changes(): void

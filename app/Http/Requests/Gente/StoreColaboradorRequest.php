@@ -8,11 +8,7 @@ use App\Support\Seguridad\ColaboradorDocumentoCampos;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-/**
- * Crea el colaborador como borrador a partir del Paso 1 del wizard
- * (HU01/HU02). Los pasos siguientes se guardan con
- * Update ColaboradorPasoNRequest sobre el registro ya creado.
- */
+
 class StoreColaboradorRequest extends FormRequest
 {
     use ValidatesColaboradorDocumentos;

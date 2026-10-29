@@ -7,9 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
-import { CalendarPlus, Eye, FileDown, FileStack, Search, Users } from 'lucide-react';
+import { Eye, FileStack, Search, Users } from 'lucide-react';
 import { useState } from 'react';
-import { ProrrogarContratoDialog } from '@/pages/gente/colaboradores/prorrogar-contrato-dialog';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
@@ -201,30 +200,8 @@ export default function ContratosIndex({ colaboradores, filters }: Props) {
                                                         <div className="flex justify-end gap-1.5">
                                                             <Button variant="outline" size="sm" asChild>
                                                                 <Link href={`/modules/gente/contratos/${row.id}`}>
-                                                                    <Eye className="mr-1.5 h-3.5 w-3.5" />
-                                                                    Ver
+                                                                    <Eye className="h-3.5 w-3.5" />
                                                                 </Link>
-                                                            </Button>
-                                                            <ProrrogarContratoDialog
-                                                                colaboradorId={row.id}
-                                                                nombreCompleto={`${row.nombres} ${row.apellidos}`}
-                                                                fechaActual={row.fecha_retiro_empresa}
-                                                                trigger={
-                                                                    <Button variant="outline" size="sm">
-                                                                        <CalendarPlus className="mr-1.5 h-3.5 w-3.5" />
-                                                                        Prorrogar
-                                                                    </Button>
-                                                                }
-                                                            />
-                                                            <Button variant="outline" size="sm" asChild>
-                                                                <a
-                                                                    href={`/modules/gente/contratos/${row.id}/prorroga-pdf${row.fecha_retiro_empresa ? `?fecha=${row.fecha_retiro_empresa}` : ''}`}
-                                                                    target="_blank"
-                                                                    rel="noopener noreferrer"
-                                                                >
-                                                                    <FileDown className="mr-1.5 h-3.5 w-3.5" />
-                                                                    PDF
-                                                                </a>
                                                             </Button>
                                                         </div>
                                                     </TableCell>

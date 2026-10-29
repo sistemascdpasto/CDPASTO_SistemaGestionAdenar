@@ -173,7 +173,7 @@ export function NotificationsBell() {
                                 </div>
 
                                 <div className="divide-y">
-                                    {grupo.items.map((item, idx) => {
+                                    {grupo.items.map((item) => {
                                         const clave = claveItem(grupo.key, item);
                                         return (
                                             <div

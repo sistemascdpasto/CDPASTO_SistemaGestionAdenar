@@ -305,7 +305,6 @@ export function Paso3InformacionPuesto({ colaborador, catalogos, historialCargos
                         <Input
                             id="fecha_retiro_empresa"
                             type="date"
-                            min={minDateFor(colaborador.fecha_retiro_empresa)}
                             value={data.fecha_retiro_empresa}
                             onChange={(e) => {
                                 const val = e.target.value;

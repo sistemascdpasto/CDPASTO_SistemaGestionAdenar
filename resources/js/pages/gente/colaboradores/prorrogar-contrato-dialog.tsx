@@ -41,6 +41,7 @@ export function ProrrogarContratoDialog({ colaboradorId, nombreCompleto, fechaAc
             setData({ fecha_retiro_empresa: '' });
             setModoPersonalizado(false);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open]);
 
     const seleccionarOpcion = (meses: number) => {
