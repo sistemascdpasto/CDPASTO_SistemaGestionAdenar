@@ -45,7 +45,7 @@ class HandleInertiaRequests extends Middleware
         $isColaborador = $user?->hasRole(Role::Colaborador->value) ?? false;
         $accessibleModules = $user
             ? collect(Role::moduleRoles())
-                ->filter(fn (Role $role, string $slug) => $isAdmin || $user->hasRole($role->value))
+                ->filter(fn (Role $role, string $slug) => $isAdmin || $user->hasRole($role->value) || ($slug === 'gente' && $user->hasRole(Role::Contratos->value)))
                 ->keys()
                 ->values()
                 ->all()

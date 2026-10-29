@@ -75,6 +75,7 @@ Route::middleware(['auth', 'active', 'role:Administrador|Seguridad', 'submodule.
         Route::get('alertas', [AlertaController::class, 'index'])->name('alertas.index');
         Route::get('alertas/bell', [AlertaController::class, 'bell'])->name('alertas.bell');
         Route::patch('alertas/{alerta}/atender', [AlertaController::class, 'atender'])->name('alertas.atender');
+        Route::delete('alertas/{alerta}', [AlertaController::class, 'destroy'])->name('alertas.destroy');
 
         Route::get('indicador', [IndicadorController::class, 'index'])->name('indicador.index');
         Route::resource('glosario', GlossaryTermController::class);

@@ -35,6 +35,7 @@ class User extends Authenticatable implements WebAuthnAuthenticatable
         'password',
         'is_active',
         'modulos_personalizados',
+        'alertas_contratos_tres_veces_dia',
     ];
 
     /**
@@ -61,6 +62,7 @@ class User extends Authenticatable implements WebAuthnAuthenticatable
             'password' => 'hashed',
             'is_active' => 'boolean',
             'modulos_personalizados' => 'boolean',
+            'alertas_contratos_tres_veces_dia' => 'boolean',
         ];
     }
 

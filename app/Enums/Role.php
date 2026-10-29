@@ -10,6 +10,7 @@ enum Role: string
     case Gente = 'Gente';
     case Flota = 'Flota';
     case Colaborador = 'Colaborador';
+    case Contratos = 'Contratos';
 
     /**
      * Roles that map 1:1 to a business module slug (excludes Administrador).

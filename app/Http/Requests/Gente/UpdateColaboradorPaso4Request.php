@@ -19,7 +19,7 @@ class UpdateColaboradorPaso4Request extends FormRequest
 
     public function withValidator(Validator $validator): void
     {
-        $validator->after(fn () => $this->logArchivosDocumentoRechazados($validator, ColaboradorDocumentoCampos::PASO4));
+        $validator->after(fn () => $this->logArchivosDocumentoRechazados($validator, ColaboradorDocumentoCampos::paso4()));
     }
 
     /**
@@ -38,7 +38,7 @@ class UpdateColaboradorPaso4Request extends FormRequest
             'es_padrino' => ['nullable', Rule::in(['no_aplica', 'aplica'])],
             'tipo_padrino' => ['nullable', 'required_if:es_padrino,aplica', Rule::in(['padrino', 'plan_padrino_personal_nuevo'])],
 
-            ...$this->documentoRules(ColaboradorDocumentoCampos::PASO4),
+            ...$this->documentoRules(ColaboradorDocumentoCampos::paso4()),
         ];
     }
 }

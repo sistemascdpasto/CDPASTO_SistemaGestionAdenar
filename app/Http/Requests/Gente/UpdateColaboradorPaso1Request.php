@@ -19,7 +19,7 @@ class UpdateColaboradorPaso1Request extends FormRequest
 
     public function withValidator(Validator $validator): void
     {
-        $validator->after(fn () => $this->logArchivosDocumentoRechazados($validator, ColaboradorDocumentoCampos::PASO1));
+        $validator->after(fn () => $this->logArchivosDocumentoRechazados($validator, ColaboradorDocumentoCampos::paso1()));
     }
 
     /**
@@ -40,7 +40,7 @@ class UpdateColaboradorPaso1Request extends FormRequest
             'apellidos' => ['required', 'string', 'max:100'],
             'imagen' => ['nullable', 'image', 'max:2048'],
 
-            'tipo_documento' => ['nullable', Rule::in([...config('seguridad.colaboradores.tipos_documento'), 'Otro'])],
+            'tipo_documento' => ['required', Rule::in([...(\App\Models\Gente\TipoDocumento::pluck('nombre')->all()), 'Otro'])],
             'tipo_documento_otro_label' => ['nullable', 'required_if:tipo_documento,Otro', 'string', 'max:100'],
 
             'expedido_en' => ['nullable', 'string', 'max:100'],
@@ -52,7 +52,23 @@ class UpdateColaboradorPaso1Request extends FormRequest
             'celular_1' => ['nullable', 'digits_between:1,10'],
             'celular_2' => ['nullable', 'digits_between:1,10'],
             'correo' => ['nullable', 'email', 'max:255'],
-            'estado_civil' => ['nullable', Rule::in(['soltero', 'union_libre', 'casado', 'divorciado', 'viudo'])],
+            'estado_civil' => ['nullable', 'string', 'max:100'],
+            'estado_civil_otro' => ['nullable', 'string', 'max:100'],
+
+            // Información personal
+            'nombre_pareja' => ['nullable', 'string', 'max:100'],
+            'hijos' => ['nullable', 'array'],
+            'hijos.*.nombre' => ['nullable', 'string', 'max:100'],
+            'hijos.*.fecha_nacimiento' => ['nullable', 'date'],
+            'hijos.*.edad' => ['nullable', 'integer', 'min:0', 'max:120'],
+
+            // Contactos de emergencia
+            'emergencia_parentezco_1' => ['nullable', 'string', 'max:50'],
+            'emergencia_nombre_1' => ['nullable', 'string', 'max:100'],
+            'emergencia_telefono_1' => ['nullable', 'string', 'max:20'],
+            'emergencia_parentezco_2' => ['nullable', 'string', 'max:50'],
+            'emergencia_nombre_2' => ['nullable', 'string', 'max:100'],
+            'emergencia_telefono_2' => ['nullable', 'string', 'max:20'],
 
             'discapacidad' => ['nullable', Rule::in(['no_aplica', 'aplica'])],
             'discapacidad_tipo' => ['nullable', 'required_if:discapacidad,aplica', 'string', 'max:150'],
@@ -75,7 +91,7 @@ class UpdateColaboradorPaso1Request extends FormRequest
             'sena_nit' => ['nullable', 'string', 'max:30'],
             'sena_centro_formacion' => ['nullable', 'string', 'max:150'],
 
-            ...$this->documentoRules(ColaboradorDocumentoCampos::PASO1),
+            ...$this->documentoRules(ColaboradorDocumentoCampos::paso1()),
         ];
     }
 }

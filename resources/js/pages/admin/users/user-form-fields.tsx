@@ -21,8 +21,9 @@ export interface UserFormData {
     roles: string[];
     is_active: boolean;
     modulos_personalizados: boolean;
+    alertas_contratos_tres_veces_dia?: boolean;
     submodulos: Record<string, string[]>;
-    [key: string]: string | string[] | boolean | Record<string, string[]>;
+    [key: string]: string | string[] | boolean | undefined | Record<string, string[]>;
 }
 
 interface UserFormFieldsProps {
@@ -146,6 +147,25 @@ export function UserFormFields({ data, setData, errors, availableRoles, moduleRe
                 </div>
                 <InputError message={errors.roles} />
             </div>
+
+            {data.roles.includes('Contratos') && (
+                <div className="grid gap-2 rounded-lg border border-amber-300 bg-amber-50/70 p-4 dark:border-amber-900/60 dark:bg-amber-950/20">
+                    <div className="flex items-center space-x-2">
+                        <Checkbox
+                            id="alertas_contratos_tres_veces_dia"
+                            checked={Boolean(data.alertas_contratos_tres_veces_dia)}
+                            onCheckedChange={(checked) => setData('alertas_contratos_tres_veces_dia', checked === true)}
+                            disabled={processing}
+                        />
+                        <Label htmlFor="alertas_contratos_tres_veces_dia" className="text-sm font-semibold text-amber-950 dark:text-amber-200">
+                            Recibir alertas de vencimiento de contrato 3 veces al día
+                        </Label>
+                    </div>
+                    <p className="text-xs text-amber-900/80 dark:text-amber-300/80 pl-6">
+                        Si marcas esta casilla, este usuario recibirá las alertas de contratos próximos a vencer en los 3 turnos diarios (mañana 7:00 AM, mediodía 12:00 PM y tarde 5:00 PM). Si la dejas desmarcada, solo las recibirá una vez al día en la mañana.
+                    </p>
+                </div>
+            )}
 
             <div className="flex items-center space-x-2">
                 <Checkbox

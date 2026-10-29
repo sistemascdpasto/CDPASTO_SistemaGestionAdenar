@@ -33,6 +33,19 @@ export type Paso1FormData = {
     celular_2: string;
     correo: string;
     estado_civil: string;
+    estado_civil_otro: string;
+
+    // Información personal
+    nombre_pareja: string;
+    hijos: { nombre: string; fecha_nacimiento: string; edad: string }[];
+
+    // Contactos de emergencia
+    emergencia_parentezco_1: string;
+    emergencia_nombre_1: string;
+    emergencia_telefono_1: string;
+    emergencia_parentezco_2: string;
+    emergencia_nombre_2: string;
+    emergencia_telefono_2: string;
 
     discapacidad: 'no_aplica' | 'aplica' | '';
     discapacidad_tipo: string;
@@ -49,27 +62,22 @@ export type Paso1FormData = {
     arl: string;
     arl_otro: string;
 
-    sena_especialidad: string;
-    sena_numero_grupo: string;
-    sena_institucion: string;
-    sena_nit: string;
-    sena_centro_formacion: string;
-
     documento_tipo_identificacion: File[];
     documento_libreta_militar: File[];
     documento_eps: File[];
     documento_pension: File[];
     documento_arl: File[];
     documento_runt: File[];
-    documento_sena_carta_presentacion: File[];
 
-    [key: string]: string | boolean | File | File[] | null;
+    [key: string]: string | boolean | File | File[] | { nombre: string; fecha_nacimiento: string; edad: string }[] | null;
 };
 
 export type Paso2FormData = {
     ha_trabajado_antes: 'si' | 'no' | '';
     cargo_anterior: string;
     fecha_ultima_laboral: string;
+    motivo_retiro: string;
+    motivo_retiro_observaciones: string;
 
     tiene_experiencia: 'si' | 'no' | '';
     anios_experiencia: string;
@@ -90,6 +98,7 @@ export type Paso2FormData = {
 export type Paso3FormData = {
     area: 'Administrativa' | 'Operativa' | '';
     cargo: string;
+    guardar_historial_cargo?: 'si' | 'no' | '';
     cargo_fecha_inicio: string;
 
     centro: string;
@@ -97,9 +106,11 @@ export type Paso3FormData = {
     fecha_ingreso_empresa: string;
     fecha_retiro_empresa: string;
     motivo_retiro: string;
+    motivo_retiro_observaciones: string;
     tipo_contrato: string;
-    contrato_fecha_desde: string;
-    contrato_fecha_hasta: string;
+    tipo_contrato_otro: string;
+    contrato_fecha_desde?: string;
+    contrato_fecha_hasta?: string;
 
     codigo_qr_skap: string;
 
@@ -109,7 +120,14 @@ export type Paso3FormData = {
     vacaciones_pagadas_fecha_desde: string;
     vacaciones_pagadas_fecha_hasta: string;
 
-    [key: string]: string | null;
+    sena_especialidad: string;
+    sena_numero_grupo: string;
+    sena_institucion: string;
+    sena_nit: string;
+    sena_centro_formacion: string;
+    documento_sena_carta_presentacion: File[];
+
+    [key: string]: string | boolean | File | File[] | null | undefined;
 };
 
 export type Paso4FormData = {

@@ -42,6 +42,7 @@ class UserController extends Controller
                 'is_active' => $user->is_active,
                 'roles' => $user->roles->pluck('name'),
                 'modulos_personalizados' => $user->modulos_personalizados,
+                'alertas_contratos_tres_veces_dia' => (bool) $user->alertas_contratos_tres_veces_dia,
             ]);
 
         return Inertia::render('admin/users/index', [
@@ -61,9 +62,10 @@ class UserController extends Controller
     public function store(StoreUserRequest $request): RedirectResponse
     {
         $user = User::create([
-            ...$request->safe()->except(['roles', 'submodulos']),
+            ...$request->safe()->except(['roles', 'submodulos', 'alertas_contratos_tres_veces_dia']),
             'is_active' => $request->boolean('is_active', true),
             'modulos_personalizados' => $request->boolean('modulos_personalizados'),
+            'alertas_contratos_tres_veces_dia' => $request->boolean('alertas_contratos_tres_veces_dia'),
         ]);
 
         $user->syncRoles($request->validated('roles'));
@@ -84,6 +86,7 @@ class UserController extends Controller
                 'is_active' => $user->is_active,
                 'roles' => $user->roles->pluck('name'),
                 'modulos_personalizados' => $user->modulos_personalizados,
+                'alertas_contratos_tres_veces_dia' => (bool) $user->alertas_contratos_tres_veces_dia,
                 // Acceso efectivo actual (ya sea derivado del rol o la
                 // personalización previa): es con lo que arranca marcado el
                 // selector de submódulos al activar la personalización.
@@ -97,9 +100,10 @@ class UserController extends Controller
     public function update(UpdateUserRequest $request, User $user): RedirectResponse
     {
         $user->update([
-            ...$request->safe()->except(['roles', 'submodulos']),
+            ...$request->safe()->except(['roles', 'submodulos', 'alertas_contratos_tres_veces_dia']),
             'is_active' => $request->boolean('is_active', true),
             'modulos_personalizados' => $request->boolean('modulos_personalizados'),
+            'alertas_contratos_tres_veces_dia' => $request->boolean('alertas_contratos_tres_veces_dia'),
         ]);
 
         $user->syncRoles($request->validated('roles'));

@@ -15,6 +15,7 @@ import {
     Stethoscope,
     Truck,
     Wrench,
+    X,
     type LucideIcon,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
@@ -62,6 +63,19 @@ export function NotificationsBell() {
     const page = usePage();
     const [data, setData] = useState<NotificacionesResponse>({ total: 0, grupos: [] });
     const [loading, setLoading] = useState(true);
+    // Claves descartadas persisten en localStorage (solo oculta de la campana,
+    // no borra de la BD ni de la vista modules/seguridad/alertas)
+    const [descartados, setDescartados] = useState<Set<string>>(new Set());
+
+    const STORAGE_KEY = 'bell_descartadas';
+
+    // Cargar descartadas de localStorage al montar
+    useEffect(() => {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (raw) setDescartados(new Set(JSON.parse(raw)));
+        } catch { /* ignore */ }
+    }, []);
 
     const cargar = useCallback(() => {
         setLoading(true);
@@ -78,7 +92,30 @@ export function NotificationsBell() {
         cargar();
     }, [cargar, page.url]);
 
-    const total = data.total;
+    const descartar = (e: React.MouseEvent, clave: string) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setDescartados((prev) => {
+            const next = new Set(prev).add(clave);
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify([...next])); } catch { /* ignore */ }
+            return next;
+        });
+    };
+
+    // Clave estable: grupo + url + titulo (no depende del índice del array)
+    const claveItem = (grupoKey: string, item: NotificacionItem) =>
+        `${grupoKey}::${item.url}::${item.titulo}`;
+
+    // Filtrar items descartados y recalcular totales
+    const gruposFiltrados = data.grupos
+        .map((grupo) => ({
+            ...grupo,
+            items: grupo.items.filter((item) => !descartados.has(claveItem(grupo.key, item))),
+        }))
+        .filter((grupo) => grupo.items.length > 0)
+        .map((grupo) => ({ ...grupo, total: grupo.items.length }));
+
+    const total = gruposFiltrados.reduce((acc, g) => acc + g.total, 0);
 
     return (
         <DropdownMenu>
@@ -114,14 +151,14 @@ export function NotificationsBell() {
                 </div>
 
                 <div className="max-h-[28rem] overflow-y-auto">
-                    {!loading && data.grupos.length === 0 && (
+                    {!loading && gruposFiltrados.length === 0 && (
                         <div className="p-8 text-center text-xs text-muted-foreground">
                             <Bell className="mx-auto mb-2 h-7 w-7 text-muted-foreground/30" />
                             No tienes notificaciones pendientes.
                         </div>
                     )}
 
-                    {data.grupos.map((grupo) => {
+                    {gruposFiltrados.map((grupo) => {
                         const Icono = ICONOS[grupo.icono] ?? Bell;
                         return (
                             <div key={grupo.key} className="border-b last:border-b-0">
@@ -136,23 +173,35 @@ export function NotificationsBell() {
                                 </div>
 
                                 <div className="divide-y">
-                                    {grupo.items.map((item, idx) => (
-                                        <Link
-                                            key={`${grupo.key}-${idx}`}
-                                            href={item.url}
-                                            className="flex flex-col gap-0.5 px-4 py-2.5 text-xs transition-colors hover:bg-muted/50"
-                                        >
-                                            <div className="flex items-start justify-between gap-2">
-                                                <span
-                                                    className={`text-[13px] font-semibold ${item.critico ? 'text-red-600 dark:text-red-400' : 'text-foreground'}`}
+                                    {grupo.items.map((item, idx) => {
+                                        const clave = claveItem(grupo.key, item);
+                                        return (
+                                            <div
+                                                key={clave}
+                                                className="group relative flex flex-col gap-0.5 px-4 py-2.5 text-xs transition-colors hover:bg-muted/50"
+                                            >
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => descartar(e, clave)}
+                                                    title="Quitar de la campana"
+                                                    className="absolute right-2 top-2 flex size-5 items-center justify-center rounded text-muted-foreground/50 opacity-0 transition-all hover:bg-red-50 hover:text-red-600 group-hover:opacity-100 dark:hover:bg-red-950/30"
                                                 >
-                                                    {item.titulo}
-                                                </span>
-                                                {item.fecha && <span className="shrink-0 text-[10px] text-muted-foreground">{item.fecha}</span>}
+                                                    <X className="size-3.5" />
+                                                </button>
+                                                <Link href={item.url} className="flex flex-col gap-0.5 pr-6">
+                                                    <div className="flex items-start justify-between gap-2">
+                                                        <span
+                                                            className={`text-[13px] font-semibold ${item.critico ? 'text-red-600 dark:text-red-400' : 'text-foreground'}`}
+                                                        >
+                                                            {item.titulo}
+                                                        </span>
+                                                        {item.fecha && <span className="shrink-0 text-[10px] text-muted-foreground">{item.fecha}</span>}
+                                                    </div>
+                                                    {item.detalle && <span className="leading-snug text-muted-foreground">{item.detalle}</span>}
+                                                </Link>
                                             </div>
-                                            {item.detalle && <span className="leading-snug text-muted-foreground">{item.detalle}</span>}
-                                        </Link>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
 
                                 <Link

@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 use App\Http\Controllers\Gente\AusentismoController;
 use App\Http\Controllers\Gente\ContratosController;
@@ -7,6 +7,7 @@ use App\Http\Controllers\Gente\ColaboradorController;
 use App\Http\Controllers\Gente\ColaboradorEntrenamientoController;
 use App\Http\Controllers\Gente\ColaboradorImportController;
 use App\Http\Controllers\Gente\CorreccionMarcacionController;
+use App\Http\Controllers\Gente\TipoDocumentoController;
 use App\Http\Controllers\Gente\DpoAcademyController;
 use App\Http\Controllers\Gente\GeovictoriaAsistenciaController;
 use App\Http\Controllers\Gente\LlamadoAtencionController;
@@ -24,7 +25,7 @@ use Illuminate\Support\Facades\Route;
 // El grupo con "create" se registra ANTES que el de solo lectura (que trae
 // "show", ruta comodín colaboradores/{colaborador}) para que Laravel no
 // intente resolver GET colaboradores/create como si "create" fuera un id.
-Route::middleware(['auth', 'active', 'role:Administrador|Gente', 'submodule.access'])
+Route::middleware(['auth', 'active', 'role:Administrador|Gente|Contratos', 'submodule.access'])
     ->prefix('modules/gente')
     ->name('gente.')
     ->group(function () {
@@ -34,8 +35,16 @@ Route::middleware(['auth', 'active', 'role:Administrador|Gente', 'submodule.acce
             ->name('colaboradores.referencias.departamentos');
         Route::get('colaboradores/referencias/ciudades', [ReferenciaExternaController::class, 'ciudades'])
             ->name('colaboradores.referencias.ciudades');
+        Route::get('colaboradores/referencias/buscar-departamento', [ReferenciaExternaController::class, 'buscarDepartamento'])
+            ->name('colaboradores.referencias.buscar-departamento');
         Route::get('colaboradores/referencias/instituciones-sena', [ReferenciaExternaController::class, 'institucionesSena'])
             ->name('colaboradores.referencias.instituciones-sena');
+
+        // Tipos de documento dinámicos (catálogo editable desde el wizard).
+        Route::get('tipos-documento', [TipoDocumentoController::class, 'index'])
+            ->name('tipos-documento.index');
+        Route::post('tipos-documento', [TipoDocumentoController::class, 'store'])
+            ->name('tipos-documento.store');
 
         // Carga masiva desde el Excel de nómina ("BASE ACTUALIZADA").
         Route::post('colaboradores/importar', [ColaboradorImportController::class, 'store'])
@@ -129,6 +138,18 @@ Route::middleware(['auth', 'active', 'role:Administrador|Gente', 'submodule.acce
         Route::post('ausentismo/limpiar', [AusentismoController::class, 'limpiar'])
             ->name('ausentismo.limpiar');
 
+        // Contratos - Subir y eliminar documentación de contrato
+        Route::post('contratos/{colaborador}/documentos', [ContratosController::class, 'storeDocumentos'])
+            ->name('contratos.documentos.store');
+        Route::delete('contratos/{colaborador}/documentos/{documento}', [ContratosController::class, 'destroyDocumento'])
+            ->name('contratos.documentos.destroy');
+        Route::post('contratos/{colaborador}/preavisos', [ContratosController::class, 'storePreaviso'])
+            ->name('contratos.preavisos.store');
+        Route::post('contratos/{colaborador}/prorrogas/{prorroga}/documento', [ContratosController::class, 'storeDocumentoProrroga'])
+            ->name('contratos.prorrogas.documento.store');
+        Route::delete('contratos/{colaborador}/prorrogas/{prorroga}/documento', [ContratosController::class, 'destroyDocumentoProrroga'])
+            ->name('contratos.prorrogas.documento.destroy');
+
         // SAC (Escritura: Importar / Limpiar)
         Route::post('sac/importar', [SacController::class, 'importar'])
             ->name('sac.importar');
@@ -142,7 +163,7 @@ Route::middleware(['auth', 'active', 'role:Administrador|Gente', 'submodule.acce
             ->name('responsable-ruta.finalizacion');
     });
 
-Route::middleware(['auth', 'active', 'role:Administrador|Seguridad|Reparto|Flota|Gente|Colaborador', 'submodule.access'])
+Route::middleware(['auth', 'active', 'role:Administrador|Seguridad|Reparto|Flota|Gente|Colaborador|Contratos', 'submodule.access'])
     ->prefix('modules/gente')
     ->name('gente.')
     ->group(function () {
@@ -205,6 +226,8 @@ Route::middleware(['auth', 'active', 'role:Administrador|Seguridad|Reparto|Flota
         // Contratos (Lectura)
         Route::get('contratos', [ContratosController::class, 'index'])
             ->name('contratos.index');
+        Route::get('contratos/{colaborador}', [ContratosController::class, 'show'])
+            ->name('contratos.show');
 
         // Carta de prórroga de contrato en PDF
         Route::get('contratos/{colaborador}/prorroga-pdf', [ContratosController::class, 'exportarProrrogaPdf'])

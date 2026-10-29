@@ -72,7 +72,7 @@ export default function ColaboradorWizard({ colaborador, currentStep, catalogos,
                 />
 
                 {visibleStep === 1 && <Paso1DatosPersonales colaborador={colaborador} catalogos={catalogos} usuarios={usuarios} />}
-                {visibleStep === 2 && colaborador && <Paso2RequisitosCargo colaborador={colaborador} onBack={() => setVisibleStep(1)} />}
+                {visibleStep === 2 && colaborador && <Paso2RequisitosCargo colaborador={colaborador} catalogos={catalogos} onBack={() => setVisibleStep(1)} />}
                 {visibleStep === 3 && colaborador && (
                     <Paso3InformacionPuesto colaborador={colaborador} catalogos={catalogos} historialCargos={historialCargos} onBack={() => setVisibleStep(2)} />
                 )}

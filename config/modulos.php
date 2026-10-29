@@ -68,7 +68,7 @@ return [
     ],
 
     'gente' => [
-        'colaboradores' => ['label' => 'Colaboradores', 'roles' => ['Gente', 'Seguridad', 'Reparto', 'Flota']],
+        'colaboradores' => ['label' => 'Colaboradores', 'roles' => ['Gente', 'Seguridad', 'Reparto', 'Flota', 'Contratos']],
         'correccion-marcaciones' => ['label' => 'Corrección de Marcaciones', 'roles' => ['Gente', 'Seguridad', 'Reparto']],
         // La página principal (vista general) es exclusiva de Gente, pero
         // "Criterios" (y su plantilla/alertas) ya es de lectura amplia para
@@ -80,6 +80,7 @@ return [
         'dpo-academy' => ['label' => 'DPO Academy', 'roles' => ['Gente', 'Seguridad', 'Reparto', 'Flota']],
         'ausentismo' => ['label' => 'Ausentismo', 'roles' => ['Gente', 'Seguridad', 'Reparto', 'Flota']],
         'sac' => ['label' => 'SAC', 'roles' => ['Gente', 'Seguridad', 'Reparto', 'Flota']],
+        'contratos' => ['label' => 'Contratos', 'roles' => ['Gente', 'Contratos']],
         'asistencia-geovictoria' => ['label' => 'Asistencia GeoVictoria', 'roles' => ['Gente', 'Reparto']],
     ],
 

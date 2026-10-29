@@ -24,6 +24,7 @@ export default function CreateUser({ roles, moduleRegistry }: { roles: string[];
         roles: [],
         is_active: true,
         modulos_personalizados: false,
+        alertas_contratos_tres_veces_dia: false,
         submodulos: {},
     });
 

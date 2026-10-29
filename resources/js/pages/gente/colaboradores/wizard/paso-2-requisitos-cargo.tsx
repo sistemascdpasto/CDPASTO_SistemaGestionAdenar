@@ -2,24 +2,52 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { PillToggle, SeccionCard } from '@/pages/seguridad/colaboradores/colaborador-form-fields';
 import { useForm } from '@inertiajs/react';
 import { ArrowLeft, ArrowRight, Award, History, LoaderCircle, Mountain } from 'lucide-react';
 import { FormEventHandler } from 'react';
 import { SimpleFileField } from './components/simple-file-field';
+import { type WizardCatalogos } from './catalogos';
 import { type ColaboradorRecord, type Paso2FormData } from './types';
 import { errorDeArchivo } from './utils';
 
 interface Paso2Props {
     colaborador: ColaboradorRecord;
+    catalogos: WizardCatalogos;
     onBack: () => void;
 }
 
-export function Paso2RequisitosCargo({ colaborador, onBack }: Paso2Props) {
+export function Paso2RequisitosCargo({ colaborador, catalogos, onBack }: Paso2Props) {
+    const tieneDatosPreviosCentroContrato = Boolean(
+        colaborador.fecha_retiro_empresa ||
+        colaborador.motivo_retiro ||
+        colaborador.motivo_retiro_observaciones ||
+        colaborador.cargo_anterior ||
+        (colaborador.cargo && colaborador.fecha_retiro_empresa)
+    );
+
+    const valorHaTrabajadoAntes = (colaborador.ha_trabajado_antes as Paso2FormData['ha_trabajado_antes'])
+        || (tieneDatosPreviosCentroContrato ? 'si' : '');
+
+    const valorCargoAnterior = (colaborador.cargo_anterior as string)
+        || (colaborador.cargo as string)
+        || '';
+
+    const valorFechaUltimaLaboral = (colaborador.fecha_ultima_laboral as string)
+        || (colaborador.fecha_retiro_empresa as string)
+        || '';
+
+    const valorMotivoRetiro = (colaborador.motivo_retiro as string) || '';
+    const valorMotivoRetiroObs = (colaborador.motivo_retiro_observaciones as string) || '';
+
     const { data, setData, post, processing, errors, transform } = useForm<Paso2FormData>({
-        ha_trabajado_antes: (colaborador.ha_trabajado_antes as Paso2FormData['ha_trabajado_antes']) ?? '',
-        cargo_anterior: (colaborador.cargo_anterior as string) ?? '',
-        fecha_ultima_laboral: (colaborador.fecha_ultima_laboral as string) ?? '',
+        ha_trabajado_antes: valorHaTrabajadoAntes,
+        cargo_anterior: valorCargoAnterior,
+        fecha_ultima_laboral: valorFechaUltimaLaboral,
+        motivo_retiro: valorMotivoRetiro,
+        motivo_retiro_observaciones: valorMotivoRetiroObs,
 
         tiene_experiencia: (colaborador.tiene_experiencia as Paso2FormData['tiene_experiencia']) ?? '',
         anios_experiencia: colaborador.anios_experiencia?.toString() ?? '',
@@ -64,6 +92,34 @@ export function Paso2RequisitosCargo({ colaborador, onBack }: Paso2Props) {
                             <Label htmlFor="fecha_ultima_laboral">Fecha del último día laborado</Label>
                             <Input id="fecha_ultima_laboral" type="date" value={data.fecha_ultima_laboral} onChange={(e) => setData('fecha_ultima_laboral', e.target.value)} disabled={processing} />
                             <InputError message={errors.fecha_ultima_laboral} />
+                        </div>
+                        <div className="grid gap-2 sm:col-span-2">
+                            <Label htmlFor="motivo_retiro">Motivo de retiro</Label>
+                            <Select value={data.motivo_retiro} onValueChange={(value) => setData('motivo_retiro', value)} disabled={processing}>
+                                <SelectTrigger id="motivo_retiro">
+                                    <SelectValue placeholder="Selecciona el motivo" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {catalogos.motivosRetiro.map((motivo) => (
+                                        <SelectItem key={motivo} value={motivo}>
+                                            {motivo}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <InputError message={errors.motivo_retiro} />
+                        </div>
+                        <div className="grid gap-2 sm:col-span-2">
+                            <Label htmlFor="motivo_retiro_observaciones">Observaciones</Label>
+                            <Textarea
+                                id="motivo_retiro_observaciones"
+                                value={data.motivo_retiro_observaciones}
+                                onChange={(e) => setData('motivo_retiro_observaciones', e.target.value)}
+                                placeholder="Observaciones sobre el motivo de retiro..."
+                                disabled={processing}
+                                rows={3}
+                            />
+                            <InputError message={errors.motivo_retiro_observaciones} />
                         </div>
                     </div>
                 )}

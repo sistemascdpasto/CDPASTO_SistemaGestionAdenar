@@ -32,13 +32,20 @@ class AlertaGenerada extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         $titulo = self::TIPO_LABELS[$this->alerta->tipo] ?? 'Alerta del módulo de Seguridad';
+        $esContrato = $this->alerta->tipo === 'retiro_proximo';
+
+        $actionUrl = $esContrato && $this->alerta->colaborador_id
+            ? route('gente.contratos.show', $this->alerta->colaborador_id)
+            : route('seguridad.alertas.index');
+
+        $actionText = $esContrato ? 'Ver contrato' : 'Ver alertas';
 
         return (new MailMessage)
-            ->subject("ADENAR Seguridad: {$titulo}")
-            ->greeting('Nueva alerta en el módulo de Seguridad')
+            ->subject($esContrato ? "ADENAR Contratos: {$titulo}" : "ADENAR Seguridad: {$titulo}")
+            ->greeting($esContrato ? 'Alerta de vencimiento de contrato' : 'Nueva alerta en el módulo de Seguridad')
             ->line($titulo)
             ->line($this->alerta->mensaje)
-            ->action('Ver alertas', route('seguridad.alertas.index'))
+            ->action($actionText, $actionUrl)
             ->line('Este es un mensaje automático del Sistema Integral de Gestión ADENAR.');
     }
 }

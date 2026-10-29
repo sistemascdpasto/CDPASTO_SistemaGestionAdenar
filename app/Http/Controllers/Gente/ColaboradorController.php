@@ -10,6 +10,8 @@ use App\Http\Requests\Gente\UpdateColaboradorPaso2Request;
 use App\Http\Requests\Gente\UpdateColaboradorPaso3Request;
 use App\Http\Requests\Gente\UpdateColaboradorPaso4Request;
 use App\Http\Requests\Gente\UpdateColaboradorRequest;
+use App\Models\Gente\OpcionCatalogo;
+use App\Models\Gente\TipoDocumento;
 use App\Models\Seguridad\Colaborador;
 use App\Models\Seguridad\Entrenamiento;
 use App\Models\User;
@@ -26,11 +28,6 @@ use Inertia\Response;
 
 class ColaboradorController extends Controller
 {
-    /**
-     * HU05/HU06: columnas y filtros exactos del PDF. `registro` controla
-     * borrador/completo (antes vivía en el parámetro `estado`); `estado`
-     * ahora significa lo que pide HU06: Activo/Inactivo/Todos.
-     */
     public function index(Request $request): Response
     {
         $search = $request->string('search')->trim()->toString();
@@ -147,7 +144,15 @@ class ColaboradorController extends Controller
     {
         $data = $request->validated();
 
-        foreach (ColaboradorDocumentoCampos::PASO1 as $field) {
+        $data = $this->resolverOtros($data, [
+            'tipo_documento' => ['tipo_documento', 'tipo_documento_otro_label'],
+            'eps' => ['eps', 'eps_otro'],
+            'afp' => ['afp', 'afp_otro'],
+            'arl' => ['arl', 'arl_otro'],
+            'estado_civil' => ['estado_civil', 'estado_civil_otro'],
+        ]);
+
+        foreach (ColaboradorDocumentoCampos::paso1() as $field) {
             unset($data[$field]);
         }
 
@@ -166,7 +171,7 @@ class ColaboradorController extends Controller
             'wizard_step' => 1,
         ]);
 
-        $this->storeDocuments($request, $colaborador, ColaboradorDocumentoCampos::PASO1);
+        $this->storeDocuments($request, $colaborador, ColaboradorDocumentoCampos::paso1());
 
         return to_route('gente.colaboradores.wizard', $colaborador);
     }
@@ -198,21 +203,67 @@ class ColaboradorController extends Controller
     }
 
     /**
+     * Cuando un campo viene como "Otro", persiste el valor del label
+     * (campo_otro_label) en la tabla correspondiente de catálogo y
+     * reemplaza el valor por el nombre real para que quede guardado
+     * en la columna del colaborador.
+     *
+     * @param  array<string, mixed>  $data   Datos validados del request
+     * @param  array<string, string>  $mapa   campo => [categoria, campoLabel]
+     * @return array<string, mixed>          $data con los valores resueltos
+     */
+    private function resolverOtros(array $data, array $mapa): array
+    {
+        foreach ($mapa as $campo => [$categoria, $campoLabel]) {
+            if (($data[$campo] ?? null) === 'Otro' && ! empty($data[$campoLabel])) {
+                $nombre = trim($data[$campoLabel]);
+
+                if ($campo === 'tipo_documento') {
+                    TipoDocumento::firstOrCreate(
+                        ['nombre' => $nombre],
+                        ['es_personalizado' => true]
+                    );
+                } else {
+                    OpcionCatalogo::firstOrCreate(
+                        ['categoria' => $categoria, 'nombre' => $nombre],
+                        ['es_personalizado' => true]
+                    );
+                }
+
+                $data[$campo] = $nombre;
+                $data[$campoLabel] = null;
+            }
+        }
+
+        return $data;
+    }
+
+    /**
      * @return array<string, array<int, string>>
      */
     private function catalogos(): array
     {
         return [
-            'tiposDocumento' => config('seguridad.colaboradores.tipos_documento'),
-            'epsOpciones' => config('seguridad.colaboradores.eps_opciones'),
-            'afpOpciones' => config('seguridad.colaboradores.afp_opciones'),
-            'arlOpciones' => config('seguridad.colaboradores.arl_opciones'),
-            'cargos' => config('seguridad.colaboradores.cargos'),
+            'tiposDocumento' => TipoDocumento::orderBy('es_personalizado')->orderBy('nombre')->pluck('nombre')->all(),
+            'epsOpciones' => OpcionCatalogo::opcionesDe('eps'),
+            'afpOpciones' => OpcionCatalogo::opcionesDe('afp'),
+            'arlOpciones' => OpcionCatalogo::opcionesDe('arl'),
+            'estadosCiviles' => OpcionCatalogo::opcionesDe('estado_civil'),
+            'tiposContrato' => OpcionCatalogo::opcionesDe('tipo_contrato'),
+            'cargosAnteriores' => OpcionCatalogo::opcionesDe('cargo_anterior'),
+            'cargos' => collect()
+                ->merge(Colaborador::whereNotNull('cargo')->where('cargo', '!=', '')->distinct()->pluck('cargo'))
+                ->merge(\App\Models\GeovictoriaAsistencia::whereNotNull('cargo')->where('cargo', '!=', '')->distinct()->pluck('cargo'))
+                ->unique()
+                ->sort()
+                ->values()
+                ->all(),
             'centros' => config('seguridad.colaboradores.centros'),
             'centrosTrabajo' => config('seguridad.colaboradores.centros_trabajo'),
-            'tiposContrato' => config('seguridad.colaboradores.tipos_contrato'),
             'motivosRetiro' => config('seguridad.colaboradores.motivos_retiro'),
             'licenciaCategorias' => config('seguridad.colaboradores.licencia_conduccion_categorias'),
+            'documentoGrupos' => config('seguridad.documentos_colaborador.grupos'),
+            'documentoFields' => config('seguridad.documentos_colaborador.documentos'),
         ];
     }
 
@@ -220,7 +271,15 @@ class ColaboradorController extends Controller
     {
         $data = $request->validated();
 
-        foreach (ColaboradorDocumentoCampos::PASO1 as $field) {
+        $data = $this->resolverOtros($data, [
+            'tipo_documento' => ['tipo_documento', 'tipo_documento_otro_label'],
+            'eps' => ['eps', 'eps_otro'],
+            'afp' => ['afp', 'afp_otro'],
+            'arl' => ['arl', 'arl_otro'],
+            'estado_civil' => ['estado_civil', 'estado_civil_otro'],
+        ]);
+
+        foreach (ColaboradorDocumentoCampos::paso1() as $field) {
             unset($data[$field]);
         }
 
@@ -242,7 +301,7 @@ class ColaboradorController extends Controller
             'wizard_step' => max((int) $colaborador->wizard_step, 1),
         ]);
 
-        $this->storeDocuments($request, $colaborador, ColaboradorDocumentoCampos::PASO1);
+        $this->storeDocuments($request, $colaborador, ColaboradorDocumentoCampos::paso1());
 
         return to_route('gente.colaboradores.wizard', ['colaborador' => $colaborador, 'paso' => 2]);
     }
@@ -251,7 +310,7 @@ class ColaboradorController extends Controller
     {
         $data = $request->validated();
 
-        foreach (ColaboradorDocumentoCampos::PASO2 as $field) {
+        foreach (ColaboradorDocumentoCampos::paso2() as $field) {
             unset($data[$field]);
         }
 
@@ -260,7 +319,7 @@ class ColaboradorController extends Controller
             'wizard_step' => max((int) $colaborador->wizard_step, 2),
         ]);
 
-        $this->storeDocuments($request, $colaborador, ColaboradorDocumentoCampos::PASO2);
+        $this->storeDocuments($request, $colaborador, ColaboradorDocumentoCampos::paso2());
 
         return to_route('gente.colaboradores.wizard', ['colaborador' => $colaborador, 'paso' => 3]);
     }
@@ -268,18 +327,35 @@ class ColaboradorController extends Controller
     public function updatePaso3(UpdateColaboradorPaso3Request $request, Colaborador $colaborador, CargoHistorialService $cargoHistorial): RedirectResponse
     {
         $data = $request->validated();
+
+        $data = $this->resolverOtros($data, [
+            'tipo_contrato' => ['tipo_contrato', 'tipo_contrato_otro'],
+        ]);
+
+        foreach (ColaboradorDocumentoCampos::paso3() as $field) {
+            unset($data[$field]);
+        }
+
         $cargo = $data['cargo'] ?? null;
         $cargoFechaInicio = $data['cargo_fecha_inicio'] ?? null;
-        unset($data['cargo'], $data['cargo_fecha_inicio']);
+        $guardarHistorial = ($data['guardar_historial_cargo'] ?? '') === 'si'
+            || (! isset($data['guardar_historial_cargo']) && ! empty($cargoFechaInicio));
+        unset($data['cargo'], $data['cargo_fecha_inicio'], $data['guardar_historial_cargo']);
 
         $colaborador->update([
             ...$data,
             'wizard_step' => max((int) $colaborador->wizard_step, 3),
         ]);
 
-        if ($cargo && $cargoFechaInicio) {
-            $cargoHistorial->asignar($colaborador, $cargo, $cargoFechaInicio);
+        if ($cargo) {
+            if ($guardarHistorial && $cargoFechaInicio) {
+                $cargoHistorial->asignar($colaborador, $cargo, $cargoFechaInicio);
+            } else {
+                $cargoHistorial->actualizarSinHistorial($colaborador, $cargo);
+            }
         }
+
+        $this->storeDocuments($request, $colaborador, ColaboradorDocumentoCampos::paso3());
 
         return to_route('gente.colaboradores.wizard', ['colaborador' => $colaborador, 'paso' => 4]);
     }
@@ -288,7 +364,7 @@ class ColaboradorController extends Controller
     {
         $data = $request->validated();
 
-        foreach (ColaboradorDocumentoCampos::PASO4 as $field) {
+        foreach (ColaboradorDocumentoCampos::paso4() as $field) {
             unset($data[$field]);
         }
         unset($data['licencia_conduccion_categorias']);
@@ -299,7 +375,7 @@ class ColaboradorController extends Controller
             'wizard_step' => 4,
         ]);
 
-        $this->storeDocuments($request, $colaborador, ColaboradorDocumentoCampos::PASO4);
+        $this->storeDocuments($request, $colaborador, ColaboradorDocumentoCampos::paso4());
 
         return to_route('gente.colaboradores.show', $colaborador)->with('status', 'Colaborador registrado correctamente.');
     }
@@ -312,6 +388,8 @@ class ColaboradorController extends Controller
         return Inertia::render('gente/colaboradores/show', [
             'colaborador' => $colaboradorData,
             'indiceRiesgo' => $calculator->calcular($colaborador),
+            'documentoGrupos' => config('seguridad.documentos_colaborador.grupos'),
+            'documentoFields' => config('seguridad.documentos_colaborador.documentos'),
             'pruebas' => $colaborador->pruebasAlcoholemia()
                 ->with('alcoholimetro:id,codigo')
                 ->latest('fecha_hora')
@@ -353,25 +431,58 @@ class ColaboradorController extends Controller
     {
         $request->validate([
             'fecha_retiro_empresa' => ['required', 'date', 'after:today'],
+            'tipo'                 => ['nullable', 'in:prorroga,finalizacion'],
+            'observaciones'        => ['nullable', 'string', 'max:500'],
+            'documento'            => ['nullable', 'file', 'mimes:pdf,doc,docx,jpg,jpeg,png', 'max:10240'],
         ]);
+
+        $fechaAnterior = $colaborador->fecha_retiro_empresa
+            ? $colaborador->fecha_retiro_empresa->toDateString()
+            : null;
+
+        $esFinalizacion = $request->input('tipo') === 'finalizacion';
 
         $colaborador->update([
             'fecha_retiro_empresa' => $request->date('fecha_retiro_empresa'),
+            'is_active'            => $esFinalizacion ? false : $colaborador->is_active,
+        ]);
+
+        if ($esFinalizacion && $colaborador->user) {
+            $colaborador->user->update(['is_active' => false]);
+        }
+
+        $documentoPath = null;
+        $documentoNombre = null;
+        if ($request->hasFile('documento')) {
+            $archivo = $request->file('documento');
+            $documentoPath = $archivo->store('colaboradores/prorrogas', 'public');
+            $documentoNombre = $archivo->getClientOriginalName();
+        }
+
+        // Registrar en el historial de prórrogas
+        \App\Models\Gente\ContratoProrroga::create([
+            'colaborador_id'   => $colaborador->id,
+            'registrado_por'   => $request->user()->id,
+            'fecha_anterior'   => $fechaAnterior ?? $request->date('fecha_retiro_empresa'),
+            'fecha_nueva'      => $request->date('fecha_retiro_empresa'),
+            'tipo'             => $request->input('tipo', 'prorroga'),
+            'observaciones'    => $request->input('observaciones'),
+            'documento_path'   => $documentoPath,
+            'documento_nombre' => $documentoNombre,
         ]);
 
         // Atender todas las alertas de retiro pendientes de este colaborador
-        // para que el scheduler no las reutilice en el próximo ciclo.
         \App\Models\Seguridad\Alerta::query()
             ->where('colaborador_id', $colaborador->id)
             ->where('tipo', 'retiro_proximo')
             ->where('atendida', false)
             ->update([
-                'atendida' => true,
+                'atendida'     => true,
                 'atendida_por' => $request->user()->id,
-                'atendida_en' => now(),
+                'atendida_en'  => now(),
             ]);
 
-        return back()->with('status', 'Contrato prorrogado correctamente.');
+        return back()->with('status', 'Contrato actualizado correctamente.');
     }
 
     /**
@@ -383,11 +494,25 @@ class ColaboradorController extends Controller
      */
     public function toggleActivo(Colaborador $colaborador): RedirectResponse
     {
-        $colaborador->update(['is_active' => ! $colaborador->is_active]);
+        $nuevoEstado = ! $colaborador->is_active;
 
-        $colaborador->user?->update(['is_active' => $colaborador->is_active]);
+        $colaborador->update(['is_active' => $nuevoEstado]);
+        $colaborador->user?->update(['is_active' => $nuevoEstado]);
 
-        return back()->with('status', $colaborador->is_active ? 'Colaborador activado.' : 'Colaborador desactivado.');
+        try {
+            $colaborador->activacionHistorial()->create([
+                'is_active' => $nuevoEstado,
+                'tipo' => $nuevoEstado ? 'activacion' : 'desactivacion',
+                'fecha' => now(),
+                'motivo' => $nuevoEstado ? 'Reactivación en el sistema para reingreso' : ($colaborador->motivo_retiro ?: 'Desactivación de colaborador'),
+                'observaciones' => $nuevoEstado ? 'Colaborador reactivado en el sistema.' : $colaborador->motivo_retiro_observaciones,
+                'user_id' => auth()->id(),
+            ]);
+        } catch (\Throwable) {
+            // Continúa sin interrumpir
+        }
+
+        return back()->with('status', $nuevoEstado ? 'Colaborador activado.' : 'Colaborador desactivado.');
     }
 
     /**

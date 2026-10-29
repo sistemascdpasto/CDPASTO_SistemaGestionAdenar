@@ -3,7 +3,7 @@ import { SafeImage } from '@/components/safe-image';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
-import { CARGOS_ANTERIORES, ESTADOS_CIVILES, calcularEdad } from '@/pages/seguridad/colaboradores/colaborador-form-fields';
+import { calcularEdad } from '@/pages/seguridad/colaboradores/colaborador-form-fields';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
 import { IdCard, User } from 'lucide-react';
@@ -16,10 +16,6 @@ const breadcrumbs: BreadcrumbItem[] = [
 const TURNO_LABELS: Record<string, string> = { manana: 'Mañana', tarde: 'Tarde', noche: 'Noche' };
 const SEXO_LABELS: Record<string, string> = { femenino: 'Femenino', masculino: 'Masculino' };
 const SI_NO_LABELS: Record<string, string> = { si: 'Sí', no: 'No' };
-
-function labelDe(catalogo: { value: string; label: string }[], valor: string | null): string {
-    return catalogo.find((opcion) => opcion.value === valor)?.label ?? valor ?? '—';
-}
 
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
     return (
@@ -115,7 +111,7 @@ export default function ColaboradorPerfil({ colaborador }: { colaborador: Colabo
                             <InfoRow label="Correo" value={colaborador.correo} />
                             <InfoRow
                                 label="Estado civil"
-                                value={colaborador.estado_civil ? (ESTADOS_CIVILES.find((e) => e.value === colaborador.estado_civil)?.label ?? colaborador.estado_civil) : null}
+                                value={colaborador.estado_civil}
                             />
                         </dl>
                     </CardContent>
@@ -131,7 +127,7 @@ export default function ColaboradorPerfil({ colaborador }: { colaborador: Colabo
                                 label="¿Trabajó antes en la empresa?"
                                 value={colaborador.ha_trabajado_antes ? (SI_NO_LABELS[colaborador.ha_trabajado_antes] ?? colaborador.ha_trabajado_antes) : null}
                             />
-                            <InfoRow label="Cargo anterior" value={colaborador.cargo_anterior ? labelDe(CARGOS_ANTERIORES, colaborador.cargo_anterior) : null} />
+                            <InfoRow label="Cargo anterior" value={colaborador.cargo_anterior} />
                             <InfoRow label="Fecha última laboral" value={colaborador.fecha_ultima_laboral} />
                             <InfoRow
                                 label="¿Tiene experiencia?"

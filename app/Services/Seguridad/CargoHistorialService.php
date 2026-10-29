@@ -50,4 +50,24 @@ class CargoHistorialService
             $colaborador->update(['cargo' => $cargo]);
         });
     }
+
+    /**
+     * Actualiza el cargo del colaborador sin generar un nuevo registro
+     * en el historial (corrige o actualiza el cargo activo actual si existe).
+     */
+    public function actualizarSinHistorial(Colaborador $colaborador, string $cargo): void
+    {
+        DB::transaction(function () use ($colaborador, $cargo) {
+            $cargoActivo = $colaborador->cargos()
+                ->where('estado', 'ACTIVO')
+                ->latest('fecha_inicio')
+                ->first();
+
+            if ($cargoActivo && $cargoActivo->cargo !== $cargo) {
+                $cargoActivo->update(['cargo' => $cargo]);
+            }
+
+            $colaborador->update(['cargo' => $cargo]);
+        });
+    }
 }

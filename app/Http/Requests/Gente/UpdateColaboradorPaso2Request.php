@@ -19,7 +19,7 @@ class UpdateColaboradorPaso2Request extends FormRequest
 
     public function withValidator(Validator $validator): void
     {
-        $validator->after(fn () => $this->logArchivosDocumentoRechazados($validator, ColaboradorDocumentoCampos::PASO2));
+        $validator->after(fn () => $this->logArchivosDocumentoRechazados($validator, ColaboradorDocumentoCampos::paso2()));
     }
 
     /**
@@ -31,6 +31,8 @@ class UpdateColaboradorPaso2Request extends FormRequest
             'ha_trabajado_antes' => ['nullable', Rule::in(['si', 'no'])],
             'cargo_anterior' => ['nullable', 'string', 'max:100'],
             'fecha_ultima_laboral' => ['nullable', 'date'],
+            'motivo_retiro' => ['nullable', Rule::in(config('seguridad.colaboradores.motivos_retiro'))],
+            'motivo_retiro_observaciones' => ['nullable', 'string', 'max:2000'],
 
             'tiene_experiencia' => ['nullable', Rule::in(['si', 'no'])],
             'anios_experiencia' => ['nullable', 'integer', 'min:0', 'max:100'],
@@ -40,7 +42,7 @@ class UpdateColaboradorPaso2Request extends FormRequest
             'experiencia_terreno_plano' => ['nullable', Rule::in(['si', 'no'])],
             'experiencia_terreno_montanoso' => ['nullable', Rule::in(['si', 'no'])],
 
-            ...$this->documentoRules(ColaboradorDocumentoCampos::PASO2),
+            ...$this->documentoRules(ColaboradorDocumentoCampos::paso2()),
         ];
     }
 }

@@ -2,17 +2,29 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { PillToggle, SeccionCard } from '@/pages/seguridad/colaboradores/colaborador-form-fields';
 import { useForm } from '@inertiajs/react';
-import { ArrowLeft, ArrowRight, Briefcase, Building2, History, LoaderCircle, QrCode, Umbrella } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Briefcase, Building2, GraduationCap, History, LoaderCircle, Plus, QrCode, Umbrella } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { FormEventHandler } from 'react';
 import { CargoCombobox } from './components/cargo-combobox';
+import { ExternalSelect } from './components/external-select';
+import { SimpleFileField } from './components/simple-file-field';
 import { type WizardCatalogos } from './catalogos';
 import { type ColaboradorRecord, type Paso3FormData } from './types';
+import { errorDeArchivo } from './utils';
 
-const hoyISO = new Date().toISOString().slice(0, 10);
+const getHoyLocalISO = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
+const hoyISO = getHoyLocalISO();
 
 /**
  * Restringe el selector a "hoy en adelante" para fechas nuevas, pero sin
@@ -52,14 +64,24 @@ export function Paso3InformacionPuesto({ colaborador, catalogos, historialCargos
     const { data, setData, post, processing, errors, transform } = useForm<Paso3FormData>({
         area: (colaborador.area as Paso3FormData['area']) ?? '',
         cargo: (colaborador.cargo as string) ?? '',
+        guardar_historial_cargo: 'si',
         cargo_fecha_inicio: '',
+
+        sena_especialidad: (colaborador.sena_especialidad as string) ?? '',
+        sena_numero_grupo: colaborador.sena_numero_grupo?.toString() ?? '',
+        sena_institucion: (colaborador.sena_institucion as string) ?? '',
+        sena_nit: (colaborador.sena_nit as string) ?? '',
+        sena_centro_formacion: (colaborador.sena_centro_formacion as string) ?? '',
+        documento_sena_carta_presentacion: [],
 
         centro: (colaborador.centro as string) ?? '',
         centro_trabajo: (colaborador.centro_trabajo as string) ?? '',
         fecha_ingreso_empresa: (colaborador.fecha_ingreso_empresa as string) ?? '',
         fecha_retiro_empresa: (colaborador.fecha_retiro_empresa as string) ?? '',
         motivo_retiro: (colaborador.motivo_retiro as string) ?? '',
+        motivo_retiro_observaciones: (colaborador.motivo_retiro_observaciones as string) ?? '',
         tipo_contrato: (colaborador.tipo_contrato as string) ?? '',
+        tipo_contrato_otro: (colaborador.tipo_contrato_otro as string) ?? '',
 
         codigo_qr_skap: (colaborador.codigo_qr_skap as string) ?? '',
 
@@ -71,6 +93,10 @@ export function Paso3InformacionPuesto({ colaborador, catalogos, historialCargos
     });
 
     const cambioDeCargo = data.cargo !== '' && data.cargo !== cargoInicial;
+    const esAprendizSena = (data.cargo ?? '').toUpperCase().includes('APRENDIZ');
+    const mostrarMotivoRetiro = Boolean(data.fecha_retiro_empresa && data.fecha_retiro_empresa <= hoyISO);
+
+    const existing = (key: string) => (colaborador?.[key] as { path: string; fecha: string | null }[]) ?? [];
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
@@ -107,21 +133,43 @@ export function Paso3InformacionPuesto({ colaborador, catalogos, historialCargos
                         <InputError message={errors.cargo} />
                     </div>
                     {cambioDeCargo && (
-                        <div className="grid gap-2 sm:col-span-2 border-l-2 border-emerald-300 pl-3 dark:border-emerald-500/30">
-                            <Label htmlFor="cargo_fecha_inicio">Fecha de inicio del nuevo cargo</Label>
-                            <Input
-                                id="cargo_fecha_inicio"
-                                type="date"
-                                value={data.cargo_fecha_inicio}
-                                onChange={(e) => setData('cargo_fecha_inicio', e.target.value)}
+                        <div className="grid gap-3 sm:col-span-2 border-l-2 border-emerald-300 pl-3 dark:border-emerald-500/30">
+                            <PillToggle
+                                label="¿Desea registrar este cambio en el historial de cargos?"
+                                value={data.guardar_historial_cargo ?? 'si'}
+                                onChange={(value) => {
+                                    setData((prev) => ({
+                                        ...prev,
+                                        guardar_historial_cargo: value as Paso3FormData['guardar_historial_cargo'],
+                                        ...(value === 'no' ? { cargo_fecha_inicio: '' } : {}),
+                                    }));
+                                }}
                                 disabled={processing}
+                                options={[
+                                    { value: 'si', label: 'Sí' },
+                                    { value: 'no', label: 'No' },
+                                ]}
                             />
-                            <InputError message={errors.cargo_fecha_inicio} />
-                            <p className="text-xs text-muted-foreground">
-                                {cargoActivo
-                                    ? `El cargo actual ("${cargoActivo.cargo}") se cerrará automáticamente un día antes de esta fecha.`
-                                    : 'Se creará el primer registro de historial de cargos con esta fecha.'}
-                            </p>
+                            <InputError message={errors.guardar_historial_cargo} />
+
+                            {data.guardar_historial_cargo === 'si' && (
+                                <div className="grid gap-2">
+                                    <Label htmlFor="cargo_fecha_inicio">Fecha de inicio del nuevo cargo</Label>
+                                    <Input
+                                        id="cargo_fecha_inicio"
+                                        type="date"
+                                        value={data.cargo_fecha_inicio}
+                                        onChange={(e) => setData('cargo_fecha_inicio', e.target.value)}
+                                        disabled={processing}
+                                    />
+                                    <InputError message={errors.cargo_fecha_inicio} />
+                                    <p className="text-xs text-muted-foreground">
+                                        {cargoActivo
+                                            ? `El cargo actual ("${cargoActivo.cargo}") se cerrará automáticamente un día antes de esta fecha.`
+                                            : 'Se creará el primer registro de historial de cargos con esta fecha.'}
+                                    </p>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
@@ -146,6 +194,72 @@ export function Paso3InformacionPuesto({ colaborador, catalogos, historialCargos
                     </div>
                 )}
             </SeccionCard>
+
+            {esAprendizSena && (
+                <SeccionCard icon={GraduationCap} titulo="Información aprendiz SENA" subtitulo="Solo visible porque el cargo asignado es Aprendiz" tono="verde">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="grid gap-2">
+                            <Label htmlFor="sena_especialidad">Especialidad o programa de formación</Label>
+                            <Input
+                                id="sena_especialidad"
+                                value={data.sena_especialidad}
+                                onChange={(e) => setData('sena_especialidad', e.target.value)}
+                                disabled={processing}
+                            />
+                            <InputError message={errors.sena_especialidad} />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="sena_numero_grupo">Número de grupo</Label>
+                            <Input
+                                id="sena_numero_grupo"
+                                type="number"
+                                value={data.sena_numero_grupo}
+                                onChange={(e) => setData('sena_numero_grupo', e.target.value)}
+                                disabled={processing}
+                            />
+                            <InputError message={errors.sena_numero_grupo} />
+                        </div>
+                        <ExternalSelect
+                            label="Institución de formación"
+                            value={data.sena_institucion}
+                            onValueChange={(value) => setData('sena_institucion', value)}
+                            fetchUrl={route('gente.colaboradores.referencias.instituciones-sena')}
+                            error={errors.sena_institucion}
+                            disabled={processing}
+                        />
+                        <div className="grid gap-2">
+                            <Label htmlFor="sena_nit">NIT</Label>
+                            <Input
+                                id="sena_nit"
+                                value={data.sena_nit}
+                                onChange={(e) => setData('sena_nit', e.target.value)}
+                                disabled={processing}
+                            />
+                            <InputError message={errors.sena_nit} />
+                        </div>
+                        <div className="grid gap-2 sm:col-span-2">
+                            <Label htmlFor="sena_centro_formacion">Centro de formación</Label>
+                            <Input
+                                id="sena_centro_formacion"
+                                value={data.sena_centro_formacion}
+                                onChange={(e) => setData('sena_centro_formacion', e.target.value)}
+                                disabled={processing}
+                            />
+                            <InputError message={errors.sena_centro_formacion} />
+                        </div>
+                    </div>
+                    <div className="mt-4">
+                        <SimpleFileField
+                            label="Carta de presentación"
+                            files={data.documento_sena_carta_presentacion}
+                            existing={existing('documento_sena_carta_presentacion')}
+                            onChange={(files) => setData('documento_sena_carta_presentacion', files)}
+                            error={errorDeArchivo(errors, 'documento_sena_carta_presentacion')}
+                            disabled={processing}
+                        />
+                    </div>
+                </SeccionCard>
+            )}
 
             <SeccionCard icon={Building2} titulo="Centro y contrato" tono="azul">
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -193,28 +307,54 @@ export function Paso3InformacionPuesto({ colaborador, catalogos, historialCargos
                             type="date"
                             min={minDateFor(colaborador.fecha_retiro_empresa)}
                             value={data.fecha_retiro_empresa}
-                            onChange={(e) => setData('fecha_retiro_empresa', e.target.value)}
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                if (!val || val > hoyISO) {
+                                    setData((prev) => ({
+                                        ...prev,
+                                        fecha_retiro_empresa: val,
+                                        motivo_retiro: '',
+                                        motivo_retiro_observaciones: '',
+                                    }));
+                                } else {
+                                    setData('fecha_retiro_empresa', val);
+                                }
+                            }}
                             disabled={processing}
                         />
                         <InputError message={errors.fecha_retiro_empresa} />
                     </div>
-                    {data.fecha_retiro_empresa && (
-                        <div className="grid gap-2 sm:col-span-2">
-                            <Label htmlFor="motivo_retiro">Motivo de retiro</Label>
-                            <Select value={data.motivo_retiro} onValueChange={(value) => setData('motivo_retiro', value)} disabled={processing}>
-                                <SelectTrigger id="motivo_retiro">
-                                    <SelectValue placeholder="Selecciona el motivo" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {catalogos.motivosRetiro.map((motivo) => (
-                                        <SelectItem key={motivo} value={motivo}>
-                                            {motivo}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            <InputError message={errors.motivo_retiro} />
-                        </div>
+                    {mostrarMotivoRetiro && (
+                        <>
+                            <div className="grid gap-2 sm:col-span-2">
+                                <Label htmlFor="motivo_retiro">Motivo de retiro</Label>
+                                <Select value={data.motivo_retiro} onValueChange={(value) => setData('motivo_retiro', value)} disabled={processing}>
+                                    <SelectTrigger id="motivo_retiro">
+                                        <SelectValue placeholder="Selecciona el motivo" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {catalogos.motivosRetiro.map((motivo) => (
+                                            <SelectItem key={motivo} value={motivo}>
+                                                {motivo}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <InputError message={errors.motivo_retiro} />
+                            </div>
+                            <div className="grid gap-2 sm:col-span-2">
+                                <Label htmlFor="motivo_retiro_observaciones">Observaciones</Label>
+                                <Textarea
+                                    id="motivo_retiro_observaciones"
+                                    value={data.motivo_retiro_observaciones}
+                                    onChange={(e) => setData('motivo_retiro_observaciones', e.target.value)}
+                                    placeholder="Observaciones sobre el motivo de retiro..."
+                                    disabled={processing}
+                                    rows={3}
+                                />
+                                <InputError message={errors.motivo_retiro_observaciones} />
+                            </div>
+                        </>
                     )}
                     <div className="grid gap-2 sm:col-span-2">
                         <Label htmlFor="tipo_contrato">Tipo de contrato</Label>
@@ -228,9 +368,27 @@ export function Paso3InformacionPuesto({ colaborador, catalogos, historialCargos
                                         {tipo}
                                     </SelectItem>
                                 ))}
+                                <SelectSeparator />
+                                <SelectItem value="Otro" className="text-sky-600 font-medium">
+                                    <span className="flex items-center gap-1.5">
+                                        <Plus className="size-3.5" />
+                                        Agregar otro…
+                                    </span>
+                                </SelectItem>
                             </SelectContent>
                         </Select>
                         <InputError message={errors.tipo_contrato} />
+                        {data.tipo_contrato === 'Otro' && (
+                            <div className="grid gap-1.5 border-l-2 border-sky-300 pl-3 dark:border-sky-500/30">
+                                <Input
+                                    placeholder="Escribe el tipo de contrato"
+                                    value={data.tipo_contrato_otro}
+                                    onChange={(e) => setData('tipo_contrato_otro', e.target.value)}
+                                    disabled={processing}
+                                />
+                                <InputError message={errors.tipo_contrato_otro} />
+                            </div>
+                        )}
                     </div>
                 </div>
             </SeccionCard>

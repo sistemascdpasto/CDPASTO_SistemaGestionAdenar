@@ -39,6 +39,19 @@ class Colaborador extends Model
         'celular_2',
         'correo',
         'estado_civil',
+        'estado_civil_otro',
+
+        // Información personal
+        'nombre_pareja',
+        'hijos',
+
+        // Contactos de emergencia
+        'emergencia_parentezco_1',
+        'emergencia_nombre_1',
+        'emergencia_telefono_1',
+        'emergencia_parentezco_2',
+        'emergencia_nombre_2',
+        'emergencia_telefono_2',
 
         // Condiciones particulares
         'discapacidad',
@@ -112,7 +125,9 @@ class Colaborador extends Model
         'fecha_ingreso_empresa',
         'fecha_retiro_empresa',
         'motivo_retiro',
+        'motivo_retiro_observaciones',
         'tipo_contrato',
+        'tipo_contrato_otro',
         'contrato_fecha_desde',
         'contrato_fecha_hasta',
         'vacaciones_aplica',
@@ -138,6 +153,7 @@ class Colaborador extends Model
     {
         return [
             'is_active' => 'boolean',
+            'hijos' => 'array',
             'fecha_nacimiento' => 'date:Y-m-d',
             'fecha_ultima_laboral' => 'date:Y-m-d',
             'anios_experiencia' => 'integer',
@@ -159,6 +175,11 @@ class Colaborador extends Model
     public function scopeCompletos(Builder $query): Builder
     {
         return $query->where('estado_registro', 'completo');
+    }
+
+    public function prorrogas(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(\App\Models\Gente\ContratoProrroga::class)->orderByDesc('created_at');
     }
 
     public function condicionesSalud(): HasMany
@@ -201,6 +222,11 @@ class Colaborador extends Model
     public function documentos(): HasMany
     {
         return $this->hasMany(ColaboradorDocumento::class);
+    }
+
+    public function activacionHistorial(): HasMany
+    {
+        return $this->hasMany(ColaboradorActivacionHistorial::class, 'colaborador_id');
     }
 
     public function llamadosAtencion(): HasMany

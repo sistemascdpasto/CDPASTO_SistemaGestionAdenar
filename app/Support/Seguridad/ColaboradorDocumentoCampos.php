@@ -8,100 +8,59 @@ namespace App\Support\Seguridad;
  * colaboradores (HU02). La usan tanto los Request classes (para las reglas
  * de validación) como ColaboradorController (para guardar/leer archivos),
  * así ambos lados siempre están de acuerdo.
+ *
+ * Las definiciones viven en config/seguridad/documentos_colaborador.php.
  */
 class ColaboradorDocumentoCampos
 {
+    /**
+     * Devuelve las claves (key) de los documentos que aplican a un paso dado.
+     *
+     * @return array<int, string>
+     */
+    public static function paso(int $paso): array
+    {
+        return collect(config('seguridad.documentos_colaborador.documentos', []))
+            ->filter(fn (array $doc) => in_array($paso, $doc['pasos'], true))
+            ->pluck('key')
+            ->all();
+    }
+
     /** Paso 1 — Datos personales. */
-    public const PASO1 = [
-        'documento_tipo_identificacion',
-        'documento_libreta_militar',
-        'documento_eps',
-        'documento_pension', // AFP
-        'documento_arl',
-        'documento_runt',
-        'documento_sena_carta_presentacion',
-    ];
+    public static function paso1(): array
+    {
+        return self::paso(1);
+    }
 
     /** Paso 2 — Requisitos del cargo. */
-    public const PASO2 = [
-        'documento_carnet_manejo_defensivo',
-        'documento_certificado_manejo_defensivo',
-        'documento_certificado_carga_pesada',
-        'documento_certificados_terreno_plano',
-    ];
+    public static function paso2(): array
+    {
+        return self::paso(2);
+    }
 
-    /** Paso 4 — Archivos digitales (incluye los reutilizados de pasos 1/2). */
-    public const PASO4 = [
-        // 4.1 Documentos personales
-        'documento_cedula',
-        'documento_hoja_vida',
-        'documento_titulo_bachiller',
-        'documento_titulo_tecnico',
-        'documento_titulo_tecnologo',
-        'documento_titulo_profesional',
-        'documento_titulo_academico', // "Otro" título
-        'documento_antecedentes_procuraduria',
-        'documento_antecedentes_contraloria',
-        'documento_antecedentes_policia',
-        'documento_certificado_bancario',
-        'documento_runt',
+    /** Paso 3 — Puesto de trabajo. */
+    public static function paso3(): array
+    {
+        return self::paso(3);
+    }
 
-        // 4.2 Documentos de salud
-        'documento_examen_medico_ocupacional',
-        'documento_arl',
-        'documento_certificado_comfamiliar',
-        'documento_afiliacion_comfamiliar',
-        'documento_eps',
-
-        // 4.3 Requerimientos de tránsito
-        'documento_licencia_conduccion',
-        'documento_licencia_a1',
-        'documento_licencia_a2',
-        'documento_licencia_b1',
-        'documento_licencia_b2',
-        'documento_licencia_b3',
-        'documento_licencia_c1',
-        'documento_licencia_c2',
-        'documento_licencia_c3',
-        'documento_carnet_manejo_defensivo',
-        'documento_certificado_manejo_defensivo',
-        'documento_certificado_carga_pesada',
-        'documento_simit',
-        'documento_recordatorio_vehiculo_licencia_conduccion',
-
-        // 4.4 Documentación contrato
-        'documento_contrato',
-        'documento_carnet_ingreso_cd',
-        'documento_preaviso_terminacion',
-        'documento_prorroga',
-
-        // 4.5 Documentación aprendiz
-        'documento_sena_carta_presentacion',
-
-        // 4.6 Documentación People
-        'documento_induccion',
-        'documento_reinduccion',
-        'documento_induccion_pilares',
-
-        // 4.7 Documentación plan padrino
-        'documento_plan_padrino',
-
-        // 4.8 / 4.9 / 4.10
-        'documento_llamado_atencion',
-        'documento_compromisos',
-        'documento_escuela_pilotos',
-        'documento_certificado_brigadista',
-    ];
+    /** Paso 4 — Archivos digitales. */
+    public static function paso4(): array
+    {
+        return self::paso(4);
+    }
 
     /**
-     * Todas las claves de documento conocidas, sin duplicados — usada por la
-     * pantalla de edición clásica y por documentPaths() para fusionar
-     * columnas legacy + colaborador_documentos.
+     * Todas las claves de documento conocidas, sin duplicados.
      *
      * @return array<int, string>
      */
     public static function todas(): array
     {
-        return array_values(array_unique([...self::PASO1, ...self::PASO2, ...self::PASO4]));
+        return collect(config('seguridad.documentos_colaborador.documentos', []))
+            ->pluck('key')
+            ->unique()
+            ->values()
+            ->all();
     }
 }

@@ -6,8 +6,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, router } from '@inertiajs/react';
-import { CalendarPlus, FileDown, FileStack, Search, Users } from 'lucide-react';
+import { Head, Link, router } from '@inertiajs/react';
+import { CalendarPlus, Eye, FileDown, FileStack, Search, Users } from 'lucide-react';
 import { useState } from 'react';
 import { ProrrogarContratoDialog } from '@/pages/gente/colaboradores/prorrogar-contrato-dialog';
 
@@ -27,6 +27,7 @@ interface ContratoRow {
     fecha_ingreso_empresa: string | null;
     fecha_retiro_empresa: string | null;
     is_active: boolean;
+    tiene_finalizacion?: boolean;
 }
 
 interface PaginatedData<T> {
@@ -54,7 +55,14 @@ function formatFecha(fecha: string | null): string {
     return `${day}/${month}/${year}`;
 }
 
-function estadoContrato(fechaRetiro: string | null): { label: string; variant: 'default' | 'destructive' | 'secondary' | 'outline' } {
+function estadoContrato(
+    fechaRetiro: string | null,
+    isActive = true,
+    tieneFinalizacion = false,
+): { label: string; variant: 'default' | 'destructive' | 'secondary' | 'outline' } {
+    if (tieneFinalizacion || !isActive) {
+        return { label: 'Finalizado', variant: 'secondary' };
+    }
     if (!fechaRetiro) return { label: 'Sin fecha fin', variant: 'secondary' };
     const hoy = new Date();
     const retiro = new Date(fechaRetiro);
@@ -169,7 +177,11 @@ export default function ContratosIndex({ colaboradores, filters }: Props) {
                                         </TableRow>
                                     ) : (
                                         rows.map((row) => {
-                                            const { label, variant } = estadoContrato(row.fecha_retiro_empresa);
+                                            const { label, variant } = estadoContrato(
+                                                row.fecha_retiro_empresa,
+                                                row.is_active,
+                                                Boolean(row.tiene_finalizacion),
+                                            );
                                             return (
                                                 <TableRow key={row.id}>
                                                     <TableCell className="font-medium">
@@ -187,6 +199,12 @@ export default function ContratosIndex({ colaboradores, filters }: Props) {
                                                     </TableCell>
                                                     <TableCell className="text-right">
                                                         <div className="flex justify-end gap-1.5">
+                                                            <Button variant="outline" size="sm" asChild>
+                                                                <Link href={`/modules/gente/contratos/${row.id}`}>
+                                                                    <Eye className="mr-1.5 h-3.5 w-3.5" />
+                                                                    Ver
+                                                                </Link>
+                                                            </Button>
                                                             <ProrrogarContratoDialog
                                                                 colaboradorId={row.id}
                                                                 nombreCompleto={`${row.nombres} ${row.apellidos}`}

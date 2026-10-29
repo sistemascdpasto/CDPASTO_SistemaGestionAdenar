@@ -30,6 +30,7 @@ class RoleSeeder extends Seeder
         }
 
         Role::findByName(RoleEnum::Colaborador->value, 'web')->syncPermissions(['portal.colaborador']);
+        Role::findByName(RoleEnum::Contratos->value, 'web')->syncPermissions(['modules.gente']);
 
         // The Administrador role holds every permission that exists today; new
         // permissions added later are still covered by the Gate::before bypass.
