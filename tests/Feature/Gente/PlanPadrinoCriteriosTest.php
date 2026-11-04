@@ -43,7 +43,7 @@ class PlanPadrinoCriteriosTest extends TestCase
             'apellidos' => 'Pérez',
             'area' => 'Operativa',
             'cargo' => 'Conductor',
-'fecha_ingreso_empresa' => Carbon::today()->subMonthsNoOverflow(6),
+            'fecha_ingreso_empresa' => Carbon::today()->subMonthsNoOverflow(6),
             'estado_registro' => 'completo',
         ]);
 

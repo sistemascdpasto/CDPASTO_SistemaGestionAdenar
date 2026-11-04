@@ -68,32 +68,27 @@ interface LiveDialogProps {
     fastApiHttpUrl?: string;
 }
 
-// ─── Construcción de URLs ─────────────────────────────────────────────────────
-// VITE_FACIAL_SERVICE_URL  → URL pública del servicio (Railway, etc.)
-// VITE_FACIAL_API_KEY      → token compartido con el servicio Python (FACIAL_API_KEY)
-// Sin variable configurada → usa el servicio local en 127.0.0.1:8001
+// ─── Construcción de URLs ──────────────────────────────────────────────────────
+// La autenticación se obtiene mediante un token temporal emitido por Laravel.
 
-function buildFacialUrls(serviceUrl?: string): { wsUrl: string; httpUrl: string } {
+function buildFacialUrls(serviceUrl?: string): { wsBase: string; httpUrl: string } {
     const configuredBase = (serviceUrl || (import.meta.env.VITE_FACIAL_SERVICE_URL as string | undefined))
         ?.trim()
         .replace(/\/+$/, '');
 
     const base = configuredBase || 'http://127.0.0.1:8001';
-
     const wsBase = base.replace(/^https:/i, 'wss:').replace(/^http:/i, 'ws:');
 
-    const apiKey = (import.meta.env.VITE_FACIAL_API_KEY as string | undefined)?.trim() ?? '';
-    const token = apiKey ? `?token=${encodeURIComponent(apiKey)}` : '';
-
     return {
-        wsUrl: `${wsBase}/ws/reconocer${token}`,
+        wsBase: `${wsBase}/ws/reconocer`,
         httpUrl: `${base}/frame`,
     };
 }
 
-const FACIAL_API_KEY = (import.meta.env.VITE_FACIAL_API_KEY as string | undefined)?.trim() ?? '';
-
-// ─── Utilidades ──────────────────────────────────────────────────────────────
+function leerXsrfToken(): string {
+    const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]+)/);
+    return match ? decodeURIComponent(match[1]) : '';
+}
 
 function esCamaraVirtual(label: string): boolean {
     const l = label.toLowerCase();
@@ -121,7 +116,7 @@ export function ReconocimientoFacialLiveDialog({
     fastApiHttpUrl,
 }: LiveDialogProps) {
     const defaultUrls = useMemo(() => buildFacialUrls(facialServiceUrl), [facialServiceUrl]);
-    const wsUrl = fastApiWsUrl ?? defaultUrls.wsUrl;
+    const wsUrl = fastApiWsUrl ?? defaultUrls.wsBase;
     const httpUrl = fastApiHttpUrl ?? defaultUrls.httpUrl;
     const videoRef = useRef<HTMLVideoElement>(null);
     const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -186,13 +181,15 @@ export function ReconocimientoFacialLiveDialog({
     // ── Iniciar cámara ────────────────────────────────────────────────────────
     // BUG 4 FIX: ya no depende de selectedDeviceId del estado — lee el ref para
     // no forzar la recreación del useEffect del WS al cambiar de dispositivo.
-    const iniciarCamara = useCallback(async (deviceIdToUse?: string) => {
+    const iniciarCamara = useCallback(async (deviceIdToUse?: string, isCancelled?: () => boolean) => {
         setError(null);
         setIdentificado(null);
         setInfoIdentidad(null);
 
         streamRef.current?.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
+
+        if (isCancelled?.()) return;
 
         if (!navigator.mediaDevices?.getUserMedia) {
             setError('Tu navegador o dispositivo no permite acceso a la cámara.');
@@ -215,6 +212,8 @@ export function ReconocimientoFacialLiveDialog({
                 }
             }
 
+            if (isCancelled?.()) return;
+
             const constraints: MediaStreamConstraints = {
                 video: targetId
                     ? { deviceId: { exact: targetId }, width: { ideal: 640 }, height: { ideal: 480 } }
@@ -223,6 +222,10 @@ export function ReconocimientoFacialLiveDialog({
             };
 
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            if (isCancelled?.()) {
+                stream.getTracks().forEach((track) => track.stop());
+                return;
+            }
             streamRef.current = stream;
 
             if (videoRef.current) {
@@ -264,136 +267,170 @@ export function ReconocimientoFacialLiveDialog({
             return;
         }
 
-        void iniciarCamara();
-
         let ws: WebSocket | null = null;
-
-        try {
-            ws = new WebSocket(wsUrl);
-            wsRef.current = ws;
-
-            ws.onopen = () => {
-                setConectadoWs(true);
-                errorCountRef.current = 0;
-            };
-
-            ws.onmessage = (event) => {
-                isSendingRef.current = false;
-                // Diferir el procesamiento al siguiente frame de animación para no
-                // bloquear el hilo del evento WS (evita "message handler took Xms").
-                const raw = event.data as string;
-                requestAnimationFrame(() => {
-                    try {
-                        const data: FrameResponse = JSON.parse(raw);
-                        handleFrameResponseRef.current(data);
-                    } catch (e) {
-                        console.error('[Facial][WS] Error parseando frame:', e);
-                    }
-                });
-                if (DEV_LOGS) {
-                    console.debug('[Facial][WS] frame recibido', (event.data as string).length, 'chars');
-                }
-            };
-
-            ws.onerror = () => {
-                setConectadoWs(false);
-            };
-
-            ws.onclose = () => {
-                setConectadoWs(false);
-            };
-        } catch {
-            /* WebSocket no disponible; conectadoWs permanece false → fallback HTTP */
-        }
-
+        let cancelled = false;
         let lastTime = Date.now();
         let frameCount = 0;
 
-        const enviarFotograma = async () => {
-            if (!open) return;
-
-            const video = videoRef.current;
-            if (video && video.videoWidth > 0 && !isSendingRef.current) {
-                const w = video.videoWidth;
-                const h = video.videoHeight;
-
-                if (!hiddenCanvasRef.current) {
-                    hiddenCanvasRef.current = document.createElement('canvas');
+        const iniciarConexion = async () => {
+            try {
+                const tokenResponse = await fetch(route('seguridad.pruebas.facial-token'), {
+                    method: 'POST',
+                    headers: {
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-XSRF-TOKEN': leerXsrfToken(),
+                    },
+                    body: '{}',
+                });
+                if (!tokenResponse.ok) {
+                    throw new Error('No se pudo obtener autorización para el reconocimiento facial.');
                 }
-                const hCanvas = hiddenCanvasRef.current;
-                const targetW = 480;
-                const targetH = Math.round((h / w) * targetW);
-                hCanvas.width = targetW;
-                hCanvas.height = targetH;
-                const ctx = hCanvas.getContext('2d');
-                if (ctx) {
-                    ctx.drawImage(video, 0, 0, targetW, targetH);
 
-                    hCanvas.toBlob(
-                        async (blob) => {
-                            if (!blob) return;
+                const tokenResult: { token?: unknown } = await tokenResponse.json();
+                if (typeof tokenResult.token !== 'string' || !tokenResult.token) {
+                    throw new Error('Laravel devolvió un token facial inválido.');
+                }
+                if (cancelled) return;
 
-                            frameCount++;
-                            const now = Date.now();
-                            if (now - lastTime >= 1000) {
-                                setFps(frameCount);
-                                frameCount = 0;
-                                lastTime = now;
+                await iniciarCamara(undefined, () => cancelled);
+                if (cancelled) return;
+
+                try {
+                    const authenticatedWsUrl = new URL(wsUrl);
+                    authenticatedWsUrl.searchParams.set('token', tokenResult.token);
+                    ws = new WebSocket(authenticatedWsUrl.toString());
+                    wsRef.current = ws;
+
+                    ws.onopen = () => {
+                        setConectadoWs(true);
+                        errorCountRef.current = 0;
+                    };
+
+                    ws.onmessage = (event) => {
+                        isSendingRef.current = false;
+                        const raw = event.data as string;
+                        requestAnimationFrame(() => {
+                            try {
+                                const data: FrameResponse = JSON.parse(raw);
+                                handleFrameResponseRef.current(data);
+                            } catch (e) {
+                                console.error('[Facial][WS] Error parseando frame:', e);
                             }
+                        });
+                        if (DEV_LOGS) {
+                            console.debug('[Facial][WS] frame recibido', (event.data as string).length, 'chars');
+                        }
+                    };
 
-                            if (ws && ws.readyState === WebSocket.OPEN) {
-                                isSendingRef.current = true;
-                                ws.send(blob);
-                                errorCountRef.current = 0;
-                                setServicioOffline(false);
-                            } else {
-                                // ── Fallback HTTP (/frame) ────────────────────────────
-                                isSendingRef.current = true;
-                                try {
-                                    const fd = new FormData();
-                                    fd.append('foto', blob, 'frame.jpg');
-                                    const headers: Record<string, string> = {};
-                                    if (FACIAL_API_KEY) headers['X-Api-Key'] = FACIAL_API_KEY;
-                                    const resp = await fetch(httpUrl, {
-                                        method: 'POST',
-                                        body: fd,
-                                        headers,
-                                    });
-                                    if (resp.ok) {
+                    ws.onerror = () => {
+                        setConectadoWs(false);
+                    };
+
+                    ws.onclose = () => {
+                        setConectadoWs(false);
+                    };
+                } catch {
+                    ws = null;
+                }
+
+                const enviarFotograma = async () => {
+                    if (!open || cancelled) return;
+
+                    const video = videoRef.current;
+                    if (video && video.videoWidth > 0 && !isSendingRef.current) {
+                        const w = video.videoWidth;
+                        const h = video.videoHeight;
+
+                        if (!hiddenCanvasRef.current) {
+                            hiddenCanvasRef.current = document.createElement('canvas');
+                        }
+                        const hCanvas = hiddenCanvasRef.current;
+                        const targetW = 480;
+                        const targetH = Math.round((h / w) * targetW);
+                        hCanvas.width = targetW;
+                        hCanvas.height = targetH;
+                        const ctx = hCanvas.getContext('2d');
+                        if (ctx) {
+                            ctx.drawImage(video, 0, 0, targetW, targetH);
+
+                            hCanvas.toBlob(
+                                async (blob) => {
+                                    if (!blob || cancelled) return;
+
+                                    frameCount++;
+                                    const now = Date.now();
+                                    if (now - lastTime >= 1000) {
+                                        setFps(frameCount);
+                                        frameCount = 0;
+                                        lastTime = now;
+                                    }
+
+                                    if (ws && ws.readyState === WebSocket.OPEN) {
+                                        isSendingRef.current = true;
+                                        ws.send(blob);
                                         errorCountRef.current = 0;
                                         setServicioOffline(false);
-                                        const resData: FrameResponse = await resp.json();
-                                        handleFrameResponseRef.current(resData);
                                     } else {
-                                        // BUG 3 FIX: solo loguea el error HTTP en dev
-                                        if (DEV_LOGS) {
-                                            console.debug('[Facial][HTTP] status', resp.status);
+                                        isSendingRef.current = true;
+                                        try {
+                                            const fd = new FormData();
+                                            fd.append('foto', blob, 'frame.jpg');
+                                            const resp = await fetch(httpUrl, {
+                                                method: 'POST',
+                                                body: fd,
+                                                headers: {
+                                                    Authorization: `Bearer ${tokenResult.token}`,
+                                                },
+                                            });
+                                            if (resp.ok) {
+                                                errorCountRef.current = 0;
+                                                setServicioOffline(false);
+                                                const resData: FrameResponse = await resp.json();
+                                                handleFrameResponseRef.current(resData);
+                                            } else {
+                                                if (DEV_LOGS) {
+                                                    console.debug('[Facial][HTTP] status', resp.status);
+                                                }
+                                                errorCountRef.current++;
+                                                if (errorCountRef.current >= 3) setServicioOffline(true);
+                                            }
+                                        } catch (e) {
+                                            console.error('[Facial][HTTP] error en la petición:', e);
+                                            errorCountRef.current++;
+                                            if (errorCountRef.current >= 3) setServicioOffline(true);
+                                        } finally {
+                                            isSendingRef.current = false;
                                         }
-                                        errorCountRef.current++;
-                                        if (errorCountRef.current >= 3) setServicioOffline(true);
                                     }
-                                } catch (e) {
-                                    console.error('[Facial][HTTP] error en la petición:', e);
-                                    errorCountRef.current++;
-                                    if (errorCountRef.current >= 3) setServicioOffline(true);
-                                } finally {
-                                    isSendingRef.current = false;
-                                }
-                            }
-                        },
-                        'image/jpeg',
-                        0.75,
+                                },
+                                'image/jpeg',
+                                0.75,
+                            );
+                        }
+                    }
+
+                    const nextDelay = errorCountRef.current >= 3 ? 3000 : 130;
+                    loopTimerRef.current = setTimeout(enviarFotograma, nextDelay);
+                };
+
+                loopTimerRef.current = setTimeout(enviarFotograma, 300);
+            } catch (error) {
+                if (!cancelled) {
+                    setError(
+                        error instanceof Error
+                            ? error.message
+                            : 'No se pudo iniciar el reconocimiento facial.',
                     );
                 }
             }
-
-            const nextDelay = errorCountRef.current >= 3 ? 3000 : 130;
-            loopTimerRef.current = setTimeout(enviarFotograma, nextDelay);
         };
 
-        loopTimerRef.current = setTimeout(enviarFotograma, 300);
+        void iniciarConexion();
 
         return () => {
+            cancelled = true;
             detenerStream();
         };
     }, [open, wsUrl, httpUrl, detenerStream, iniciarCamara]);

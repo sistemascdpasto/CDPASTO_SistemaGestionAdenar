@@ -70,4 +70,42 @@ class CargoHistorialService
             $colaborador->update(['cargo' => $cargo]);
         });
     }
+
+    /**
+     * Aplica las reglas del historial de cargos al guardar el cambio de cargo.
+     * Centraliza los tres escenarios para que controlador y reglas queden
+     * desacoplados de la lógica de negocio:
+     *
+     *  - Escenario A (sin fecha): solo edita el cargo, sin historial.
+     *  - Escenario B (fecha puesta pero el cargo es el mismo): no registra
+     *    historial; devuelve un mensaje informativo para mostrar al usuario.
+     *    No genera error.
+     *  - Escenario C (cargo cambiado + fecha): la validación del request ya
+     *    garantizó que la fecha pertenece al contrato o a una prórroga, así
+     *    que se asigna el nuevo cargo cerrando el anterior.
+     *
+     * @return string|null  Mensaje informativo (Escenario B) o null.
+     */
+    public function registrarCambio(Colaborador $colaborador, ?string $cargo, ?string $fechaInicio): ?string
+    {
+        if (! $cargo) {
+            return null;
+        }
+
+        $cargoActualNombre = $colaborador->cargoActual?->cargo ?? $colaborador->cargo;
+
+        if (! empty($fechaInicio)) {
+            if ($cargo === $cargoActualNombre) {
+                return 'El cargo seleccionado es el mismo que el cargo actual; no se registró un cambio en el historial.';
+            }
+
+            $this->asignar($colaborador, $cargo, $fechaInicio);
+
+            return null;
+        }
+
+        $this->actualizarSinHistorial($colaborador, $cargo);
+
+        return null;
+    }
 }

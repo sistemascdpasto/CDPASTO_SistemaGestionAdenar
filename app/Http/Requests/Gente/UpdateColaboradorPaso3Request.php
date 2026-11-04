@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Gente;
 
+use App\Http\Requests\Gente\Concerns\ValidatesCargoHistorial;
 use App\Http\Requests\Gente\Concerns\ValidatesColaboradorDocumentos;
 use App\Http\Requests\Seguridad\Concerns\ValidatesFutureDates;
 use App\Support\Seguridad\ColaboradorDocumentoCampos;
@@ -13,6 +14,7 @@ class UpdateColaboradorPaso3Request extends FormRequest
 {
     use ValidatesColaboradorDocumentos;
     use ValidatesFutureDates;
+    use ValidatesCargoHistorial;
 
     public function authorize(): bool
     {
@@ -63,25 +65,6 @@ class UpdateColaboradorPaso3Request extends FormRequest
     {
         $validator->after(fn () => $this->logArchivosDocumentoRechazados($validator, ColaboradorDocumentoCampos::paso3()));
 
-        $validator->after(function (Validator $validator) {
-            $colaborador = $this->route('colaborador');
-            $cargoFechaInicio = $this->input('cargo_fecha_inicio');
-            $guardarHistorial = $this->input('guardar_historial_cargo') === 'si'
-                || (! $this->has('guardar_historial_cargo') && ! empty($cargoFechaInicio));
-
-            if (! $colaborador || ! $this->input('cargo') || ! $cargoFechaInicio || ! $guardarHistorial) {
-                return;
-            }
-
-            $cargoActivo = $colaborador->cargoActual;
-
-            if ($cargoActivo && $cargoActivo->cargo !== $this->input('cargo')
-                && $cargoFechaInicio < $cargoActivo->fecha_inicio->toDateString()) {
-                $validator->errors()->add(
-                    'cargo_fecha_inicio',
-                    'La fecha de inicio del nuevo cargo no puede ser anterior a la fecha de inicio del cargo actual.'
-                );
-            }
-        });
+        $validator->after(fn (Validator $v) => $this->validarFechaInicioCargo($v));
     }
 }

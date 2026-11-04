@@ -193,6 +193,40 @@ class PruebaAlcoholemiaController extends Controller
         return response()->json($resultado);
     }
 
+    /**
+     * Emite un token temporal para el reconocimiento facial en vivo.
+     */
+    public function emitirTokenFacial(): JsonResponse
+    {
+        $secret = (string) config('services.facial.token_secret', '');
+        $ttl = max(30, min(300, (int) config('services.facial.token_ttl', 120)));
+
+        if (strlen($secret) < 32) {
+            return response()->json([
+                'message' => 'El servicio de reconocimiento facial no tiene configurado un secreto seguro.',
+            ], 503);
+        }
+
+        $now = now()->timestamp;
+
+        $payload = [
+            'aud' => 'adenar-facial-service',
+            'scope' => 'facial:stream',
+            'iat' => $now,
+            'exp' => $now + $ttl,
+            'jti' => (string) \Illuminate\Support\Str::uuid(),
+        ];
+
+        $encodedPayload = rtrim(strtr(base64_encode(json_encode($payload, JSON_THROW_ON_ERROR)), '+/', '-_'), '=');
+        $signature = hash_hmac('sha256', $encodedPayload, $secret, true);
+        $encodedSignature = rtrim(strtr(base64_encode($signature), '+/', '-_'), '=');
+
+        return response()->json([
+            'token' => $encodedPayload . '.' . $encodedSignature,
+            'token_type' => 'Bearer',
+            'expires_in' => $ttl,
+        ]);
+    }
     public function create(Request $request, FacialRecognitionService $service): Response
     {
         $facialGallery = $this->sincronizarGaleriaParaVista($service);

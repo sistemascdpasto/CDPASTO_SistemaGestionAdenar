@@ -714,4 +714,51 @@ class PruebaAlcoholemiaTest extends TestCase
         $this->assertFalse($prueba->pertenece_planeacion);
         $this->assertNull($prueba->modulacion_id);
     }
+
+    public function test_security_user_can_receive_a_signed_temporary_facial_token(): void
+    {
+        $user = $this->seguridadUser();
+        $secret = str_repeat('a', 64);
+
+        config()->set('services.facial.token_secret', $secret);
+        config()->set('services.facial.token_ttl', 120);
+
+        $response = $this->actingAs($user)
+            ->postJson(route('seguridad.pruebas.facial-token'));
+
+        $response->assertOk()
+            ->assertJsonPath('token_type', 'Bearer')
+            ->assertJsonPath('expires_in', 120);
+
+        $token = $response->json('token');
+        $parts = explode('.', $token);
+
+        $this->assertCount(2, $parts);
+
+        $payloadJson = base64_decode(strtr($parts[0], '-_', '+/'));
+        $payload = json_decode($payloadJson, true);
+
+        $this->assertSame('adenar-facial-service', $payload['aud']);
+        $this->assertSame('facial:stream', $payload['scope']);
+        $this->assertSame(120, $payload['exp'] - $payload['iat']);
+
+        $expectedSignature = rtrim(
+            strtr(base64_encode(hash_hmac('sha256', $parts[0], $secret, true)), '+/', '-_'),
+            '='
+        );
+
+        $this->assertTrue(hash_equals($expectedSignature, $parts[1]));
+    }
+
+    public function test_facial_token_is_not_issued_without_a_secure_secret(): void
+    {
+        $user = $this->seguridadUser();
+
+        config()->set('services.facial.token_secret', '');
+
+        $this->actingAs($user)
+            ->postJson(route('seguridad.pruebas.facial-token'))
+            ->assertStatus(503)
+            ->assertJsonStructure(['message']);
+    }
 }

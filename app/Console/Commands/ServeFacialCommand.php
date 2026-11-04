@@ -60,6 +60,7 @@ class ServeFacialCommand extends Command
             array_filter([
                 'PYTHONUTF8' => '1',
                 'FACIAL_API_KEY' => $apiKey,
+                'FACIAL_TOKEN_SECRET' => (string) config('services.facial.token_secret', ''),
                 'FACIAL_CORS' => (string) config('services.facial.cors', ''),
                 'FACIAL_ALLOWED_DIR' => (string) config('services.facial.allowed_dir', ''),
             ], fn (string $v) => $v !== ''),

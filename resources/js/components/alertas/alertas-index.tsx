@@ -22,7 +22,7 @@ export interface AlertaRow {
     mensaje: string;
     atendida: boolean;
     created_at: string;
-    colaborador: { id: number; nombres: string; apellidos: string; fecha_retiro_empresa: string | null } | null;
+    colaborador: { id: number; nombres: string; apellidos: string; fecha_retiro_empresa: string | null; cantidad_prorrogas: number } | null;
     alcoholimetro: { codigo: string } | null;
 }
 
@@ -124,6 +124,7 @@ export default function AlertasIndex({
                                                             colaboradorId={alerta.colaborador.id}
                                                             nombreCompleto={`${alerta.colaborador.nombres} ${alerta.colaborador.apellidos}`}
                                                             fechaActual={alerta.colaborador.fecha_retiro_empresa}
+                                                            cantidadProrrogas={alerta.colaborador.cantidad_prorrogas}
                                                             trigger={
                                                                 <Button
                                                                     variant="outline"
@@ -139,6 +140,7 @@ export default function AlertasIndex({
                                                             colaboradorId={alerta.colaborador.id}
                                                             nombreCompleto={`${alerta.colaborador.nombres} ${alerta.colaborador.apellidos}`}
                                                             fechaActual={alerta.colaborador.fecha_retiro_empresa}
+                                                            cantidadProrrogas={alerta.colaborador.cantidad_prorrogas}
                                                             trigger={
                                                                 <Button
                                                                     variant="outline"

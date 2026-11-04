@@ -235,6 +235,8 @@ Route::middleware(['auth', 'active', 'role:Administrador|Seguridad|Reparto|Flota
         // Contratos (Lectura)
         Route::get('contratos', [ContratosController::class, 'index'])
             ->name('contratos.index');
+        Route::get('contratos/exportar', [ContratosController::class, 'exportar'])
+            ->name('contratos.exportar');
         Route::get('contratos/{colaborador}', [ContratosController::class, 'show'])
             ->name('contratos.show');
 
