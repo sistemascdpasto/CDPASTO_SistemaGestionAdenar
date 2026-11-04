@@ -9,7 +9,8 @@ Endpoints:
   WS   /ws/reconocer?token=...  video en vivo: envía JPEG binario, recibe JSON
 
 Variables de entorno útiles:
-  FACIAL_API_KEY        token compartido con Laravel y el frontend (OBLIGATORIO en producción)
+  FACIAL_API_KEY        clave compartida entre Laravel y FastAPI para operaciones administrativas
+  FACIAL_TOKEN_SECRET   secreto HMAC compartido con Laravel para tokens temporales de streaming
   FACIAL_CORS           orígenes permitidos separados por coma (también se valida en el WebSocket)
   FACIAL_WORKERS        hilos de inferencia simultáneos (por defecto 2)
   FACIAL_MAX_UPLOAD     bytes máximos de la foto (por defecto 5 MB)
@@ -24,10 +25,12 @@ Ejecutar:  uvicorn facial_service.main:app --host 127.0.0.1 --port 8001
 """
 
 import asyncio
+import base64
 import hmac
 import json
 import os
 import sys
+import time
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 from typing import Optional
@@ -51,6 +54,7 @@ def _env_int(name: str, default: int) -> int:
 
 
 API_KEY = os.environ.get("FACIAL_API_KEY", "")
+TOKEN_SECRET = os.environ.get("FACIAL_TOKEN_SECRET", "")
 MAX_UPLOAD = _env_int("FACIAL_MAX_UPLOAD", 5 * 1024 * 1024)
 MAX_FRAME = _env_int("FACIAL_MAX_FRAME", 1024 * 1024)
 MAX_WS = _env_int("FACIAL_MAX_WS", 4)
@@ -84,7 +88,7 @@ app.add_middleware(
     allow_origins=["*"] if ANY_ORIGIN else ORIGINS,
     allow_credentials=False,          # la autenticación va por cabecera/token, no por cookies
     allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type", "X-API-Key"],
+    allow_headers=["Content-Type", "X-API-Key", "Authorization"],
 )
 
 
@@ -95,9 +99,77 @@ async def run(fn, *args):
 
 
 def _valid_key(provided: Optional[str]) -> bool:
-    if not API_KEY:
-        return True
-    return bool(provided) and hmac.compare_digest(provided, API_KEY)
+    """La clave maestra falla de forma segura si no est? configurada."""
+    return bool(API_KEY) and bool(provided) and hmac.compare_digest(provided, API_KEY)
+
+
+def _valid_stream_token(token: Optional[str]) -> bool:
+    """Valida tokens temporales HMAC emitidos por Laravel."""
+    if not TOKEN_SECRET or len(TOKEN_SECRET.encode("utf-8")) < 32 or not token:
+        return False
+
+    parts = token.split(".")
+    if len(parts) != 2:
+        return False
+
+    encoded_payload, provided_signature = parts
+    expected_signature = base64.urlsafe_b64encode(
+        hmac.new(
+            TOKEN_SECRET.encode("utf-8"),
+            encoded_payload.encode("ascii"),
+            "sha256",
+        ).digest()
+    ).rstrip(b"=").decode("ascii")
+
+    if not hmac.compare_digest(provided_signature, expected_signature):
+        return False
+
+    try:
+        padding = "=" * (-len(encoded_payload) % 4)
+        payload_bytes = base64.urlsafe_b64decode(encoded_payload + padding)
+        payload = json.loads(payload_bytes.decode("utf-8"))
+    except (ValueError, UnicodeDecodeError, json.JSONDecodeError):
+        return False
+
+    if not isinstance(payload, dict):
+        return False
+
+    issued_at = payload.get("iat")
+    expires_at = payload.get("exp")
+
+    if (
+        isinstance(issued_at, bool)
+        or not isinstance(issued_at, int)
+        or isinstance(expires_at, bool)
+        or not isinstance(expires_at, int)
+    ):
+        return False
+
+    now = int(time.time())
+
+    return (
+        payload.get("aud") == "adenar-facial-service"
+        and payload.get("scope") == "facial:stream"
+        and issued_at <= now + 30
+        and expires_at > now
+        and 30 <= expires_at - issued_at <= 300
+    )
+
+
+async def require_stream_token(
+    authorization: Optional[str] = Header(default=None),
+):
+    """Exige un token temporal mediante Authorization: Bearer."""
+    if not authorization:
+        raise HTTPException(status_code=401, detail="No autorizado")
+
+    scheme, separator, token = authorization.partition(" ")
+    if (
+        not separator
+        or scheme.lower() != "bearer"
+        or not _valid_stream_token(token.strip())
+    ):
+        raise HTTPException(status_code=401, detail="No autorizado")
 
 
 def _origin_allowed(origin: Optional[str]) -> bool:
@@ -220,7 +292,7 @@ async def reconocer(foto: UploadFile = File(...), candidates_json: Optional[str]
         return {"success": False, "status": "error", "message": "Error en el servidor biométrico."}
 
 
-@app.post("/frame", dependencies=[Depends(require_key)])
+@app.post("/frame", dependencies=[Depends(require_stream_token)])
 async def analizar_frame(foto: UploadFile = File(...)):
     """Analiza un fotograma único en vivo y devuelve rostros y coincidencia."""
     data = await foto.read(MAX_FRAME + 1)
@@ -253,7 +325,7 @@ async def ws_reconocer(ws: WebSocket, token: Optional[str] = None):
     if not _origin_allowed(ws.headers.get("origin")):
         await ws.close(code=4403)
         return
-    if not _valid_key(token):
+    if not _valid_stream_token(token):
         await ws.close(code=4401)
         return
     if _ws_active >= MAX_WS:                   # sin await entre comprobar e incrementar: sin carrera

@@ -2,10 +2,12 @@
 
 namespace App\Http\Requests\Gente;
 
+use App\Http\Requests\Gente\Concerns\ValidatesCargoHistorial;
 use App\Http\Requests\Gente\Concerns\ValidatesColaboradorDocumentos;
 use App\Http\Requests\Seguridad\Concerns\ValidatesFutureDates;
 use App\Models\Gente\TipoDocumento;
 use App\Support\Seguridad\ColaboradorDocumentoCampos;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -13,10 +15,17 @@ class UpdateColaboradorRequest extends FormRequest
 {
     use ValidatesColaboradorDocumentos;
     use ValidatesFutureDates;
+    use ValidatesCargoHistorial;
 
     public function authorize(): bool
     {
         return true;
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        // Misma regla del historial de cargos que usa el wizard (paso 3).
+        $validator->after(fn (Validator $v) => $this->validarFechaInicioCargo($v));
     }
 
     /**

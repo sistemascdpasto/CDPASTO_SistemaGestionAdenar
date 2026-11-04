@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
-import { Eye, FileStack, Search, Users } from 'lucide-react';
+import { Eye, FileSpreadsheet, FileStack, Search, Users } from 'lucide-react';
 import { useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -25,6 +25,8 @@ interface ContratoRow {
     tipo_contrato: string | null;
     fecha_ingreso_empresa: string | null;
     fecha_retiro_empresa: string | null;
+    ultima_fecha_prorroga: string | null;
+    cantidad_prorrogas: number;
     is_active: boolean;
     tiene_finalizacion?: boolean;
 }
@@ -56,10 +58,9 @@ function formatFecha(fecha: string | null): string {
 
 function estadoContrato(
     fechaRetiro: string | null,
-    isActive = true,
     tieneFinalizacion = false,
 ): { label: string; variant: 'default' | 'destructive' | 'secondary' | 'outline' } {
-    if (tieneFinalizacion || !isActive) {
+    if (tieneFinalizacion) {
         return { label: 'Finalizado', variant: 'secondary' };
     }
     if (!fechaRetiro) return { label: 'Sin fecha fin', variant: 'secondary' };
@@ -99,40 +100,52 @@ export default function ContratosIndex({ colaboradores, filters }: Props) {
         handleFilter(search, val);
     };
 
+    const exportUrl = `/modules/gente/contratos/exportar?search=${encodeURIComponent(search)}&estado=${encodeURIComponent(estado === 'todos' ? '' : estado)}`;
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Contratos - Módulo Gente" />
 
-            <div className="space-y-6 p-6">
+            <div className="flex flex-1 flex-col gap-6 p-4 sm:p-6">
                 {/* Header Banner */}
-                <div className="rounded-xl border border-amber-200 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent p-6 shadow-sm dark:border-amber-900/50 dark:from-amber-950/20">
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-cyan-200 bg-gradient-to-r from-blue-500/10 via-cyan-500/5 to-transparent p-6 shadow-sm dark:border-cyan-900/50 dark:from-blue-950/30">
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <div className="space-y-1">
                             <div className="flex items-center gap-2">
-                                <FileStack className="h-6 w-6 text-amber-600 dark:text-amber-400" />
-                                <h1 className="text-2xl font-bold tracking-tight text-foreground">Contratos</h1>
+                                <FileStack className="h-6 w-6 text-cyan-700 dark:text-cyan-300" />
+                                <h1 className="text-foreground border-l-4 border-cyan-500 pl-2 text-3xl font-extrabold tracking-tight sm:text-4xl">
+                                    Contratos
+                                </h1>
                             </div>
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-muted-foreground text-sm">
                                 Consulta las fechas de inicio y finalización de contrato de cada colaborador.
                             </p>
                         </div>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Users className="h-4 w-4" />
-                            <span>{colaboradores?.total ?? 0} colaboradores</span>
+                        <div className="flex flex-wrap items-center gap-3">
+                            <div className="text-muted-foreground flex items-center gap-2 text-sm">
+                                <Users className="h-4 w-4" />
+                                <span>{colaboradores?.total ?? 0} colaboradores</span>
+                            </div>
+                            <Button variant="outline" size="sm" asChild>
+                                <a href={exportUrl}>
+                                    <FileSpreadsheet className="mr-2 h-4 w-4 text-cyan-700 dark:text-cyan-300" />
+                                    Exportar Excel
+                                </a>
+                            </Button>
                         </div>
                     </div>
                 </div>
 
                 {/* Filtros + Tabla */}
                 <Card>
-                    <CardHeader className="pb-4">
+                    <CardHeader className="border-b border-cyan-100 bg-sky-50/70 pb-4 dark:border-cyan-950 dark:bg-slate-900/50">
                         <CardTitle className="text-base font-semibold">Lista de contratos</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         {/* Filtros */}
                         <div className="flex flex-col gap-3 sm:flex-row">
                             <div className="relative flex-1">
-                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                <Search className="text-muted-foreground absolute top-2.5 left-2.5 h-4 w-4" />
                                 <Input
                                     type="text"
                                     placeholder="Buscar por nombre o cédula..."
@@ -154,45 +167,42 @@ export default function ContratosIndex({ colaboradores, filters }: Props) {
                         </div>
 
                         {/* Tabla */}
-                        <div className="rounded-md border">
+                        <div className="overflow-x-auto rounded-xl border border-sky-200 dark:border-slate-700">
                             <Table>
                                 <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Nombre</TableHead>
-                                        <TableHead>Cédula</TableHead>
-                                        <TableHead>Tipo de contrato</TableHead>
-                                        <TableHead>Fecha inicio de contrato</TableHead>
-                                        <TableHead>Fecha finalización de contrato</TableHead>
-                                        <TableHead>Estado</TableHead>
-                                        <TableHead className="text-right">Acciones</TableHead>
+                                    <TableRow className="bg-gradient-to-r from-[#1a3a5c] via-[#1e5f74] to-[#2a9d8f] hover:brightness-110">
+                                        <TableHead className="text-white">N.º prórrogas</TableHead>
+                                        <TableHead className="text-white">Nombre</TableHead>
+                                        <TableHead className="text-white">Cédula</TableHead>
+                                        <TableHead className="text-white">Tipo de contrato</TableHead>
+                                        <TableHead className="text-white">Fecha inicio de contrato</TableHead>
+                                        <TableHead className="text-white">Fecha finalización de contrato</TableHead>
+                                        <TableHead className="text-white">Estado</TableHead>
+                                        <TableHead className="text-right text-white">Acciones</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {rows.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
+                                            <TableCell colSpan={8} className="text-muted-foreground py-10 text-center">
                                                 No se encontraron colaboradores.
                                             </TableCell>
                                         </TableRow>
                                     ) : (
                                         rows.map((row) => {
-                                            const { label, variant } = estadoContrato(
-                                                row.fecha_retiro_empresa,
-                                                row.is_active,
-                                                Boolean(row.tiene_finalizacion),
-                                            );
+                                            const fechaFinContrato = row.ultima_fecha_prorroga ?? row.fecha_retiro_empresa;
+                                            const { label, variant } = estadoContrato(fechaFinContrato, Boolean(row.tiene_finalizacion));
                                             return (
                                                 <TableRow key={row.id}>
+                                                    <TableCell className="text-center text-sm">{row.cantidad_prorrogas}</TableCell>
                                                     <TableCell className="font-medium">
                                                         {row.nombres} {row.apellidos}
-                                                        {row.cargo && (
-                                                            <p className="text-xs text-muted-foreground">{row.cargo}</p>
-                                                        )}
+                                                        {row.cargo && <p className="text-muted-foreground text-xs">{row.cargo}</p>}
                                                     </TableCell>
                                                     <TableCell className="text-sm">{row.cedula}</TableCell>
                                                     <TableCell className="text-sm">{row.tipo_contrato ?? '—'}</TableCell>
                                                     <TableCell className="text-sm">{formatFecha(row.fecha_ingreso_empresa)}</TableCell>
-                                                    <TableCell className="text-sm">{formatFecha(row.fecha_retiro_empresa)}</TableCell>
+                                                    <TableCell className="text-sm">{formatFecha(fechaFinContrato)}</TableCell>
                                                     <TableCell>
                                                         <Badge variant={variant}>{label}</Badge>
                                                     </TableCell>
@@ -215,7 +225,7 @@ export default function ContratosIndex({ colaboradores, filters }: Props) {
 
                         {/* Paginación */}
                         {(colaboradores?.prev_page_url || colaboradores?.next_page_url) && (
-                            <div className="flex items-center justify-between pt-2 text-sm text-muted-foreground">
+                            <div className="text-muted-foreground flex items-center justify-between pt-2 text-sm">
                                 <span>
                                     Página {colaboradores.current_page} de {colaboradores.last_page}
                                 </span>
@@ -225,8 +235,7 @@ export default function ContratosIndex({ colaboradores, filters }: Props) {
                                         size="sm"
                                         disabled={!colaboradores.prev_page_url}
                                         onClick={() =>
-                                            colaboradores.prev_page_url &&
-                                            router.get(colaboradores.prev_page_url, {}, { preserveState: true })
+                                            colaboradores.prev_page_url && router.get(colaboradores.prev_page_url, {}, { preserveState: true })
                                         }
                                     >
                                         Anterior
@@ -236,8 +245,7 @@ export default function ContratosIndex({ colaboradores, filters }: Props) {
                                         size="sm"
                                         disabled={!colaboradores.next_page_url}
                                         onClick={() =>
-                                            colaboradores.next_page_url &&
-                                            router.get(colaboradores.next_page_url, {}, { preserveState: true })
+                                            colaboradores.next_page_url && router.get(colaboradores.next_page_url, {}, { preserveState: true })
                                         }
                                     >
                                         Siguiente

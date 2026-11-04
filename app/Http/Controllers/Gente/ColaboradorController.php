@@ -10,16 +10,17 @@ use App\Http\Requests\Gente\UpdateColaboradorPaso2Request;
 use App\Http\Requests\Gente\UpdateColaboradorPaso3Request;
 use App\Http\Requests\Gente\UpdateColaboradorPaso4Request;
 use App\Http\Requests\Gente\UpdateColaboradorRequest;
+use App\Http\Requests\Gente\ProrrogarContratoRequest;
 use App\Models\Gente\ContratoProrroga;
 use App\Models\Gente\OpcionCatalogo;
 use App\Models\Gente\TipoDocumento;
-use App\Models\GeovictoriaAsistencia;
 use App\Models\Seguridad\Alerta;
 use App\Models\Seguridad\Colaborador;
 use App\Models\Seguridad\Entrenamiento;
 use App\Models\User;
 use App\Services\Seguridad\CargoHistorialService;
 use App\Services\Seguridad\ColaboradorAutoprovisionService;
+use App\Services\Seguridad\ColaboradorCatalogoService;
 use App\Services\Seguridad\IndiceRiesgoCalculator;
 use App\Support\Seguridad\ColaboradorDocumentoCampos;
 use Illuminate\Http\RedirectResponse;
@@ -31,7 +32,7 @@ use Inertia\Response;
 
 class ColaboradorController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request, ColaboradorCatalogoService $catalogos): Response
     {
         $search = $request->string('search')->trim()->toString();
         $registro = $request->string('registro')->trim()->toString();
@@ -57,6 +58,7 @@ class ColaboradorController extends Controller
                 'eps', 'eps_otro', 'arl', 'arl_otro', 'fecha_ingreso_empresa', 'tipo_padrino',
                 'imagen', 'is_active', 'estado_registro', 'wizard_step',
             ])
+            ->withExists(['prorrogas as tiene_finalizacion' => fn ($query) => $query->where('tipo', 'finalizacion')])
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($query) use ($search) {
                     $query->where('nombres', 'like', "%{$search}%")
@@ -79,11 +81,11 @@ class ColaboradorController extends Controller
             ->when($arl !== '', fn ($query) => $query->where('arl', $arl))
             ->when($fechaIngresoDesde !== '', fn ($query) => $query->whereDate('fecha_ingreso_empresa', '>=', $fechaIngresoDesde))
             ->when($fechaIngresoHasta !== '', fn ($query) => $query->whereDate('fecha_ingreso_empresa', '<=', $fechaIngresoHasta))
-            ->when($vencimientoContrato === 'vencidos', fn ($query) => $query->whereNotNull('fecha_retiro_empresa')->where('fecha_retiro_empresa', '<', now()))
-            ->when($vencimientoContrato === 'proximos', fn ($query) => $query->whereNotNull('fecha_retiro_empresa')->whereBetween('fecha_retiro_empresa', [now(), $limiteProximoVencer]))
+            ->when($vencimientoContrato === 'vencidos', fn ($query) => $query->sinFinalizacionConfirmada()->whereNotNull('fecha_retiro_empresa')->where('fecha_retiro_empresa', '<', now()))
+            ->when($vencimientoContrato === 'proximos', fn ($query) => $query->sinFinalizacionConfirmada()->whereNotNull('fecha_retiro_empresa')->whereBetween('fecha_retiro_empresa', [now(), $limiteProximoVencer]))
             ->when($vencimientoContrato === 'vigentes', fn ($query) => $query->where(function ($query) use ($limiteProximoVencer) {
                 $query->whereNull('fecha_retiro_empresa')->orWhere('fecha_retiro_empresa', '>', $limiteProximoVencer);
-            }))
+            })->sinFinalizacionConfirmada())
             ->orderBy('nombres')
             ->paginate(15)
             ->withQueryString();
@@ -99,10 +101,12 @@ class ColaboradorController extends Controller
             'area_operativa' => Colaborador::completos()->where('area', 'Operativa')->count(),
             'area_administrativa' => Colaborador::completos()->where('area', 'Administrativa')->count(),
             'contratos_proximos' => Colaborador::completos()
+                ->sinFinalizacionConfirmada()
                 ->whereNotNull('fecha_retiro_empresa')
                 ->whereBetween('fecha_retiro_empresa', [now(), $limiteProximoVencerResumen])
                 ->count(),
             'contratos_vencidos' => Colaborador::completos()
+                ->sinFinalizacionConfirmada()
                 ->whereNotNull('fecha_retiro_empresa')
                 ->where('fecha_retiro_empresa', '<', now())
                 ->count(),
@@ -126,16 +130,16 @@ class ColaboradorController extends Controller
                 'vencimiento_contrato' => $vencimientoContrato,
             ],
             'borradoresCount' => $resumen['borradores'],
-            'catalogos' => $this->catalogos(),
+            'catalogos' => $this->catalogos($catalogos),
         ]);
     }
 
-    public function create(): Response
+    public function create(ColaboradorCatalogoService $catalogos): Response
     {
         return Inertia::render('gente/colaboradores/wizard/index', [
             'colaborador' => null,
             'currentStep' => 1,
-            'catalogos' => $this->catalogos(),
+            'catalogos' => $this->catalogos($catalogos),
         ]);
     }
 
@@ -184,8 +188,17 @@ class ColaboradorController extends Controller
      * borrador donde se quedó, o permite revisar/editar cualquier paso de
      * un colaborador ya completo (esta es también la vista de "editar").
      */
-    public function wizard(Request $request, Colaborador $colaborador): Response
+    public function wizard(
+        Request $request,
+        Colaborador $colaborador,
+        ColaboradorCatalogoService $catalogos,
+    ): Response|RedirectResponse
     {
+        if ($colaborador->tieneFinalizacionConfirmada()) {
+            return to_route('gente.colaboradores.show', $colaborador)
+                ->with('status', 'El colaborador tiene el contrato finalizado y no se puede editar.');
+        }
+
         $maxStep = max(1, (int) $colaborador->wizard_step);
         // Un borrador arranca en el siguiente paso sin completar; un
         // colaborador completo arranca en el Paso 1 para revisar desde el
@@ -199,7 +212,7 @@ class ColaboradorController extends Controller
         return Inertia::render('gente/colaboradores/wizard/index', [
             'colaborador' => $colaboradorData,
             'currentStep' => $currentStep,
-            'catalogos' => $this->catalogos(),
+            'catalogos' => $this->catalogos($catalogos),
             'historialCargos' => $colaborador->cargos()->orderByDesc('fecha_inicio')->get(),
             'usuarios' => $this->usuariosVinculables($colaborador),
         ]);
@@ -244,7 +257,7 @@ class ColaboradorController extends Controller
     /**
      * @return array<string, array<int, string>>
      */
-    private function catalogos(): array
+    private function catalogos(ColaboradorCatalogoService $catalogos): array
     {
         return [
             'tiposDocumento' => collect(config('seguridad.colaboradores.tipos_documento', []))
@@ -256,15 +269,9 @@ class ColaboradorController extends Controller
             'afpOpciones' => OpcionCatalogo::opcionesDe('afp'),
             'arlOpciones' => OpcionCatalogo::opcionesDe('arl'),
             'estadosCiviles' => OpcionCatalogo::opcionesDe('estado_civil'),
-            'tiposContrato' => OpcionCatalogo::opcionesDe('tipo_contrato'),
+            'tiposContrato' => $catalogos->tiposContrato(),
             'cargosAnteriores' => OpcionCatalogo::opcionesDe('cargo_anterior'),
-            'cargos' => collect(config('seguridad.colaboradores.cargos', []))
-                ->merge(Colaborador::whereNotNull('cargo')->where('cargo', '!=', '')->distinct()->pluck('cargo'))
-                ->merge(GeovictoriaAsistencia::whereNotNull('cargo')->where('cargo', '!=', '')->distinct()->pluck('cargo'))
-                ->unique()
-                ->sort()
-                ->values()
-                ->all(),
+            'cargos' => $catalogos->cargos(),
             'centros' => config('seguridad.colaboradores.centros'),
             'centrosTrabajo' => config('seguridad.colaboradores.centros_trabajo'),
             'motivosRetiro' => config('seguridad.colaboradores.motivos_retiro'),
@@ -276,6 +283,8 @@ class ColaboradorController extends Controller
 
     public function updatePaso1(UpdateColaboradorPaso1Request $request, Colaborador $colaborador): RedirectResponse
     {
+        $this->asegurarContratoNoFinalizado($colaborador);
+
         $data = $request->validated();
 
         $data = $this->resolverOtros($data, [
@@ -315,6 +324,8 @@ class ColaboradorController extends Controller
 
     public function updatePaso2(UpdateColaboradorPaso2Request $request, Colaborador $colaborador): RedirectResponse
     {
+        $this->asegurarContratoNoFinalizado($colaborador);
+
         $data = $request->validated();
 
         foreach (ColaboradorDocumentoCampos::paso2() as $field) {
@@ -333,6 +344,8 @@ class ColaboradorController extends Controller
 
     public function updatePaso3(UpdateColaboradorPaso3Request $request, Colaborador $colaborador, CargoHistorialService $cargoHistorial): RedirectResponse
     {
+        $this->asegurarContratoNoFinalizado($colaborador);
+
         $data = $request->validated();
 
         $data = $this->resolverOtros($data, [
@@ -345,8 +358,6 @@ class ColaboradorController extends Controller
 
         $cargo = $data['cargo'] ?? null;
         $cargoFechaInicio = $data['cargo_fecha_inicio'] ?? null;
-        $guardarHistorial = ($data['guardar_historial_cargo'] ?? '') === 'si'
-            || (! isset($data['guardar_historial_cargo']) && ! empty($cargoFechaInicio));
         unset($data['cargo'], $data['cargo_fecha_inicio'], $data['guardar_historial_cargo']);
 
         $colaborador->update([
@@ -354,21 +365,26 @@ class ColaboradorController extends Controller
             'wizard_step' => max((int) $colaborador->wizard_step, 3),
         ]);
 
-        if ($cargo) {
-            if ($guardarHistorial && $cargoFechaInicio) {
-                $cargoHistorial->asignar($colaborador, $cargo, $cargoFechaInicio);
-            } else {
-                $cargoHistorial->actualizarSinHistorial($colaborador, $cargo);
-            }
-        }
+        // Reglas del historial de cargos (3 escenarios). Devuelve un mensaje
+        // informativo cuando el cargo no cambió (Escenario B); el resto del
+        // guardado del paso ya se hizo arriba.
+        $info = $cargoHistorial->registrarCambio($colaborador, $cargo, $cargoFechaInicio);
 
         $this->storeDocuments($request, $colaborador, ColaboradorDocumentoCampos::paso3());
 
-        return to_route('gente.colaboradores.wizard', ['colaborador' => $colaborador, 'paso' => 4]);
+        $redirect = to_route('gente.colaboradores.wizard', ['colaborador' => $colaborador, 'paso' => 4]);
+
+        if ($info) {
+            $redirect->with('status', $info);
+        }
+
+        return $redirect;
     }
 
     public function updatePaso4(UpdateColaboradorPaso4Request $request, Colaborador $colaborador): RedirectResponse
     {
+        $this->asegurarContratoNoFinalizado($colaborador);
+
         $data = $request->validated();
 
         foreach (ColaboradorDocumentoCampos::paso4() as $field) {
@@ -390,7 +406,11 @@ class ColaboradorController extends Controller
     public function show(Colaborador $colaborador, IndiceRiesgoCalculator $calculator): Response
     {
         $documentos = $this->documentPaths($colaborador);
-        $colaboradorData = [...$this->colaboradorArrayConFechasSimples($colaborador), ...$documentos];
+        $colaboradorData = [
+            ...$this->colaboradorArrayConFechasSimples($colaborador),
+            ...$documentos,
+            'tiene_finalizacion' => $colaborador->tieneFinalizacionConfirmada(),
+        ];
 
         return Inertia::render('gente/colaboradores/show', [
             'colaborador' => $colaboradorData,
@@ -434,20 +454,18 @@ class ColaboradorController extends Controller
      * Prorroga el contrato de un colaborador actualizando fecha_retiro_empresa
      * y marcando como atendida cualquier alerta de retiro_proximo pendiente.
      */
-    public function prorrogarContrato(Request $request, Colaborador $colaborador): RedirectResponse
+    public function prorrogarContrato(ProrrogarContratoRequest $request, Colaborador $colaborador): RedirectResponse
     {
-        $request->validate([
-            'fecha_retiro_empresa' => ['required', 'date'],
-            'tipo' => ['nullable', 'in:prorroga,finalizacion'],
-            'observaciones' => ['nullable', 'string', 'max:500'],
-            'documento' => ['nullable', 'file', 'mimes:pdf,doc,docx,jpg,jpeg,png', 'max:10240'],
-        ]);
+        $this->asegurarContratoNoFinalizado($colaborador);
+
+        $datos = $request->validated();
 
         $fechaAnterior = $colaborador->fecha_retiro_empresa
             ? $colaborador->fecha_retiro_empresa->toDateString()
             : null;
 
-        $esFinalizacion = $request->input('tipo') === 'finalizacion';
+        $tipo = $datos['tipo'] ?? 'prorroga';
+        $esFinalizacion = $tipo === 'finalizacion';
 
         $colaborador->update([
             'fecha_retiro_empresa' => $request->date('fecha_retiro_empresa'),
@@ -471,9 +489,10 @@ class ColaboradorController extends Controller
             'colaborador_id' => $colaborador->id,
             'registrado_por' => $request->user()->id,
             'fecha_anterior' => $fechaAnterior ?? $request->date('fecha_retiro_empresa'),
+            'fecha_inicio' => $esFinalizacion ? null : ($datos['fecha_inicio_prorroga'] ?? null),
             'fecha_nueva' => $request->date('fecha_retiro_empresa'),
-            'tipo' => $request->input('tipo', 'prorroga'),
-            'observaciones' => $request->input('observaciones'),
+            'tipo' => $tipo,
+            'observaciones' => $datos['observaciones'] ?? null,
             'documento_path' => $documentoPath,
             'documento_nombre' => $documentoNombre,
         ]);
@@ -501,6 +520,8 @@ class ColaboradorController extends Controller
      */
     public function toggleActivo(Colaborador $colaborador): RedirectResponse
     {
+        $this->asegurarContratoNoFinalizado($colaborador);
+
         $nuevoEstado = ! $colaborador->is_active;
 
         $colaborador->update(['is_active' => $nuevoEstado]);
@@ -527,13 +548,19 @@ class ColaboradorController extends Controller
      * completo simplemente arranca en el Paso 1 con los 4 pasos
      * desbloqueados (ver wizard()).
      */
-    public function edit(Request $request, Colaborador $colaborador): Response
+    public function edit(
+        Request $request,
+        Colaborador $colaborador,
+        ColaboradorCatalogoService $catalogos,
+    ): Response|RedirectResponse
     {
-        return $this->wizard($request, $colaborador);
+        return $this->wizard($request, $colaborador, $catalogos);
     }
 
     public function update(UpdateColaboradorRequest $request, Colaborador $colaborador, CargoHistorialService $cargoHistorial, ColaboradorAutoprovisionService $autoprovision): RedirectResponse
     {
+        $this->asegurarContratoNoFinalizado($colaborador);
+
         $data = $request->validated();
 
         foreach (ColaboradorDocumentoCampos::todas() as $field) {
@@ -560,13 +587,10 @@ class ColaboradorController extends Controller
             'is_active' => $request->boolean('is_active', true),
         ]);
 
-        if ($cargo && $cargo !== $colaborador->cargoActual?->cargo) {
-            if ($cargoFechaInicio) {
-                $cargoHistorial->asignar($colaborador, $cargo, $cargoFechaInicio);
-            } else {
-                $cargoHistorial->actualizarSinHistorial($colaborador, $cargo);
-            }
-        }
+        // Reglas del historial de cargos: la misma lógica central que usa el
+        // wizard (ver CargoHistorialService::registrarCambio). Devuelve un
+        // mensaje informativo cuando el cargo no cambió.
+        $info = $cargoHistorial->registrarCambio($colaborador, $cargo, $cargoFechaInicio);
 
         if ($colaborador->user_id) {
             $usuario = User::find($colaborador->user_id);
@@ -578,11 +602,13 @@ class ColaboradorController extends Controller
 
         $this->storeDocuments($request, $colaborador, ColaboradorDocumentoCampos::todas());
 
-        return to_route('gente.colaboradores.index')->with('status', 'Colaborador actualizado correctamente.');
+        return to_route('gente.colaboradores.index')->with('status', $info ?? 'Colaborador actualizado correctamente.');
     }
 
     public function destroy(Colaborador $colaborador): RedirectResponse
     {
+        $this->asegurarContratoNoFinalizado($colaborador);
+
         foreach ($this->documentPaths($colaborador) as $paths) {
             foreach ($paths as $path) {
                 Storage::disk('public')->delete($path['path']);
@@ -592,6 +618,15 @@ class ColaboradorController extends Controller
         $colaborador->delete();
 
         return to_route('gente.colaboradores.index')->with('status', 'Colaborador eliminado correctamente.');
+    }
+
+    private function asegurarContratoNoFinalizado(Colaborador $colaborador): void
+    {
+        abort_if(
+            $colaborador->tieneFinalizacionConfirmada(),
+            403,
+            'El contrato ya fue finalizado y no se puede modificar.',
+        );
     }
 
     /**

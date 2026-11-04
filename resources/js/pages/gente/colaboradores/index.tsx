@@ -49,6 +49,7 @@ interface ColaboradorRow {
     tipo_padrino: string | null;
     imagen: string | null;
     is_active: boolean;
+    tiene_finalizacion?: boolean;
     estado_registro: 'borrador' | 'completo';
     wizard_step: number | null;
 }
@@ -506,8 +507,8 @@ export default function ColaboradoresIndex({
                                             {colaborador.estado_registro === 'borrador' ? (
                                                 <Badge variant="secondary">Borrador · Paso {colaborador.wizard_step ?? 1}</Badge>
                                             ) : (
-                                                <Badge variant={colaborador.is_active ? 'default' : 'destructive'}>
-                                                    {colaborador.is_active ? 'Activo' : 'Inactivo'}
+                                                <Badge variant={colaborador.tiene_finalizacion ? 'secondary' : colaborador.is_active ? 'default' : 'destructive'}>
+                                                    {colaborador.tiene_finalizacion ? 'Finalizado' : colaborador.is_active ? 'Activo' : 'Inactivo'}
                                                 </Badge>
                                             )}
                                         </TableCell>
@@ -565,14 +566,14 @@ export default function ColaboradoresIndex({
                                                         label="Ver"
                                                         href={route('gente.colaboradores.show', colaborador.id)}
                                                     />
-                                                    {canManageColaboradores && (
+                                                    {canManageColaboradores && !colaborador.tiene_finalizacion && (
                                                         <IconActionButton
                                                             icon={Pencil}
                                                             label="Editar"
                                                             href={route('gente.colaboradores.edit', colaborador.id)}
                                                         />
                                                     )}
-                                                    {canManageColaboradores && (
+                                                    {canManageColaboradores && !colaborador.tiene_finalizacion && (
                                                         <Dialog>
                                                             <TooltipProvider delayDuration={200}>
                                                                 <Tooltip>
@@ -645,8 +646,8 @@ export default function ColaboradoresIndex({
                                         {colaborador.estado_registro === 'borrador' ? (
                                             <Badge variant="secondary">Borrador · Paso {colaborador.wizard_step ?? 1}</Badge>
                                         ) : (
-                                            <Badge variant={colaborador.is_active ? 'default' : 'destructive'}>
-                                                {colaborador.is_active ? 'Activo' : 'Inactivo'}
+                                            <Badge variant={colaborador.tiene_finalizacion ? 'secondary' : colaborador.is_active ? 'default' : 'destructive'}>
+                                                {colaborador.tiene_finalizacion ? 'Finalizado' : colaborador.is_active ? 'Activo' : 'Inactivo'}
                                             </Badge>
                                         )}
                                         {colaborador.cargo ? <Badge variant="secondary">{colaborador.cargo}</Badge> : null}
@@ -723,7 +724,7 @@ export default function ColaboradoresIndex({
                                                 variant="outline"
                                                 href={route('gente.colaboradores.show', colaborador.id)}
                                             />
-                                            {canManageColaboradores && (
+                                            {canManageColaboradores && !colaborador.tiene_finalizacion && (
                                                 <IconActionButton
                                                     icon={Pencil}
                                                     label="Editar"

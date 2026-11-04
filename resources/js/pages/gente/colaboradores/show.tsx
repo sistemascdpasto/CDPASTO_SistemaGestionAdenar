@@ -82,6 +82,7 @@ interface ColaboradorDetalle {
     documento_titulo_academico: DocumentInfo[];
 
     is_active: boolean;
+    tiene_finalizacion?: boolean;
 }
 
 interface IndiceRiesgo {
@@ -240,12 +241,14 @@ export default function ColaboradorShow({
                             <div className="flex flex-wrap gap-1.5">
                                 {colaborador.turno && <Badge variant="secondary">{TURNO_LABELS[colaborador.turno] ?? colaborador.turno}</Badge>}
                                 {colaborador.area && <Badge variant="secondary">{colaborador.area}</Badge>}
-                                <Badge variant={colaborador.is_active ? 'default' : 'destructive'}>{colaborador.is_active ? 'Activo' : 'Inactivo'}</Badge>
+                                <Badge variant={colaborador.tiene_finalizacion ? 'secondary' : colaborador.is_active ? 'default' : 'destructive'}>
+                                    {colaborador.tiene_finalizacion ? 'Finalizado' : colaborador.is_active ? 'Activo' : 'Inactivo'}
+                                </Badge>
                             </div>
                         </div>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                        {canManageColaboradores && (
+                        {canManageColaboradores && !colaborador.tiene_finalizacion && (
                             <Button
                                 variant={colaborador.is_active ? 'destructive' : 'default'}
                                 onClick={() =>

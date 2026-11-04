@@ -48,6 +48,8 @@ return [
     'facial' => [
         'url' => env('FACIAL_API_URL', 'http://127.0.0.1:8001'),
         'api_key' => env('FACIAL_API_KEY', ''),
+        'token_secret' => env('FACIAL_TOKEN_SECRET', ''),
+        'token_ttl' => (int) env('FACIAL_TOKEN_TTL', 120),
         'python_path' => env('FACIAL_PYTHON_PATH', null),
         'cors' => env('FACIAL_CORS', ''),
         'allowed_dir' => env('FACIAL_ALLOWED_DIR', ''),

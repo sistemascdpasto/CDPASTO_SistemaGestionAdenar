@@ -52,6 +52,8 @@ Route::middleware(['auth', 'active', 'role:Administrador|Seguridad', 'submodule.
 
         // Rutas específicas de "pruebas" antes del resource para que no choquen
         // con la ruta comodín pruebas/{prueba}.
+        Route::post('pruebas/facial-token', [PruebaAlcoholemiaController::class, 'emitirTokenFacial'])
+            ->name('pruebas.facial-token');
         Route::post('pruebas/reconocer-rostro', [PruebaAlcoholemiaController::class, 'reconocerRostro'])->name('pruebas.reconocer-rostro');
         Route::get('pruebas/calendario', [PruebaAlcoholemiaController::class, 'calendario'])->name('pruebas.calendario');
         Route::get('pruebas/exportar/pdf', [PruebaAlcoholemiaController::class, 'exportarPdf'])->name('pruebas.exportar-pdf');

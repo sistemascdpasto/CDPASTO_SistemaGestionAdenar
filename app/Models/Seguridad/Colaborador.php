@@ -6,6 +6,7 @@ use App\Models\Flota\CombustibleVoucher;
 use App\Models\Gente\ColaboradorPadrinoCriterio;
 use App\Models\Gente\ContratoProrroga;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -183,6 +184,16 @@ class Colaborador extends Model
         return $this->hasMany(ContratoProrroga::class)->orderByDesc('created_at');
     }
 
+    public function scopeSinFinalizacionConfirmada(Builder $query): Builder
+    {
+        return $query->whereDoesntHave('prorrogas', fn (Builder $prorrogas) => $prorrogas->where('tipo', 'finalizacion'));
+    }
+
+    public function tieneFinalizacionConfirmada(): bool
+    {
+        return $this->prorrogas()->where('tipo', 'finalizacion')->exists();
+    }
+
     public function condicionesSalud(): HasMany
     {
         return $this->hasMany(CondicionSalud::class);
@@ -203,6 +214,50 @@ class Colaborador extends Model
         return $this->hasOne(ColaboradorCargo::class)
             ->where('estado', 'ACTIVO')
             ->latestOfMany('fecha_inicio');
+    }
+
+    /**
+     * Regla única del historial de cargos: determina a qué periodo del
+     * contrato pertenece una fecha de inicio de cargo.
+     *
+     *  - ['tipo' => 'prorroga', 'prorroga' => ContratoProrroga] si la fecha
+     *    cae dentro de una prórroga registrada [fecha_inicio, fecha_nueva].
+     *  - ['tipo' => 'contrato_inicial', 'prorroga' => null] si la fecha está
+     *    dentro del contrato base [fecha_ingreso_empresa, fecha_retiro_empresa].
+     *  - null si la fecha está fuera de las fechas estipuladas (no pertenece
+     *    al contrato ni a ninguna prórroga).
+     *
+     * La validación del cambio de cargo y la vista de contratos usan esta
+     * misma regla, de modo que "fecha válida" e "indicador de a qué periodo
+     * pertenece" nunca se desincronizan.
+     *
+     * @return array{tipo: string, prorroga: ?ContratoProrroga}|null
+     */
+    public function periodoCargoParaFecha(string|\DateTimeInterface $fecha): ?array
+    {
+        $fecha = Carbon::parse($fecha)->startOfDay();
+
+        foreach ($this->prorrogas as $prorroga) {
+            if ($prorroga->tipo !== 'prorroga') {
+                continue;
+            }
+
+            $desde = $prorroga->fechaInicioEfectiva()?->startOfDay();
+            $hasta = $prorroga->fecha_nueva?->startOfDay();
+
+            if ($desde && $hasta && $fecha >= $desde && $fecha <= $hasta) {
+                return ['tipo' => 'prorroga', 'prorroga' => $prorroga];
+            }
+        }
+
+        $ingreso = $this->fecha_ingreso_empresa?->startOfDay();
+        $retiro = $this->fecha_retiro_empresa?->startOfDay();
+
+        if (($ingreso === null || $fecha >= $ingreso) && ($retiro === null || $fecha <= $retiro)) {
+            return ['tipo' => 'contrato_inicial', 'prorroga' => null];
+        }
+
+        return null;
     }
 
     public function pruebasAlcoholemia(): HasMany

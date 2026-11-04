@@ -2,22 +2,27 @@
 
 namespace App\Http\Controllers\Gente;
 
+use App\Exports\Gente\ContratosExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Gente\UpdateContratoColaboradorRequest;
 use App\Http\Requests\Gente\UpdateContratoProrrogaRequest;
 use App\Models\Gente\ContratoProrroga;
 use App\Models\Seguridad\Colaborador;
 use App\Models\Seguridad\ColaboradorDocumento;
+use App\Services\Seguridad\ColaboradorCatalogoService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ContratosController extends Controller
 {
@@ -31,30 +36,7 @@ class ContratosController extends Controller
         $search = $request->string('search')->trim()->toString();
         $estado = $request->string('estado')->trim()->toString();
 
-        $colaboradores = Colaborador::query()
-            ->select([
-                'id',
-                'cedula',
-                'nombres',
-                'apellidos',
-                'cargo',
-                'tipo_contrato',
-                'fecha_ingreso_empresa',
-                'fecha_retiro_empresa',
-                'is_active',
-            ])
-            ->withExists(['prorrogas as tiene_finalizacion' => fn ($q) => $q->where('tipo', 'finalizacion')])
-            ->completos()
-            ->when($search !== '', function ($query) use ($search) {
-                $query->where(function ($query) use ($search) {
-                    $query->where('nombres', 'like', "%{$search}%")
-                        ->orWhere('apellidos', 'like', "%{$search}%")
-                        ->orWhere('cedula', 'like', "%{$search}%");
-                });
-            })
-            ->when($estado === 'activo', fn ($query) => $query->where('is_active', true))
-            ->when($estado === 'inactivo', fn ($query) => $query->where('is_active', false))
-            ->orderBy('nombres')
+        $colaboradores = $this->consultaContratos($search, $estado)
             ->paginate(15)
             ->withQueryString();
 
@@ -67,10 +49,61 @@ class ContratosController extends Controller
         ]);
     }
 
+    public function exportar(Request $request)
+    {
+        $search = $request->string('search')->trim()->toString();
+        $estado = $request->string('estado')->trim()->toString();
+
+        $colaboradores = $this->consultaContratos($search, $estado)
+            ->with([
+                'prorrogas' => fn (HasMany $query) => $query
+                    ->where('tipo', 'prorroga')
+                    ->reorder()
+                    ->orderBy('fecha_nueva')
+                    ->orderBy('id'),
+                'documentos' => fn (HasMany $query) => $query
+                    ->select('id', 'colaborador_id', 'campo', 'path', 'fecha_documento')
+                    ->where('campo', 'documento_preaviso_terminacion'),
+            ])
+            ->get();
+
+        return Excel::download(new ContratosExport($colaboradores), 'contratos.xlsx');
+    }
+
+    private function consultaContratos(string $search, string $estado): Builder
+    {
+        return Colaborador::query()
+            ->select([
+                'id',
+                'cedula',
+                'nombres',
+                'apellidos',
+                'cargo',
+                'tipo_contrato',
+                'fecha_ingreso_empresa',
+                'fecha_retiro_empresa',
+                'is_active',
+            ])
+            ->withExists(['prorrogas as tiene_finalizacion' => fn ($query) => $query->where('tipo', 'finalizacion')])
+            ->withCount(['prorrogas as cantidad_prorrogas' => fn (Builder $query) => $query->where('tipo', 'prorroga')])
+            ->withMax(['prorrogas as ultima_fecha_prorroga' => fn (Builder $query) => $query->where('tipo', 'prorroga')], 'fecha_nueva')
+            ->completos()
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($query) use ($search) {
+                    $query->where('nombres', 'like', "%{$search}%")
+                        ->orWhere('apellidos', 'like', "%{$search}%")
+                        ->orWhere('cedula', 'like', "%{$search}%");
+                });
+            })
+            ->when($estado === 'activo', fn ($query) => $query->where('is_active', true))
+            ->when($estado === 'inactivo', fn ($query) => $query->where('is_active', false))
+            ->orderBy('nombres');
+    }
+
     /**
      * Muestra la vista de detalle del contrato de un colaborador con su documentación.
      */
-    public function show(Colaborador $colaborador): Response
+    public function show(Colaborador $colaborador, ColaboradorCatalogoService $catalogos): Response
     {
         $documentosMap = [];
 
@@ -177,7 +210,7 @@ class ContratosController extends Controller
                 'fecha' => $fechaActualStr,
                 'fecha_formateada' => $fechaActual->format('d/m/Y'),
                 'es_actual' => true,
-                'estado' => $colaborador->prorrogas()->where('tipo', 'finalizacion')->exists()
+                'estado' => $colaborador->tieneFinalizacionConfirmada()
                     ? 'Finalización confirmada'
                     : 'Fecha actual de vencimiento',
             ]);
@@ -234,6 +267,17 @@ class ContratosController extends Controller
             'fecha' => $doc->fecha_documento?->format('Y-m-d'),
         ])->values()->all();
 
+        $prorrogasCronologicas = $colaborador->prorrogas()
+            ->where('tipo', 'prorroga')
+            ->reorder()
+            ->orderBy('fecha_nueva')
+            ->orderBy('id')
+            ->get();
+        $colaborador->setRelation('prorrogas', $prorrogasCronologicas);
+        $numeroProrrogaPorId = $prorrogasCronologicas
+            ->values()
+            ->mapWithKeys(fn ($prorroga, $indice) => [$prorroga->id => $indice + 1]);
+
         return Inertia::render('gente/contratos/show', [
             'colaborador' => [
                 'id' => $colaborador->id,
@@ -273,6 +317,7 @@ class ContratosController extends Controller
                     ->map(fn ($p) => [
                         'id' => $p->id,
                         'fecha_anterior' => $p->fecha_anterior?->format('Y-m-d'),
+                        'fecha_inicio' => $p->fechaInicioEfectiva()?->format('Y-m-d'),
                         'fecha_nueva' => $p->fecha_nueva?->format('Y-m-d'),
                         'tipo' => $p->tipo,
                         'observaciones' => $p->observaciones,
@@ -290,24 +335,42 @@ class ContratosController extends Controller
                     : null,
 
                 // ¿Ya se registró una finalización? Si sí, no mostrar banner ni permitir más prórrogas
-                'tiene_finalizacion' => $colaborador->prorrogas()
-                    ->where('tipo', 'finalizacion')
-                    ->exists(),
+                'tiene_finalizacion' => $colaborador->tieneFinalizacionConfirmada(),
 
-                // Historial de cargos
+                // Historial de cargos — cada cargo se asocia al periodo del
+                // contrato/prórroga al que pertenece su fecha de inicio, usando
+                // la misma regla central que valida el cambio de cargo.
                 'historial_cargos' => $colaborador->cargos()
                     ->orderByDesc('fecha_inicio')
                     ->get()
-                    ->map(fn ($c) => [
-                        'id' => $c->id,
-                        'cargo' => $c->cargo,
-                        'fecha_inicio' => $formatFecha($c->fecha_inicio),
-                        'fecha_fin' => $formatFecha($c->fecha_fin),
-                        'estado' => $c->estado,
-                    ])
+                    ->map(function ($c) use ($colaborador, $formatFecha, $numeroProrrogaPorId) {
+                        $periodo = $c->fecha_inicio
+                            ? $colaborador->periodoCargoParaFecha($c->fecha_inicio)
+                            : null;
+
+                        $pertenece = match (true) {
+                            $periodo === null => 'Sin periodo contractual asociado',
+                            $periodo['tipo'] === 'prorroga' && $periodo['prorroga'] !== null => 'Prórroga '
+                                .$numeroProrrogaPorId->get($periodo['prorroga']->id),
+                            default => 'Contrato inicial',
+                        };
+
+                        return [
+                            'id' => $c->id,
+                            'cargo' => $c->cargo,
+                            'fecha_inicio' => $formatFecha($c->fecha_inicio),
+                            'fecha_fin' => $formatFecha($c->fecha_fin),
+                            'estado' => $c->estado,
+                            'pertenece_a' => $pertenece,
+                        ];
+                    })
                     ->values(),
             ],
             'documentos' => $documentosMap,
+            'catalogos' => [
+                'cargos' => $catalogos->cargos(),
+                'tiposContrato' => $catalogos->tiposContrato(),
+            ],
             'fechas_preaviso' => $fechasFinalizacionList,
             'otros_preavisos' => $otrosPreavisos,
             'campos' => collect(self::CAMPOS_CONTRATO)->map(fn ($label, $key) => [
@@ -327,12 +390,12 @@ class ContratosController extends Controller
         $rules = [];
         foreach ($camposPermitidos as $campo) {
             $rules[$campo] = ['nullable', 'array'];
-            $rules["{$campo}.*"] = ['file', 'mimes:pdf,doc,docx,jpg,jpeg,png', 'max:5120'];
+            $rules["{$campo}.*"] = ['file', 'mimes:pdf,doc,docx,jpg,jpeg,png'];
         }
 
         if (! $request->hasFile('documento_contrato') && ! $request->hasFile('documento_prorroga')) {
             return back()->withErrors([
-                'documentos' => 'No se recibió ningún archivo. Intenta adjuntarlo nuevamente o usa un archivo de máximo 5 MB.',
+                'documentos' => 'No se recibió ningún archivo. Intenta adjuntarlo nuevamente.',
             ]);
         }
 
@@ -379,7 +442,7 @@ class ContratosController extends Controller
     public function storePreaviso(Request $request, Colaborador $colaborador): RedirectResponse
     {
         $request->validate([
-            'documento' => ['required', 'file', 'mimes:pdf,doc,docx,jpg,jpeg,png', 'max:10240'],
+            'documento' => ['required', 'file', 'mimes:pdf,doc,docx,jpg,jpeg,png'],
             'fecha' => ['required', 'date'],
         ]);
 
@@ -421,7 +484,7 @@ class ContratosController extends Controller
         }
 
         $request->validate([
-            'documento' => ['required', 'file', 'mimes:pdf,doc,docx,jpg,jpeg,png', 'max:10240'],
+            'documento' => ['required', 'file', 'mimes:pdf,doc,docx,jpg,jpeg,png'],
         ]);
 
         $archivo = $request->file('documento');
@@ -467,7 +530,16 @@ class ContratosController extends Controller
         Colaborador $colaborador,
         ContratoProrroga $prorroga,
     ): RedirectResponse {
+        abort_if(
+            $colaborador->tieneFinalizacionConfirmada(),
+            403,
+            'El contrato ya fue finalizado y no se puede modificar.',
+        );
+
         $datos = $request->validated();
+        $datos['fecha_inicio'] = $datos['tipo'] === 'prorroga'
+            ? ($datos['fecha_inicio'] ?? null)
+            : null;
 
         DB::transaction(function () use ($colaborador, $prorroga, $datos) {
             $esRegistroActual = $colaborador->prorrogas()
@@ -502,6 +574,12 @@ class ContratosController extends Controller
         UpdateContratoColaboradorRequest $request,
         Colaborador $colaborador,
     ): RedirectResponse {
+        abort_if(
+            $colaborador->tieneFinalizacionConfirmada(),
+            403,
+            'El contrato ya fue finalizado y no se puede modificar.',
+        );
+
         $colaborador->update($request->validated());
 
         return back()->with('status', 'Datos del contrato actualizados correctamente.');
