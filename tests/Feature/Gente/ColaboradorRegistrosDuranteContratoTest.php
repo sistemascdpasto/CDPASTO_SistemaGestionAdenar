@@ -53,6 +53,70 @@ class ColaboradorRegistrosDuranteContratoTest extends TestCase
         $this->assertSame('2023-04-06', $colaborador->prorrogas()->firstOrFail()->fecha_nueva->toDateString());
     }
 
+    public function test_it_clears_current_contract_data_without_deleting_the_colaborador_or_history(): void
+    {
+        $user = $this->genteUser();
+        $colaborador = $this->colaboradorCompleto();
+        $colaborador->update([
+            'cargo' => 'Auxiliar',
+            'tipo_contrato' => 'Otro',
+            'tipo_contrato_otro' => 'Contrato especial',
+            'fecha_ingreso_empresa' => '2025-01-01',
+            'fecha_retiro_empresa' => '2026-12-31',
+            'centro' => 'SUR',
+        ]);
+        ContratoProrroga::create([
+            'colaborador_id' => $colaborador->id,
+            'registrado_por' => $user->id,
+            'fecha_anterior' => '2026-12-31',
+            'fecha_nueva' => '2027-12-31',
+            'tipo' => 'prorroga',
+        ]);
+        $colaborador->cargos()->create([
+            'cargo' => 'Auxiliar',
+            'fecha_inicio' => '2025-01-01',
+            'estado' => 'ACTIVO',
+        ]);
+
+        $this->actingAs($user)
+            ->delete(route('gente.contratos.datos.destroy', $colaborador))
+            ->assertRedirect();
+
+        $colaboradorActualizado = $colaborador->fresh();
+        $this->assertModelExists($colaboradorActualizado);
+        $this->assertNull($colaboradorActualizado->fecha_ingreso_empresa);
+        $this->assertNull($colaboradorActualizado->fecha_retiro_empresa);
+        $this->assertSame('Auxiliar', $colaboradorActualizado->cargo);
+        $this->assertSame('Auxiliar', $colaboradorActualizado->cargoActual?->cargo);
+        $this->assertNull($colaboradorActualizado->tipo_contrato);
+        $this->assertNull($colaboradorActualizado->tipo_contrato_otro);
+        $this->assertSame('SUR', $colaboradorActualizado->centro);
+        $this->assertSame(1, $colaboradorActualizado->prorrogas()->count());
+    }
+
+    public function test_it_does_not_clear_contract_data_after_a_confirmed_finalization(): void
+    {
+        $user = $this->genteUser();
+        $colaborador = $this->colaboradorCompleto();
+        $colaborador->update([
+            'fecha_ingreso_empresa' => '2025-01-01',
+            'fecha_retiro_empresa' => '2026-12-31',
+        ]);
+        ContratoProrroga::create([
+            'colaborador_id' => $colaborador->id,
+            'registrado_por' => $user->id,
+            'fecha_anterior' => '2026-12-31',
+            'fecha_nueva' => '2026-12-31',
+            'tipo' => 'finalizacion',
+        ]);
+
+        $this->actingAs($user)
+            ->delete(route('gente.contratos.datos.destroy', $colaborador))
+            ->assertForbidden();
+
+        $this->assertSame('2025-01-01', $colaborador->fresh()->fecha_ingreso_empresa->toDateString());
+    }
+
     public function test_it_stores_the_prorroga_start_date_and_rejects_dates_before_the_current_contract_ends(): void
     {
         $user = $this->genteUser();

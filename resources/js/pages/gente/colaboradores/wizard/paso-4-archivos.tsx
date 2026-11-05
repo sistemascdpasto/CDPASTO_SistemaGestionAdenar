@@ -103,7 +103,7 @@ export function Paso4Archivos({ colaborador, onBack }: Paso4Props) {
         ...documentosIniciales,
         ...licenciaIniciales,
         documento_sena_carta_presentacion: [],
-        licencia_conduccion_categorias: [],
+        licencia_conduccion_categorias: (colaborador.licencia_conduccion_categorias as string[] | null) ?? [],
         fecha_licencia: (colaborador.fecha_licencia as string | null) ?? '',
         fecha_vencimiento_licencia: (colaborador.fecha_vencimiento_licencia as string | null) ?? '',
         restricciones_licencia: (colaborador.restricciones_licencia as string | null) ?? '',

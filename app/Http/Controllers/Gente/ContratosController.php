@@ -585,6 +585,24 @@ class ContratosController extends Controller
         return back()->with('status', 'Datos del contrato actualizados correctamente.');
     }
 
+    public function destroyDatosContrato(Colaborador $colaborador): RedirectResponse
+    {
+        abort_if(
+            $colaborador->tieneFinalizacionConfirmada(),
+            403,
+            'El contrato ya fue finalizado y no se puede modificar.',
+        );
+
+        $colaborador->update([
+            'fecha_ingreso_empresa' => null,
+            'fecha_retiro_empresa' => null,
+            'tipo_contrato' => null,
+            'tipo_contrato_otro' => null,
+        ]);
+
+        return back()->with('status', 'Datos actuales del contrato eliminados correctamente.');
+    }
+
     /**
      * Genera y descarga la carta de prórroga de contrato en PDF.
      * La nueva fecha de finalización se recibe como query param ?fecha=YYYY-MM-DD.

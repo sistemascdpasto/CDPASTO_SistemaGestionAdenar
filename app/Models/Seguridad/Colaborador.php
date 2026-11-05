@@ -139,6 +139,7 @@ class Colaborador extends Model
         'vacaciones_pagadas_fecha_hasta',
 
         // Paso 4 — licencia de conducción
+        'licencia_conduccion_categorias',
         'fecha_licencia',
         'fecha_vencimiento_licencia',
         'restricciones_licencia',
@@ -156,6 +157,7 @@ class Colaborador extends Model
         return [
             'is_active' => 'boolean',
             'hijos' => 'array',
+            'licencia_conduccion_categorias' => 'array',
             'fecha_nacimiento' => 'date:Y-m-d',
             'fecha_ultima_laboral' => 'date:Y-m-d',
             'anios_experiencia' => 'integer',
@@ -221,7 +223,7 @@ class Colaborador extends Model
      * contrato pertenece una fecha de inicio de cargo.
      *
      *  - ['tipo' => 'prorroga', 'prorroga' => ContratoProrroga] si la fecha
-     *    cae dentro de una prórroga registrada [fecha_inicio, fecha_nueva].
+     *    cae dentro de una prórroga registrada [fecha_anterior, fecha_nueva].
      *  - ['tipo' => 'contrato_inicial', 'prorroga' => null] si la fecha está
      *    dentro del contrato base [fecha_ingreso_empresa, fecha_retiro_empresa].
      *  - null si la fecha está fuera de las fechas estipuladas (no pertenece
@@ -242,7 +244,7 @@ class Colaborador extends Model
                 continue;
             }
 
-            $desde = $prorroga->fechaInicioEfectiva()?->startOfDay();
+            $desde = $prorroga->fecha_anterior?->startOfDay();
             $hasta = $prorroga->fecha_nueva?->startOfDay();
 
             if ($desde && $hasta && $fecha >= $desde && $fecha <= $hasta) {

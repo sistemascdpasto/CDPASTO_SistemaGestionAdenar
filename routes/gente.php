@@ -156,6 +156,8 @@ Route::middleware(['auth', 'active', 'role:Administrador|Gente|Contratos', 'subm
             ->name('contratos.prorrogas.update');
         Route::patch('contratos/{colaborador}/datos', [ContratosController::class, 'updateDatosContrato'])
             ->name('contratos.datos.update');
+        Route::delete('contratos/{colaborador}/datos', [ContratosController::class, 'destroyDatosContrato'])
+            ->name('contratos.datos.destroy');
         Route::delete('contratos/{colaborador}/prorrogas/{prorroga}/documento', [ContratosController::class, 'destroyDocumentoProrroga'])
             ->name('contratos.prorrogas.documento.destroy');
 

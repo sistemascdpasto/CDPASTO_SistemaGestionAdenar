@@ -219,6 +219,7 @@ export default function ContratoShow({ colaborador, documentos, campos, catalogo
 
     const [pasoActual, setPasoActual] = useState(1);
     const [contratoEnEdicion, setContratoEnEdicion] = useState(false);
+    const [eliminandoContrato, setEliminandoContrato] = useState(false);
     const [prorrogaEnEdicion, setProrrogaEnEdicion] = useState<number | null>(null);
     const [eliminandoId, setEliminandoId] = useState<number | null>(null);
     const [dialogFinalizar, setDialogFinalizar] = useState(false);
@@ -344,6 +345,22 @@ export default function ContratoShow({ colaborador, documentos, campos, catalogo
         });
     };
 
+    const handleEliminarDatosContrato = () => {
+        if (
+            !confirm(
+                '¿Eliminar las fechas y el tipo del contrato? Se conservarán el colaborador, el cargo, sus documentos y los historiales.',
+            )
+        ) {
+            return;
+        }
+
+        setEliminandoContrato(true);
+        router.delete(route('gente.contratos.datos.destroy', colaborador.id), {
+            preserveScroll: true,
+            onFinish: () => setEliminandoContrato(false),
+        });
+    };
+
     const cancelarEdicionContrato = () => {
         limpiarErroresContrato();
         setContratoEnEdicion(false);
@@ -382,6 +399,9 @@ export default function ContratoShow({ colaborador, documentos, campos, catalogo
     };
 
     const tieneFinalizacion = colaborador.tiene_finalizacion ?? false;
+    const tieneDatosContrato = Boolean(
+        colaborador.fecha_ingreso_empresa || colaborador.fecha_retiro_empresa || colaborador.tipo_contrato,
+    );
     const { label: estadoLabel, variant: estadoVariant } = estadoContrato(colaborador.fecha_retiro_empresa, tieneFinalizacion);
     const todasFechasPreaviso = [...fechas_preaviso, ...fechasPreavisoExtra];
     const totalArchivosNuevos = Object.values(data).reduce((acc, files) => acc + (files?.length || 0), 0);
@@ -840,15 +860,33 @@ export default function ContratoShow({ colaborador, documentos, campos, catalogo
                                                             </Button>
                                                         </>
                                                     ) : !tieneFinalizacion ? (
-                                                        <Button
-                                                            type="button"
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={iniciarEdicionContrato}
-                                                        >
-                                                            <Pencil className="size-4" />
-                                                            Editar
-                                                        </Button>
+                                                        <>
+                                                            <Button
+                                                                type="button"
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={iniciarEdicionContrato}
+                                                            >
+                                                                <Pencil className="size-4" />
+                                                                Editar
+                                                            </Button>
+                                                            {tieneDatosContrato && (
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="destructive"
+                                                                    size="sm"
+                                                                    disabled={eliminandoContrato}
+                                                                    onClick={handleEliminarDatosContrato}
+                                                                >
+                                                                    {eliminandoContrato ? (
+                                                                        <LoaderCircle className="size-4 animate-spin" />
+                                                                    ) : (
+                                                                        <Trash2 className="size-4" />
+                                                                    )}
+                                                                    Eliminar
+                                                                </Button>
+                                                            )}
+                                                        </>
                                                     ) : null}
                                                 </div>
                                             </TableCell>
@@ -883,9 +921,8 @@ export default function ContratoShow({ colaborador, documentos, campos, catalogo
                             <TableHeader>
                                 <TableRow className="bg-muted/40">
                                     <TableHead className="font-semibold">Tipo</TableHead>
-                                    <TableHead className="font-semibold">Fecha anterior</TableHead>
-                                    <TableHead className="font-semibold">Nueva fecha</TableHead>
-                                    <TableHead className="font-semibold">Observaciones</TableHead>
+                                    <TableHead className="font-semibold">Contrato</TableHead>
+                                    <TableHead className="font-semibold">Terminación</TableHead>
                                     <TableHead className="font-semibold">Registrado por</TableHead>
                                     <TableHead className="font-semibold">Fecha de registro</TableHead>
                                     <TableHead className="font-semibold">Prórroga</TableHead>
@@ -894,18 +931,18 @@ export default function ContratoShow({ colaborador, documentos, campos, catalogo
                             <TableBody>
                                 {prorrogas.length === 0 ? (
                                     <TableRow>
-                                                <TableCell colSpan={7} className="text-muted-foreground py-6 text-center text-xs">
+                                                <TableCell colSpan={6} className="text-muted-foreground py-6 text-center text-xs">
                                             Sin registros de prórrogas o finalizaciones.
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    prorrogas.map((p) => (
+                                    prorrogas.map((p, idx) => (
                                         <TableRow key={p.id}>
                                                     <TableCell>
                                                         {p.tipo === 'finalizacion' ? (
                                                             <span className="font-medium text-red-600 dark:text-red-400">Finalización</span>
                                                         ) : (
-                                                            <span className="text-foreground font-medium">Prórroga</span>
+                                                            <span className="text-foreground font-medium">Prórroga {prorrogas.length - idx}</span>
                                                         )}
                                                     </TableCell>
                                                     <TableCell className="text-sm">
@@ -960,23 +997,6 @@ export default function ContratoShow({ colaborador, documentos, campos, catalogo
                                                             </div>
                                                         ) : (
                                                             formatFecha(p.fecha_nueva)
-                                                        )}
-                                                    </TableCell>
-                                                    <TableCell className="text-muted-foreground max-w-xs text-xs">
-                                                        {prorrogaEnEdicion === p.id ? (
-                                                            <div className="grid min-w-44 gap-1">
-                                                                <Input
-                                                                    value={datosProrroga.observaciones}
-                                                                    onChange={(e) => setDatosProrroga('observaciones', e.target.value)}
-                                                                    maxLength={500}
-                                                                    disabled={guardandoProrroga}
-                                                                    aria-label="Observaciones"
-                                                                    className="h-9"
-                                                                />
-                                                                <InputError message={erroresProrroga.observaciones} />
-                                                            </div>
-                                                        ) : (
-                                                            p.observaciones || '—'
                                                         )}
                                                     </TableCell>
                                                     <TableCell className="text-muted-foreground text-xs">{p.registrado_por || '—'}</TableCell>

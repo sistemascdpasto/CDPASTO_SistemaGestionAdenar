@@ -390,10 +390,15 @@ class ColaboradorController extends Controller
         foreach (ColaboradorDocumentoCampos::paso4() as $field) {
             unset($data[$field]);
         }
-        unset($data['licencia_conduccion_categorias']);
 
+        // Las categorías de licencia de conducción son un arreglo JSON en la
+        // columna `licencia_conduccion_categorias`. Se asigna de forma
+        // explícita porque un arreglo vacío enviado por FormData no llega al
+        // servidor, así garantizamos que deseleccionar todas las categorías
+        // también quede persistido (en lugar de conservar el valor anterior).
         $colaborador->update([
             ...$data,
+            'licencia_conduccion_categorias' => $data['licencia_conduccion_categorias'] ?? [],
             'estado_registro' => 'completo',
             'wizard_step' => 4,
         ]);
@@ -566,7 +571,6 @@ class ColaboradorController extends Controller
         foreach (ColaboradorDocumentoCampos::todas() as $field) {
             unset($data[$field]);
         }
-        unset($data['licencia_conduccion_categorias']);
 
         $cargo = $data['cargo'] ?? null;
         $cargoFechaInicio = $data['cargo_fecha_inicio'] ?? null;
