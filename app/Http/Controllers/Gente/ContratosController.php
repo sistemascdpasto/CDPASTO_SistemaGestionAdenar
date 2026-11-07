@@ -9,6 +9,7 @@ use App\Http\Requests\Gente\UpdateContratoProrrogaRequest;
 use App\Models\Gente\ContratoProrroga;
 use App\Models\Seguridad\Colaborador;
 use App\Models\Seguridad\ColaboradorDocumento;
+use App\Services\Gente\ContratoVigenciaService;
 use App\Services\Seguridad\ColaboradorCatalogoService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -102,8 +103,11 @@ class ContratosController extends Controller
     /**
      * Muestra la vista de detalle del contrato de un colaborador con su documentación.
      */
-    public function show(Colaborador $colaborador, ColaboradorCatalogoService $catalogos): Response
-    {
+    public function show(
+        Colaborador $colaborador,
+        ColaboradorCatalogoService $catalogos,
+        ContratoVigenciaService $contratoVigencia,
+    ): Response {
         $documentosMap = [];
 
         foreach (array_keys(self::CAMPOS_CONTRATO) as $campo) {
@@ -285,9 +289,8 @@ class ContratosController extends Controller
             ->orderBy('id')
             ->get();
         $colaborador->setRelation('prorrogas', $prorrogasCronologicas);
-        $numeroProrrogaPorId = $prorrogasCronologicas
-            ->values()
-            ->mapWithKeys(fn ($prorroga, $indice) => [$prorroga->id => $indice + 1]);
+        $numeroProrrogaPorId = $contratoVigencia->numerarProrrogas($prorrogasCronologicas);
+        $contratoActual = $contratoVigencia->contratoActual($colaborador);
 
         return Inertia::render('gente/contratos/show', [
             'colaborador' => [
@@ -301,6 +304,11 @@ class ContratosController extends Controller
                 'tipo_contrato' => $colaborador->tipo_contrato,
                 'fecha_ingreso_empresa' => $formatFecha($colaborador->fecha_ingreso_empresa),
                 'fecha_retiro_empresa' => $formatFecha($colaborador->fecha_retiro_empresa),
+                'contrato_actual_id' => $contratoActual?->id,
+                'cantidad_prorrogas_contrato_actual' => $contratoVigencia->cantidadProrrogas($colaborador, $contratoActual),
+                'contrato_actual_es_aprendiz' => $contratoActual
+                    ? $contratoActual->esAprendiz()
+                    : $contratoVigencia->esAprendiz($colaborador, $contratoActual),
                 'is_active' => (bool) $colaborador->is_active,
                 'imagen' => $colaborador->imagen,
 
@@ -330,6 +338,8 @@ class ContratosController extends Controller
                         'fecha_anterior' => $p->fecha_anterior?->format('Y-m-d'),
                         'fecha_inicio' => $p->fechaInicioEfectiva()?->format('Y-m-d'),
                         'fecha_nueva' => $p->fecha_nueva?->format('Y-m-d'),
+                        'contrato_id' => $p->contrato_id,
+                        'numero_prorroga' => $p->tipo === 'prorroga' ? $numeroProrrogaPorId->get($p->id) : null,
                         'tipo' => $p->tipo,
                         'observaciones' => $p->observaciones,
                         'documento_path' => $p->documento_path ? Storage::url($p->documento_path) : null,
@@ -379,6 +389,11 @@ class ContratosController extends Controller
 
                 // Historial de contratos (independiente de prórrogas)
                 'historial_contratos' => $colaborador->contratos()
+                    ->reorder()
+                    ->orderByRaw('CASE WHEN fecha_inicio IS NULL THEN 1 ELSE 0 END')
+                    ->orderBy('fecha_inicio')
+                    ->orderBy('id')
+                    ->withCount(['prorrogas as cantidad_prorrogas' => fn ($query) => $query->where('tipo', 'prorroga')])
                     ->with('registradoPor:id,name')
                     ->get()
                     ->map(fn ($c) => [
@@ -387,6 +402,8 @@ class ContratosController extends Controller
                         'tipo_contrato_otro' => $c->tipo_contrato_otro,
                         'fecha_inicio' => $formatFecha($c->fecha_inicio),
                         'fecha_fin' => $formatFecha($c->fecha_fin),
+                        'cantidad_prorrogas' => $c->cantidad_prorrogas,
+                        'es_aprendiz' => $c->esAprendiz(),
                         'estado' => $c->estado,
                         'observaciones' => $c->observaciones,
                         'registrado_por' => $c->registradoPor?->name,
@@ -563,6 +580,7 @@ class ContratosController extends Controller
         UpdateContratoProrrogaRequest $request,
         Colaborador $colaborador,
         ContratoProrroga $prorroga,
+        ContratoVigenciaService $contratoVigencia,
     ): RedirectResponse {
         abort_if(
             $colaborador->tieneFinalizacionConfirmada(),
@@ -575,30 +593,32 @@ class ContratosController extends Controller
             ? ($datos['fecha_inicio'] ?? null)
             : null;
 
-        DB::transaction(function () use ($colaborador, $prorroga, $datos) {
-            $esRegistroActual = $colaborador->prorrogas()
-                ->orderByDesc('created_at')
-                ->orderByDesc('id')
-                ->first()
-                ?->is($prorroga) ?? false;
+        DB::transaction(function () use ($colaborador, $prorroga, $datos, $contratoVigencia) {
+            $contratoActual = $contratoVigencia->contratoActual($colaborador);
+            $esContratoActual = $contratoActual
+                ? $prorroga->contrato_id === $contratoActual->id
+                : $prorroga->contrato_id === null;
 
             $prorroga->update($datos);
 
-            if (! $esRegistroActual) {
+            if (! $esContratoActual) {
                 return;
             }
 
-            $actualizacionColaborador = ['fecha_retiro_empresa' => $datos['fecha_nueva']];
+            $prorrogasContrato = $contratoActual
+                ? $contratoActual->prorrogas()
+                : $colaborador->prorrogas()->whereNull('contrato_id');
+            $ultimaProrroga = $prorrogasContrato
+                ->where('tipo', 'prorroga')
+                ->orderByDesc('fecha_nueva')
+                ->orderByDesc('id')
+                ->first();
 
-            if ($datos['tipo'] === 'finalizacion') {
-                $actualizacionColaborador['is_active'] = false;
+            if (! $ultimaProrroga) {
+                return;
             }
 
-            $colaborador->update($actualizacionColaborador);
-
-            if ($datos['tipo'] === 'finalizacion' && $colaborador->user) {
-                $colaborador->user->update(['is_active' => false]);
-            }
+            $colaborador->update(['fecha_retiro_empresa' => $ultimaProrroga->fecha_nueva]);
         });
 
         return back()->with('status', 'Historial de contrato actualizado correctamente.');

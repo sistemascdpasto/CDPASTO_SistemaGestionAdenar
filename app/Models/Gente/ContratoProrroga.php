@@ -16,6 +16,7 @@ class ContratoProrroga extends Model
 
     protected $fillable = [
         'colaborador_id',
+        'contrato_id',
         'registrado_por',
         'fecha_anterior',
         'fecha_inicio',
@@ -54,6 +55,11 @@ class ContratoProrroga extends Model
     public function colaborador(): BelongsTo
     {
         return $this->belongsTo(Colaborador::class);
+    }
+
+    public function contrato(): BelongsTo
+    {
+        return $this->belongsTo(ColaboradorContrato::class, 'contrato_id');
     }
 
     public function registradoPor(): BelongsTo

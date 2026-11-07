@@ -6,6 +6,8 @@ use App\Models\Seguridad\Colaborador;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class ColaboradorContrato extends Model
 {
@@ -35,5 +37,15 @@ class ColaboradorContrato extends Model
     public function registradoPor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'registrado_por');
+    }
+
+    public function prorrogas(): HasMany
+    {
+        return $this->hasMany(ContratoProrroga::class, 'contrato_id');
+    }
+
+    public function esAprendiz(): bool
+    {
+        return Str::contains(Str::upper($this->tipo_contrato.' '.$this->tipo_contrato_otro), 'APRENDIZ');
     }
 }

@@ -11,7 +11,6 @@ use App\Http\Requests\Gente\UpdateColaboradorPaso3Request;
 use App\Http\Requests\Gente\UpdateColaboradorPaso4Request;
 use App\Http\Requests\Gente\UpdateColaboradorRequest;
 use App\Http\Requests\Gente\ProrrogarContratoRequest;
-use App\Models\Gente\ColaboradorContrato;
 use App\Models\Gente\ContratoProrroga;
 use App\Models\Gente\OpcionCatalogo;
 use App\Models\Gente\TipoDocumento;
@@ -23,6 +22,7 @@ use App\Services\Seguridad\CargoHistorialService;
 use App\Services\Seguridad\ColaboradorAutoprovisionService;
 use App\Services\Seguridad\ColaboradorCatalogoService;
 use App\Services\Seguridad\IndiceRiesgoCalculator;
+use App\Services\Gente\ContratoVigenciaService;
 use App\Support\Seguridad\ColaboradorDocumentoCampos;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -215,6 +215,14 @@ class ColaboradorController extends Controller
             'currentStep' => $currentStep,
             'catalogos' => $this->catalogos($catalogos),
             'historialCargos' => $colaborador->cargos()->orderByDesc('fecha_inicio')->get(),
+            'historialContratos' => $colaborador->contratos()->get()->map(fn ($c) => [
+                'id'               => $c->id,
+                'tipo_contrato'    => $c->tipo_contrato,
+                'tipo_contrato_otro' => $c->tipo_contrato_otro,
+                'fecha_inicio'     => $c->fecha_inicio?->toDateString(),
+                'fecha_fin'        => $c->fecha_fin?->toDateString(),
+                'estado'           => $c->estado,
+            ])->values()->all(),
             'usuarios' => $this->usuariosVinculables($colaborador),
         ]);
     }
@@ -343,7 +351,12 @@ class ColaboradorController extends Controller
         return to_route('gente.colaboradores.wizard', ['colaborador' => $colaborador, 'paso' => 3]);
     }
 
-    public function updatePaso3(UpdateColaboradorPaso3Request $request, Colaborador $colaborador, CargoHistorialService $cargoHistorial): RedirectResponse
+    public function updatePaso3(
+        UpdateColaboradorPaso3Request $request,
+        Colaborador $colaborador,
+        CargoHistorialService $cargoHistorial,
+        ContratoVigenciaService $contratoVigencia,
+    ): RedirectResponse
     {
         $this->asegurarContratoNoFinalizado($colaborador);
 
@@ -353,7 +366,15 @@ class ColaboradorController extends Controller
             'tipo_contrato' => ['tipo_contrato', 'tipo_contrato_otro'],
         ]);
 
-        foreach (ColaboradorDocumentoCampos::paso3() as $field) {
+        foreach ([
+            ...ColaboradorDocumentoCampos::paso3(),
+            'es_nuevo_contrato',
+            'nuevo_tipo_contrato',
+            'nuevo_tipo_contrato_otro',
+            'nuevo_fecha_inicio',
+            'nuevo_fecha_fin',
+            'contratos_editados',
+        ] as $field) {
             unset($data[$field]);
         }
 
@@ -366,26 +387,60 @@ class ColaboradorController extends Controller
             'wizard_step' => max((int) $colaborador->wizard_step, 3),
         ]);
 
-        // Registrar el contrato en el historial si tiene tipo y no existe uno activo igual
         $tipoContrato = $colaborador->fresh()->tipo_contrato;
         $fechaInicio  = $colaborador->fresh()->fecha_ingreso_empresa;
         $fechaFin     = $colaborador->fresh()->contrato_fecha_hasta ?? $colaborador->fresh()->fecha_retiro_empresa;
+        $esNuevoContrato = $request->input('es_nuevo_contrato') === '1';
+
+        // Actualizar contratos editados del historial
+        $contratosEditados = json_decode($request->input('contratos_editados', '[]'), true);
+        foreach ($contratosEditados as $contratoData) {
+            $contrato = $colaborador->contratos()->find($contratoData['id'] ?? null);
+            if ($contrato) {
+                $contratoVigencia->actualizarContrato($colaborador, $contrato, [
+                    'tipo_contrato'      => $contratoData['tipo_contrato'] ?? $contrato->tipo_contrato,
+                    'tipo_contrato_otro' => $contratoData['tipo_contrato_otro'] ?? $contrato->tipo_contrato_otro,
+                    'fecha_inicio'       => $contratoData['fecha_inicio'] ?? $contrato->fecha_inicio,
+                    'fecha_fin'          => $contratoData['fecha_fin'] ?? $contrato->fecha_fin,
+                ]);
+            }
+        }
 
         if ($tipoContrato) {
-            $yaExiste = $colaborador->contratos()
-                ->where('tipo_contrato', $tipoContrato)
-                ->whereDate('fecha_inicio', $fechaInicio ?? now())
-                ->exists();
+            if ($esNuevoContrato) {
+                // Crear nuevo registro con los campos dedicados del nuevo contrato
+                $nuevoTipo = $request->input('nuevo_tipo_contrato') ?: $tipoContrato;
+                $nuevoTipoOtro = $request->input('nuevo_tipo_contrato_otro');
+                $nuevoInicio  = $request->input('nuevo_fecha_inicio') ?: $fechaInicio;
+                $nuevoFin     = $request->input('nuevo_fecha_fin') ?: $fechaFin;
 
-            if (! $yaExiste) {
-                $colaborador->contratos()->create([
-                    'tipo_contrato'  => $tipoContrato,
-                    'tipo_contrato_otro' => $colaborador->fresh()->tipo_contrato_otro,
-                    'fecha_inicio'   => $fechaInicio,
-                    'fecha_fin'      => $fechaFin,
-                    'estado'         => 'activo',
-                    'registrado_por' => $request->user()?->id,
+                $contratoVigencia->crearContratoActual($colaborador, [
+                    'tipo_contrato'      => $nuevoTipo,
+                    'tipo_contrato_otro' => $nuevoTipoOtro,
+                    'fecha_inicio'       => $nuevoInicio,
+                    'fecha_fin'          => $nuevoFin,
+                    'registrado_por'     => $request->user()?->id,
                 ]);
+            } else {
+                // Actualizar el contrato más reciente si existe, si no crear uno
+                $contratoActual = $contratoVigencia->contratoActual($colaborador);
+                if ($contratoActual) {
+                    $contratoVigencia->actualizarContrato($colaborador, $contratoActual, [
+                        'tipo_contrato'      => $tipoContrato,
+                        'tipo_contrato_otro' => $colaborador->fresh()->tipo_contrato_otro,
+                        'fecha_inicio'       => $fechaInicio,
+                        'fecha_fin'          => $fechaFin,
+                    ]);
+                } else {
+                    $colaborador->contratos()->create([
+                        'tipo_contrato'      => $tipoContrato,
+                        'tipo_contrato_otro' => $colaborador->fresh()->tipo_contrato_otro,
+                        'fecha_inicio'       => $fechaInicio,
+                        'fecha_fin'          => $fechaFin,
+                        'estado'             => 'activo',
+                        'registrado_por'     => $request->user()?->id,
+                    ]);
+                }
             }
         }
 
@@ -489,7 +544,11 @@ class ColaboradorController extends Controller
      * Prorroga el contrato de un colaborador actualizando fecha_retiro_empresa
      * y marcando como atendida cualquier alerta de retiro_proximo pendiente.
      */
-    public function prorrogarContrato(ProrrogarContratoRequest $request, Colaborador $colaborador): RedirectResponse
+    public function prorrogarContrato(
+        ProrrogarContratoRequest $request,
+        Colaborador $colaborador,
+        ContratoVigenciaService $contratoVigencia,
+    ): RedirectResponse
     {
         $this->asegurarContratoNoFinalizado($colaborador);
 
@@ -522,6 +581,7 @@ class ColaboradorController extends Controller
         // Registrar en el historial de prórrogas
         ContratoProrroga::create([
             'colaborador_id' => $colaborador->id,
+            'contrato_id' => $contratoVigencia->contratoActual($colaborador)?->id,
             'registrado_por' => $request->user()->id,
             'fecha_anterior' => $fechaAnterior ?? $request->date('fecha_retiro_empresa'),
             'fecha_inicio' => $esFinalizacion ? null : ($datos['fecha_inicio_prorroga'] ?? null),

@@ -5,6 +5,7 @@ namespace Tests\Feature\Gente;
 use App\Models\Gente\ContratoProrroga;
 use App\Models\Seguridad\Colaborador;
 use App\Models\Seguridad\Entrenamiento;
+use App\Services\Gente\ContratoVigenciaService;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -271,6 +272,240 @@ class ColaboradorRegistrosDuranteContratoTest extends TestCase
         )->assertSessionHasErrors('fecha_nueva');
     }
 
+    public function test_prorroga_count_restarts_for_each_contract(): void
+    {
+        $user = $this->genteUser();
+        $colaborador = $this->colaboradorCompleto();
+        $colaborador->update([
+            'tipo_contrato' => 'Término fijo',
+            'fecha_ingreso_empresa' => '2026-01-01',
+            'fecha_retiro_empresa' => '2026-12-31',
+        ]);
+        $contratoAnterior = $colaborador->contratos()->create([
+            'tipo_contrato' => 'Término fijo',
+            'fecha_inicio' => '2024-01-01',
+            'fecha_fin' => '2024-12-31',
+            'estado' => 'finalizado',
+        ]);
+        $contratoActual = $colaborador->contratos()->create([
+            'tipo_contrato' => 'Término fijo',
+            'fecha_inicio' => '2026-01-01',
+            'fecha_fin' => '2026-12-31',
+            'estado' => 'activo',
+        ]);
+        $this->assertSame($contratoActual->id, app(ContratoVigenciaService::class)->contratoActual($colaborador->fresh())?->id);
+
+        foreach ([
+            ['2024-12-31', '2025-01-01', '2025-03-31'],
+            ['2025-03-31', '2025-04-01', '2025-08-31'],
+            ['2025-08-31', '2025-09-01', '2025-12-31'],
+        ] as [$anterior, $inicio, $fin]) {
+            $contratoAnterior->prorrogas()->create([
+                'colaborador_id' => $colaborador->id,
+                'registrado_por' => $user->id,
+                'fecha_anterior' => $anterior,
+                'fecha_inicio' => $inicio,
+                'fecha_nueva' => $fin,
+                'tipo' => 'prorroga',
+            ]);
+        }
+
+        $this->actingAs($user)->patch(
+            route('gente.colaboradores.prorrogar-contrato', $colaborador),
+            [
+                'fecha_inicio_prorroga' => '2027-01-01',
+                'fecha_retiro_empresa' => '2027-01-31',
+            ],
+        )->assertRedirect()->assertSessionHasNoErrors();
+
+        $primeraProrrogaContratoActual = $colaborador->prorrogas()->orderByDesc('id')->firstOrFail();
+        $this->assertSame(
+            $contratoActual->id,
+            $primeraProrrogaContratoActual->contrato_id,
+        );
+
+        foreach ([
+            ['2027-01-31', '2027-02-01', '2027-02-28'],
+            ['2027-02-28', '2027-03-01', '2027-03-31'],
+        ] as [$anterior, $inicio, $fin]) {
+            $this->actingAs($user)->patch(
+                route('gente.colaboradores.prorrogar-contrato', $colaborador->fresh()),
+                ['fecha_inicio_prorroga' => $inicio, 'fecha_retiro_empresa' => $fin],
+            )->assertRedirect();
+        }
+
+        $this->actingAs($user)->patch(
+            route('gente.colaboradores.prorrogar-contrato', $colaborador->fresh()),
+            ['fecha_inicio_prorroga' => '2027-04-01', 'fecha_retiro_empresa' => '2027-06-30'],
+        )->assertSessionHasErrors('fecha_retiro_empresa');
+
+        $this->actingAs($user)->patch(
+            route('gente.colaboradores.prorrogar-contrato', $colaborador->fresh()),
+            ['fecha_inicio_prorroga' => '2027-04-01', 'fecha_retiro_empresa' => '2028-03-31'],
+        )->assertRedirect();
+
+        $this->assertSame(4, $contratoActual->prorrogas()->where('tipo', 'prorroga')->count());
+    }
+
+    public function test_apprentice_contract_extensions_do_not_trigger_the_annual_rule(): void
+    {
+        $user = $this->genteUser();
+        $colaborador = $this->colaboradorCompleto();
+        $colaborador->update([
+            'tipo_contrato' => 'Aprendiz SENA',
+            'fecha_ingreso_empresa' => '2025-01-01',
+            'fecha_retiro_empresa' => '2028-03-31',
+        ]);
+        $contrato = $colaborador->contratos()->create([
+            'tipo_contrato' => 'Aprendiz SENA',
+            'fecha_inicio' => '2025-01-01',
+            'fecha_fin' => '2025-12-31',
+            'estado' => 'activo',
+        ]);
+
+        foreach ([
+            ['2025-12-31', '2026-01-01', '2026-06-30'],
+            ['2026-06-30', '2026-07-01', '2026-12-31'],
+            ['2026-12-31', '2027-01-01', '2027-06-30'],
+            ['2027-06-30', '2027-07-01', '2028-03-31'],
+        ] as [$anterior, $inicio, $fin]) {
+            $contrato->prorrogas()->create([
+                'colaborador_id' => $colaborador->id,
+                'registrado_por' => $user->id,
+                'fecha_anterior' => $anterior,
+                'fecha_inicio' => $inicio,
+                'fecha_nueva' => $fin,
+                'tipo' => 'prorroga',
+            ]);
+        }
+
+        $this->actingAs($user)->patch(
+            route('gente.colaboradores.prorrogar-contrato', $colaborador),
+            ['fecha_inicio_prorroga' => '2028-04-01', 'fecha_retiro_empresa' => '2028-06-30'],
+        )->assertRedirect();
+    }
+
+    public function test_new_regular_contract_starts_its_own_prorroga_count_after_apprenticeship(): void
+    {
+        $user = $this->genteUser();
+        $colaborador = $this->colaboradorCompleto();
+        $colaborador->update([
+            'tipo_contrato' => 'Aprendiz SENA',
+            'fecha_ingreso_empresa' => '2025-01-01',
+            'fecha_retiro_empresa' => '2028-03-31',
+        ]);
+        $contratoAprendiz = $colaborador->contratos()->create([
+            'tipo_contrato' => 'Aprendiz SENA',
+            'fecha_inicio' => '2025-01-01',
+            'fecha_fin' => '2025-12-31',
+            'estado' => 'activo',
+        ]);
+
+        foreach ([
+            ['2025-12-31', '2026-01-01', '2026-06-30'],
+            ['2026-06-30', '2026-07-01', '2026-12-31'],
+            ['2026-12-31', '2027-01-01', '2027-06-30'],
+            ['2027-06-30', '2027-07-01', '2028-03-31'],
+        ] as [$anterior, $inicio, $fin]) {
+            $contratoAprendiz->prorrogas()->create([
+                'colaborador_id' => $colaborador->id,
+                'registrado_por' => $user->id,
+                'fecha_anterior' => $anterior,
+                'fecha_inicio' => $inicio,
+                'fecha_nueva' => $fin,
+                'tipo' => 'prorroga',
+            ]);
+        }
+
+        $this->actingAs($user)->patch(route('gente.colaboradores.paso3.update', $colaborador), [
+            'tipo_contrato' => 'Término fijo',
+            'fecha_ingreso_empresa' => '2025-01-01',
+            'fecha_retiro_empresa' => '2028-03-31',
+            'es_nuevo_contrato' => '1',
+            'nuevo_tipo_contrato' => 'Término fijo',
+            'nuevo_fecha_inicio' => '2028-04-01',
+            'nuevo_fecha_fin' => '2028-04-30',
+            'contratos_editados' => '[]',
+        ])->assertRedirect();
+
+        $contratoNuevo = app(ContratoVigenciaService::class)->contratoActual($colaborador->fresh());
+
+        $this->assertSame('finalizado', $contratoAprendiz->fresh()->estado);
+        $this->assertNotNull($contratoNuevo);
+        $this->assertSame('Término fijo', $contratoNuevo->tipo_contrato);
+        $this->assertSame('2028-04-01', $contratoNuevo->fecha_inicio->toDateString());
+        $this->assertSame(0, $contratoNuevo->prorrogas()->where('tipo', 'prorroga')->count());
+        $this->assertSame('2028-04-01', $colaborador->fresh()->fecha_ingreso_empresa->toDateString());
+
+        $this->actingAs($user)->patch(
+            route('gente.colaboradores.prorrogar-contrato', $colaborador->fresh()),
+            ['fecha_inicio_prorroga' => '2028-05-01', 'fecha_retiro_empresa' => '2028-05-31'],
+        )->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->assertSame(1, $contratoNuevo->prorrogas()->where('tipo', 'prorroga')->count());
+    }
+
+    public function test_editing_contract_dates_moves_its_prorrogas_by_the_same_number_of_days(): void
+    {
+        $user = $this->genteUser();
+        $colaborador = $this->colaboradorCompleto();
+        $colaborador->update([
+            'tipo_contrato' => 'Término fijo',
+            'fecha_ingreso_empresa' => '2025-01-01',
+            'fecha_retiro_empresa' => '2026-03-31',
+        ]);
+        $contrato = $colaborador->contratos()->create([
+            'tipo_contrato' => 'Término fijo',
+            'fecha_inicio' => '2025-01-01',
+            'fecha_fin' => '2025-12-31',
+            'estado' => 'activo',
+        ]);
+        $contratoAnterior = $colaborador->contratos()->create([
+            'tipo_contrato' => 'Término fijo',
+            'fecha_inicio' => '2022-01-01',
+            'fecha_fin' => '2022-12-31',
+            'estado' => 'finalizado',
+        ]);
+        $prorrogaContratoAnterior = $contratoAnterior->prorrogas()->create([
+            'colaborador_id' => $colaborador->id,
+            'registrado_por' => $user->id,
+            'fecha_anterior' => '2022-12-31',
+            'fecha_inicio' => '2023-01-01',
+            'fecha_nueva' => '2023-12-31',
+            'tipo' => 'prorroga',
+        ]);
+        $prorroga = $contrato->prorrogas()->create([
+            'colaborador_id' => $colaborador->id,
+            'registrado_por' => $user->id,
+            'fecha_anterior' => '2025-12-31',
+            'fecha_inicio' => '2026-01-01',
+            'fecha_nueva' => '2026-03-31',
+            'tipo' => 'prorroga',
+        ]);
+
+        $this->actingAs($user)->patch(route('gente.colaboradores.paso3.update', $colaborador), [
+            'tipo_contrato' => 'Término fijo',
+            'fecha_ingreso_empresa' => '2025-01-01',
+            'fecha_retiro_empresa' => '2026-01-30',
+            'es_nuevo_contrato' => '0',
+            'contratos_editados' => json_encode([[
+                'id' => $contrato->id,
+                'tipo_contrato' => 'Término fijo',
+                'fecha_inicio' => '2025-01-01',
+                'fecha_fin' => '2026-01-30',
+            ]]),
+        ])->assertRedirect();
+
+        $this->assertSame('2026-01-30', $contrato->fresh()->fecha_fin->toDateString());
+        $this->assertSame('2026-01-30', $prorroga->fresh()->fecha_anterior->toDateString());
+        $this->assertSame('2026-01-31', $prorroga->fresh()->fecha_inicio->toDateString());
+        $this->assertSame('2026-04-30', $prorroga->fresh()->fecha_nueva->toDateString());
+        $this->assertSame('2022-12-31', $prorrogaContratoAnterior->fresh()->fecha_anterior->toDateString());
+        $this->assertSame('2023-01-01', $prorrogaContratoAnterior->fresh()->fecha_inicio->toDateString());
+        $this->assertSame('2023-12-31', $prorrogaContratoAnterior->fresh()->fecha_nueva->toDateString());
+        $this->assertSame('2026-04-30', $colaborador->fresh()->fecha_retiro_empresa->toDateString());
+    }
+
     public function test_it_stores_contract_documents_and_rejects_an_empty_upload(): void
     {
         Storage::fake('public');
@@ -527,6 +762,30 @@ class ColaboradorRegistrosDuranteContratoTest extends TestCase
                 ->where('colaborador.historial_cargos.0.fecha_fin', '2026-12-31')
                 ->where('catalogos.cargos', fn ($cargos) => $cargos->contains('CONDUCTOR'))
                 ->where('catalogos.tiposContrato', fn ($tipos) => $tipos->contains('Contrato a término fijo'))
+            );
+    }
+
+    public function test_contract_show_orders_contract_history_by_first_start_date(): void
+    {
+        $user = $this->genteUser();
+        $colaborador = $this->colaboradorCompleto();
+
+        foreach ([
+            ['tipo_contrato' => 'Contrato 2026', 'fecha_inicio' => '2026-01-01'],
+            ['tipo_contrato' => 'Sin fecha', 'fecha_inicio' => null],
+            ['tipo_contrato' => 'Contrato 2025', 'fecha_inicio' => '2025-01-01'],
+        ] as $contrato) {
+            $colaborador->contratos()->create($contrato);
+        }
+
+        $this->actingAs($user)
+            ->get(route('gente.contratos.show', $colaborador))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('colaborador.historial_contratos.0.tipo_contrato', 'Contrato 2025')
+                ->where('colaborador.historial_contratos.0.fecha_inicio', '2025-01-01')
+                ->where('colaborador.historial_contratos.1.tipo_contrato', 'Contrato 2026')
+                ->where('colaborador.historial_contratos.2.fecha_inicio', null)
             );
     }
 

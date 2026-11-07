@@ -59,6 +59,8 @@ interface ProrrogaItem {
     fecha_inicio: string | null;
     fecha_nueva: string | null;
     tipo: 'prorroga' | 'finalizacion';
+    contrato_id?: number | null;
+    numero_prorroga?: number | null;
     observaciones: string | null;
     documento_path: string | null;
     documento_nombre: string | null;
@@ -91,6 +93,9 @@ interface ColaboradorContrato {
     centro_trabajo?: string | null;
     contrato_fecha_desde?: string | null;
     contrato_fecha_hasta?: string | null;
+    contrato_actual_id?: number | null;
+    cantidad_prorrogas_contrato_actual?: number;
+    contrato_actual_es_aprendiz?: boolean;
     historial_cargos?: HistorialCargoItem[];
 
     // nuevos
@@ -110,6 +115,8 @@ interface HistorialContratoItem {
     observaciones: string | null;
     registrado_por: string | null;
     fecha_registro: string;
+    cantidad_prorrogas?: number;
+    es_aprendiz?: boolean;
 }
 
 
@@ -479,7 +486,7 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
     );
     const { label: estadoLabel, variant: estadoVariant } = estadoContrato(colaborador.fecha_retiro_empresa, tieneFinalizacion);
     const todasFechasPreaviso = [...fechas_preaviso, ...fechasPreavisoExtra];
-    const _historialContratos = colaborador.historial_contratos ?? [];
+    const historialContratos = colaborador.historial_contratos ?? [];
     const _totalArchivosNuevos = Object.values(_data).reduce((acc, files) => acc + (files?.length || 0), 0);
     const _errorDelCampoContrato = (campo: string) =>
         Object.entries(errors)
@@ -654,7 +661,8 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                     colaboradorId={colaborador.id}
                                     nombreCompleto={colaborador.nombre_completo}
                                     fechaActual={colaborador.fecha_retiro_empresa}
-                                    cantidadProrrogas={prorrogas.filter((prorroga) => prorroga.tipo === 'prorroga').length}
+                                    cantidadProrrogas={colaborador.cantidad_prorrogas_contrato_actual ?? 0}
+                                    esAprendiz={colaborador.contrato_actual_es_aprendiz}
                                     trigger={
                                         <Button variant="outline" size="sm" className="gap-1.5">
                                             <Calendar className="size-4 text-cyan-700 dark:text-cyan-300" />
@@ -1061,13 +1069,28 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    prorrogas.map((p, idx) => (
+                                    prorrogas.map((p, idx) => {
+                                        const contratoProrroga = historialContratos.find((contrato) => contrato.id === p.contrato_id);
+                                        const numeroProrroga = p.numero_prorroga ?? prorrogas.length - idx;
+                                        const esAprendiz = contratoProrroga?.es_aprendiz
+                                            ?? ((p.contrato_id === null || p.contrato_id === undefined) && colaborador.contrato_actual_es_aprendiz);
+                                        const esProrrogaAnual = !esAprendiz && numeroProrroga > 3;
+                                        const numeroContrato = contratoProrroga
+                                            ? historialContratos.findIndex((contrato) => contrato.id === contratoProrroga.id) + 1
+                                            : null;
+
+                                        return (
                                         <TableRow key={p.id}>
                                                     <TableCell>
                                                         {p.tipo === 'finalizacion' ? (
                                                             <span className="font-medium text-red-600 dark:text-red-400">Finalización</span>
                                                         ) : (
-                                                            <span className="text-foreground font-medium">Prórroga {prorrogas.length - idx}</span>
+                                                            <span className="text-foreground font-medium">
+                                                                {numeroContrato ? `Contrato ${numeroContrato} · ` : 'Contrato sin asociar · '}
+                                                                {esProrrogaAnual
+                                                                    ? `Prórroga anual ${numeroProrroga - 3}`
+                                                                    : `Prórroga ${numeroProrroga}`}
+                                                            </span>
                                                         )}
                                                     </TableCell>
                                                     <TableCell className="text-sm">
@@ -1270,7 +1293,8 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                                 )}
                                             </TableCell>
                                         </TableRow>
-                                    ))
+                                        );
+                                    })
                                 )}
                             </TableBody>
                         </Table>
@@ -1387,21 +1411,28 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                             </div>
                             <div className="divide-border divide-y rounded-xl border overflow-hidden">
                                 {(documentos['documento_contrato'] || []).map((doc, index) => {
-                                    const contrato = (colaborador.historial_contratos ?? [])[index];
+                                    const contratos = colaborador.historial_contratos ?? [];
+                                    const contratosConFecha = contratos.filter((item) => item.fecha_inicio);
+                                    const contrato =
+                                        contratosConFecha[index] ?? (contratosConFecha.length === 0 ? contratos[index] : undefined);
+                                    const tipoContrato =
+                                        contrato?.tipo_contrato ?? doc.tipo_contrato ?? (index === 0 ? colaborador.tipo_contrato : null);
+                                    const fechaInicio = contrato?.fecha_inicio ?? (index === 0 ? colaborador.fecha_ingreso_empresa : null);
+
                                     return (
                                     <div key={doc.id ?? doc.path} className="flex items-center gap-4 px-4 py-3 bg-card transition-colors">
                                         <div className="flex min-w-0 flex-1 items-center gap-3">
                                             <FileText className="size-3.5 shrink-0 text-muted-foreground" />
                                             <span className="text-foreground text-sm font-semibold whitespace-nowrap">Contrato {index + 1}</span>
-                                            {doc.tipo_contrato && (
+                                            {tipoContrato && (
                                                 <Badge variant="outline" className="text-[10px] px-2 py-0.5 shrink-0">
-                                                    {doc.tipo_contrato}
+                                                    {tipoContrato}
                                                 </Badge>
                                             )}
-                                            {contrato?.fecha_inicio && (
+                                            {fechaInicio && (
                                                 <span className="text-muted-foreground text-xs whitespace-nowrap">
-                                                    {formatFecha(contrato.fecha_inicio)}
-                                                    {contrato.fecha_fin ? ` — ${formatFecha(contrato.fecha_fin)}` : ''}
+                                                    {formatFecha(fechaInicio)}
+                                                    {contrato?.fecha_fin ? ` — ${formatFecha(contrato.fecha_fin)}` : ''}
                                                 </span>
                                             )}
                                         </div>
@@ -1449,7 +1480,7 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                                     className="gap-1.5 text-xs"
                                                     asChild
                                                 >
-                                                    <Link href={`/modules/gente/colaboradores/${colaborador.id}/wizard?paso=3`}>
+                                                    <Link href={`/modules/gente/colaboradores/${colaborador.id}/wizard?paso=3&redirect_to=contratos`}>
                                                         <ArrowRight className="size-3.5" />
                                                         Actualizar datos
                                                     </Link>

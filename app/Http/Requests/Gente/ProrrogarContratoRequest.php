@@ -4,6 +4,7 @@ namespace App\Http\Requests\Gente;
 
 use App\Models\Gente\ContratoProrroga;
 use App\Models\Seguridad\Colaborador;
+use App\Services\Gente\ContratoVigenciaService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
@@ -40,11 +41,17 @@ class ProrrogarContratoRequest extends FormRequest
                 }
 
                 $colaborador = $this->route('colaborador');
+                $contratoVigencia = app(ContratoVigenciaService::class);
+                $contratoActual = $colaborador instanceof Colaborador
+                    ? $contratoVigencia->contratoActual($colaborador)
+                    : null;
                 $cantidadProrrogas = $colaborador instanceof Colaborador
-                    ? $colaborador->prorrogas()->where('tipo', 'prorroga')->count()
+                    ? $contratoVigencia->cantidadProrrogas($colaborador, $contratoActual)
                     : 0;
+                $esAprendiz = $colaborador instanceof Colaborador
+                    && $contratoVigencia->esAprendiz($colaborador, $contratoActual);
                 $numeroProrroga = $cantidadProrrogas + 1;
-                $esProrrogaAnual = ContratoProrroga::esProrrogaAnual($numeroProrroga);
+                $esProrrogaAnual = ! $esAprendiz && ContratoProrroga::esProrrogaAnual($numeroProrroga);
 
                 if (! $this->filled('fecha_inicio_prorroga')) {
                     if ($esProrrogaAnual) {

@@ -4,6 +4,7 @@ namespace App\Http\Requests\Gente;
 
 use App\Models\Gente\ContratoProrroga;
 use App\Models\Seguridad\Colaborador;
+use App\Services\Gente\ContratoVigenciaService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -81,14 +82,15 @@ class UpdateContratoProrrogaRequest extends FormRequest
             return;
         }
 
-        $idsOrdenados = $colaborador->prorrogas()
-            ->where('tipo', 'prorroga')
-            ->orderBy('fecha_anterior')
-            ->orderBy('id')
-            ->pluck('id');
-        $numeroProrroga = $idsOrdenados->search($prorroga->id);
+        $contratoVigencia = app(ContratoVigenciaService::class);
+        $numeroProrroga = $contratoVigencia->numeroProrroga($prorroga);
+        $esAprendiz = $contratoVigencia->esAprendiz($colaborador, $prorroga->contrato);
 
-        if ($numeroProrroga === false || ! ContratoProrroga::esProrrogaAnual($numeroProrroga + 1)) {
+        if (
+            $numeroProrroga === null
+            || $esAprendiz
+            || ! ContratoProrroga::esProrrogaAnual($numeroProrroga)
+        ) {
             return;
         }
 

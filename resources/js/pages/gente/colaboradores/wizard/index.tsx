@@ -27,16 +27,31 @@ type HistorialCargo = {
     estado: 'ACTIVO' | 'INACTIVO';
 };
 
+type HistorialContrato = {
+    id: number;
+    tipo_contrato: string;
+    tipo_contrato_otro: string | null;
+    fecha_inicio: string | null;
+    fecha_fin: string | null;
+    estado: string;
+};
+
 interface WizardPageProps {
     colaborador: ColaboradorRecord | null;
     currentStep: number;
     catalogos: WizardCatalogos;
     historialCargos?: HistorialCargo[];
+    historialContratos?: HistorialContrato[];
     usuarios?: UsuarioVinculable[];
 }
 
-export default function ColaboradorWizard({ colaborador, currentStep, catalogos, historialCargos = [], usuarios }: WizardPageProps) {
+export default function ColaboradorWizard({ colaborador, currentStep, catalogos, historialCargos = [], historialContratos = [], usuarios }: WizardPageProps) {
     const [visibleStep, setVisibleStep] = useState(currentStep);
+
+    // Leer redirect_to desde la URL (ej: ?paso=3&redirect_to=contratos)
+    const redirectTo = typeof window !== 'undefined'
+        ? new URLSearchParams(window.location.search).get('redirect_to') ?? undefined
+        : undefined;
 
     // Cuando el servidor confirma un paso (redirect tras Siguiente) o se
     // navega a un colaborador distinto, el paso visible sigue al prop.
@@ -74,7 +89,7 @@ export default function ColaboradorWizard({ colaborador, currentStep, catalogos,
                 {visibleStep === 1 && <Paso1DatosPersonales colaborador={colaborador} catalogos={catalogos} usuarios={usuarios} />}
                 {visibleStep === 2 && colaborador && <Paso2RequisitosCargo colaborador={colaborador} catalogos={catalogos} onBack={() => setVisibleStep(1)} />}
                 {visibleStep === 3 && colaborador && (
-                    <Paso3InformacionPuesto colaborador={colaborador} catalogos={catalogos} historialCargos={historialCargos} onBack={() => setVisibleStep(2)} />
+                    <Paso3InformacionPuesto colaborador={colaborador} catalogos={catalogos} historialCargos={historialCargos} onBack={() => setVisibleStep(2)} redirectTo={redirectTo} historialContratos={historialContratos} />
                 )}
                 {visibleStep === 4 && colaborador && <Paso4Archivos colaborador={colaborador} onBack={() => setVisibleStep(3)} />}
             </div>

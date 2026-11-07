@@ -1,5 +1,6 @@
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -8,7 +9,7 @@ import { PillToggle, SeccionCard } from '@/pages/seguridad/colaboradores/colabor
 import { useForm } from '@inertiajs/react';
 import { ArrowLeft, ArrowRight, Briefcase, Building2, GraduationCap, History, LoaderCircle, Plus, QrCode, Umbrella } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
-import { FormEventHandler } from 'react';
+import { FormEventHandler, useState } from 'react';
 import { CargoCombobox } from './components/cargo-combobox';
 import { ExternalSelect } from './components/external-select';
 import { SimpleFileField } from './components/simple-file-field';
@@ -44,14 +45,25 @@ type HistorialCargo = {
     estado: 'ACTIVO' | 'INACTIVO';
 };
 
+type HistorialContrato = {
+    id: number;
+    tipo_contrato: string;
+    tipo_contrato_otro: string | null;
+    fecha_inicio: string | null;
+    fecha_fin: string | null;
+    estado: string;
+};
+
 interface Paso3Props {
     colaborador: ColaboradorRecord;
     catalogos: WizardCatalogos;
     historialCargos: HistorialCargo[];
     onBack: () => void;
+    redirectTo?: string;
+    historialContratos?: HistorialContrato[];
 }
 
-export function Paso3InformacionPuesto({ colaborador, catalogos, historialCargos, onBack }: Paso3Props) {
+export function Paso3InformacionPuesto({ colaborador, catalogos, historialCargos, onBack, redirectTo, historialContratos = [] }: Paso3Props) {
     const cargoActivo = historialCargos.find((h) => h.estado === 'ACTIVO');
     // El cargo con el que arrancó el formulario — no el del historial, que
     // muchos colaboradores reales no tienen (ej. los cargados por Excel). Si
@@ -60,6 +72,20 @@ export function Paso3InformacionPuesto({ colaborador, catalogos, historialCargos
     // tocar nada, y el paso 3 quedaba bloqueado pidiendo una fecha que no
     // correspondía a ningún cambio real.
     const cargoInicial = (colaborador.cargo as string) ?? '';
+
+    // Si viene desde contratos con redirect_to, activar el checkbox por defecto
+    const [esNuevoContrato, setEsNuevoContrato] = useState(redirectTo === 'contratos');
+    const [nuevoFechaInicio, setNuevoFechaInicio] = useState('');
+    const [nuevoFechaFin, setNuevoFechaFin] = useState('');
+    const [nuevoTipoContrato, setNuevoTipoContrato] = useState('');
+    const [nuevoTipoContratoOtro, setNuevoTipoContratoOtro] = useState('');
+
+    // Estado editable para cada contrato del historial
+    const [contratosEditables, setContratosEditables] = useState<HistorialContrato[]>(historialContratos);
+
+    const setContratoField = (id: number, field: keyof HistorialContrato, value: string) => {
+        setContratosEditables((prev) => prev.map((c) => c.id === id ? { ...c, [field]: value } : c));
+    };
 
     const { data, setData, post, processing, errors, transform } = useForm<Paso3FormData>({
         area: (colaborador.area as Paso3FormData['area']) ?? '',
@@ -100,7 +126,17 @@ export function Paso3InformacionPuesto({ colaborador, catalogos, historialCargos
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        transform((formData) => ({ ...formData, _method: 'PATCH' }));
+        transform((formData) => ({
+            ...formData,
+            _method: 'PATCH',
+            redirect_to: redirectTo ?? '',
+            es_nuevo_contrato: esNuevoContrato ? '1' : '0',
+            nuevo_fecha_inicio: esNuevoContrato ? nuevoFechaInicio : '',
+            nuevo_fecha_fin: esNuevoContrato ? nuevoFechaFin : '',
+            nuevo_tipo_contrato: esNuevoContrato ? nuevoTipoContrato : '',
+            nuevo_tipo_contrato_otro: esNuevoContrato ? nuevoTipoContratoOtro : '',
+            contratos_editados: JSON.stringify(contratosEditables),
+        }));
         post(route('gente.colaboradores.paso3.update', colaborador.id), { forceFormData: true });
     };
 
@@ -389,6 +425,139 @@ export function Paso3InformacionPuesto({ colaborador, catalogos, historialCargos
                             </div>
                         )}
                     </div>
+
+                    {/* Historial de contratos — campos editables */}
+                    {contratosEditables.length > 0 && (
+                        <div className="sm:col-span-2 space-y-4">
+                            <p className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">Contratos registrados</p>
+                            {contratosEditables.map((c, i) => (
+                                <div key={c.id} className="grid gap-4 sm:grid-cols-2 rounded-lg border p-4">
+                                    <div className="sm:col-span-2">
+                                        <p className="text-foreground text-xs font-semibold">Contrato {i + 1}</p>
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label>Fecha inicio</Label>
+                                        <Input
+                                            type="date"
+                                            value={c.fecha_inicio ?? ''}
+                                            onChange={(e) => setContratoField(c.id, 'fecha_inicio', e.target.value)}
+                                            disabled={processing}
+                                        />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label>Fecha finalización</Label>
+                                        <Input
+                                            type="date"
+                                            value={c.fecha_fin ?? ''}
+                                            onChange={(e) => setContratoField(c.id, 'fecha_fin', e.target.value)}
+                                            disabled={processing}
+                                        />
+                                    </div>
+                                    <div className="grid gap-2 sm:col-span-2">
+                                        <Label>Tipo de contrato</Label>
+                                        <Select value={c.tipo_contrato} onValueChange={(v) => setContratoField(c.id, 'tipo_contrato', v)} disabled={processing}>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Selecciona el tipo de contrato" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {catalogos.tiposContrato.map((tipo) => (
+                                                    <SelectItem key={tipo} value={tipo}>{tipo}</SelectItem>
+                                                ))}
+                                                <SelectSeparator />
+                                                <SelectItem value="Otro" className="text-sky-600 font-medium">
+                                                    <span className="flex items-center gap-1.5">
+                                                        <Plus className="size-3.5" />
+                                                        Agregar otro…
+                                                    </span>
+                                                </SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        {c.tipo_contrato === 'Otro' && (
+                                            <div className="grid gap-1.5 border-l-2 border-sky-300 pl-3 dark:border-sky-500/30">
+                                                <Input
+                                                    placeholder="Escribe el tipo de contrato"
+                                                    value={c.tipo_contrato_otro ?? ''}
+                                                    onChange={(e) => setContratoField(c.id, 'tipo_contrato_otro', e.target.value)}
+                                                    disabled={processing}
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Checkbox agregar nuevo contrato */}
+                    <div className="sm:col-span-2 flex items-center gap-2 rounded-lg border border-dashed border-amber-300 bg-amber-50/50 px-3 py-2 dark:border-amber-700/40 dark:bg-amber-950/10">
+                        <Checkbox
+                            id="es_nuevo_contrato"
+                            checked={esNuevoContrato}
+                            onCheckedChange={(checked) => {
+                                setEsNuevoContrato(checked === true);
+                            }}
+                            disabled={processing}
+                        />
+                        <Label htmlFor="es_nuevo_contrato" className="cursor-pointer text-sm font-medium text-amber-800 dark:text-amber-300">
+                            Agregar nuevo contrato
+                        </Label>
+                    </div>
+
+                    {/* Campos del nuevo contrato */}
+                    {esNuevoContrato && (
+                        <>
+                            <div className="grid gap-2">
+                                <Label htmlFor="nuevo_fecha_inicio">Fecha inicio</Label>
+                                <Input
+                                    id="nuevo_fecha_inicio"
+                                    type="date"
+                                    value={nuevoFechaInicio}
+                                    onChange={(e) => setNuevoFechaInicio(e.target.value)}
+                                    disabled={processing}
+                                />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="nuevo_fecha_fin">Fecha finalización</Label>
+                                <Input
+                                    id="nuevo_fecha_fin"
+                                    type="date"
+                                    value={nuevoFechaFin}
+                                    onChange={(e) => setNuevoFechaFin(e.target.value)}
+                                    disabled={processing}
+                                />
+                            </div>
+                            <div className="grid gap-2 sm:col-span-2">
+                                <Label>Tipo de contrato (nuevo)</Label>
+                                <Select value={nuevoTipoContrato} onValueChange={setNuevoTipoContrato} disabled={processing}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Selecciona el tipo de contrato" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {catalogos.tiposContrato.map((tipo) => (
+                                            <SelectItem key={tipo} value={tipo}>{tipo}</SelectItem>
+                                        ))}
+                                        <SelectSeparator />
+                                        <SelectItem value="Otro" className="text-sky-600 font-medium">
+                                            <span className="flex items-center gap-1.5">
+                                                <Plus className="size-3.5" />
+                                                Agregar otro…
+                                            </span>
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                {nuevoTipoContrato === 'Otro' && (
+                                    <div className="grid gap-1.5 border-l-2 border-sky-300 pl-3 dark:border-sky-500/30">
+                                        <Input
+                                            placeholder="Escribe el tipo de contrato"
+                                            value={nuevoTipoContratoOtro}
+                                            onChange={(e) => setNuevoTipoContratoOtro(e.target.value)}
+                                            disabled={processing}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        </>
+                    )}
                 </div>
             </SeccionCard>
 

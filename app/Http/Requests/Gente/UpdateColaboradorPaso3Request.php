@@ -48,6 +48,12 @@ class UpdateColaboradorPaso3Request extends FormRequest
             'motivo_retiro_observaciones' => ['nullable', 'string', 'max:2000'],
             'tipo_contrato' => ['nullable', 'string', 'max:100'],
             'tipo_contrato_otro' => ['nullable', 'string', 'max:100'],
+            'es_nuevo_contrato' => ['nullable', 'boolean'],
+            'nuevo_tipo_contrato' => ['nullable', 'string', 'max:100'],
+            'nuevo_tipo_contrato_otro' => ['nullable', 'string', 'max:100'],
+            'nuevo_fecha_inicio' => ['nullable', 'date'],
+            'nuevo_fecha_fin' => ['nullable', 'date', 'after_or_equal:nuevo_fecha_inicio'],
+            'contratos_editados' => ['nullable', 'json'],
 
             'codigo_qr_skap' => ['nullable', 'string', 'max:100'],
 

@@ -21,6 +21,7 @@ interface Props {
     nombreCompleto: string;
     fechaActual: string | null;
     cantidadProrrogas: number;
+    esAprendiz?: boolean;
     trigger?: React.ReactNode;
 }
 
@@ -74,11 +75,11 @@ function fechaFinAnualPredeterminada(fechaActual: string | null): string {
     return fechaInicio ? sumarDias(sumarMeses(fechaInicio, 12), -1) : '';
 }
 
-export function ProrrogarContratoDialog({ colaboradorId, nombreCompleto, fechaActual, cantidadProrrogas, trigger }: Props) {
+export function ProrrogarContratoDialog({ colaboradorId, nombreCompleto, fechaActual, cantidadProrrogas, esAprendiz = false, trigger }: Props) {
     const [open, setOpen] = useState(false);
     const [modoPersonalizado, setModoPersonalizado] = useState(false);
     const numeroProximaProrroga = cantidadProrrogas + 1;
-    const esProrrogaAnual = numeroProximaProrroga > MAX_PRORROGAS_INICIALES;
+    const esProrrogaAnual = !esAprendiz && numeroProximaProrroga > MAX_PRORROGAS_INICIALES;
 
     const { data, setData, patch, processing, errors, reset } = useForm({
         fecha_inicio_prorroga: fechaInicioPredeterminada(fechaActual),
@@ -166,7 +167,9 @@ export function ProrrogarContratoDialog({ colaboradorId, nombreCompleto, fechaAc
                     <DialogDescription>
                         <span className="text-foreground font-medium">{nombreCompleto}</span>
                         <span className="text-muted-foreground mt-0.5 block text-xs">
-                            {esProrrogaAnual
+                            {esAprendiz
+                                ? `Prórroga ${numeroProximaProrroga} del contrato de aprendiz`
+                                : esProrrogaAnual
                                 ? `Prórroga anual ${numeroProximaProrroga - MAX_PRORROGAS_INICIALES}`
                                 : `Prórroga ${numeroProximaProrroga} de ${MAX_PRORROGAS_INICIALES}`}
                         </span>
