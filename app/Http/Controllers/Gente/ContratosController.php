@@ -132,6 +132,7 @@ class ContratosController extends Controller
                 'path' => $doc->path,
                 'fecha' => $doc->fecha_documento?->format('Y-m-d'),
                 'name' => $doc->nombre_original ?? basename($doc->path),
+                'tipo_contrato' => $doc->tipo_contrato,
             ];
         }
 
@@ -375,6 +376,24 @@ class ContratosController extends Controller
                         ];
                     })
                     ->values(),
+
+                // Historial de contratos (independiente de prórrogas)
+                'historial_contratos' => $colaborador->contratos()
+                    ->with('registradoPor:id,name')
+                    ->get()
+                    ->map(fn ($c) => [
+                        'id' => $c->id,
+                        'tipo_contrato' => $c->tipo_contrato,
+                        'tipo_contrato_otro' => $c->tipo_contrato_otro,
+                        'fecha_inicio' => $formatFecha($c->fecha_inicio),
+                        'fecha_fin' => $formatFecha($c->fecha_fin),
+                        'estado' => $c->estado,
+                        'observaciones' => $c->observaciones,
+                        'registrado_por' => $c->registradoPor?->name,
+                        'fecha_registro' => $c->created_at->format('d/m/Y H:i'),
+                    ])
+                    ->values()
+                    ->all(),
             ],
             'documentos' => $documentosMap,
             'catalogos' => [
@@ -402,6 +421,7 @@ class ContratosController extends Controller
             $rules[$campo] = ['nullable', 'array'];
             $rules["{$campo}.*"] = ['file', 'mimes:pdf,doc,docx,jpg,jpeg,png'];
         }
+        $rules['tipo_contrato'] = ['nullable', 'string'];
 
         if (! $request->hasFile('documento_contrato') && ! $request->hasFile('documento_prorroga')) {
             return back()->withErrors([
@@ -410,6 +430,8 @@ class ContratosController extends Controller
         }
 
         $request->validate($rules);
+
+        $tipoContrato = $request->input('tipo_contrato');
 
         foreach ($camposPermitidos as $campo) {
             $archivos = $request->file($campo, []);
@@ -421,6 +443,7 @@ class ContratosController extends Controller
                     'campo' => $campo,
                     'path' => $path,
                     'nombre_original' => $archivo->getClientOriginalName(),
+                    'tipo_contrato' => $campo === 'documento_contrato' ? $tipoContrato : null,
                     'fecha_documento' => now()->toDateString(),
                 ]);
             }

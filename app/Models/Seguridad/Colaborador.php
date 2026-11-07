@@ -3,6 +3,7 @@
 namespace App\Models\Seguridad;
 
 use App\Models\Flota\CombustibleVoucher;
+use App\Models\Gente\ColaboradorContrato;
 use App\Models\Gente\ColaboradorPadrinoCriterio;
 use App\Models\Gente\ContratoProrroga;
 use App\Models\User;
@@ -184,6 +185,11 @@ class Colaborador extends Model
     public function prorrogas(): HasMany
     {
         return $this->hasMany(ContratoProrroga::class)->orderByDesc('created_at');
+    }
+
+    public function contratos(): HasMany
+    {
+        return $this->hasMany(ColaboradorContrato::class)->orderBy('fecha_inicio');
     }
 
     public function scopeSinFinalizacionConfirmada(Builder $query): Builder

@@ -32,7 +32,7 @@ import {
     User,
     XCircle,
 } from 'lucide-react';
-import { FormEventHandler, useRef, useState } from 'react';
+import { FormEventHandler, useEffect, useRef, useState } from 'react';
 
 interface HistorialCargoItem {
     id: number;
@@ -97,11 +97,25 @@ interface ColaboradorContrato {
     prorrogas?: ProrrogaItem[];
     dias_para_vencimiento?: number | null;
     tiene_finalizacion?: boolean;
+    historial_contratos?: HistorialContratoItem[];
+}
+
+interface HistorialContratoItem {
+    id: number;
+    tipo_contrato: string;
+    tipo_contrato_otro: string | null;
+    fecha_inicio: string | null;
+    fecha_fin: string | null;
+    estado: string;
+    observaciones: string | null;
+    registrado_por: string | null;
+    fecha_registro: string;
 }
 
 
 interface DocumentoContratoItem extends DocumentInfo {
     id?: number | null;
+    tipo_contrato?: string | null;
 }
 
 interface FechaPreavisoItem {
@@ -235,6 +249,7 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
     const [nuevaFechaInput, setNuevaFechaInput] = useState('');
     const [subiendoContrato, setSubiendoContrato] = useState<string | null>(null);
     const [draggingContrato, setDraggingContrato] = useState(false);
+    const [tipoContratoSeleccionado, setTipoContratoSeleccionado] = useState<string>('');
     const contratoInputRef = useRef<HTMLInputElement | null>(null);
     const nombreContratoSubiendoRef = useRef<string | null>(null);
 
@@ -243,15 +258,28 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
         setSubiendoContrato(file.name);
         const fd = new FormData();
         fd.append('documento_contrato[]', file);
+        if (tipoContratoSeleccionado) fd.append('tipo_contrato', tipoContratoSeleccionado);
         router.post(`/modules/gente/contratos/${colaborador.id}/documentos`, fd, {
             forceFormData: true,
             preserveScroll: true,
             onFinish: () => {
                 nombreContratoSubiendoRef.current = null;
                 setSubiendoContrato(null);
+                setTipoContratoSeleccionado('');
             },
         });
     };
+
+    // Precarga el tipo del siguiente contrato sin PDF desde historial_contratos
+    useEffect(() => {
+        const docs = documentos['documento_contrato'] || [];
+        const contratos = colaborador.historial_contratos ?? [];
+        const proximo = contratos[docs.length];
+        if (proximo && !tipoContratoSeleccionado) {
+            setTipoContratoSeleccionado(proximo.tipo_contrato);
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [colaborador.historial_contratos, documentos]);
     const preavisoInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
     const handleSubirPreaviso = (fecha: string, file: File) => {
@@ -451,6 +479,7 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
     );
     const { label: estadoLabel, variant: estadoVariant } = estadoContrato(colaborador.fecha_retiro_empresa, tieneFinalizacion);
     const todasFechasPreaviso = [...fechas_preaviso, ...fechasPreavisoExtra];
+    const _historialContratos = colaborador.historial_contratos ?? [];
     const _totalArchivosNuevos = Object.values(_data).reduce((acc, files) => acc + (files?.length || 0), 0);
     const _errorDelCampoContrato = (campo: string) =>
         Object.entries(errors)
@@ -778,12 +807,13 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                 <Table>
                                     <TableHeader>
                                         <TableRow className="bg-muted/40">
-                                            <TableHead className="font-semibold">Fecha de ingreso</TableHead>
-                                            <TableHead className="font-semibold">Fecha de salida</TableHead>
+                                            <TableHead className="w-32 font-semibold">Fecha de ingreso</TableHead>
+                                            <TableHead className="w-32 font-semibold">Fecha de salida</TableHead>
                                             <TableHead className="font-semibold">Cargo</TableHead>
                                             <TableHead className="font-semibold">Tipo de contrato</TableHead>
-                                            <TableHead className="font-semibold">Estado</TableHead>
-                                            <TableHead className="font-semibold">Acciones</TableHead>
+                                            <TableHead className="w-28 font-semibold">Estado</TableHead>
+                                            <TableHead className="w-28 font-semibold">Tipo</TableHead>
+                                            <TableHead className="w-24 font-semibold">Acciones</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -883,6 +913,35 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                             <TableCell>
                                                 {estadoLabel}
                                             </TableCell>
+                                            <TableCell className="text-sm">
+                                                {(() => {
+                                                    const contratos = colaborador.historial_contratos ?? [];
+                                                    if (contratos.length === 0) {
+                                                        const docs = documentos['documento_contrato'] || [];
+                                                        if (docs.length === 0) return <span className="text-muted-foreground text-xs">Sin contratos</span>;
+                                                        return (
+                                                            <div className="space-y-1">
+                                                                {docs.map((c, i) => (
+                                                                    <div key={c.id ?? i} className="flex items-center gap-1.5">
+                                                                        <span className="text-foreground text-xs font-medium whitespace-nowrap">Contrato {i + 1}</span>
+                                                                        {c.tipo_contrato && <Badge variant="outline" className="text-[10px] px-1.5 py-0">{c.tipo_contrato}</Badge>}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        );
+                                                    }
+                                                    return (
+                                                        <div className="space-y-1">
+                                                            {contratos.map((c, i) => (
+                                                                <div key={c.id} className="flex items-center gap-1.5">
+                                                                    <span className="text-foreground text-xs font-medium whitespace-nowrap">Contrato {i + 1}</span>
+                                                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0">{c.tipo_contrato}</Badge>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    );
+                                                })()}
+                                            </TableCell>
                                             <TableCell>
                                                 <div className="flex items-center gap-1">
                                                     {contratoEnEdicion ? (
@@ -915,26 +974,26 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                                             <Button
                                                                 type="button"
                                                                 variant="outline"
-                                                                size="sm"
+                                                                size="icon"
                                                                 onClick={iniciarEdicionContrato}
+                                                                title="Editar"
                                                             >
                                                                 <Pencil className="size-4" />
-                                                                Editar
                                                             </Button>
                                                             {tieneDatosContrato && (
                                                                 <Button
                                                                     type="button"
                                                                     variant="destructive"
-                                                                    size="sm"
+                                                                    size="icon"
                                                                     disabled={eliminandoContrato}
                                                                     onClick={handleEliminarDatosContrato}
+                                                                    title="Eliminar"
                                                                 >
                                                                     {eliminandoContrato ? (
                                                                         <LoaderCircle className="size-4 animate-spin" />
                                                                     ) : (
                                                                         <Trash2 className="size-4" />
                                                                     )}
-                                                                    Eliminar
                                                                 </Button>
                                                             )}
                                                         </>
@@ -953,20 +1012,21 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                                         : 'Contrato anterior'}
                                                 </TableCell>
                                                 <TableCell>Finalizado</TableCell>
+                                                <TableCell>—</TableCell>
                                                 <TableCell>
                                                     <Button
                                                         type="button"
                                                         variant="destructive"
-                                                        size="sm"
+                                                        size="icon"
                                                         disabled={eliminandoAntecedente}
                                                         onClick={handleEliminarAntecedente}
+                                                        title="Eliminar"
                                                     >
                                                         {eliminandoAntecedente ? (
                                                             <LoaderCircle className="size-4 animate-spin" />
                                                         ) : (
                                                             <Trash2 className="size-4" />
                                                         )}
-                                                        Eliminar
                                                     </Button>
                                                 </TableCell>
                                             </TableRow>
@@ -986,18 +1046,17 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                         <Table>
                             <TableHeader>
                                 <TableRow className="bg-muted/40">
-                                    <TableHead className="font-semibold">Tipo</TableHead>
-                                    <TableHead className="font-semibold">Contrato</TableHead>
-                                    <TableHead className="font-semibold">Terminación</TableHead>
-                                    <TableHead className="font-semibold">Registrado por</TableHead>
-                                    <TableHead className="font-semibold">Fecha de registro</TableHead>
-                                    <TableHead className="font-semibold">Prórroga</TableHead>
+                                    <TableHead className="w-28 font-semibold">Tipo</TableHead>
+                                    <TableHead className="w-32 font-semibold">Contrato</TableHead>
+                                    <TableHead className="w-32 font-semibold">Terminación</TableHead>
+                                    <TableHead className="font-semibold">Registrado por / Fecha</TableHead>
+                                    <TableHead className="w-20 font-semibold">Acciones</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {prorrogas.length === 0 ? (
                                     <TableRow>
-                                                <TableCell colSpan={6} className="text-muted-foreground py-6 text-center text-xs">
+                                                <TableCell colSpan={5} className="text-muted-foreground py-6 text-center text-xs">
                                             Sin registros de prórrogas o finalizaciones.
                                         </TableCell>
                                     </TableRow>
@@ -1060,9 +1119,9 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                                             formatFecha(p.fecha_nueva)
                                                         )}
                                                     </TableCell>
-                                                    <TableCell className="text-muted-foreground text-xs">{p.registrado_por || '—'}</TableCell>
-                                                    <TableCell className="text-muted-foreground text-xs whitespace-nowrap">
-                                                        {p.fecha_registro}
+                                                    <TableCell className="text-muted-foreground text-xs">
+                                                        <div>{p.registrado_por || '—'}</div>
+                                                        <div className="whitespace-nowrap">{p.fecha_registro}</div>
                                                     </TableCell>
                                             <TableCell className="text-xs">
                                                         <div className="mb-2 flex items-center gap-1">
@@ -1228,8 +1287,8 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                         <Table>
                             <TableHeader>
                                 <TableRow className="bg-muted/40">
-                                    <TableHead className="font-semibold">Estado</TableHead>
-                                    <TableHead className="font-semibold">Fecha</TableHead>
+                                    <TableHead className="w-28 font-semibold">Estado</TableHead>
+                                    <TableHead className="w-32 font-semibold">Fecha</TableHead>
                                     <TableHead className="font-semibold">Motivo</TableHead>
                                     <TableHead className="font-semibold">Observaciones</TableHead>
                                     <TableHead className="font-semibold">Registrado por</TableHead>
@@ -1271,9 +1330,9 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                             <TableHeader>
                                 <TableRow className="bg-muted/40">
                                     <TableHead className="font-semibold">Cargo</TableHead>
-                                    <TableHead className="font-semibold">Fecha de inicio</TableHead>
-                                    <TableHead className="font-semibold">Fecha de fin</TableHead>
-                                    <TableHead className="font-semibold">Estado</TableHead>
+                                    <TableHead className="w-32 font-semibold">Fecha de inicio</TableHead>
+                                    <TableHead className="w-32 font-semibold">Fecha de fin</TableHead>
+                                    <TableHead className="w-28 font-semibold">Estado</TableHead>
                                     <TableHead className="font-semibold">Pertenece a</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -1327,11 +1386,24 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                 <h3 className="text-foreground text-sm font-semibold">Contrato</h3>
                             </div>
                             <div className="divide-border divide-y rounded-xl border overflow-hidden">
-                                {(documentos['documento_contrato'] || []).map((doc, index) => (
+                                {(documentos['documento_contrato'] || []).map((doc, index) => {
+                                    const contrato = (colaborador.historial_contratos ?? [])[index];
+                                    return (
                                     <div key={doc.id ?? doc.path} className="flex items-center gap-4 px-4 py-3 bg-card transition-colors">
-                                        <div className="flex min-w-0 flex-1 items-center gap-2">
+                                        <div className="flex min-w-0 flex-1 items-center gap-3">
                                             <FileText className="size-3.5 shrink-0 text-muted-foreground" />
-                                            <span className="text-foreground text-sm font-semibold">Contrato {index + 1}</span>
+                                            <span className="text-foreground text-sm font-semibold whitespace-nowrap">Contrato {index + 1}</span>
+                                            {doc.tipo_contrato && (
+                                                <Badge variant="outline" className="text-[10px] px-2 py-0.5 shrink-0">
+                                                    {doc.tipo_contrato}
+                                                </Badge>
+                                            )}
+                                            {contrato?.fecha_inicio && (
+                                                <span className="text-muted-foreground text-xs whitespace-nowrap">
+                                                    {formatFecha(contrato.fecha_inicio)}
+                                                    {contrato.fecha_fin ? ` — ${formatFecha(contrato.fecha_fin)}` : ''}
+                                                </span>
+                                            )}
                                         </div>
                                         <div className="flex items-center gap-1.5 shrink-0">
                                             <a
@@ -1357,57 +1429,111 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                             </Button>
                                         </div>
                                     </div>
-                                ))}
-                                {/* Fila para subir nuevo */}
-                                <div className="flex items-center gap-4 px-4 py-3 bg-card transition-colors">
-                                    <div className="flex min-w-0 flex-1 items-center gap-2">
-                                        {subiendoContrato ? (
-                                            <>
-                                                <LoaderCircle className="size-3.5 shrink-0 animate-spin text-emerald-600" />
-                                                <span className="text-foreground truncate text-sm font-semibold max-w-[220px]">{subiendoContrato}</span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Upload className="size-3.5 shrink-0 text-muted-foreground" />
-                                                <span className="text-muted-foreground text-xs">Nuevo contrato</span>
-                                            </>
-                                        )}
-                                    </div>
-                                    <div className="shrink-0">
-                                        <input
-                                            type="file"
-                                            ref={contratoInputRef}
-                                            className="hidden"
-                                            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                                            disabled={!!subiendoContrato || eliminandoId !== null}
-                                            onChange={(e) => {
-                                                const file = e.target.files?.[0];
-                                                if (!file) return;
-                                                handleSubirContrato(file);
-                                                e.target.value = '';
-                                            }}
-                                        />
-                                        <div
-                                            onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDraggingContrato(true); }}
-                                            onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setDraggingContrato(false); }}
-                                            onDrop={(e) => {
-                                                e.preventDefault(); e.stopPropagation(); setDraggingContrato(false);
-                                                const file = e.dataTransfer.files?.[0];
-                                                if (!file || subiendoContrato) return;
-                                                handleSubirContrato(file);
-                                            }}
-                                            onClick={() => !subiendoContrato && contratoInputRef.current?.click()}
-                                            className={`group flex cursor-pointer items-center gap-1.5 rounded-md border border-dashed px-3 py-1.5 text-xs transition-all select-none ${
-                                                draggingContrato
-                                                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300'
-                                                    : 'border-muted-foreground/30 text-muted-foreground hover:border-emerald-500/60 hover:bg-muted/40 hover:text-foreground'
-                                            }`}
-                                        >
-                                            <Upload className="size-3.5 shrink-0 transition-transform group-hover:-translate-y-0.5" />
-                                            <span>{subiendoContrato ? 'Subiendo...' : draggingContrato ? 'Suelta aquí' : 'Subir contrato'}</span>
+                                    );
+                                })}
+                                {/* Fila para subir nuevo o ir al wizard */}
+                                {(() => {
+                                    const docs = documentos['documento_contrato'] || [];
+                                    const contratos = colaborador.historial_contratos ?? [];
+                                    const hayContratoPendiente = contratos.length > docs.length;
+
+                                    // No hay contrato pendiente → botón para crear uno nuevo en el wizard
+                                    if (!hayContratoPendiente) {
+                                        return (
+                                            <div className="flex items-center justify-between gap-3 px-4 py-3 bg-card">
+                                                <span className="text-muted-foreground text-xs">¿Nuevo contrato? Ingresa las fechas y cargo primero.</span>
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="gap-1.5 text-xs"
+                                                    asChild
+                                                >
+                                                    <Link href={`/modules/gente/colaboradores/${colaborador.id}/wizard?paso=3`}>
+                                                        <ArrowRight className="size-3.5" />
+                                                        Actualizar datos
+                                                    </Link>
+                                                </Button>
+                                            </div>
+                                        );
+                                    }
+
+                                    // Hay contrato pendiente → mostrar fila de subida normal
+                                    return (
+                                        <div className="flex items-center gap-3 px-4 py-3 bg-card transition-colors">
+                                            <div className="flex min-w-0 flex-1 items-center gap-2">
+                                                {subiendoContrato ? (
+                                                    <>
+                                                        <LoaderCircle className="size-3.5 shrink-0 animate-spin text-emerald-600" />
+                                                        <span className="text-foreground truncate text-sm font-semibold max-w-[220px]">{subiendoContrato}</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Upload className="size-3.5 shrink-0 text-muted-foreground" />
+                                                        <span className="text-muted-foreground text-xs whitespace-nowrap">Contrato {docs.length + 1}</span>
+                                                        {(() => {
+                                                            const c = contratos[docs.length];
+                                                            if (!c?.fecha_inicio) return null;
+                                                            return (
+                                                                <span className="text-muted-foreground text-xs whitespace-nowrap">
+                                                                    {formatFecha(c.fecha_inicio)}{c.fecha_fin ? ` — ${formatFecha(c.fecha_fin)}` : ''}
+                                                                </span>
+                                                            );
+                                                        })()}
+                                                        <Select
+                                                            value={tipoContratoSeleccionado || '__sin_tipo__'}
+                                                            onValueChange={(v) => setTipoContratoSeleccionado(v === '__sin_tipo__' ? '' : v)}
+                                                        >
+                                                            <SelectTrigger className="h-7 text-xs w-44">
+                                                                <SelectValue placeholder="Tipo de contrato" />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="__sin_tipo__">Sin tipo</SelectItem>
+                                                                {catalogos.tiposContrato.map((t) => (
+                                                                    <SelectItem key={t} value={t}>{t}</SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </>
+                                                )}
+                                            </div>
+                                            <div className="shrink-0">
+                                                <input
+                                                    type="file"
+                                                    ref={contratoInputRef}
+                                                    className="hidden"
+                                                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                                    disabled={!!subiendoContrato || eliminandoId !== null}
+                                                    onChange={(e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (!file) return;
+                                                        handleSubirContrato(file);
+                                                        e.target.value = '';
+                                                    }}
+                                                />
+                                                <div
+                                                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDraggingContrato(true); }}
+                                                    onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setDraggingContrato(false); }}
+                                                    onDrop={(e) => {
+                                                        e.preventDefault(); e.stopPropagation(); setDraggingContrato(false);
+                                                        const file = e.dataTransfer.files?.[0];
+                                                        if (!file || subiendoContrato) return;
+                                                        handleSubirContrato(file);
+                                                    }}
+                                                    onClick={() => !subiendoContrato && contratoInputRef.current?.click()}
+                                                    className={`group flex cursor-pointer items-center gap-1.5 rounded-md border border-dashed px-3 py-1.5 text-xs transition-all select-none ${
+                                                        draggingContrato
+                                                            ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300'
+                                                            : 'border-muted-foreground/30 text-muted-foreground hover:border-emerald-500/60 hover:bg-muted/40 hover:text-foreground'
+                                                    }`}
+                                                >
+                                                    <Upload className="size-3.5 shrink-0 transition-transform group-hover:-translate-y-0.5" />
+                                                    <span>{subiendoContrato ? 'Subiendo...' : draggingContrato ? 'Suelta aquí' : 'Subir contrato'}</span>
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>
-                                </div>
+                                    );
+                                })()}
                             </div>
                         </div>
 

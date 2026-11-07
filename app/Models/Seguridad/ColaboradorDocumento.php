@@ -14,6 +14,7 @@ class ColaboradorDocumento extends Model
         'campo',
         'path',
         'nombre_original',
+        'tipo_contrato',
         'fecha_documento',
     ];
 

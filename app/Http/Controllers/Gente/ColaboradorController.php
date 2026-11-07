@@ -11,6 +11,7 @@ use App\Http\Requests\Gente\UpdateColaboradorPaso3Request;
 use App\Http\Requests\Gente\UpdateColaboradorPaso4Request;
 use App\Http\Requests\Gente\UpdateColaboradorRequest;
 use App\Http\Requests\Gente\ProrrogarContratoRequest;
+use App\Models\Gente\ColaboradorContrato;
 use App\Models\Gente\ContratoProrroga;
 use App\Models\Gente\OpcionCatalogo;
 use App\Models\Gente\TipoDocumento;
@@ -365,12 +366,41 @@ class ColaboradorController extends Controller
             'wizard_step' => max((int) $colaborador->wizard_step, 3),
         ]);
 
+        // Registrar el contrato en el historial si tiene tipo y no existe uno activo igual
+        $tipoContrato = $colaborador->fresh()->tipo_contrato;
+        $fechaInicio  = $colaborador->fresh()->fecha_ingreso_empresa;
+        $fechaFin     = $colaborador->fresh()->contrato_fecha_hasta ?? $colaborador->fresh()->fecha_retiro_empresa;
+
+        if ($tipoContrato) {
+            $yaExiste = $colaborador->contratos()
+                ->where('tipo_contrato', $tipoContrato)
+                ->whereDate('fecha_inicio', $fechaInicio ?? now())
+                ->exists();
+
+            if (! $yaExiste) {
+                $colaborador->contratos()->create([
+                    'tipo_contrato'  => $tipoContrato,
+                    'tipo_contrato_otro' => $colaborador->fresh()->tipo_contrato_otro,
+                    'fecha_inicio'   => $fechaInicio,
+                    'fecha_fin'      => $fechaFin,
+                    'estado'         => 'activo',
+                    'registrado_por' => $request->user()?->id,
+                ]);
+            }
+        }
+
         // Reglas del historial de cargos (3 escenarios). Devuelve un mensaje
         // informativo cuando el cargo no cambió (Escenario B); el resto del
         // guardado del paso ya se hizo arriba.
         $info = $cargoHistorial->registrarCambio($colaborador, $cargo, $cargoFechaInicio);
 
         $this->storeDocuments($request, $colaborador, ColaboradorDocumentoCampos::paso3());
+
+        // Si viene desde la vista de contratos, regresar allí
+        if ($request->input('redirect_to') === 'contratos') {
+            return to_route('gente.contratos.show', ['colaborador' => $colaborador])
+                ->with('status', $info ?? 'Contrato actualizado correctamente.');
+        }
 
         $redirect = to_route('gente.colaboradores.wizard', ['colaborador' => $colaborador, 'paso' => 4]);
 
