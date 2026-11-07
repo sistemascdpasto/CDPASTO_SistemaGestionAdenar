@@ -117,7 +117,6 @@ interface HistorialContratoItem {
     fecha_registro: string;
     cantidad_prorrogas?: number;
     es_aprendiz?: boolean;
-    cargo?: string | null;
 }
 
 
@@ -820,13 +819,12 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                 <Table className="table-fixed">
                                     <TableHeader>
                                         <TableRow className="bg-muted/40">
-                                            <TableHead className="w-[14.28%] font-semibold">Tipo</TableHead>
-                                            <TableHead className="w-[14.28%] font-semibold">Fecha inicio contrato</TableHead>
-                                            <TableHead className="w-[14.28%] font-semibold">Fecha fin contrato</TableHead>
-                                            <TableHead className="w-[14.28%] font-semibold">Cargo</TableHead>
-                                            <TableHead className="w-[14.28%] font-semibold">Tipo de contrato</TableHead>
-                                            <TableHead className="w-[14.28%] font-semibold">Estado</TableHead>
-                                            <TableHead className="w-[14.28%] font-semibold">Acciones</TableHead>
+                                            <TableHead className="w-[calc(100%/6)] font-semibold">Tipo</TableHead>
+                                            <TableHead className="w-[calc(100%/6)] font-semibold">Fecha inicio contrato</TableHead>
+                                            <TableHead className="w-[calc(100%/6)] font-semibold">Fecha fin contrato</TableHead>
+                                            <TableHead className="w-[calc(100%/6)] font-semibold">Cargo</TableHead>
+                                            <TableHead className="w-[calc(100%/6)] font-semibold">Estado</TableHead>
+                                            <TableHead className="w-[calc(100%/6)] font-semibold">Acciones</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -834,17 +832,17 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                             <>
                                                 {historialContratos.map((c, i) => (
                                                     <TableRow key={c.id}>
-                                                        <TableCell className="text-sm font-medium">
-                                                            Contrato {i + 1}
+                                                        <TableCell>
+                                                            <div className="flex flex-col gap-1">
+                                                                <span className="text-sm font-medium">Contrato {i + 1}</span>
+                                                                {c.tipo_contrato
+                                                                    ? <Badge variant="outline" className="text-xs w-fit">{c.tipo_contrato}</Badge>
+                                                                    : <span className="text-muted-foreground text-xs">Sin tipo</span>}
+                                                            </div>
                                                         </TableCell>
                                                         <TableCell>{c.fecha_inicio ?? '—'}</TableCell>
                                                         <TableCell>{c.fecha_fin ?? '—'}</TableCell>
-                                                        <TableCell>{c.cargo || colaborador.cargo || '—'}</TableCell>
-                                                        <TableCell>
-                                                            {c.tipo_contrato
-                                                                ? <Badge variant="outline" className="text-xs">{c.tipo_contrato}</Badge>
-                                                                : '—'}
-                                                        </TableCell>
+                                                        <TableCell>{colaborador.cargo || '—'}</TableCell>
                                                         <TableCell>
                                                             <Badge variant={c.estado === 'activo' ? estadoVariant : 'secondary'}>
                                                                 {c.estado === 'activo' ? estadoLabel : 'Finalizado'}
@@ -946,8 +944,36 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                         ) : (
                                             <>
                                                 <TableRow>
-                                                    <TableCell className="text-sm font-medium">
-                                                        Contrato 1
+                                                    <TableCell>
+                                                        <div className="flex flex-col gap-1">
+                                                            <span className="text-sm font-medium">Contrato 1</span>
+                                                            {contratoEnEdicion ? (
+                                                                <div className="grid gap-1">
+                                                                    <Select
+                                                                        value={datosContrato.tipo_contrato || '__sin_tipo_contrato__'}
+                                                                        onValueChange={(value) =>
+                                                                            setDatosContrato('tipo_contrato', value === '__sin_tipo_contrato__' ? '' : value)
+                                                                        }
+                                                                        disabled={guardandoContrato}
+                                                                    >
+                                                                        <SelectTrigger aria-label="Tipo de contrato" className="h-8 text-xs">
+                                                                            <SelectValue placeholder="Tipo de contrato" />
+                                                                        </SelectTrigger>
+                                                                        <SelectContent>
+                                                                            <SelectItem value="__sin_tipo_contrato__">Sin tipo</SelectItem>
+                                                                            {catalogos.tiposContrato.map((tipo) => (
+                                                                                <SelectItem key={tipo} value={tipo}>{tipo}</SelectItem>
+                                                                            ))}
+                                                                        </SelectContent>
+                                                                    </Select>
+                                                                    <InputError message={erroresContrato.tipo_contrato} />
+                                                                </div>
+                                                            ) : (
+                                                                colaborador.tipo_contrato
+                                                                    ? <Badge variant="outline" className="text-xs w-fit">{colaborador.tipo_contrato}</Badge>
+                                                                    : <span className="text-muted-foreground text-xs">Sin tipo</span>
+                                                            )}
+                                                        </div>
                                                     </TableCell>
                                                     <TableCell>
                                                         {contratoEnEdicion ? (
@@ -1011,34 +1037,6 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                                             </div>
                                                         ) : (
                                                             colaborador.cargo || '—'
-                                                        )}
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        {contratoEnEdicion ? (
-                                                            <div className="grid min-w-44 gap-1">
-                                                                <Select
-                                                                    value={datosContrato.tipo_contrato || '__sin_tipo_contrato__'}
-                                                                    onValueChange={(value) =>
-                                                                        setDatosContrato('tipo_contrato', value === '__sin_tipo_contrato__' ? '' : value)
-                                                                    }
-                                                                    disabled={guardandoContrato}
-                                                                >
-                                                                    <SelectTrigger aria-label="Tipo de contrato" className="h-9">
-                                                                        <SelectValue placeholder="Selecciona el tipo de contrato" />
-                                                                    </SelectTrigger>
-                                                                    <SelectContent>
-                                                                        <SelectItem value="__sin_tipo_contrato__">Sin tipo de contrato</SelectItem>
-                                                                        {catalogos.tiposContrato.map((tipo) => (
-                                                                            <SelectItem key={tipo} value={tipo}>
-                                                                                {tipo}
-                                                                            </SelectItem>
-                                                                        ))}
-                                                                    </SelectContent>
-                                                                </Select>
-                                                                <InputError message={erroresContrato.tipo_contrato} />
-                                                            </div>
-                                                        ) : (
-                                                            colaborador.tipo_contrato || '—'
                                                         )}
                                                     </TableCell>
                                                     <TableCell>
