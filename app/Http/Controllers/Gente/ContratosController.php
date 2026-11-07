@@ -28,7 +28,6 @@ class ContratosController extends Controller
 {
     public const CAMPOS_CONTRATO = [
         'documento_contrato' => 'Contrato firmado',
-        'documento_prorroga' => 'Otros soportes de prórroga',
     ];
 
     public function index(Request $request): Response
@@ -124,7 +123,7 @@ class ContratosController extends Controller
         // Documentos en la tabla colaborador_documentos
         $docsDB = $colaborador->documentos()
             ->whereIn('campo', array_keys(self::CAMPOS_CONTRATO))
-            ->orderByDesc('id')
+            ->orderBy('id')
             ->get();
 
         foreach ($docsDB as $doc) {
@@ -132,7 +131,7 @@ class ContratosController extends Controller
                 'id' => $doc->id,
                 'path' => $doc->path,
                 'fecha' => $doc->fecha_documento?->format('Y-m-d'),
-                'name' => basename($doc->path),
+                'name' => $doc->nombre_original ?? basename($doc->path),
             ];
         }
 
@@ -202,6 +201,15 @@ class ContratosController extends Controller
         // Fechas de finalización para preavisos (detectadas de la fecha actual y de prórrogas)
         $fechasFinalizacion = collect();
 
+        // fecha_desde para la tarjeta actual: fecha_nueva de la última prórroga, o fecha_ingreso_empresa
+        $ultimaProrroga = $colaborador->prorrogas()
+            ->where('tipo', 'prorroga')
+            ->orderByDesc('created_at')
+            ->first();
+        $fechaDesdeActual = $ultimaProrroga?->fecha_anterior
+            ? Carbon::parse($ultimaProrroga->fecha_anterior)->format('d/m/Y')
+            : ($colaborador->fecha_ingreso_empresa ? Carbon::parse($colaborador->fecha_ingreso_empresa)->format('d/m/Y') : null);
+
         // 1. Fecha de retiro actual del colaborador
         if ($colaborador->fecha_retiro_empresa) {
             $fechaActual = Carbon::parse($colaborador->fecha_retiro_empresa);
@@ -213,22 +221,24 @@ class ContratosController extends Controller
                 'estado' => $colaborador->tieneFinalizacionConfirmada()
                     ? 'Finalización confirmada'
                     : 'Fecha actual de vencimiento',
+                'fecha_desde' => $fechaDesdeActual,
+                'fecha_hasta' => $fechaActual->format('d/m/Y'),
             ]);
         }
 
-        // 2. Fechas de finalización anteriores provenientes del historial de prórrogas
-        foreach ($colaborador->prorrogas()->orderByDesc('created_at')->get() as $p) {
-            if ($p->fecha_anterior) {
-                $fechaAnt = Carbon::parse($p->fecha_anterior);
-                $fechaAntStr = $fechaAnt->format('Y-m-d');
-                if (! $fechasFinalizacion->has($fechaAntStr)) {
-                    $fechasFinalizacion->put($fechaAntStr, [
-                        'fecha' => $fechaAntStr,
-                        'fecha_formateada' => $fechaAnt->format('d/m/Y'),
+        // 2. Fechas de las prórrogas (fecha_nueva de cada prórroga, excluyendo la actual ya registrada)
+        foreach ($colaborador->prorrogas()->orderBy('created_at')->get() as $p) {
+            if ($p->fecha_nueva) {
+                $fechaNueva = Carbon::parse($p->fecha_nueva);
+                $fechaNuevaStr = $fechaNueva->format('Y-m-d');
+                if (! $fechasFinalizacion->has($fechaNuevaStr)) {
+                    $fechasFinalizacion->put($fechaNuevaStr, [
+                        'fecha' => $fechaNuevaStr,
+                        'fecha_formateada' => $fechaNueva->format('d/m/Y'),
                         'es_actual' => false,
-                        'estado' => $p->tipo === 'finalizacion'
-                            ? 'Finalización'
-                            : 'Prorrogado al '.($p->fecha_nueva ? Carbon::parse($p->fecha_nueva)->format('d/m/Y') : 'siguiente fecha'),
+                        'estado' => $p->tipo === 'finalizacion' ? 'Finalización' : 'Histórico',
+                        'fecha_desde' => $p->fecha_anterior ? Carbon::parse($p->fecha_anterior)->format('d/m/Y') : null,
+                        'fecha_hasta' => $fechaNueva->format('d/m/Y'),
                     ]);
                 }
             }
@@ -410,6 +420,7 @@ class ContratosController extends Controller
                 $colaborador->documentos()->create([
                     'campo' => $campo,
                     'path' => $path,
+                    'nombre_original' => $archivo->getClientOriginalName(),
                     'fecha_documento' => now()->toDateString(),
                 ]);
             }
@@ -570,6 +581,19 @@ class ContratosController extends Controller
         return back()->with('status', 'Historial de contrato actualizado correctamente.');
     }
 
+    public function destroyProrroga(Colaborador $colaborador, ContratoProrroga $prorroga): RedirectResponse
+    {
+        abort_if($prorroga->colaborador_id !== $colaborador->id, 403);
+
+        if ($prorroga->documento_path && Storage::disk('public')->exists($prorroga->documento_path)) {
+            Storage::disk('public')->delete($prorroga->documento_path);
+        }
+
+        $prorroga->delete();
+
+        return back()->with('status', 'Registro de prórroga eliminado correctamente.');
+    }
+
     public function updateDatosContrato(
         UpdateContratoColaboradorRequest $request,
         Colaborador $colaborador,
@@ -601,6 +625,17 @@ class ContratosController extends Controller
         ]);
 
         return back()->with('status', 'Datos actuales del contrato eliminados correctamente.');
+    }
+
+    public function destroyAntecedente(Colaborador $colaborador): RedirectResponse
+    {
+        $colaborador->update([
+            'ha_trabajado_antes' => 'no',
+            'cargo_anterior' => null,
+            'fecha_ultima_laboral' => null,
+        ]);
+
+        return back()->with('status', 'El antecedente laboral anterior fue eliminado correctamente.');
     }
 
     /**

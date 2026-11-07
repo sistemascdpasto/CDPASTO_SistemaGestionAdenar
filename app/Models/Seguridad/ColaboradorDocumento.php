@@ -13,6 +13,7 @@ class ColaboradorDocumento extends Model
         'colaborador_id',
         'campo',
         'path',
+        'nombre_original',
         'fecha_documento',
     ];
 

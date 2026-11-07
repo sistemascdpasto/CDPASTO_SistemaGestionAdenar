@@ -117,6 +117,8 @@ interface FechaPreavisoItem {
     fecha_formateada: string;
     es_actual: boolean;
     estado: string;
+    fecha_desde?: string | null;
+    fecha_hasta?: string | null;
     documento: {
         id: number;
         name: string;
@@ -220,6 +222,7 @@ export default function ContratoShow({ colaborador, documentos, campos, catalogo
     const [pasoActual, setPasoActual] = useState(1);
     const [contratoEnEdicion, setContratoEnEdicion] = useState(false);
     const [eliminandoContrato, setEliminandoContrato] = useState(false);
+    const [eliminandoAntecedente, setEliminandoAntecedente] = useState(false);
     const [prorrogaEnEdicion, setProrrogaEnEdicion] = useState<number | null>(null);
     const [eliminandoId, setEliminandoId] = useState<number | null>(null);
     const [dialogFinalizar, setDialogFinalizar] = useState(false);
@@ -229,6 +232,7 @@ export default function ContratoShow({ colaborador, documentos, campos, catalogo
     const [archivoFinalizacion, setArchivoFinalizacion] = useState<File | null>(null);
     const [subiendoDocProrroga, setSubiendoDocProrroga] = useState<number | null>(null);
     const [eliminandoDocProrroga, setEliminandoDocProrroga] = useState<number | null>(null);
+    const [eliminandoProrroga, setEliminandoProrroga] = useState<number | null>(null);
     const [draggingId, setDraggingId] = useState<number | null>(null);
     const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
@@ -238,6 +242,25 @@ export default function ContratoShow({ colaborador, documentos, campos, catalogo
     const [fechasPreavisoExtra, setFechasPreavisoExtra] = useState<FechaPreavisoItem[]>([]);
     const [mostrarFormNuevaFecha, setMostrarFormNuevaFecha] = useState(false);
     const [nuevaFechaInput, setNuevaFechaInput] = useState('');
+    const [subiendoContrato, setSubiendoContrato] = useState<string | null>(null);
+    const [draggingContrato, setDraggingContrato] = useState(false);
+    const contratoInputRef = useRef<HTMLInputElement | null>(null);
+    const nombreContratoSubiendoRef = useRef<string | null>(null);
+
+    const handleSubirContrato = (file: File) => {
+        nombreContratoSubiendoRef.current = file.name;
+        setSubiendoContrato(file.name);
+        const fd = new FormData();
+        fd.append('documento_contrato[]', file);
+        router.post(`/modules/gente/contratos/${colaborador.id}/documentos`, fd, {
+            forceFormData: true,
+            preserveScroll: true,
+            onFinish: () => {
+                nombreContratoSubiendoRef.current = null;
+                setSubiendoContrato(null);
+            },
+        });
+    };
     const preavisoInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
     const handleSubirPreaviso = (fecha: string, file: File) => {
@@ -316,6 +339,23 @@ export default function ContratoShow({ colaborador, documentos, campos, catalogo
         });
     };
 
+    const handleEliminarProrroga = (prorroga: ProrrogaItem) => {
+        const tipo = prorroga.tipo === 'finalizacion' ? 'finalización' : 'prórroga';
+        if (
+            !confirm(
+                `¿Eliminar esta ${tipo} y sus fechas del historial? No se modificarán las fechas actuales del contrato ni otros registros.`,
+            )
+        ) {
+            return;
+        }
+
+        setEliminandoProrroga(prorroga.id);
+        router.delete(route('gente.contratos.prorrogas.destroy', [colaborador.id, prorroga.id]), {
+            preserveScroll: true,
+            onFinish: () => setEliminandoProrroga(null),
+        });
+    };
+
     const iniciarEdicionProrroga = (prorroga: ProrrogaItem) => {
         setProrrogaEnEdicion(prorroga.id);
         setDatosProrroga({
@@ -358,6 +398,22 @@ export default function ContratoShow({ colaborador, documentos, campos, catalogo
         router.delete(route('gente.contratos.datos.destroy', colaborador.id), {
             preserveScroll: true,
             onFinish: () => setEliminandoContrato(false),
+        });
+    };
+
+    const handleEliminarAntecedente = () => {
+        if (
+            !confirm(
+                '¿Eliminar el registro del contrato anterior? Se borrarán el cargo y la fecha laboral anteriores, sin modificar el contrato actual.',
+            )
+        ) {
+            return;
+        }
+
+        setEliminandoAntecedente(true);
+        router.delete(route('gente.contratos.antecedente.destroy', colaborador.id), {
+            preserveScroll: true,
+            onFinish: () => setEliminandoAntecedente(false),
         });
     };
 
@@ -772,7 +828,11 @@ export default function ContratoShow({ colaborador, documentos, campos, catalogo
                                                         <InputError message={erroresContrato.fecha_retiro_empresa} />
                                                     </div>
                                                 ) : (
-                                                    formatFecha(colaborador.fecha_retiro_empresa)
+                                                    formatFecha(
+                                                        prorrogas.length > 0
+                                                            ? (prorrogas[prorrogas.length - 1].fecha_anterior ?? colaborador.fecha_retiro_empresa)
+                                                            : (colaborador.contrato_fecha_hasta ?? colaborador.fecha_retiro_empresa)
+                                                    )
                                                 )}
                                             </TableCell>
                                             <TableCell>
@@ -902,7 +962,22 @@ export default function ContratoShow({ colaborador, documentos, campos, catalogo
                                                         : 'Contrato anterior'}
                                                 </TableCell>
                                                 <TableCell>Finalizado</TableCell>
-                                                <TableCell />
+                                                <TableCell>
+                                                    <Button
+                                                        type="button"
+                                                        variant="destructive"
+                                                        size="sm"
+                                                        disabled={eliminandoAntecedente}
+                                                        onClick={handleEliminarAntecedente}
+                                                    >
+                                                        {eliminandoAntecedente ? (
+                                                            <LoaderCircle className="size-4 animate-spin" />
+                                                        ) : (
+                                                            <Trash2 className="size-4" />
+                                                        )}
+                                                        Eliminar
+                                                    </Button>
+                                                </TableCell>
                                             </TableRow>
                                         )}
                                     </TableBody>
@@ -973,12 +1048,7 @@ export default function ContratoShow({ colaborador, documentos, campos, catalogo
                                                     </div>
                                                 ) : (
                                                     <div>
-                                                        <div>{formatFecha(p.fecha_anterior)}</div>
-                                                        {p.tipo === 'prorroga' && (
-                                                            <div className="text-muted-foreground mt-1 text-xs">
-                                                                Inicio: {formatFecha(p.fecha_inicio)}
-                                                            </div>
-                                                        )}
+                                                        {p.tipo === 'prorroga' && formatFecha(p.fecha_inicio)}
                                                     </div>
                                                 )}
                                             </TableCell>
@@ -1050,6 +1120,22 @@ export default function ContratoShow({ colaborador, documentos, campos, catalogo
                                                                     <Pencil className="size-4" />
                                                                 </Button>
                                                             ) : null}
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="size-8 text-destructive hover:bg-destructive/10"
+                                                                disabled={eliminandoProrroga === p.id || prorrogaEnEdicion !== null || guardandoProrroga}
+                                                                onClick={() => handleEliminarProrroga(p)}
+                                                                title="Eliminar registro de prórroga"
+                                                                aria-label={`Eliminar ${p.tipo === 'finalizacion' ? 'finalización' : 'prórroga'}`}
+                                                            >
+                                                                {eliminandoProrroga === p.id ? (
+                                                                    <LoaderCircle className="size-4 animate-spin" />
+                                                                ) : (
+                                                                    <Trash2 className="size-4" />
+                                                                )}
+                                                            </Button>
                                                         </div>
                                                 {p.documento_path ? (
                                                     <div className="flex items-center gap-1.5">
@@ -1238,235 +1324,221 @@ export default function ContratoShow({ colaborador, documentos, campos, catalogo
                 )}
 
                 {/* ══════════════════════════════════════════════════════════════════ */}
-                {/* ── PASO 2: DOCUMENTOS DE CONTRATO ───────────────────────────── */}
+                {/* ── PASO 2: PREAVISOS ────────────────────────────────────────── */}
                 {/* ══════════════════════════════════════════════════════════════════ */}
                 {pasoActual === 2 && (
-                    <div className="space-y-4">
-                        {/* Documentación de contrato */}
-                <Card>
-                            <CardHeader className="border-border border-b pb-4">
-                        <div className="flex items-center gap-2.5">
-                            <div className="flex size-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
-                                <FolderOpen className="size-5" />
+                    <div className="space-y-6">
+
+                        {/* ── Contrato ── */}
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-2">
+                                <FileText className="size-4 text-muted-foreground" />
+                                <h3 className="text-foreground text-sm font-semibold">Contrato</h3>
                             </div>
-                            <div>
-                                <CardTitle className="text-base font-semibold">Documentación de contrato</CardTitle>
-                                <CardDescription className="text-xs">
-                                    Gestiona, visualiza y adjunta los documentos asociados al contrato laboral de este colaborador.
-                                </CardDescription>
+                            <div className="divide-border divide-y rounded-xl border overflow-hidden">
+                                {(documentos['documento_contrato'] || []).map((doc, index) => (
+                                    <div key={doc.id ?? doc.path} className="flex items-center gap-4 px-4 py-3 bg-card transition-colors">
+                                        <div className="flex min-w-0 flex-1 items-center gap-2">
+                                            <FileText className="size-3.5 shrink-0 text-muted-foreground" />
+                                            <span className="text-foreground text-sm font-semibold">Contrato {index + 1}</span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 shrink-0">
+                                            <a
+                                                href={doc.path}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-flex items-center gap-1 truncate text-xs font-medium text-emerald-700 hover:underline dark:text-emerald-400"
+                                                title={doc.name}
+                                            >
+                                                <span className="max-w-[160px] truncate">{doc.name}</span>
+                                                <ExternalLink className="text-muted-foreground size-3 shrink-0" />
+                                            </a>
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="icon"
+                                                className="size-6 shrink-0 text-red-500 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30"
+                                                disabled={eliminandoId === doc.id}
+                                                onClick={() => handleEliminarDocumento(doc)}
+                                                title="Eliminar documento"
+                                            >
+                                                {eliminandoId === doc.id ? <LoaderCircle className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ))}
+                                {/* Fila para subir nuevo */}
+                                <div className="flex items-center gap-4 px-4 py-3 bg-card transition-colors">
+                                    <div className="flex min-w-0 flex-1 items-center gap-2">
+                                        {subiendoContrato ? (
+                                            <>
+                                                <LoaderCircle className="size-3.5 shrink-0 animate-spin text-emerald-600" />
+                                                <span className="text-foreground truncate text-sm font-semibold max-w-[220px]">{subiendoContrato}</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Upload className="size-3.5 shrink-0 text-muted-foreground" />
+                                                <span className="text-muted-foreground text-xs">Nuevo contrato</span>
+                                            </>
+                                        )}
+                                    </div>
+                                    <div className="shrink-0">
+                                        <input
+                                            type="file"
+                                            ref={contratoInputRef}
+                                            className="hidden"
+                                            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                            disabled={!!subiendoContrato || eliminandoId !== null}
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (!file) return;
+                                                handleSubirContrato(file);
+                                                e.target.value = '';
+                                            }}
+                                        />
+                                        <div
+                                            onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDraggingContrato(true); }}
+                                            onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setDraggingContrato(false); }}
+                                            onDrop={(e) => {
+                                                e.preventDefault(); e.stopPropagation(); setDraggingContrato(false);
+                                                const file = e.dataTransfer.files?.[0];
+                                                if (!file || subiendoContrato) return;
+                                                handleSubirContrato(file);
+                                            }}
+                                            onClick={() => !subiendoContrato && contratoInputRef.current?.click()}
+                                            className={`group flex cursor-pointer items-center gap-1.5 rounded-md border border-dashed px-3 py-1.5 text-xs transition-all select-none ${
+                                                draggingContrato
+                                                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300'
+                                                    : 'border-muted-foreground/30 text-muted-foreground hover:border-emerald-500/60 hover:bg-muted/40 hover:text-foreground'
+                                            }`}
+                                        >
+                                            <Upload className="size-3.5 shrink-0 transition-transform group-hover:-translate-y-0.5" />
+                                            <span>{subiendoContrato ? 'Subiendo...' : draggingContrato ? 'Suelta aquí' : 'Subir contrato'}</span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </CardHeader>
-                            <CardContent className="space-y-6 pt-6">
-                        {/* ── Preavisos por fecha de finalización ── */}
-                        <div className="space-y-4">
-                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                                <div>
-                                            <h3 className="text-foreground flex items-center gap-2 text-sm font-semibold">
-                                        <CalendarClock className="size-4 text-cyan-700 dark:text-cyan-300" />
-                                        Preavisos de terminación por fecha
-                                    </h3>
-                                            <p className="text-muted-foreground mt-0.5 text-xs">
-                                                Cada fecha en que el contrato finaliza o fue prorrogado requiere su preaviso. Arrastra o sube el
-                                                documento en la casilla correspondiente.
-                                    </p>
-                                </div>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                            className="gap-1 self-start text-xs sm:self-auto"
-                                    onClick={() => setMostrarFormNuevaFecha(!mostrarFormNuevaFecha)}
-                                >
-                                    <Plus className="size-3.5" />
-                                    {mostrarFormNuevaFecha ? 'Cancelar' : 'Agregar otra fecha'}
-                                </Button>
+
+                        {/* ── Preavisos ── */}
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-2">
+                                <CalendarClock className="size-4 text-cyan-700 dark:text-cyan-300" />
+                                <h3 className="text-foreground text-sm font-semibold">Preavisos</h3>
                             </div>
 
-                            {/* Formulario para agregar fecha manual si aplica */}
-                            {mostrarFormNuevaFecha && (
-                                        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-cyan-300 bg-cyan-50/50 p-3 dark:border-cyan-900/40 dark:bg-cyan-950/10">
-                                            <span className="text-xs font-medium text-cyan-900 dark:text-cyan-300">Fecha de preaviso:</span>
-                                    <input
-                                        type="date"
-                                        value={nuevaFechaInput}
-                                        onChange={(e) => setNuevaFechaInput(e.target.value)}
-                                                className="border-input bg-background focus:ring-ring rounded-md border px-2.5 py-1 text-xs shadow-xs focus:ring-1 focus:outline-none"
-                                    />
-                                    <Button
-                                        type="button"
-                                        size="sm"
-                                                className="h-7 bg-[#1e5f74] text-xs text-white hover:bg-[#1a3a5c]"
-                                        onClick={handleAgregarFechaExtra}
-                                        disabled={!nuevaFechaInput}
-                                    >
-                                        Crear casilla
-                                    </Button>
+                            {todasFechasPreaviso.length === 0 ? (
+                                <div className="text-muted-foreground rounded-lg border border-dashed p-4 text-center text-xs">
+                                    No se han detectado fechas de finalización aún.
                                 </div>
-                            )}
-
-                            {/* Lista de casillas por fecha de finalización */}
-                            <div className="grid gap-3 sm:grid-cols-2">
-                                {todasFechasPreaviso.length === 0 ? (
-                                            <div className="text-muted-foreground rounded-lg border border-dashed p-4 text-center text-xs sm:col-span-2">
-                                                No se han detectado fechas de finalización aún. Puedes registrar prórrogas o agregar una fecha con el
-                                                botón superior.
-                                    </div>
-                                ) : (
-                                    todasFechasPreaviso.map((fp) => {
+                            ) : (
+                                <div className="divide-border divide-y rounded-xl border overflow-hidden">
+                                    {todasFechasPreaviso.map((fp) => {
                                         const estaSubiendo = subiendoPreavisoFecha === fp.fecha;
                                         const estaArrastrando = draggingPreavisoFecha === fp.fecha;
+                                        const etiquetaFecha = fp.fecha_desde && fp.fecha_hasta
+                                            ? `${fp.fecha_desde} — ${fp.fecha_hasta}`
+                                            : fp.fecha_formateada;
 
                                         return (
                                             <div
                                                 key={fp.fecha}
-                                                        className={`flex flex-col justify-between gap-3 rounded-xl border p-3.5 transition-all ${
-                                                    fp.es_actual
-                                                        ? 'border-cyan-300 bg-cyan-50/40 dark:border-cyan-900/50 dark:bg-cyan-950/10'
-                                                        : 'border-border bg-card/60 dark:bg-card/40'
+                                                className={`flex items-center gap-4 px-4 py-3 transition-colors ${
+                                                    fp.es_actual ? 'bg-cyan-50/40 dark:bg-cyan-950/10' : 'bg-card'
                                                 }`}
                                             >
-                                                {/* Cabecera de la fecha */}
-                                                <div className="flex items-start justify-between gap-2">
-                                                    <div>
-                                                        <div className="flex items-center gap-1.5">
-                                                                    <Calendar
-                                                                        className={`size-3.5 ${fp.es_actual ? 'text-cyan-700 dark:text-cyan-300' : 'text-muted-foreground'}`}
-                                                                    />
-                                                                    <span className="text-foreground text-sm font-bold">{fp.fecha_formateada}</span>
-                                                        </div>
-                                                                <p className="text-muted-foreground mt-0.5 text-[11px]">{fp.estado}</p>
-                                                    </div>
-                                                    {fp.es_actual ? (
-                                                                <Badge className="shrink-0 bg-[#1e5f74] px-2 py-0.5 text-[10px] text-white hover:bg-[#1a3a5c]">
-                                                            Fecha actual
-                                                        </Badge>
-                                                    ) : (
-                                                                <Badge
-                                                                    variant="outline"
-                                                                    className="text-muted-foreground shrink-0 px-2 py-0.5 text-[10px]"
-                                                                >
-                                                            Histórico
+                                                <div className="flex min-w-0 flex-1 items-center gap-2">
+                                                    <Calendar className={`size-3.5 shrink-0 ${fp.es_actual ? 'text-cyan-700 dark:text-cyan-300' : 'text-muted-foreground'}`} />
+                                                    <span className="text-foreground text-sm font-semibold">{etiquetaFecha}</span>
+                                                    {fp.es_actual && (
+                                                        <Badge className="bg-[#1e5f74] px-2 py-0.5 text-[10px] text-white hover:bg-[#1a3a5c]">
+                                                            Actual
                                                         </Badge>
                                                     )}
                                                 </div>
 
-                                                {/* Contenido / Documento */}
-                                                {fp.documento ? (
-                                                            <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 p-2 dark:border-emerald-800/40 dark:bg-emerald-950/20">
-                                                        <a
-                                                            href={fp.documento.path}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                                    className="inline-flex max-w-[200px] items-center gap-1.5 truncate text-xs font-medium text-emerald-700 hover:underline dark:text-emerald-400"
-                                                            title={fp.documento.name}
-                                                        >
-                                                            <FileText className="size-3.5 shrink-0 text-emerald-600" />
-                                                            <span className="truncate">{fp.documento.name}</span>
-                                                                    <ExternalLink className="text-muted-foreground size-3 shrink-0" />
-                                                        </a>
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="icon"
-                                                                    className="size-6 shrink-0 text-red-500 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30"
-                                                            disabled={eliminandoId === fp.documento.id}
-                                                            onClick={() => handleEliminarPreaviso(fp.documento!.id)}
-                                                            title="Eliminar preaviso"
-                                                        >
-                                                            {eliminandoId === fp.documento.id ? (
-                                                                <LoaderCircle className="size-3.5 animate-spin" />
-                                                            ) : (
-                                                                <Trash2 className="size-3.5" />
-                                                            )}
-                                                        </Button>
-                                                    </div>
-                                                ) : (
-                                                    <div
-                                                        onDragOver={(e) => {
-                                                            e.preventDefault();
-                                                            e.stopPropagation();
-                                                            setDraggingPreavisoFecha(fp.fecha);
-                                                        }}
-                                                        onDragLeave={(e) => {
-                                                            e.preventDefault();
-                                                            e.stopPropagation();
-                                                            setDraggingPreavisoFecha(null);
-                                                        }}
-                                                        onDrop={(e) => {
-                                                            e.preventDefault();
-                                                            e.stopPropagation();
-                                                            setDraggingPreavisoFecha(null);
-                                                            const file = e.dataTransfer.files?.[0];
-                                                            if (file) handleSubirPreaviso(fp.fecha, file);
-                                                        }}
-                                                        onClick={() => preavisoInputRefs.current[fp.fecha]?.click()}
-                                                                className={`group flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed p-3 text-xs transition-all select-none ${
-                                                            estaArrastrando
-                                                                        ? 'border-emerald-500 bg-emerald-50 text-emerald-700 ring-2 ring-emerald-400/20 dark:bg-emerald-950/30 dark:text-emerald-300'
-                                                                        : 'border-muted-foreground/30 hover:bg-muted/40 text-muted-foreground hover:text-foreground hover:border-emerald-500/60'
-                                                        }`}
-                                                    >
-                                                        <input
-                                                            type="file"
-                                                                    ref={(el) => {
-                                                                        preavisoInputRefs.current[fp.fecha] = el;
-                                                                    }}
-                                                            className="hidden"
-                                                            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                                                            onChange={(e) => {
-                                                                const file = e.target.files?.[0];
+                                                <div className="shrink-0">
+                                                    {fp.documento ? (
+                                                        <div className="flex items-center gap-1.5">
+                                                            <a
+                                                                href={fp.documento.path}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="inline-flex max-w-[180px] items-center gap-1 truncate text-xs font-medium text-emerald-700 hover:underline dark:text-emerald-400"
+                                                                title={fp.documento.name}
+                                                            >
+                                                                <FileText className="size-3.5 shrink-0 text-emerald-600" />
+                                                                <span className="truncate">{fp.documento.name}</span>
+                                                                <ExternalLink className="text-muted-foreground size-3 shrink-0" />
+                                                            </a>
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="size-6 shrink-0 text-red-500 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30"
+                                                                disabled={eliminandoId === fp.documento.id}
+                                                                onClick={() => handleEliminarPreaviso(fp.documento!.id)}
+                                                                title="Eliminar preaviso"
+                                                            >
+                                                                {eliminandoId === fp.documento.id ? (
+                                                                    <LoaderCircle className="size-3.5 animate-spin" />
+                                                                ) : (
+                                                                    <Trash2 className="size-3.5" />
+                                                                )}
+                                                            </Button>
+                                                        </div>
+                                                    ) : (
+                                                        <div
+                                                            onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDraggingPreavisoFecha(fp.fecha); }}
+                                                            onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setDraggingPreavisoFecha(null); }}
+                                                            onDrop={(e) => {
+                                                                e.preventDefault(); e.stopPropagation(); setDraggingPreavisoFecha(null);
+                                                                const file = e.dataTransfer.files?.[0];
                                                                 if (file) handleSubirPreaviso(fp.fecha, file);
                                                             }}
-                                                        />
-                                                        {estaSubiendo ? (
-                                                            <>
-                                                                <LoaderCircle className="size-3.5 animate-spin text-emerald-600" />
-                                                                        <span className="text-xs font-medium">Subiendo preaviso...</span>
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <Upload className="size-3.5 shrink-0 transition-transform group-hover:-translate-y-0.5" />
-                                                                <span className="text-xs">
-                                                                            {estaArrastrando
-                                                                                ? 'Suelta el archivo aquí'
-                                                                                : 'Arrastra o haz clic para subir preaviso'}
-                                                                </span>
-                                                            </>
-                                                        )}
-                                                    </div>
-                                                )}
+                                                            onClick={() => preavisoInputRefs.current[fp.fecha]?.click()}
+                                                            className={`group flex cursor-pointer items-center gap-1.5 rounded-md border border-dashed px-3 py-1.5 text-xs transition-all select-none ${
+                                                                estaArrastrando
+                                                                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300'
+                                                                    : 'border-muted-foreground/30 text-muted-foreground hover:border-emerald-500/60 hover:bg-muted/40 hover:text-foreground'
+                                                            }`}
+                                                        >
+                                                            <input
+                                                                type="file"
+                                                                ref={(el) => { preavisoInputRefs.current[fp.fecha] = el; }}
+                                                                className="hidden"
+                                                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                                                onChange={(e) => {
+                                                                    const file = e.target.files?.[0];
+                                                                    if (file) handleSubirPreaviso(fp.fecha, file);
+                                                                }}
+                                                            />
+                                                            {estaSubiendo ? (
+                                                                <><LoaderCircle className="size-3.5 animate-spin text-emerald-600" /><span>Subiendo...</span></>
+                                                            ) : (
+                                                                <><Upload className="size-3.5 shrink-0 transition-transform group-hover:-translate-y-0.5" /><span>{estaArrastrando ? 'Suelta aquí' : 'Subir preaviso'}</span></>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         );
-                                    })
-                                )}
-                            </div>
+                                    })}
+                                </div>
+                            )}
 
-                            {/* Otros preavisos registrados */}
                             {otros_preavisos.length > 0 && (
-                                        <div className="border-border bg-muted/20 space-y-2 rounded-lg border p-3">
-                                            <p className="text-muted-foreground text-xs font-medium">Otros preavisos registrados:</p>
+                                <div className="border-border bg-muted/20 mt-2 space-y-2 rounded-lg border p-3">
+                                    <p className="text-muted-foreground text-xs font-medium">Otros preavisos registrados:</p>
                                     <div className="flex flex-wrap gap-2">
                                         {otros_preavisos.map((op) => (
-                                                    <div
-                                                        key={op.id ?? op.path}
-                                                        className="bg-card border-border inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs"
-                                                    >
-                                                        <a
-                                                            href={op.path}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="flex items-center gap-1 text-emerald-600 hover:underline"
-                                                        >
+                                            <div key={op.id ?? op.path} className="bg-card border-border inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs">
+                                                <a href={op.path} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-emerald-600 hover:underline">
                                                     <FileText className="size-3" />
                                                     <span className="max-w-[150px] truncate">{op.name || 'Preaviso'}</span>
                                                 </a>
                                                 {op.id && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleEliminarPreaviso(op.id!)}
-                                                                className="ml-1 text-red-500 hover:text-red-700"
-                                                    >
+                                                    <button type="button" onClick={() => handleEliminarPreaviso(op.id!)} className="ml-1 text-red-500 hover:text-red-700">
                                                         <Trash2 className="size-3" />
                                                     </button>
                                                 )}
@@ -1476,69 +1548,6 @@ export default function ContratoShow({ colaborador, documentos, campos, catalogo
                                 </div>
                             )}
                         </div>
-
-                        {/* ── Otros documentos de contrato ── */}
-                                <div className="border-border border-t pt-4">
-                                    <h4 className="text-muted-foreground mb-3 text-xs font-semibold tracking-wider uppercase">
-                                Otros documentos de contrato
-                            </h4>
-                            <form onSubmit={submit} className="space-y-6">
-                                        {errors.documentos && (
-                                            <p
-                                                role="alert"
-                                                className="border-destructive/30 bg-destructive/5 text-destructive rounded-md border px-3 py-2 text-sm"
-                                            >
-                                                {errors.documentos}
-                                            </p>
-                                        )}
-                                <div className="grid gap-6 sm:grid-cols-2">
-                                    {campos.map((campo) => {
-                                        const docsExistentes = documentos[campo.key] || [];
-                                        return (
-                                                    <div
-                                                        key={campo.key}
-                                                        className="border-border bg-card/60 dark:bg-card/40 rounded-xl border p-4 transition-colors hover:border-emerald-300"
-                                                    >
-                                                <SimpleFileField
-                                                    label={campo.label}
-                                                    files={data[campo.key] || []}
-                                                    existing={docsExistentes}
-                                                    onRemoveExisting={(index) => {
-                                                        const doc = docsExistentes[index];
-                                                        if (doc) handleEliminarDocumento(doc);
-                                                    }}
-                                                    onChange={(files) => setData(campo.key, files)}
-                                                            error={errorDelCampoContrato(campo.key)}
-                                                    disabled={processing || eliminandoId !== null}
-                                                    multiple={true}
-                                                />
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                                        <div className="border-border flex items-center justify-between border-t pt-4">
-                                            <p className="text-muted-foreground text-xs">
-                                        {totalArchivosNuevos > 0 ? (
-                                            <span className="font-medium text-emerald-600 dark:text-emerald-400">
-                                                {totalArchivosNuevos} archivo(s) listo(s) para guardar.
-                                            </span>
-                                        ) : (
-                                            'Arrastra o adjunta nuevos archivos en cualquiera de los campos anteriores.'
-                                        )}
-                                    </p>
-                                            <Button
-                                                type="submit"
-                                                disabled={processing || totalArchivosNuevos === 0 || eliminandoId !== null}
-                                                className="gap-2"
-                                            >
-                                        {processing ? <LoaderCircle className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />}
-                                        Guardar documentos
-                                    </Button>
-                                </div>
-                            </form>
-                        </div>
-                    </CardContent>
-                </Card>
 
                 {/* Botón volver al paso 1 */}
                 <div className="flex justify-start pt-2">

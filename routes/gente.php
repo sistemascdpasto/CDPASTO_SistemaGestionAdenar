@@ -154,10 +154,14 @@ Route::middleware(['auth', 'active', 'role:Administrador|Gente|Contratos', 'subm
             ->name('contratos.prorrogas.documento.store');
         Route::patch('contratos/{colaborador}/prorrogas/{prorroga}', [ContratosController::class, 'updateProrroga'])
             ->name('contratos.prorrogas.update');
+        Route::delete('contratos/{colaborador}/prorrogas/{prorroga}', [ContratosController::class, 'destroyProrroga'])
+            ->name('contratos.prorrogas.destroy');
         Route::patch('contratos/{colaborador}/datos', [ContratosController::class, 'updateDatosContrato'])
             ->name('contratos.datos.update');
         Route::delete('contratos/{colaborador}/datos', [ContratosController::class, 'destroyDatosContrato'])
             ->name('contratos.datos.destroy');
+        Route::delete('contratos/{colaborador}/antecedente', [ContratosController::class, 'destroyAntecedente'])
+            ->name('contratos.antecedente.destroy');
         Route::delete('contratos/{colaborador}/prorrogas/{prorroga}/documento', [ContratosController::class, 'destroyDocumentoProrroga'])
             ->name('contratos.prorrogas.documento.destroy');
 
