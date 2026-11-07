@@ -1,7 +1,6 @@
 import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,7 +8,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import { ProrrogarContratoDialog } from '@/pages/gente/colaboradores/prorrogar-contrato-dialog';
-import { SimpleFileField } from '@/pages/gente/colaboradores/wizard/components/simple-file-field';
 import { type DocumentInfo } from '@/pages/seguridad/colaboradores/colaborador-form-fields';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, useForm } from '@inertiajs/react';
@@ -20,7 +18,6 @@ import {
     Briefcase,
     Calendar,
     CalendarClock,
-    CheckCircle2,
     Clock,
     ExternalLink,
     FileDown,
@@ -29,7 +26,6 @@ import {
     History,
     LoaderCircle,
     Pencil,
-    Plus,
     Save,
     Trash2,
     Upload,
@@ -103,10 +99,6 @@ interface ColaboradorContrato {
     tiene_finalizacion?: boolean;
 }
 
-interface CampoContrato {
-    key: string;
-    label: string;
-}
 
 interface DocumentoContratoItem extends DocumentInfo {
     id?: number | null;
@@ -130,7 +122,6 @@ interface FechaPreavisoItem {
 interface Props {
     colaborador: ColaboradorContrato;
     documentos: Record<string, DocumentoContratoItem[]>;
-    campos: CampoContrato[];
     catalogos: {
         cargos: string[];
         tiposContrato: string[];
@@ -164,7 +155,7 @@ function estadoContrato(
     return { label: 'Vigente', variant: 'default' };
 }
 
-export default function ContratoShow({ colaborador, documentos, campos, catalogos, fechas_preaviso = [], otros_preavisos = [] }: Props) {
+export default function ContratoShow({ colaborador, documentos, catalogos, fechas_preaviso = [], otros_preavisos = [] }: Props) {
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Dashboard', href: '/dashboard' },
         { title: 'Gente', href: '/modules/gente' },
@@ -172,7 +163,7 @@ export default function ContratoShow({ colaborador, documentos, campos, catalogo
         { title: colaborador.nombre_completo, href: `/modules/gente/contratos/${colaborador.id}` },
     ];
 
-    const { data, setData, post, processing, errors, reset } = useForm<{
+    const { data: _data, post, processing: _processing, errors, reset } = useForm<{
         documento_contrato: File[];
         documento_carnet_ingreso_cd: File[];
         documento_preaviso_terminacion: File[];
@@ -240,7 +231,7 @@ export default function ContratoShow({ colaborador, documentos, campos, catalogo
     const [subiendoPreavisoFecha, setSubiendoPreavisoFecha] = useState<string | null>(null);
     const [draggingPreavisoFecha, setDraggingPreavisoFecha] = useState<string | null>(null);
     const [fechasPreavisoExtra, setFechasPreavisoExtra] = useState<FechaPreavisoItem[]>([]);
-    const [mostrarFormNuevaFecha, setMostrarFormNuevaFecha] = useState(false);
+    const [_mostrarFormNuevaFecha, _setMostrarFormNuevaFecha] = useState(false);
     const [nuevaFechaInput, setNuevaFechaInput] = useState('');
     const [subiendoContrato, setSubiendoContrato] = useState<string | null>(null);
     const [draggingContrato, setDraggingContrato] = useState(false);
@@ -289,7 +280,7 @@ export default function ContratoShow({ colaborador, documentos, campos, catalogo
         });
     };
 
-    const handleAgregarFechaExtra = () => {
+    const _handleAgregarFechaExtra = () => {
         if (!nuevaFechaInput) return;
         const yaExiste = [...fechas_preaviso, ...fechasPreavisoExtra].some((fp) => fp.fecha === nuevaFechaInput);
         if (yaExiste) {
@@ -435,8 +426,8 @@ export default function ContratoShow({ colaborador, documentos, campos, catalogo
         );
     };
 
-    const submit: FormEventHandler = (e) => {
-        e.preventDefault();
+    const _submit: FormEventHandler = (_e) => {
+        _e.preventDefault();
         post(`/modules/gente/contratos/${colaborador.id}/documentos`, {
             forceFormData: true,
             preserveScroll: true,
@@ -460,8 +451,8 @@ export default function ContratoShow({ colaborador, documentos, campos, catalogo
     );
     const { label: estadoLabel, variant: estadoVariant } = estadoContrato(colaborador.fecha_retiro_empresa, tieneFinalizacion);
     const todasFechasPreaviso = [...fechas_preaviso, ...fechasPreavisoExtra];
-    const totalArchivosNuevos = Object.values(data).reduce((acc, files) => acc + (files?.length || 0), 0);
-    const errorDelCampoContrato = (campo: string) =>
+    const _totalArchivosNuevos = Object.values(_data).reduce((acc, files) => acc + (files?.length || 0), 0);
+    const _errorDelCampoContrato = (campo: string) =>
         Object.entries(errors)
             .filter(([clave]) => clave === campo || clave.startsWith(`${campo}.`))
             .map(([, mensaje]) => mensaje)
