@@ -396,19 +396,34 @@ class ContratosController extends Controller
                     ->withCount(['prorrogas as cantidad_prorrogas' => fn ($query) => $query->where('tipo', 'prorroga')])
                     ->with('registradoPor:id,name')
                     ->get()
-                    ->map(fn ($c) => [
-                        'id' => $c->id,
-                        'tipo_contrato' => $c->tipo_contrato,
-                        'tipo_contrato_otro' => $c->tipo_contrato_otro,
-                        'fecha_inicio' => $formatFecha($c->fecha_inicio),
-                        'fecha_fin' => $formatFecha($c->fecha_fin),
-                        'cantidad_prorrogas' => $c->cantidad_prorrogas,
-                        'es_aprendiz' => $c->esAprendiz(),
-                        'estado' => $c->estado,
-                        'observaciones' => $c->observaciones,
-                        'registrado_por' => $c->registradoPor?->name,
-                        'fecha_registro' => $c->created_at->format('d/m/Y H:i'),
-                    ])
+                    ->map(function ($c) use ($colaborador, $formatFecha) {
+                        // Buscar el cargo que estaba activo en la fecha de inicio del contrato
+                        $cargoEnFecha = null;
+                        if ($c->fecha_inicio) {
+                            $cargoEnFecha = $colaborador->cargos()
+                                ->where('fecha_inicio', '<=', $c->fecha_inicio)
+                                ->where(function ($q) use ($c) {
+                                    $q->whereNull('fecha_fin')
+                                      ->orWhere('fecha_fin', '>=', $c->fecha_inicio);
+                                })
+                                ->orderByDesc('fecha_inicio')
+                                ->value('cargo');
+                        }
+                        return [
+                            'id' => $c->id,
+                            'tipo_contrato' => $c->tipo_contrato,
+                            'tipo_contrato_otro' => $c->tipo_contrato_otro,
+                            'fecha_inicio' => $formatFecha($c->fecha_inicio),
+                            'fecha_fin' => $formatFecha($c->fecha_fin),
+                            'cantidad_prorrogas' => $c->cantidad_prorrogas,
+                            'es_aprendiz' => $c->esAprendiz(),
+                            'estado' => $c->estado,
+                            'observaciones' => $c->observaciones,
+                            'registrado_por' => $c->registradoPor?->name,
+                            'fecha_registro' => $c->created_at->format('d/m/Y H:i'),
+                            'cargo' => $cargoEnFecha ?? $colaborador->cargo,
+                        ];
+                    })
                     ->values()
                     ->all(),
             ],

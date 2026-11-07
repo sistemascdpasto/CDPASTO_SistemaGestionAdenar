@@ -117,6 +117,7 @@ interface HistorialContratoItem {
     fecha_registro: string;
     cantidad_prorrogas?: number;
     es_aprendiz?: boolean;
+    cargo?: string | null;
 }
 
 
@@ -811,233 +812,328 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                     <div className="space-y-6">
                         {/* Tabla de contrato actual + previo */}
                         <div>
+                            <div className="text-muted-foreground flex items-center gap-2 text-xs font-semibold tracking-wider uppercase mb-2">
+                                <FileText className="size-3.5" />
+                                <span>Historial de contratos</span>
+                            </div>
                             <div className="border-border bg-card overflow-hidden rounded-xl border shadow-xs">
-                                <Table>
+                                <Table className="table-fixed">
                                     <TableHeader>
                                         <TableRow className="bg-muted/40">
-                                            <TableHead className="w-32 font-semibold">Fecha de ingreso</TableHead>
-                                            <TableHead className="w-32 font-semibold">Fecha de salida</TableHead>
-                                            <TableHead className="font-semibold">Cargo</TableHead>
-                                            <TableHead className="font-semibold">Tipo de contrato</TableHead>
-                                            <TableHead className="w-28 font-semibold">Estado</TableHead>
-                                            <TableHead className="w-28 font-semibold">Tipo</TableHead>
-                                            <TableHead className="w-24 font-semibold">Acciones</TableHead>
+                                            <TableHead className="w-[14.28%] font-semibold">Tipo</TableHead>
+                                            <TableHead className="w-[14.28%] font-semibold">Fecha inicio contrato</TableHead>
+                                            <TableHead className="w-[14.28%] font-semibold">Fecha fin contrato</TableHead>
+                                            <TableHead className="w-[14.28%] font-semibold">Cargo</TableHead>
+                                            <TableHead className="w-[14.28%] font-semibold">Tipo de contrato</TableHead>
+                                            <TableHead className="w-[14.28%] font-semibold">Estado</TableHead>
+                                            <TableHead className="w-[14.28%] font-semibold">Acciones</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        <TableRow>
-                                            <TableCell>
-                                                {contratoEnEdicion ? (
-                                                    <div className="grid min-w-36 gap-1">
-                                                        <Input
-                                                            type="date"
-                                                            value={datosContrato.fecha_ingreso_empresa}
-                                                            onChange={(e) => setDatosContrato('fecha_ingreso_empresa', e.target.value)}
-                                                            disabled={guardandoContrato}
-                                                            aria-label="Fecha de ingreso"
-                                                            className="h-9"
-                                                        />
-                                                        <InputError message={erroresContrato.fecha_ingreso_empresa} />
-                                                    </div>
-                                                ) : (
-                                                    formatFecha(colaborador.fecha_ingreso_empresa)
-                                                )}
-                                            </TableCell>
-                                            <TableCell>
-                                                {contratoEnEdicion ? (
-                                                    <div className="grid min-w-36 gap-1">
-                                                        <Input
-                                                            type="date"
-                                                            value={datosContrato.fecha_retiro_empresa}
-                                                            onChange={(e) => setDatosContrato('fecha_retiro_empresa', e.target.value)}
-                                                            disabled={guardandoContrato}
-                                                            aria-label="Fecha de salida"
-                                                            className="h-9"
-                                                        />
-                                                        <InputError message={erroresContrato.fecha_retiro_empresa} />
-                                                    </div>
-                                                ) : (
-                                                    formatFecha(
-                                                        prorrogas.length > 0
-                                                            ? (prorrogas[prorrogas.length - 1].fecha_anterior ?? colaborador.fecha_retiro_empresa)
-                                                            : (colaborador.contrato_fecha_hasta ?? colaborador.fecha_retiro_empresa)
-                                                    )
-                                                )}
-                                            </TableCell>
-                                            <TableCell>
-                                                {contratoEnEdicion ? (
-                                                    <div className="grid min-w-36 gap-1">
-                                                        <Select
-                                                            value={datosContrato.cargo || '__sin_cargo__'}
-                                                            onValueChange={(value) => setDatosContrato('cargo', value === '__sin_cargo__' ? '' : value)}
-                                                            disabled={guardandoContrato}
-                                                        >
-                                                            <SelectTrigger aria-label="Cargo" className="h-9">
-                                                                <SelectValue placeholder="Selecciona el cargo" />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                <SelectItem value="__sin_cargo__">Sin cargo</SelectItem>
-                                                                {catalogos.cargos.map((cargo) => (
-                                                                    <SelectItem key={cargo} value={cargo}>
-                                                                        {cargo}
-                                                                    </SelectItem>
-                                                                ))}
-                                                            </SelectContent>
-                                                        </Select>
-                                                        <InputError message={erroresContrato.cargo} />
-                                                    </div>
-                                                ) : (
-                                                    colaborador.cargo || '—'
-                                                )}
-                                            </TableCell>
-                                            <TableCell>
-                                                {contratoEnEdicion ? (
-                                                    <div className="grid min-w-44 gap-1">
-                                                        <Select
-                                                            value={datosContrato.tipo_contrato || '__sin_tipo_contrato__'}
-                                                            onValueChange={(value) =>
-                                                                setDatosContrato('tipo_contrato', value === '__sin_tipo_contrato__' ? '' : value)
-                                                            }
-                                                            disabled={guardandoContrato}
-                                                        >
-                                                            <SelectTrigger aria-label="Tipo de contrato" className="h-9">
-                                                                <SelectValue placeholder="Selecciona el tipo de contrato" />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                <SelectItem value="__sin_tipo_contrato__">Sin tipo de contrato</SelectItem>
-                                                                {catalogos.tiposContrato.map((tipo) => (
-                                                                    <SelectItem key={tipo} value={tipo}>
-                                                                        {tipo}
-                                                                    </SelectItem>
-                                                                ))}
-                                                            </SelectContent>
-                                                        </Select>
-                                                        <InputError message={erroresContrato.tipo_contrato} />
-                                                    </div>
-                                                ) : (
-                                                    colaborador.tipo_contrato || '—'
-                                                )}
-                                            </TableCell>
-                                            <TableCell>
-                                                {estadoLabel}
-                                            </TableCell>
-                                            <TableCell className="text-sm">
-                                                {(() => {
-                                                    const contratos = colaborador.historial_contratos ?? [];
-                                                    if (contratos.length === 0) {
-                                                        const docs = documentos['documento_contrato'] || [];
-                                                        if (docs.length === 0) return <span className="text-muted-foreground text-xs">Sin contratos</span>;
-                                                        return (
-                                                            <div className="space-y-1">
-                                                                {docs.map((c, i) => (
-                                                                    <div key={c.id ?? i} className="flex items-center gap-1.5">
-                                                                        <span className="text-foreground text-xs font-medium whitespace-nowrap">Contrato {i + 1}</span>
-                                                                        {c.tipo_contrato && <Badge variant="outline" className="text-[10px] px-1.5 py-0">{c.tipo_contrato}</Badge>}
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        );
-                                                    }
-                                                    return (
-                                                        <div className="space-y-1">
-                                                            {contratos.map((c, i) => (
-                                                                <div key={c.id} className="flex items-center gap-1.5">
-                                                                    <span className="text-foreground text-xs font-medium whitespace-nowrap">Contrato {i + 1}</span>
-                                                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0">{c.tipo_contrato}</Badge>
+                                        {historialContratos.length > 0 ? (
+                                            <>
+                                                {historialContratos.map((c, i) => (
+                                                    <TableRow key={c.id}>
+                                                        <TableCell className="text-sm font-medium">
+                                                            Contrato {i + 1}
+                                                        </TableCell>
+                                                        <TableCell>{c.fecha_inicio ?? '—'}</TableCell>
+                                                        <TableCell>{c.fecha_fin ?? '—'}</TableCell>
+                                                        <TableCell>{c.cargo || colaborador.cargo || '—'}</TableCell>
+                                                        <TableCell>
+                                                            {c.tipo_contrato
+                                                                ? <Badge variant="outline" className="text-xs">{c.tipo_contrato}</Badge>
+                                                                : '—'}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <Badge variant={c.estado === 'activo' ? estadoVariant : 'secondary'}>
+                                                                {c.estado === 'activo' ? estadoLabel : 'Finalizado'}
+                                                            </Badge>
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            {c.estado === 'activo' && !tieneFinalizacion && (
+                                                                <div className="flex items-center gap-1">
+                                                                    {contratoEnEdicion ? (
+                                                                        <>
+                                                                            <Button
+                                                                                type="button"
+                                                                                size="sm"
+                                                                                disabled={guardandoContrato}
+                                                                                onClick={guardarEdicionContrato}
+                                                                            >
+                                                                                {guardandoContrato ? (
+                                                                                    <LoaderCircle className="size-4 animate-spin" />
+                                                                                ) : (
+                                                                                    <Save className="size-4" />
+                                                                                )}
+                                                                                Guardar
+                                                                            </Button>
+                                                                            <Button
+                                                                                type="button"
+                                                                                variant="outline"
+                                                                                size="sm"
+                                                                                onClick={cancelarEdicionContrato}
+                                                                                disabled={guardandoContrato}
+                                                                            >
+                                                                                Cancelar
+                                                                            </Button>
+                                                                        </>
+                                                                    ) : (
+                                                                        <>
+                                                                            <Button
+                                                                                type="button"
+                                                                                variant="outline"
+                                                                                size="icon"
+                                                                                onClick={iniciarEdicionContrato}
+                                                                                title="Editar"
+                                                                            >
+                                                                                <Pencil className="size-4" />
+                                                                            </Button>
+                                                                            {tieneDatosContrato && (
+                                                                                <Button
+                                                                                    type="button"
+                                                                                    variant="destructive"
+                                                                                    size="icon"
+                                                                                    disabled={eliminandoContrato}
+                                                                                    onClick={handleEliminarDatosContrato}
+                                                                                    title="Eliminar"
+                                                                                >
+                                                                                    {eliminandoContrato ? (
+                                                                                        <LoaderCircle className="size-4 animate-spin" />
+                                                                                    ) : (
+                                                                                        <Trash2 className="size-4" />
+                                                                                    )}
+                                                                                </Button>
+                                                                            )}
+                                                                        </>
+                                                                    )}
                                                                 </div>
-                                                            ))}
-                                                        </div>
-                                                    );
-                                                })()}
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="flex items-center gap-1">
-                                                    {contratoEnEdicion ? (
-                                                        <>
+                                                            )}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                                {tieneRetiroPrevio && (
+                                                    <TableRow>
+                                                        <TableCell>—</TableCell>
+                                                        <TableCell>{formatFecha(colaborador.fecha_ultima_laboral)}</TableCell>
+                                                        <TableCell>{colaborador.cargo_anterior || '—'}</TableCell>
+                                                        <TableCell>
+                                                            {colaborador.motivo_retiro
+                                                                ? `Retiro: ${colaborador.motivo_retiro}`
+                                                                : 'Contrato anterior'}
+                                                        </TableCell>
+                                                        <TableCell>Finalizado</TableCell>
+                                                        <TableCell>—</TableCell>
+                                                        <TableCell>
                                                             <Button
                                                                 type="button"
-                                                                size="sm"
-                                                                disabled={guardandoContrato}
-                                                                onClick={guardarEdicionContrato}
+                                                                variant="destructive"
+                                                                size="icon"
+                                                                disabled={eliminandoAntecedente}
+                                                                onClick={handleEliminarAntecedente}
+                                                                title="Eliminar"
                                                             >
-                                                                {guardandoContrato ? (
+                                                                {eliminandoAntecedente ? (
                                                                     <LoaderCircle className="size-4 animate-spin" />
                                                                 ) : (
-                                                                    <Save className="size-4" />
+                                                                    <Trash2 className="size-4" />
                                                                 )}
-                                                                Guardar
                                                             </Button>
-                                                            <Button
-                                                                type="button"
-                                                                variant="outline"
-                                                                size="sm"
-                                                                onClick={cancelarEdicionContrato}
-                                                                disabled={guardandoContrato}
-                                                            >
-                                                                Cancelar
-                                                            </Button>
-                                                        </>
-                                                    ) : !tieneFinalizacion ? (
-                                                        <>
-                                                            <Button
-                                                                type="button"
-                                                                variant="outline"
-                                                                size="icon"
-                                                                onClick={iniciarEdicionContrato}
-                                                                title="Editar"
-                                                            >
-                                                                <Pencil className="size-4" />
-                                                            </Button>
-                                                            {tieneDatosContrato && (
-                                                                <Button
-                                                                    type="button"
-                                                                    variant="destructive"
-                                                                    size="icon"
-                                                                    disabled={eliminandoContrato}
-                                                                    onClick={handleEliminarDatosContrato}
-                                                                    title="Eliminar"
-                                                                >
-                                                                    {eliminandoContrato ? (
-                                                                        <LoaderCircle className="size-4 animate-spin" />
-                                                                    ) : (
-                                                                        <Trash2 className="size-4" />
-                                                                    )}
-                                                                </Button>
-                                                            )}
-                                                        </>
-                                                    ) : null}
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                        {tieneRetiroPrevio && (
-                                            <TableRow>
-                                                <TableCell>—</TableCell>
-                                                <TableCell>{formatFecha(colaborador.fecha_ultima_laboral)}</TableCell>
-                                                <TableCell>{colaborador.cargo_anterior || '—'}</TableCell>
-                                                <TableCell>
-                                                    {colaborador.motivo_retiro
-                                                        ? `Retiro: ${colaborador.motivo_retiro}`
-                                                        : 'Contrato anterior'}
-                                                </TableCell>
-                                                <TableCell>Finalizado</TableCell>
-                                                <TableCell>—</TableCell>
-                                                <TableCell>
-                                                    <Button
-                                                        type="button"
-                                                        variant="destructive"
-                                                        size="icon"
-                                                        disabled={eliminandoAntecedente}
-                                                        onClick={handleEliminarAntecedente}
-                                                        title="Eliminar"
-                                                    >
-                                                        {eliminandoAntecedente ? (
-                                                            <LoaderCircle className="size-4 animate-spin" />
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )}
+                                            </>
+                                        ) : (
+                                            <>
+                                                <TableRow>
+                                                    <TableCell className="text-sm font-medium">
+                                                        Contrato 1
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {contratoEnEdicion ? (
+                                                            <div className="grid min-w-36 gap-1">
+                                                                <Input
+                                                                    type="date"
+                                                                    value={datosContrato.fecha_ingreso_empresa}
+                                                                    onChange={(e) => setDatosContrato('fecha_ingreso_empresa', e.target.value)}
+                                                                    disabled={guardandoContrato}
+                                                                    aria-label="Fecha de ingreso"
+                                                                    className="h-9"
+                                                                />
+                                                                <InputError message={erroresContrato.fecha_ingreso_empresa} />
+                                                            </div>
                                                         ) : (
-                                                            <Trash2 className="size-4" />
+                                                            formatFecha(colaborador.fecha_ingreso_empresa)
                                                         )}
-                                                    </Button>
-                                                </TableCell>
-                                            </TableRow>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {contratoEnEdicion ? (
+                                                            <div className="grid min-w-36 gap-1">
+                                                                <Input
+                                                                    type="date"
+                                                                    value={datosContrato.fecha_retiro_empresa}
+                                                                    onChange={(e) => setDatosContrato('fecha_retiro_empresa', e.target.value)}
+                                                                    disabled={guardandoContrato}
+                                                                    aria-label="Fecha de salida"
+                                                                    className="h-9"
+                                                                />
+                                                                <InputError message={erroresContrato.fecha_retiro_empresa} />
+                                                            </div>
+                                                        ) : (
+                                                            formatFecha(
+                                                                prorrogas.length > 0
+                                                                    ? (prorrogas[prorrogas.length - 1].fecha_anterior ?? colaborador.fecha_retiro_empresa)
+                                                                    : (colaborador.contrato_fecha_hasta ?? colaborador.fecha_retiro_empresa)
+                                                            )
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {contratoEnEdicion ? (
+                                                            <div className="grid min-w-36 gap-1">
+                                                                <Select
+                                                                    value={datosContrato.cargo || '__sin_cargo__'}
+                                                                    onValueChange={(value) => setDatosContrato('cargo', value === '__sin_cargo__' ? '' : value)}
+                                                                    disabled={guardandoContrato}
+                                                                >
+                                                                    <SelectTrigger aria-label="Cargo" className="h-9">
+                                                                        <SelectValue placeholder="Selecciona el cargo" />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        <SelectItem value="__sin_cargo__">Sin cargo</SelectItem>
+                                                                        {catalogos.cargos.map((cargo) => (
+                                                                            <SelectItem key={cargo} value={cargo}>
+                                                                                {cargo}
+                                                                            </SelectItem>
+                                                                        ))}
+                                                                    </SelectContent>
+                                                                </Select>
+                                                                <InputError message={erroresContrato.cargo} />
+                                                            </div>
+                                                        ) : (
+                                                            colaborador.cargo || '—'
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {contratoEnEdicion ? (
+                                                            <div className="grid min-w-44 gap-1">
+                                                                <Select
+                                                                    value={datosContrato.tipo_contrato || '__sin_tipo_contrato__'}
+                                                                    onValueChange={(value) =>
+                                                                        setDatosContrato('tipo_contrato', value === '__sin_tipo_contrato__' ? '' : value)
+                                                                    }
+                                                                    disabled={guardandoContrato}
+                                                                >
+                                                                    <SelectTrigger aria-label="Tipo de contrato" className="h-9">
+                                                                        <SelectValue placeholder="Selecciona el tipo de contrato" />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        <SelectItem value="__sin_tipo_contrato__">Sin tipo de contrato</SelectItem>
+                                                                        {catalogos.tiposContrato.map((tipo) => (
+                                                                            <SelectItem key={tipo} value={tipo}>
+                                                                                {tipo}
+                                                                            </SelectItem>
+                                                                        ))}
+                                                                    </SelectContent>
+                                                                </Select>
+                                                                <InputError message={erroresContrato.tipo_contrato} />
+                                                            </div>
+                                                        ) : (
+                                                            colaborador.tipo_contrato || '—'
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Badge variant={estadoVariant}>{estadoLabel}</Badge>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-1">
+                                                            {contratoEnEdicion ? (
+                                                                <>
+                                                                    <Button
+                                                                        type="button"
+                                                                        size="sm"
+                                                                        disabled={guardandoContrato}
+                                                                        onClick={guardarEdicionContrato}
+                                                                    >
+                                                                        {guardandoContrato ? (
+                                                                            <LoaderCircle className="size-4 animate-spin" />
+                                                                        ) : (
+                                                                            <Save className="size-4" />
+                                                                        )}
+                                                                        Guardar
+                                                                    </Button>
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        onClick={cancelarEdicionContrato}
+                                                                        disabled={guardandoContrato}
+                                                                    >
+                                                                        Cancelar
+                                                                    </Button>
+                                                                </>
+                                                            ) : !tieneFinalizacion ? (
+                                                                <>
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant="outline"
+                                                                        size="icon"
+                                                                        onClick={iniciarEdicionContrato}
+                                                                        title="Editar"
+                                                                    >
+                                                                        <Pencil className="size-4" />
+                                                                    </Button>
+                                                                    {tieneDatosContrato && (
+                                                                        <Button
+                                                                            type="button"
+                                                                            variant="destructive"
+                                                                            size="icon"
+                                                                            disabled={eliminandoContrato}
+                                                                            onClick={handleEliminarDatosContrato}
+                                                                            title="Eliminar"
+                                                                        >
+                                                                            {eliminandoContrato ? (
+                                                                                <LoaderCircle className="size-4 animate-spin" />
+                                                                            ) : (
+                                                                                <Trash2 className="size-4" />
+                                                                            )}
+                                                                        </Button>
+                                                                    )}
+                                                                </>
+                                                            ) : null}
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                                {tieneRetiroPrevio && (
+                                                    <TableRow>
+                                                        <TableCell>—</TableCell>
+                                                        <TableCell>{formatFecha(colaborador.fecha_ultima_laboral)}</TableCell>
+                                                        <TableCell>{colaborador.cargo_anterior || '—'}</TableCell>
+                                                        <TableCell>
+                                                            {colaborador.motivo_retiro
+                                                                ? `Retiro: ${colaborador.motivo_retiro}`
+                                                                : 'Contrato anterior'}
+                                                        </TableCell>
+                                                        <TableCell>Finalizado</TableCell>
+                                                        <TableCell>—</TableCell>
+                                                        <TableCell>
+                                                            <Button
+                                                                type="button"
+                                                                variant="destructive"
+                                                                size="icon"
+                                                                disabled={eliminandoAntecedente}
+                                                                onClick={handleEliminarAntecedente}
+                                                                title="Eliminar"
+                                                            >
+                                                                {eliminandoAntecedente ? (
+                                                                    <LoaderCircle className="size-4 animate-spin" />
+                                                                ) : (
+                                                                    <Trash2 className="size-4" />
+                                                                )}
+                                                            </Button>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )}
+                                            </>
                                         )}
                                     </TableBody>
                                 </Table>
@@ -1051,20 +1147,21 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                         <span>Historial de prórrogas y finalizaciones</span>
                     </div>
                             <div className="border-border bg-card overflow-hidden rounded-xl border shadow-xs">
-                        <Table>
+                        <Table className="table-fixed">
                             <TableHeader>
                                 <TableRow className="bg-muted/40">
-                                    <TableHead className="w-28 font-semibold">Tipo</TableHead>
-                                    <TableHead className="w-32 font-semibold">Contrato</TableHead>
-                                    <TableHead className="w-32 font-semibold">Terminación</TableHead>
-                                    <TableHead className="font-semibold">Registrado por / Fecha</TableHead>
-                                    <TableHead className="w-20 font-semibold">Acciones</TableHead>
+                                    <TableHead className="w-[calc(100%/6)] font-semibold">Tipo</TableHead>
+                                    <TableHead className="w-[calc(100%/6)] font-semibold">Contrato</TableHead>
+                                    <TableHead className="w-[calc(100%/6)] font-semibold">Terminación</TableHead>
+                                    <TableHead className="w-[calc(100%/6)] font-semibold">Registrado por</TableHead>
+                                    <TableHead className="w-[calc(100%/6)] font-semibold">Fecha registro</TableHead>
+                                    <TableHead className="w-[calc(100%/6)] font-semibold">Acciones</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {prorrogas.length === 0 ? (
                                     <TableRow>
-                                                <TableCell colSpan={5} className="text-muted-foreground py-6 text-center text-xs">
+                                                <TableCell colSpan={6} className="text-muted-foreground py-6 text-center text-xs">
                                             Sin registros de prórrogas o finalizaciones.
                                         </TableCell>
                                     </TableRow>
@@ -1143,8 +1240,10 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                                         )}
                                                     </TableCell>
                                                     <TableCell className="text-muted-foreground text-xs">
-                                                        <div>{p.registrado_por || '—'}</div>
-                                                        <div className="whitespace-nowrap">{p.fecha_registro}</div>
+                                                        {p.registrado_por || '—'}
+                                                    </TableCell>
+                                                    <TableCell className="text-muted-foreground text-xs whitespace-nowrap">
+                                                        {p.fecha_registro}
                                                     </TableCell>
                                             <TableCell className="text-xs">
                                                         <div className="mb-2 flex items-center gap-1">
@@ -1308,35 +1407,54 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                         <span>Historial de activación o desactivación</span>
                     </div>
                             <div className="border-border bg-card overflow-hidden rounded-xl border shadow-xs">
-                        <Table>
+                        <Table className="table-fixed">
                             <TableHeader>
                                 <TableRow className="bg-muted/40">
-                                    <TableHead className="w-28 font-semibold">Estado</TableHead>
-                                    <TableHead className="w-32 font-semibold">Fecha</TableHead>
-                                    <TableHead className="font-semibold">Motivo</TableHead>
-                                    <TableHead className="font-semibold">Observaciones</TableHead>
-                                    <TableHead className="font-semibold">Registrado por</TableHead>
+                                    <TableHead className="w-[calc(100%/5)] font-semibold">Evento</TableHead>
+                                    <TableHead className="w-[calc(100%/5)] font-semibold">Fecha</TableHead>
+                                    <TableHead className="w-[calc(100%/5)] font-semibold">Motivo</TableHead>
+                                    <TableHead className="w-[calc(100%/5)] font-semibold">Observaciones</TableHead>
+                                    <TableHead className="w-[calc(100%/5)] font-semibold">Registrado por</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {historialActivaciones.length === 0 ? (
                                     <TableRow>
-                                                <TableCell colSpan={5} className="text-muted-foreground py-6 text-center text-xs">
+                                        <TableCell colSpan={5} className="text-muted-foreground py-6 text-center text-xs">
                                             Sin registros de cambio de activación o desactivación.
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    historialActivaciones.map((item, index) => (
-                                        <TableRow key={item.id ?? index}>
-                                            <TableCell>{item.is_active ? 'Activado' : 'Desactivado'}</TableCell>
-                                            <TableCell className="whitespace-nowrap">{item.fecha || '—'}</TableCell>
-                                            <TableCell>{item.motivo || '—'}</TableCell>
-                                                    <TableCell className="text-muted-foreground max-w-xs text-xs">
-                                                        {item.observaciones || '—'}
-                                                    </TableCell>
-                                                    <TableCell className="text-muted-foreground text-xs">{item.usuario || '—'}</TableCell>
-                                        </TableRow>
-                                    ))
+                                    historialActivaciones.map((item, index) => {
+                                        const esFinalizacion = item.tipo === 'finalizacion_contrato';
+                                        const esActivacion = item.is_active;
+
+                                        const badgeClasses = esFinalizacion
+                                            ? 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400'
+                                            : esActivacion
+                                                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
+                                                : 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400';
+
+                                        const etiqueta = esFinalizacion
+                                            ? 'Finalización de contrato'
+                                            : esActivacion
+                                                ? 'Activación'
+                                                : 'Desactivación';
+
+                                        return (
+                                            <TableRow key={item.id ?? index} className={esFinalizacion ? 'bg-red-50/40 dark:bg-red-950/10' : ''}>
+                                                <TableCell>
+                                                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${badgeClasses}`}>
+                                                        {etiqueta}
+                                                    </span>
+                                                </TableCell>
+                                                <TableCell className="whitespace-nowrap text-sm">{item.fecha || '—'}</TableCell>
+                                                <TableCell className="text-sm">{item.motivo || '—'}</TableCell>
+                                                <TableCell className="text-muted-foreground text-xs">{item.observaciones || '—'}</TableCell>
+                                                <TableCell className="text-muted-foreground text-xs">{item.usuario || '—'}</TableCell>
+                                            </TableRow>
+                                        );
+                                    })
                                 )}
                             </TableBody>
                         </Table>
@@ -1350,14 +1468,14 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                         <span>Historial de cargos</span>
                     </div>
                             <div className="border-border bg-card overflow-hidden rounded-xl border shadow-xs">
-                        <Table>
+                        <Table className="table-fixed">
                             <TableHeader>
                                 <TableRow className="bg-muted/40">
-                                    <TableHead className="font-semibold">Cargo</TableHead>
-                                    <TableHead className="w-32 font-semibold">Fecha de inicio</TableHead>
-                                    <TableHead className="w-32 font-semibold">Fecha de fin</TableHead>
-                                    <TableHead className="w-28 font-semibold">Estado</TableHead>
-                                    <TableHead className="font-semibold">Pertenece a</TableHead>
+                                    <TableHead className="w-1/5 font-semibold">Cargo</TableHead>
+                                    <TableHead className="w-1/5 font-semibold">Fecha de inicio</TableHead>
+                                    <TableHead className="w-1/5 font-semibold">Fecha de fin</TableHead>
+                                    <TableHead className="w-1/5 font-semibold">Estado</TableHead>
+                                    <TableHead className="w-1/5 font-semibold">Pertenece a</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>

@@ -16,6 +16,7 @@ use App\Models\Gente\OpcionCatalogo;
 use App\Models\Gente\TipoDocumento;
 use App\Models\Seguridad\Alerta;
 use App\Models\Seguridad\Colaborador;
+use App\Models\Seguridad\ColaboradorCargo;
 use App\Models\Seguridad\Entrenamiento;
 use App\Models\User;
 use App\Services\Seguridad\CargoHistorialService;
@@ -466,6 +467,34 @@ class ColaboradorController extends Controller
         return $redirect;
     }
 
+    public function destroyCargo(Colaborador $colaborador, ColaboradorCargo $cargo): RedirectResponse
+    {
+        $this->asegurarContratoNoFinalizado($colaborador);
+
+        abort_if($cargo->colaborador_id !== $colaborador->id, 403);
+
+        $eraActivo = $cargo->estado === 'ACTIVO';
+
+        $cargo->delete();
+
+        // Si se eliminó el cargo activo, reactivar el más reciente que quede
+        if ($eraActivo) {
+            $anterior = $colaborador->cargos()
+                ->where('estado', 'INACTIVO')
+                ->latest('fecha_inicio')
+                ->first();
+
+            if ($anterior) {
+                $anterior->update(['estado' => 'ACTIVO', 'fecha_fin' => null]);
+                $colaborador->update(['cargo' => $anterior->cargo]);
+            } else {
+                $colaborador->update(['cargo' => null]);
+            }
+        }
+
+        return back()->with('status', 'Registro de cargo eliminado.');
+    }
+
     public function updatePaso4(UpdateColaboradorPaso4Request $request, Colaborador $colaborador): RedirectResponse
     {
         $this->asegurarContratoNoFinalizado($colaborador);
@@ -568,6 +597,21 @@ class ColaboradorController extends Controller
 
         if ($esFinalizacion && $colaborador->user) {
             $colaborador->user->update(['is_active' => false]);
+        }
+
+        if ($esFinalizacion) {
+            try {
+                $colaborador->activacionHistorial()->create([
+                    'is_active' => false,
+                    'tipo' => 'finalizacion_contrato',
+                    'fecha' => now(),
+                    'motivo' => $datos['observaciones'] ?? 'Finalización de contrato',
+                    'observaciones' => 'Colaborador desactivado automáticamente por finalización de contrato.',
+                    'user_id' => $request->user()->id,
+                ]);
+            } catch (\Throwable) {
+                // No interrumpe el flujo
+            }
         }
 
         $documentoPath = null;

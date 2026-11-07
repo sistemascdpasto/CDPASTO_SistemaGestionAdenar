@@ -73,6 +73,8 @@ Route::middleware(['auth', 'active', 'role:Administrador|Gente|Contratos', 'subm
             ->name('colaboradores.paso2.update');
         Route::patch('colaboradores/{colaborador}/paso-3', [ColaboradorController::class, 'updatePaso3'])
             ->name('colaboradores.paso3.update');
+        Route::delete('colaboradores/{colaborador}/cargos/{cargo}', [ColaboradorController::class, 'destroyCargo'])
+            ->name('colaboradores.cargos.destroy');
         Route::patch('colaboradores/{colaborador}/paso-4', [ColaboradorController::class, 'updatePaso4'])
             ->name('colaboradores.paso4.update');
 

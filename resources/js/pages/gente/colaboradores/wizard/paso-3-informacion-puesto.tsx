@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, Sele
 import { Textarea } from '@/components/ui/textarea';
 import { PillToggle, SeccionCard } from '@/pages/seguridad/colaboradores/colaborador-form-fields';
 import { useForm } from '@inertiajs/react';
-import { ArrowLeft, ArrowRight, Briefcase, Building2, GraduationCap, History, LoaderCircle, Plus, QrCode, Umbrella } from 'lucide-react';
+import { router } from '@inertiajs/react';
+import { ArrowLeft, ArrowRight, Briefcase, Building2, GraduationCap, History, LoaderCircle, Plus, QrCode, Umbrella, X } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { FormEventHandler, useState } from 'react';
 import { CargoCombobox } from './components/cargo-combobox';
@@ -170,40 +171,60 @@ export function Paso3InformacionPuesto({ colaborador, catalogos, historialCargos
                     </div>
                     {cambioDeCargo && (
                         <div className="grid gap-3 sm:col-span-2 border-l-2 border-emerald-300 pl-3 dark:border-emerald-500/30">
-                            <PillToggle
-                                label="¿Desea registrar este cambio en el historial de cargos?"
-                                value={data.guardar_historial_cargo ?? 'si'}
-                                onChange={(value) => {
-                                    setData((prev) => ({
-                                        ...prev,
-                                        guardar_historial_cargo: value as Paso3FormData['guardar_historial_cargo'],
-                                        ...(value === 'no' ? { cargo_fecha_inicio: '' } : {}),
-                                    }));
-                                }}
-                                disabled={processing}
-                                options={[
-                                    { value: 'si', label: 'Sí' },
-                                    { value: 'no', label: 'No' },
-                                ]}
-                            />
+                            <div className="flex items-center gap-2">
+                                <Checkbox
+                                    id="cambiar_cargo"
+                                    checked={data.guardar_historial_cargo === 'si'}
+                                    onCheckedChange={(checked) => {
+                                        setData((prev) => ({
+                                            ...prev,
+                                            guardar_historial_cargo: checked ? 'si' : 'no',
+                                            ...(checked ? {} : { cargo_fecha_inicio: '' }),
+                                        }));
+                                    }}
+                                    disabled={processing}
+                                />
+                                <Label htmlFor="cambiar_cargo" className="cursor-pointer font-medium">
+                                    Cambiar de cargo
+                                </Label>
+                            </div>
                             <InputError message={errors.guardar_historial_cargo} />
 
                             {data.guardar_historial_cargo === 'si' && (
-                                <div className="grid gap-2">
-                                    <Label htmlFor="cargo_fecha_inicio">Fecha de inicio del nuevo cargo (opcional)</Label>
-                                    <Input
-                                        id="cargo_fecha_inicio"
-                                        type="date"
-                                        value={data.cargo_fecha_inicio}
-                                        onChange={(e) => setData('cargo_fecha_inicio', e.target.value)}
-                                        disabled={processing}
-                                    />
-                                    <InputError message={errors.cargo_fecha_inicio} />
-                                    <p className="text-xs text-muted-foreground">
-                                        {cargoActivo
-                                            ? `El cargo actual ("${cargoActivo.cargo}") se cerrará automáticamente un día antes de esta fecha.`
-                                            : 'Se creará el primer registro de historial de cargos con esta fecha.'}
-                                    </p>
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="area_nuevo_cargo">Área</Label>
+                                        <Select
+                                            value={data.area}
+                                            onValueChange={(value) => setData('area', value as Paso3FormData['area'])}
+                                            disabled={processing}
+                                        >
+                                            <SelectTrigger id="area_nuevo_cargo">
+                                                <SelectValue placeholder="Selecciona el área" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="Administrativa">Administrativa</SelectItem>
+                                                <SelectItem value="Operativa">Operativa</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <InputError message={errors.area} />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="cargo_fecha_inicio">Fecha inicio del cargo</Label>
+                                        <Input
+                                            id="cargo_fecha_inicio"
+                                            type="date"
+                                            value={data.cargo_fecha_inicio}
+                                            onChange={(e) => setData('cargo_fecha_inicio', e.target.value)}
+                                            disabled={processing}
+                                        />
+                                        <InputError message={errors.cargo_fecha_inicio} />
+                                        <p className="text-muted-foreground text-xs">
+                                            {cargoActivo
+                                                ? `El cargo "${cargoActivo.cargo}" se cerrará un día antes de esta fecha.`
+                                                : 'Se creará el primer registro de historial de cargos con esta fecha.'}
+                                        </p>
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -224,6 +245,19 @@ export function Paso3InformacionPuesto({ colaborador, catalogos, historialCargos
                                         {h.fecha_inicio} — {h.fecha_fin ?? 'actual'}
                                     </span>
                                     <span className={h.estado === 'ACTIVO' ? 'text-emerald-600' : 'text-muted-foreground'}>{h.estado}</span>
+                                    <button
+                                        type="button"
+                                        title="Eliminar registro"
+                                        className="text-muted-foreground hover:text-destructive ml-2 transition-colors"
+                                        onClick={() => {
+                                            if (!confirm(`¿Eliminar el registro de cargo "${h.cargo}"?`)) return;
+                                            router.delete(route('gente.colaboradores.cargos.destroy', { colaborador: colaborador.id, cargo: h.id }), {
+                                                preserveScroll: true,
+                                            });
+                                        }}
+                                    >
+                                        <X className="size-3.5" />
+                                    </button>
                                 </div>
                             ))}
                         </div>
