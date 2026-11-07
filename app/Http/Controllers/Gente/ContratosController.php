@@ -211,9 +211,11 @@ class ContratosController extends Controller
             ->where('tipo', 'prorroga')
             ->orderByDesc('created_at')
             ->first();
-        $fechaDesdeActual = $ultimaProrroga?->fecha_anterior
-            ? Carbon::parse($ultimaProrroga->fecha_anterior)->format('d/m/Y')
-            : ($colaborador->fecha_ingreso_empresa ? Carbon::parse($colaborador->fecha_ingreso_empresa)->format('d/m/Y') : null);
+        $fechaDesdeActual = $ultimaProrroga?->fechaInicioEfectiva()
+            ? $ultimaProrroga->fechaInicioEfectiva()->format('d/m/Y')
+            : ($ultimaProrroga?->fecha_anterior
+                ? Carbon::parse($ultimaProrroga->fecha_anterior)->addDay()->format('d/m/Y')
+                : ($colaborador->fecha_ingreso_empresa ? Carbon::parse($colaborador->fecha_ingreso_empresa)->format('d/m/Y') : null));
 
         // 1. Fecha de retiro actual del colaborador
         if ($colaborador->fecha_retiro_empresa) {
@@ -242,7 +244,9 @@ class ContratosController extends Controller
                         'fecha_formateada' => $fechaNueva->format('d/m/Y'),
                         'es_actual' => false,
                         'estado' => $p->tipo === 'finalizacion' ? 'Finalización' : 'Histórico',
-                        'fecha_desde' => $p->fecha_anterior ? Carbon::parse($p->fecha_anterior)->format('d/m/Y') : null,
+                        'fecha_desde' => $p->fechaInicioEfectiva()
+                                ? $p->fechaInicioEfectiva()->format('d/m/Y')
+                                : ($p->fecha_anterior ? Carbon::parse($p->fecha_anterior)->addDay()->format('d/m/Y') : null),
                         'fecha_hasta' => $fechaNueva->format('d/m/Y'),
                     ]);
                 }
