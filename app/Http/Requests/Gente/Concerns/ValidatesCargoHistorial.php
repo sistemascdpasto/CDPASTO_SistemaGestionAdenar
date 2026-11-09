@@ -48,6 +48,17 @@ trait ValidatesCargoHistorial
             );
         }
 
+        $nuevoContratoDesde = $this->input('nuevo_fecha_inicio');
+        $nuevoContratoHasta = $this->input('nuevo_fecha_fin');
+        if (
+            $this->boolean('es_nuevo_contrato')
+            && $nuevoContratoDesde
+            && $cargoFechaInicio >= $nuevoContratoDesde
+            && (! $nuevoContratoHasta || $cargoFechaInicio <= $nuevoContratoHasta)
+        ) {
+            return;
+        }
+
         // Regla de contrato/prórroga: la fecha debe pertenecer al periodo del
         // contrato o a una prórroga registrada (ver Colaborador::periodoCargoParaFecha).
         if ($colaborador->periodoCargoParaFecha($cargoFechaInicio) === null) {

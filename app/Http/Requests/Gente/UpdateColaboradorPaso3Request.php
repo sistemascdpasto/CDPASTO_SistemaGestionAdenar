@@ -49,9 +49,19 @@ class UpdateColaboradorPaso3Request extends FormRequest
             'tipo_contrato' => ['nullable', 'string', 'max:100'],
             'tipo_contrato_otro' => ['nullable', 'string', 'max:100'],
             'es_nuevo_contrato' => ['nullable', 'boolean'],
-            'nuevo_tipo_contrato' => ['nullable', 'string', 'max:100'],
+            'nuevo_tipo_contrato' => [
+                'nullable',
+                Rule::requiredIf(fn () => $this->route('colaborador')?->esReingreso()),
+                'string',
+                'max:100',
+            ],
             'nuevo_tipo_contrato_otro' => ['nullable', 'string', 'max:100'],
-            'nuevo_fecha_inicio' => ['nullable', 'date'],
+            'nuevo_fecha_inicio' => [
+                'nullable',
+                'required_if:es_nuevo_contrato,1',
+                Rule::requiredIf(fn () => $this->route('colaborador')?->esReingreso()),
+                'date',
+            ],
             'nuevo_fecha_fin' => ['nullable', 'date', 'after_or_equal:nuevo_fecha_inicio'],
             'contratos_editados' => ['nullable', 'json'],
 

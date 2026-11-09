@@ -60,7 +60,9 @@ class ColaboradorController extends Controller
                 'eps', 'eps_otro', 'arl', 'arl_otro', 'fecha_ingreso_empresa', 'tipo_padrino',
                 'imagen', 'is_active', 'estado_registro', 'wizard_step',
             ])
-            ->withExists(['prorrogas as tiene_finalizacion' => fn ($query) => $query->where('tipo', 'finalizacion')])
+            ->withExists(['prorrogas as tiene_finalizacion' => fn ($query) => $query
+                ->where('tipo', 'finalizacion')
+                ->where((new Colaborador)->qualifyColumn('is_active'), false)])
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($query) use ($search) {
                     $query->where('nombres', 'like', "%{$search}%")
@@ -214,16 +216,22 @@ class ColaboradorController extends Controller
         return Inertia::render('gente/colaboradores/wizard/index', [
             'colaborador' => $colaboradorData,
             'currentStep' => $currentStep,
+            'esReingreso' => $colaborador->esReingreso(),
             'catalogos' => $this->catalogos($catalogos),
             'historialCargos' => $colaborador->cargos()->orderByDesc('fecha_inicio')->get(),
-            'historialContratos' => $colaborador->contratos()->get()->map(fn ($c) => [
+            'historialContratos' => $colaborador->contratos()
+                ->reorder()
+                ->orderBy('fecha_inicio')
+                ->orderBy('id')
+                ->get()
+                ->map(fn ($c) => [
                 'id'               => $c->id,
                 'tipo_contrato'    => $c->tipo_contrato,
                 'tipo_contrato_otro' => $c->tipo_contrato_otro,
                 'fecha_inicio'     => $c->fecha_inicio?->toDateString(),
                 'fecha_fin'        => $c->fecha_fin?->toDateString(),
                 'estado'           => $c->estado,
-            ])->values()->all(),
+                ])->values()->all(),
             'usuarios' => $this->usuariosVinculables($colaborador),
         ]);
     }
@@ -366,6 +374,28 @@ class ColaboradorController extends Controller
         $data = $this->resolverOtros($data, [
             'tipo_contrato' => ['tipo_contrato', 'tipo_contrato_otro'],
         ]);
+        $primerContrato = $colaborador->contratos()
+            ->reorder()
+            ->orderBy('fecha_inicio')
+            ->orderBy('id')
+            ->first();
+        $contratoActual = $contratoVigencia->contratoActual($colaborador);
+        $fechaInicioContratoPrincipal = $data['fecha_ingreso_empresa'] ?? null;
+        $fechaFinContratoPrincipal = $data['fecha_retiro_empresa'] ?? null;
+
+        // En el wizard las fechas principales representan el primer contrato.
+        // No deben reemplazar las fechas actuales del colaborador cuando este
+        // tiene contratos posteriores; esos se editan por separado en el historial.
+        if ($primerContrato && ! $primerContrato->is($contratoActual)) {
+            unset($data['fecha_ingreso_empresa'], $data['fecha_retiro_empresa']);
+        }
+
+        $datosNuevoContrato = [
+            'tipo_contrato' => $data['nuevo_tipo_contrato'] ?? null,
+            'tipo_contrato_otro' => $data['nuevo_tipo_contrato_otro'] ?? null,
+            'fecha_inicio' => $data['nuevo_fecha_inicio'] ?? null,
+            'fecha_fin' => $data['nuevo_fecha_fin'] ?? null,
+        ];
 
         foreach ([
             ...ColaboradorDocumentoCampos::paso3(),
@@ -391,7 +421,7 @@ class ColaboradorController extends Controller
         $tipoContrato = $colaborador->fresh()->tipo_contrato;
         $fechaInicio  = $colaborador->fresh()->fecha_ingreso_empresa;
         $fechaFin     = $colaborador->fresh()->contrato_fecha_hasta ?? $colaborador->fresh()->fecha_retiro_empresa;
-        $esNuevoContrato = $request->input('es_nuevo_contrato') === '1';
+        $esNuevoContrato = $request->boolean('es_nuevo_contrato') || $colaborador->esReingreso();
 
         // Actualizar contratos editados del historial
         $contratosEditados = json_decode($request->input('contratos_editados', '[]'), true);
@@ -410,27 +440,34 @@ class ColaboradorController extends Controller
         if ($tipoContrato) {
             if ($esNuevoContrato) {
                 // Crear nuevo registro con los campos dedicados del nuevo contrato
-                $nuevoTipo = $request->input('nuevo_tipo_contrato') ?: $tipoContrato;
-                $nuevoTipoOtro = $request->input('nuevo_tipo_contrato_otro');
-                $nuevoInicio  = $request->input('nuevo_fecha_inicio') ?: $fechaInicio;
-                $nuevoFin     = $request->input('nuevo_fecha_fin') ?: $fechaFin;
-
                 $contratoVigencia->crearContratoActual($colaborador, [
-                    'tipo_contrato'      => $nuevoTipo,
-                    'tipo_contrato_otro' => $nuevoTipoOtro,
-                    'fecha_inicio'       => $nuevoInicio,
-                    'fecha_fin'          => $nuevoFin,
+                    'tipo_contrato'      => $datosNuevoContrato['tipo_contrato'] ?: $tipoContrato,
+                    'tipo_contrato_otro' => $datosNuevoContrato['tipo_contrato_otro'],
+                    'fecha_inicio'       => $datosNuevoContrato['fecha_inicio'] ?: $fechaInicio,
+                    'fecha_fin'          => $datosNuevoContrato['fecha_fin'] ?: $fechaFin,
                     'registrado_por'     => $request->user()?->id,
                 ]);
             } else {
                 // Actualizar el contrato más reciente si existe, si no crear uno
                 $contratoActual = $contratoVigencia->contratoActual($colaborador);
                 if ($contratoActual) {
+                    $contratoActual->refresh();
+                    $editaronContratoActual = collect($contratosEditados)
+                        ->contains(fn (array $contratoData) => (int) ($contratoData['id'] ?? 0) === $contratoActual->id);
+                    $fechasContratoActual = $editaronContratoActual || ($primerContrato && ! $primerContrato->is($contratoActual))
+                        ? [
+                            'fecha_inicio' => $contratoActual->fecha_inicio,
+                            'fecha_fin' => $contratoActual->fecha_fin,
+                        ]
+                        : [
+                            'fecha_inicio' => $fechaInicioContratoPrincipal ?? $fechaInicio,
+                            'fecha_fin' => $fechaFinContratoPrincipal ?? $fechaFin,
+                        ];
+
                     $contratoVigencia->actualizarContrato($colaborador, $contratoActual, [
                         'tipo_contrato'      => $tipoContrato,
                         'tipo_contrato_otro' => $colaborador->fresh()->tipo_contrato_otro,
-                        'fecha_inicio'       => $fechaInicio,
-                        'fecha_fin'          => $fechaFin,
+                        ...$fechasContratoActual,
                     ]);
                 } else {
                     $colaborador->contratos()->create([
@@ -587,8 +624,13 @@ class ColaboradorController extends Controller
             ? $colaborador->fecha_retiro_empresa->toDateString()
             : null;
 
+        $contratoActual = $contratoVigencia->contratoActual($colaborador);
         $tipo = $datos['tipo'] ?? 'prorroga';
         $esFinalizacion = $tipo === 'finalizacion';
+
+        if ($esFinalizacion) {
+            $contratoActual?->update(['estado' => 'finalizado']);
+        }
 
         $colaborador->update([
             'fecha_retiro_empresa' => $request->date('fecha_retiro_empresa'),
@@ -625,7 +667,7 @@ class ColaboradorController extends Controller
         // Registrar en el historial de prórrogas
         ContratoProrroga::create([
             'colaborador_id' => $colaborador->id,
-            'contrato_id' => $contratoVigencia->contratoActual($colaborador)?->id,
+            'contrato_id' => $contratoActual?->id,
             'registrado_por' => $request->user()->id,
             'fecha_anterior' => $fechaAnterior ?? $request->date('fecha_retiro_empresa'),
             'fecha_inicio' => $esFinalizacion ? null : ($datos['fecha_inicio_prorroga'] ?? null),

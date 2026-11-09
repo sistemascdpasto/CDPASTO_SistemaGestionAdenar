@@ -136,6 +136,97 @@ class ColaboradorWizardTest extends TestCase
         );
     }
 
+    public function test_wizard_sorts_contract_history_by_start_date_and_keeps_each_contract_dates(): void
+    {
+        $user = $this->genteUser();
+        $colaborador = Colaborador::create([
+            'cedula' => '900100212',
+            'nombres' => 'Contrato',
+            'apellidos' => 'Histórico',
+            'tipo_contrato' => 'Término fijo',
+            'fecha_ingreso_empresa' => '2025-01-01',
+            'fecha_retiro_empresa' => '2026-03-31',
+            'estado_registro' => 'completo',
+            'wizard_step' => 4,
+        ]);
+        $colaborador->contratos()->create([
+            'tipo_contrato' => 'Término fijo',
+            'fecha_inicio' => '2025-01-01',
+            'fecha_fin' => '2025-12-31',
+            'estado' => 'activo',
+        ]);
+        $colaborador->contratos()->create([
+            'tipo_contrato' => 'Término fijo',
+            'fecha_inicio' => '2022-01-01',
+            'fecha_fin' => '2022-12-31',
+            'estado' => 'finalizado',
+        ]);
+
+        $response = $this->actingAs($user)->get(route('gente.colaboradores.wizard', [
+            'colaborador' => $colaborador,
+            'paso' => 3,
+        ]));
+
+        $response->assertInertia(fn ($page) => $page
+            ->where('historialContratos.0.fecha_inicio', '2022-01-01')
+            ->where('historialContratos.0.fecha_fin', '2022-12-31')
+            ->where('historialContratos.1.fecha_inicio', '2025-01-01')
+            ->where('historialContratos.1.fecha_fin', '2025-12-31')
+        );
+    }
+
+    public function test_editing_first_contract_dates_does_not_replace_the_current_contract_dates(): void
+    {
+        $user = $this->genteUser();
+        $colaborador = Colaborador::create([
+            'cedula' => '900100213',
+            'nombres' => 'Contrato',
+            'apellidos' => 'Vigente',
+            'tipo_contrato' => 'Término fijo',
+            'fecha_ingreso_empresa' => '2025-01-01',
+            'fecha_retiro_empresa' => '2026-03-31',
+            'estado_registro' => 'completo',
+            'wizard_step' => 4,
+        ]);
+        $primerContrato = $colaborador->contratos()->create([
+            'tipo_contrato' => 'Término fijo',
+            'fecha_inicio' => '2022-01-01',
+            'fecha_fin' => '2022-12-31',
+            'estado' => 'finalizado',
+        ]);
+        $contratoActual = $colaborador->contratos()->create([
+            'tipo_contrato' => 'Término fijo',
+            'fecha_inicio' => '2025-01-01',
+            'fecha_fin' => '2025-12-31',
+            'estado' => 'activo',
+        ]);
+        $contratoActual->prorrogas()->create([
+            'colaborador_id' => $colaborador->id,
+            'registrado_por' => $user->id,
+            'fecha_anterior' => '2025-12-31',
+            'fecha_inicio' => '2026-01-01',
+            'fecha_nueva' => '2026-03-31',
+            'tipo' => 'prorroga',
+        ]);
+
+        $this->actingAs($user)->patch(route('gente.colaboradores.paso3.update', $colaborador), [
+            'tipo_contrato' => 'Término fijo',
+            'fecha_ingreso_empresa' => '2022-01-01',
+            'fecha_retiro_empresa' => '2022-11-30',
+            'contratos_editados' => json_encode([[
+                'id' => $primerContrato->id,
+                'tipo_contrato' => 'Término fijo',
+                'fecha_inicio' => '2022-01-01',
+                'fecha_fin' => '2022-11-30',
+            ]]),
+        ])->assertRedirect();
+
+        $this->assertSame('2022-11-30', $primerContrato->fresh()->fecha_fin->toDateString());
+        $this->assertSame('2025-01-01', $contratoActual->fresh()->fecha_inicio->toDateString());
+        $this->assertSame('2025-12-31', $contratoActual->fresh()->fecha_fin->toDateString());
+        $this->assertSame('2026-03-31', $colaborador->fresh()->fecha_retiro_empresa->toDateString());
+    }
+
     public function test_paso1_update_can_change_the_linked_user(): void
     {
         $user = $this->genteUser();

@@ -86,7 +86,9 @@ class ContratosController extends Controller
                 'fecha_retiro_empresa',
                 'is_active',
             ])
-            ->withExists(['prorrogas as tiene_finalizacion' => fn ($query) => $query->where('tipo', 'finalizacion')])
+            ->withExists(['prorrogas as tiene_finalizacion' => fn ($query) => $query
+                ->where('tipo', 'finalizacion')
+                ->where((new Colaborador)->qualifyColumn('is_active'), false)])
             ->withCount(['prorrogas as cantidad_prorrogas' => fn (Builder $query) => $query->where('tipo', 'prorroga')])
             ->withMax(['prorrogas as ultima_fecha_prorroga' => fn (Builder $query) => $query->where('tipo', 'prorroga')], 'fecha_nueva')
             ->completos()
@@ -407,6 +409,7 @@ class ContratosController extends Controller
                     ->orderBy('fecha_inicio')
                     ->orderBy('id')
                     ->withCount(['prorrogas as cantidad_prorrogas' => fn ($query) => $query->where('tipo', 'prorroga')])
+                    ->withExists(['prorrogas as tiene_finalizacion' => fn ($query) => $query->where('tipo', 'finalizacion')])
                     ->with('registradoPor:id,name')
                     ->get()
                     ->map(fn ($c) => [
@@ -417,7 +420,7 @@ class ContratosController extends Controller
                         'fecha_fin' => $formatFecha($c->fecha_fin),
                         'cantidad_prorrogas' => $c->cantidad_prorrogas,
                         'es_aprendiz' => $c->esAprendiz(),
-                        'estado' => $c->estado,
+                        'estado' => $c->tiene_finalizacion ? 'finalizado' : $c->estado,
                         'observaciones' => $c->observaciones,
                         'registrado_por' => $c->registradoPor?->name,
                         'fecha_registro' => $c->created_at->format('d/m/Y H:i'),

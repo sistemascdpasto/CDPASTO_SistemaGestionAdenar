@@ -194,12 +194,46 @@ class Colaborador extends Model
 
     public function scopeSinFinalizacionConfirmada(Builder $query): Builder
     {
-        return $query->whereDoesntHave('prorrogas', fn (Builder $prorrogas) => $prorrogas->where('tipo', 'finalizacion'));
+        return $query->where(function (Builder $query): void {
+            $query->where('is_active', true)
+                ->orWhereDoesntHave('prorrogas', fn (Builder $prorrogas) => $prorrogas->where('tipo', 'finalizacion'));
+        });
     }
 
     public function tieneFinalizacionConfirmada(): bool
     {
-        return $this->prorrogas()->where('tipo', 'finalizacion')->exists();
+        $finalizacion = $this->prorrogas()
+            ->where('tipo', 'finalizacion')
+            ->orderByDesc('id')
+            ->first(['contrato_id', 'created_at']);
+
+        if (! $finalizacion || $this->is_active) {
+            return false;
+        }
+
+        return $finalizacion->contrato_id
+            ? ! $this->contratos()->where('id', '>', $finalizacion->contrato_id)->exists()
+            : ! $this->contratos()->where('created_at', '>', $finalizacion->created_at)->exists();
+    }
+
+    public function esReingreso(): bool
+    {
+        if (! $this->is_active) {
+            return false;
+        }
+
+        $finalizacion = $this->prorrogas()
+            ->where('tipo', 'finalizacion')
+            ->orderByDesc('id')
+            ->first(['contrato_id', 'created_at']);
+
+        if (! $finalizacion) {
+            return false;
+        }
+
+        return $finalizacion->contrato_id
+            ? ! $this->contratos()->where('id', '>', $finalizacion->contrato_id)->exists()
+            : ! $this->contratos()->where('created_at', '>', $finalizacion->created_at)->exists();
     }
 
     public function condicionesSalud(): HasMany

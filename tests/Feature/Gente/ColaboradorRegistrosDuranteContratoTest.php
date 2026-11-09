@@ -172,6 +172,7 @@ class ColaboradorRegistrosDuranteContratoTest extends TestCase
         $colaborador->update([
             'fecha_ingreso_empresa' => '2025-01-01',
             'fecha_retiro_empresa' => '2026-12-31',
+            'is_active' => false,
         ]);
         ContratoProrroga::create([
             'colaborador_id' => $colaborador->id,

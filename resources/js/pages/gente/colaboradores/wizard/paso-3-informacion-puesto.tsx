@@ -6,15 +6,14 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { PillToggle, SeccionCard } from '@/pages/seguridad/colaboradores/colaborador-form-fields';
-import { useForm } from '@inertiajs/react';
-import { router } from '@inertiajs/react';
+import { router, useForm } from '@inertiajs/react';
 import { ArrowLeft, ArrowRight, Briefcase, Building2, GraduationCap, History, LoaderCircle, Plus, QrCode, Umbrella, X } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { FormEventHandler, useState } from 'react';
+import { type WizardCatalogos } from './catalogos';
 import { CargoCombobox } from './components/cargo-combobox';
 import { ExternalSelect } from './components/external-select';
 import { SimpleFileField } from './components/simple-file-field';
-import { type WizardCatalogos } from './catalogos';
 import { type ColaboradorRecord, type Paso3FormData } from './types';
 import { errorDeArchivo } from './utils';
 
@@ -62,9 +61,19 @@ interface Paso3Props {
     onBack: () => void;
     redirectTo?: string;
     historialContratos?: HistorialContrato[];
+    esReingreso?: boolean;
 }
 
-export function Paso3InformacionPuesto({ colaborador, catalogos, historialCargos, onBack, redirectTo, historialContratos = [] }: Paso3Props) {
+export function Paso3InformacionPuesto({
+    colaborador,
+    catalogos,
+    historialCargos,
+    onBack,
+    redirectTo,
+    historialContratos = [],
+    esReingreso = false,
+}: Paso3Props) {
+    const contratoPrincipal = historialContratos[0] ?? null;
     const cargoActivo = historialCargos.find((h) => h.estado === 'ACTIVO');
     // El cargo con el que arrancó el formulario — no el del historial, que
     // muchos colaboradores reales no tienen (ej. los cargados por Excel). Si
@@ -75,7 +84,7 @@ export function Paso3InformacionPuesto({ colaborador, catalogos, historialCargos
     const cargoInicial = (colaborador.cargo as string) ?? '';
 
     // Si viene desde contratos con redirect_to, activar el checkbox por defecto
-    const [esNuevoContrato, setEsNuevoContrato] = useState(redirectTo === 'contratos');
+    const [esNuevoContrato, setEsNuevoContrato] = useState(redirectTo === 'contratos' || esReingreso);
     const [nuevoFechaInicio, setNuevoFechaInicio] = useState('');
     const [nuevoFechaFin, setNuevoFechaFin] = useState('');
     const [nuevoTipoContrato, setNuevoTipoContrato] = useState('');
@@ -83,10 +92,6 @@ export function Paso3InformacionPuesto({ colaborador, catalogos, historialCargos
 
     // Estado editable para cada contrato del historial
     const [contratosEditables, setContratosEditables] = useState<HistorialContrato[]>(historialContratos);
-
-    const setContratoField = (id: number, field: keyof HistorialContrato, value: string) => {
-        setContratosEditables((prev) => prev.map((c) => c.id === id ? { ...c, [field]: value } : c));
-    };
 
     const { data, setData, post, processing, errors, transform } = useForm<Paso3FormData>({
         area: (colaborador.area as Paso3FormData['area']) ?? '',
@@ -103,8 +108,8 @@ export function Paso3InformacionPuesto({ colaborador, catalogos, historialCargos
 
         centro: (colaborador.centro as string) ?? '',
         centro_trabajo: (colaborador.centro_trabajo as string) ?? '',
-        fecha_ingreso_empresa: (colaborador.fecha_ingreso_empresa as string) ?? '',
-        fecha_retiro_empresa: (colaborador.fecha_retiro_empresa as string) ?? '',
+        fecha_ingreso_empresa: contratoPrincipal?.fecha_inicio ?? (colaborador.fecha_ingreso_empresa as string) ?? '',
+        fecha_retiro_empresa: contratoPrincipal?.fecha_fin ?? (colaborador.fecha_retiro_empresa as string) ?? '',
         motivo_retiro: (colaborador.motivo_retiro as string) ?? '',
         motivo_retiro_observaciones: (colaborador.motivo_retiro_observaciones as string) ?? '',
         tipo_contrato: (colaborador.tipo_contrato as string) ?? '',
@@ -119,9 +124,29 @@ export function Paso3InformacionPuesto({ colaborador, catalogos, historialCargos
         vacaciones_pagadas_fecha_hasta: (colaborador.vacaciones_pagadas_fecha_hasta as string) ?? '',
     });
 
+    const setContratoField = (id: number, field: keyof HistorialContrato, value: string) => {
+        setContratosEditables((prev) => prev.map((c) => (c.id === id ? { ...c, [field]: value } : c)));
+
+        if (id === contratoPrincipal?.id && field === 'fecha_inicio') {
+            setData('fecha_ingreso_empresa', value);
+        } else if (id === contratoPrincipal?.id && field === 'fecha_fin') {
+            setData('fecha_retiro_empresa', value);
+        }
+    };
+
+    const setFechaContratoPrincipal = (field: 'fecha_inicio' | 'fecha_fin', value: string) => {
+        if (contratoPrincipal) {
+            setContratoField(contratoPrincipal.id, field, value);
+            return;
+        }
+
+        setData(field === 'fecha_inicio' ? 'fecha_ingreso_empresa' : 'fecha_retiro_empresa', value);
+    };
+
     const cambioDeCargo = data.cargo !== '' && data.cargo !== cargoInicial;
     const esAprendizSena = (data.cargo ?? '').toUpperCase().includes('APRENDIZ');
-    const mostrarMotivoRetiro = Boolean(data.fecha_retiro_empresa && data.fecha_retiro_empresa <= hoyISO);
+    const fechaRetiroColaborador = colaborador.fecha_retiro_empresa as string | null;
+    const mostrarMotivoRetiro = Boolean(fechaRetiroColaborador && fechaRetiroColaborador <= hoyISO);
 
     const existing = (key: string) => (colaborador?.[key] as { path: string; fecha: string | null }[]) ?? [];
 
@@ -170,7 +195,7 @@ export function Paso3InformacionPuesto({ colaborador, catalogos, historialCargos
                         <InputError message={errors.cargo} />
                     </div>
                     {cambioDeCargo && (
-                        <div className="grid gap-3 sm:col-span-2 border-l-2 border-emerald-300 pl-3 dark:border-emerald-500/30">
+                        <div className="grid gap-3 border-l-2 border-emerald-300 pl-3 sm:col-span-2 dark:border-emerald-500/30">
                             <div className="flex items-center gap-2">
                                 <Checkbox
                                     id="cambiar_cargo"
@@ -233,14 +258,14 @@ export function Paso3InformacionPuesto({ colaborador, catalogos, historialCargos
 
                 {historialCargos.length > 0 && (
                     <div className="mt-4 grid gap-2">
-                        <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+                        <div className="text-muted-foreground flex items-center gap-2 text-xs font-semibold">
                             <History className="size-3.5" />
                             Historial de cargos
                         </div>
                         <div className="grid gap-1.5">
                             {historialCargos.map((h) => (
-                                <div key={h.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-xs">
-                                    <span className="font-medium text-foreground">{h.cargo}</span>
+                                <div key={h.id} className="border-border flex items-center justify-between rounded-lg border px-3 py-2 text-xs">
+                                    <span className="text-foreground font-medium">{h.cargo}</span>
                                     <span className="text-muted-foreground">
                                         {h.fecha_inicio} — {h.fecha_fin ?? 'actual'}
                                     </span>
@@ -266,7 +291,12 @@ export function Paso3InformacionPuesto({ colaborador, catalogos, historialCargos
             </SeccionCard>
 
             {esAprendizSena && (
-                <SeccionCard icon={GraduationCap} titulo="Información aprendiz SENA" subtitulo="Solo visible porque el cargo asignado es Aprendiz" tono="verde">
+                <SeccionCard
+                    icon={GraduationCap}
+                    titulo="Información aprendiz SENA"
+                    subtitulo="Solo visible porque el cargo asignado es Aprendiz"
+                    tono="verde"
+                >
                     <div className="grid gap-4 sm:grid-cols-2">
                         <div className="grid gap-2">
                             <Label htmlFor="sena_especialidad">Especialidad o programa de formación</Label>
@@ -299,12 +329,7 @@ export function Paso3InformacionPuesto({ colaborador, catalogos, historialCargos
                         />
                         <div className="grid gap-2">
                             <Label htmlFor="sena_nit">NIT</Label>
-                            <Input
-                                id="sena_nit"
-                                value={data.sena_nit}
-                                onChange={(e) => setData('sena_nit', e.target.value)}
-                                disabled={processing}
-                            />
+                            <Input id="sena_nit" value={data.sena_nit} onChange={(e) => setData('sena_nit', e.target.value)} disabled={processing} />
                             <InputError message={errors.sena_nit} />
                         </div>
                         <div className="grid gap-2 sm:col-span-2">
@@ -367,7 +392,13 @@ export function Paso3InformacionPuesto({ colaborador, catalogos, historialCargos
                     </div>
                     <div className="grid gap-2">
                         <Label htmlFor="fecha_ingreso_empresa">Fecha inicio de contrato</Label>
-                        <Input id="fecha_ingreso_empresa" type="date" value={data.fecha_ingreso_empresa} onChange={(e) => setData('fecha_ingreso_empresa', e.target.value)} disabled={processing} />
+                        <Input
+                            id="fecha_ingreso_empresa"
+                            type="date"
+                            value={data.fecha_ingreso_empresa}
+                            onChange={(e) => setFechaContratoPrincipal('fecha_inicio', e.target.value)}
+                            disabled={processing}
+                        />
                         <InputError message={errors.fecha_ingreso_empresa} />
                     </div>
                     <div className="grid gap-2">
@@ -376,19 +407,7 @@ export function Paso3InformacionPuesto({ colaborador, catalogos, historialCargos
                             id="fecha_retiro_empresa"
                             type="date"
                             value={data.fecha_retiro_empresa}
-                            onChange={(e) => {
-                                const val = e.target.value;
-                                if (!val || val > hoyISO) {
-                                    setData((prev) => ({
-                                        ...prev,
-                                        fecha_retiro_empresa: val,
-                                        motivo_retiro: '',
-                                        motivo_retiro_observaciones: '',
-                                    }));
-                                } else {
-                                    setData('fecha_retiro_empresa', val);
-                                }
-                            }}
+                            onChange={(e) => setFechaContratoPrincipal('fecha_fin', e.target.value)}
                             disabled={processing}
                         />
                         <InputError message={errors.fecha_retiro_empresa} />
@@ -438,7 +457,7 @@ export function Paso3InformacionPuesto({ colaborador, catalogos, historialCargos
                                     </SelectItem>
                                 ))}
                                 <SelectSeparator />
-                                <SelectItem value="Otro" className="text-sky-600 font-medium">
+                                <SelectItem value="Otro" className="font-medium text-sky-600">
                                     <span className="flex items-center gap-1.5">
                                         <Plus className="size-3.5" />
                                         Agregar otro…
@@ -462,10 +481,10 @@ export function Paso3InformacionPuesto({ colaborador, catalogos, historialCargos
 
                     {/* Historial de contratos — campos editables */}
                     {contratosEditables.length > 0 && (
-                        <div className="sm:col-span-2 space-y-4">
-                            <p className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">Contratos registrados</p>
+                        <div className="space-y-4 sm:col-span-2">
+                            <p className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">Contratos registrados</p>
                             {contratosEditables.map((c, i) => (
-                                <div key={c.id} className="grid gap-4 sm:grid-cols-2 rounded-lg border p-4">
+                                <div key={c.id} className="grid gap-4 rounded-lg border p-4 sm:grid-cols-2">
                                     <div className="sm:col-span-2">
                                         <p className="text-foreground text-xs font-semibold">Contrato {i + 1}</p>
                                     </div>
@@ -489,16 +508,22 @@ export function Paso3InformacionPuesto({ colaborador, catalogos, historialCargos
                                     </div>
                                     <div className="grid gap-2 sm:col-span-2">
                                         <Label>Tipo de contrato</Label>
-                                        <Select value={c.tipo_contrato} onValueChange={(v) => setContratoField(c.id, 'tipo_contrato', v)} disabled={processing}>
+                                        <Select
+                                            value={c.tipo_contrato}
+                                            onValueChange={(v) => setContratoField(c.id, 'tipo_contrato', v)}
+                                            disabled={processing}
+                                        >
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Selecciona el tipo de contrato" />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {catalogos.tiposContrato.map((tipo) => (
-                                                    <SelectItem key={tipo} value={tipo}>{tipo}</SelectItem>
+                                                    <SelectItem key={tipo} value={tipo}>
+                                                        {tipo}
+                                                    </SelectItem>
                                                 ))}
                                                 <SelectSeparator />
-                                                <SelectItem value="Otro" className="text-sky-600 font-medium">
+                                                <SelectItem value="Otro" className="font-medium text-sky-600">
                                                     <span className="flex items-center gap-1.5">
                                                         <Plus className="size-3.5" />
                                                         Agregar otro…
@@ -523,17 +548,17 @@ export function Paso3InformacionPuesto({ colaborador, catalogos, historialCargos
                     )}
 
                     {/* Checkbox agregar nuevo contrato */}
-                    <div className="sm:col-span-2 flex items-center gap-2 rounded-lg border border-dashed border-amber-300 bg-amber-50/50 px-3 py-2 dark:border-amber-700/40 dark:bg-amber-950/10">
+                    <div className="flex items-center gap-2 rounded-lg border border-dashed border-amber-300 bg-amber-50/50 px-3 py-2 sm:col-span-2 dark:border-amber-700/40 dark:bg-amber-950/10">
                         <Checkbox
                             id="es_nuevo_contrato"
                             checked={esNuevoContrato}
                             onCheckedChange={(checked) => {
                                 setEsNuevoContrato(checked === true);
                             }}
-                            disabled={processing}
+                            disabled={processing || esReingreso}
                         />
                         <Label htmlFor="es_nuevo_contrato" className="cursor-pointer text-sm font-medium text-amber-800 dark:text-amber-300">
-                            Agregar nuevo contrato
+                            {esReingreso ? 'Registrar nuevo contrato por reingreso' : 'Agregar nuevo contrato'}
                         </Label>
                     </div>
 
@@ -549,6 +574,7 @@ export function Paso3InformacionPuesto({ colaborador, catalogos, historialCargos
                                     onChange={(e) => setNuevoFechaInicio(e.target.value)}
                                     disabled={processing}
                                 />
+                                <InputError message={errors.nuevo_fecha_inicio} />
                             </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="nuevo_fecha_fin">Fecha finalización</Label>
@@ -559,6 +585,7 @@ export function Paso3InformacionPuesto({ colaborador, catalogos, historialCargos
                                     onChange={(e) => setNuevoFechaFin(e.target.value)}
                                     disabled={processing}
                                 />
+                                <InputError message={errors.nuevo_fecha_fin} />
                             </div>
                             <div className="grid gap-2 sm:col-span-2">
                                 <Label>Tipo de contrato (nuevo)</Label>
@@ -568,10 +595,12 @@ export function Paso3InformacionPuesto({ colaborador, catalogos, historialCargos
                                     </SelectTrigger>
                                     <SelectContent>
                                         {catalogos.tiposContrato.map((tipo) => (
-                                            <SelectItem key={tipo} value={tipo}>{tipo}</SelectItem>
+                                            <SelectItem key={tipo} value={tipo}>
+                                                {tipo}
+                                            </SelectItem>
                                         ))}
                                         <SelectSeparator />
-                                        <SelectItem value="Otro" className="text-sky-600 font-medium">
+                                        <SelectItem value="Otro" className="font-medium text-sky-600">
                                             <span className="flex items-center gap-1.5">
                                                 <Plus className="size-3.5" />
                                                 Agregar otro…
@@ -579,6 +608,7 @@ export function Paso3InformacionPuesto({ colaborador, catalogos, historialCargos
                                         </SelectItem>
                                     </SelectContent>
                                 </Select>
+                                <InputError message={errors.nuevo_tipo_contrato} />
                                 {nuevoTipoContrato === 'Otro' && (
                                     <div className="grid gap-1.5 border-l-2 border-sky-300 pl-3 dark:border-sky-500/30">
                                         <Input
@@ -607,11 +637,11 @@ export function Paso3InformacionPuesto({ colaborador, catalogos, historialCargos
                         />
                         <InputError message={errors.codigo_qr_skap} />
                     </div>
-                    <div className="flex flex-col items-center gap-2 rounded-xl border border-border bg-card p-3">
+                    <div className="border-border bg-card flex flex-col items-center gap-2 rounded-xl border p-3">
                         {data.codigo_qr_skap ? (
                             <QRCodeSVG value={data.codigo_qr_skap} size={100} />
                         ) : (
-                            <div className="flex size-[100px] items-center justify-center text-center text-xs text-muted-foreground">Sin código</div>
+                            <div className="text-muted-foreground flex size-[100px] items-center justify-center text-center text-xs">Sin código</div>
                         )}
                     </div>
                 </div>
@@ -624,23 +654,40 @@ export function Paso3InformacionPuesto({ colaborador, catalogos, historialCargos
                         value={data.vacaciones_aplica}
                         onChange={(value) => setData('vacaciones_aplica', value)}
                         disabled={processing}
-                        options={[{ value: 'no_aplica', label: 'No aplica' }, { value: 'aplica', label: 'Aplica' }]}
+                        options={[
+                            { value: 'no_aplica', label: 'No aplica' },
+                            { value: 'aplica', label: 'Aplica' },
+                        ]}
                     />
                     {data.vacaciones_aplica === 'aplica' && (
                         <div className="grid gap-4 border-l-2 border-emerald-300 pl-4 sm:grid-cols-2 dark:border-emerald-500/30">
                             <div className="grid gap-2">
                                 <Label htmlFor="vacaciones_fecha_desde">Fecha desde</Label>
-                                <Input id="vacaciones_fecha_desde" type="date" min={minDateFor(colaborador.vacaciones_fecha_desde)} value={data.vacaciones_fecha_desde} onChange={(e) => setData('vacaciones_fecha_desde', e.target.value)} disabled={processing} />
+                                <Input
+                                    id="vacaciones_fecha_desde"
+                                    type="date"
+                                    min={minDateFor(colaborador.vacaciones_fecha_desde)}
+                                    value={data.vacaciones_fecha_desde}
+                                    onChange={(e) => setData('vacaciones_fecha_desde', e.target.value)}
+                                    disabled={processing}
+                                />
                                 <InputError message={errors.vacaciones_fecha_desde} />
                             </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="vacaciones_fecha_hasta">Fecha hasta</Label>
-                                <Input id="vacaciones_fecha_hasta" type="date" min={minDateFor(colaborador.vacaciones_fecha_hasta)} value={data.vacaciones_fecha_hasta} onChange={(e) => setData('vacaciones_fecha_hasta', e.target.value)} disabled={processing} />
+                                <Input
+                                    id="vacaciones_fecha_hasta"
+                                    type="date"
+                                    min={minDateFor(colaborador.vacaciones_fecha_hasta)}
+                                    value={data.vacaciones_fecha_hasta}
+                                    onChange={(e) => setData('vacaciones_fecha_hasta', e.target.value)}
+                                    disabled={processing}
+                                />
                                 <InputError message={errors.vacaciones_fecha_hasta} />
                             </div>
                         </div>
                     )}
-                    <div className="grid gap-2 border-t border-border pt-4 sm:grid-cols-2">
+                    <div className="border-border grid gap-2 border-t pt-4 sm:grid-cols-2">
                         <div className="grid gap-2">
                             <Label htmlFor="vacaciones_pagadas_fecha_desde">Vacaciones pagadas — desde</Label>
                             <Input
@@ -676,7 +723,7 @@ export function Paso3InformacionPuesto({ colaborador, catalogos, historialCargos
                 </Button>
                 <Button type="submit" disabled={processing}>
                     {processing && <LoaderCircle className="size-4 animate-spin" />}
-                    Siguiente
+                    {esReingreso ? 'Confirmar reingreso' : 'Siguiente'}
                     <ArrowRight className="size-4" />
                 </Button>
             </div>
