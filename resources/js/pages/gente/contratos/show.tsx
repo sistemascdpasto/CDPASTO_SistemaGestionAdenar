@@ -1654,15 +1654,22 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                     const arrastrandoEsteContrato = draggingContratoId === contrato.id;
 
                                     return (
-                                        <div key={contrato.id} className="bg-card flex items-center gap-4 px-4 py-3 transition-colors">
-                                            <div className="flex min-w-0 flex-1 items-center gap-3">
-                                                <FileText className="text-muted-foreground size-3.5 shrink-0" />
-                                                <span className="text-foreground text-sm font-semibold whitespace-nowrap">Contrato {index + 1}</span>
-                                                <Badge variant="outline" className="shrink-0 px-2 py-0.5 text-[10px]">
-                                                    {contrato.tipo_contrato || 'Sin tipo'}
-                                                </Badge>
-                                                <span className="text-muted-foreground text-xs whitespace-nowrap">
-                                                    {formatFecha(contrato.fecha_inicio)} — {formatFecha(contrato.fecha_fin)}
+                                        <div
+                                            key={contrato.id}
+                                            className="bg-card grid grid-cols-1 gap-3 px-4 py-3 transition-colors sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+                                        >
+                                            <div className="flex min-w-0 flex-col gap-1">
+                                                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                                                    <FileText className="text-muted-foreground size-3.5 shrink-0" />
+                                                    <span className="text-foreground text-sm font-semibold whitespace-nowrap">
+                                                        Contrato {index + 1}
+                                                    </span>
+                                                    <Badge variant="outline" className="shrink-0 px-2 py-0.5 text-[10px]">
+                                                        {contrato.tipo_contrato || 'Sin tipo'}
+                                                    </Badge>
+                                                </div>
+                                                <span className="text-muted-foreground pl-5 text-xs">
+                                                    Vigencia: {formatFecha(contrato.fecha_inicio)} — {formatFecha(contrato.fecha_fin)}
                                                 </span>
                                             </div>
                                             <div className="flex shrink-0 items-center gap-1.5">
