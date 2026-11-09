@@ -925,7 +925,7 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                                                     }
                                                                 />
                                                             ) : (
-                                                                (c.fecha_inicio ?? '—')
+                                                                formatFecha(c.fecha_inicio)
                                                             )}
                                                         </TableCell>
                                                         <TableCell>
@@ -939,7 +939,7 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                                                     }
                                                                 />
                                                             ) : (
-                                                                (c.fecha_fin ?? '—')
+                                                                formatFecha(c.fecha_fin)
                                                             )}
                                                         </TableCell>
                                                         <TableCell>{colaborador.cargo || '—'}</TableCell>
