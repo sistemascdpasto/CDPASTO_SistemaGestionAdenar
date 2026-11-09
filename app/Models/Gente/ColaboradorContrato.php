@@ -3,6 +3,7 @@
 namespace App\Models\Gente;
 
 use App\Models\Seguridad\Colaborador;
+use App\Models\Seguridad\ColaboradorDocumento;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -42,6 +43,12 @@ class ColaboradorContrato extends Model
     public function prorrogas(): HasMany
     {
         return $this->hasMany(ContratoProrroga::class, 'contrato_id');
+    }
+
+    public function documentos(): HasMany
+    {
+        return $this->hasMany(ColaboradorDocumento::class, 'contrato_id')
+            ->where('campo', 'documento_contrato');
     }
 
     public function esAprendiz(): bool

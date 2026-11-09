@@ -511,17 +511,138 @@ class ColaboradorRegistrosDuranteContratoTest extends TestCase
         Storage::fake('public');
         $user = $this->genteUser();
         $colaborador = $this->colaboradorCompleto();
+        $contrato = $colaborador->contratos()->create([
+            'tipo_contrato' => 'Término fijo',
+            'fecha_inicio' => '2026-01-01',
+            'fecha_fin' => '2026-12-31',
+            'estado' => 'activo',
+        ]);
         $documento = UploadedFile::fake()->create('contrato.pdf', 100, 'application/pdf');
 
         $this->actingAs($user)->post(route('gente.contratos.documentos.store', $colaborador), [
+            'contrato_id' => $contrato->id,
             'documento_contrato' => [$documento],
         ])->assertRedirect();
 
         $registro = $colaborador->documentos()->where('campo', 'documento_contrato')->firstOrFail();
+        $this->assertSame($contrato->id, $registro->contrato_id);
+        $this->assertSame('2026-01-01', $registro->fecha_documento->toDateString());
         Storage::disk('public')->assertExists($registro->path);
 
         $this->actingAs($user)->post(route('gente.contratos.documentos.store', $colaborador), [])
             ->assertSessionHasErrors('documentos');
+    }
+
+    public function test_it_removes_a_contract_document_file_without_deleting_its_record(): void
+    {
+        Storage::fake('public');
+        $user = $this->genteUser();
+        $colaborador = $this->colaboradorCompleto();
+        $archivo = UploadedFile::fake()->create('contrato.pdf', 100, 'application/pdf');
+        $path = $archivo->store('colaboradores/documentos', 'public');
+        $documento = $colaborador->documentos()->create([
+            'campo' => 'documento_contrato',
+            'path' => $path,
+            'nombre_original' => 'contrato.pdf',
+        ]);
+
+        $this->actingAs($user)
+            ->patch(route('gente.contratos.documentos.archivo.clear', [$colaborador, $documento]))
+            ->assertRedirect()
+            ->assertSessionHas('status', 'Archivo quitado correctamente.');
+
+        $documento->refresh();
+        $this->assertModelExists($documento);
+        $this->assertNull($documento->path);
+        $this->assertNull($documento->nombre_original);
+        Storage::disk('public')->assertMissing($path);
+    }
+
+    public function test_contract_document_uses_the_same_dates_as_its_contract_history(): void
+    {
+        Storage::fake('public');
+        $user = $this->genteUser();
+        $colaborador = $this->colaboradorCompleto();
+        $contrato = $colaborador->contratos()->create([
+            'tipo_contrato' => 'Término fijo',
+            'fecha_inicio' => '2026-01-01',
+            'fecha_fin' => '2026-12-31',
+            'estado' => 'activo',
+        ]);
+        $path = UploadedFile::fake()->create('contrato.pdf', 100, 'application/pdf')
+            ->store('colaboradores/documentos', 'public');
+        $documento = $colaborador->documentos()->create([
+            'contrato_id' => $contrato->id,
+            'campo' => 'documento_contrato',
+            'path' => $path,
+            'nombre_original' => 'contrato.pdf',
+            'fecha_documento' => $contrato->fecha_inicio,
+        ]);
+
+        $this->actingAs($user)->patch(
+            route('gente.contratos.historial.update', [$colaborador, $contrato]),
+            [
+                'tipo_contrato' => 'Indefinido',
+                'fecha_inicio' => '2026-02-01',
+                'fecha_fin' => '2027-01-31',
+            ],
+        )->assertRedirect();
+
+        $this->actingAs($user)
+            ->get(route('gente.contratos.show', $colaborador))
+            ->assertInertia(fn ($page) => $page
+                ->where('colaborador.historial_contratos.0.id', $contrato->id)
+                ->where('colaborador.historial_contratos.0.tipo_contrato', 'Indefinido')
+                ->where('colaborador.historial_contratos.0.fecha_inicio', '2026-02-01')
+                ->where('colaborador.historial_contratos.0.fecha_fin', '2027-01-31')
+                ->where('documentos.documento_contrato.0.contrato_id', $contrato->id)
+                ->where('documentos.documento_contrato.0.path', Storage::url($path))
+            );
+
+        $this->assertSame($contrato->id, $documento->fresh()->contrato_id);
+    }
+
+    public function test_deleting_the_last_contract_removes_its_document_and_clears_current_contract_data(): void
+    {
+        Storage::fake('public');
+        $user = $this->genteUser();
+        $colaborador = $this->colaboradorCompleto();
+        $colaborador->update([
+            'tipo_contrato' => 'Término fijo',
+            'fecha_ingreso_empresa' => '2026-01-01',
+            'fecha_retiro_empresa' => '2026-12-31',
+        ]);
+        $contrato = $colaborador->contratos()->create([
+            'tipo_contrato' => 'Término fijo',
+            'fecha_inicio' => '2026-01-01',
+            'fecha_fin' => '2026-12-31',
+            'estado' => 'activo',
+        ]);
+        $path = UploadedFile::fake()->create('contrato.pdf', 100, 'application/pdf')
+            ->store('colaboradores/documentos', 'public');
+        $documento = $colaborador->documentos()->create([
+            'contrato_id' => $contrato->id,
+            'campo' => 'documento_contrato',
+            'path' => $path,
+            'nombre_original' => 'contrato.pdf',
+        ]);
+
+        $this->actingAs($user)
+            ->delete(route('gente.contratos.historial.destroy', [$colaborador, $contrato]))
+            ->assertRedirect();
+
+        $this->assertModelMissing($contrato);
+        $this->assertModelMissing($documento);
+        $this->assertNull($colaborador->fresh()->fecha_ingreso_empresa);
+        $this->assertNull($colaborador->fresh()->fecha_retiro_empresa);
+        Storage::disk('public')->assertMissing($path);
+
+        $this->actingAs($user)
+            ->get(route('gente.contratos.show', $colaborador))
+            ->assertInertia(fn ($page) => $page
+                ->where('colaborador.historial_contratos', [])
+                ->where('documentos.documento_contrato', [])
+            );
     }
 
     public function test_it_accepts_contract_documents_larger_than_five_megabytes(): void
@@ -529,9 +650,16 @@ class ColaboradorRegistrosDuranteContratoTest extends TestCase
         Storage::fake('public');
         $user = $this->genteUser();
         $colaborador = $this->colaboradorCompleto();
+        $contrato = $colaborador->contratos()->create([
+            'tipo_contrato' => 'Término fijo',
+            'fecha_inicio' => '2026-01-01',
+            'fecha_fin' => '2026-12-31',
+            'estado' => 'activo',
+        ]);
         $documento = UploadedFile::fake()->create('contrato.pdf', 6 * 1024, 'application/pdf');
 
         $this->actingAs($user)->post(route('gente.contratos.documentos.store', $colaborador), [
+            'contrato_id' => $contrato->id,
             'documento_contrato' => [$documento],
         ])->assertRedirect();
 

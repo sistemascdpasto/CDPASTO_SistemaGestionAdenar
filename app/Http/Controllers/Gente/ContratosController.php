@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Gente\UpdateContratoColaboradorRequest;
 use App\Http\Requests\Gente\UpdateContratoProrrogaRequest;
 use App\Models\Gente\ContratoProrroga;
+use App\Models\Gente\ColaboradorContrato;
 use App\Models\Seguridad\Colaborador;
 use App\Models\Seguridad\ColaboradorDocumento;
 use App\Services\Gente\ContratoVigenciaService;
@@ -21,6 +22,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 use Maatwebsite\Excel\Facades\Excel;
@@ -117,7 +119,7 @@ class ContratosController extends Controller
             if (! empty($colaborador->{$campo})) {
                 $documentosMap[$campo][] = [
                     'id' => null,
-                    'path' => $colaborador->{$campo},
+                    'path' => Storage::url($colaborador->{$campo}),
                     'fecha' => null,
                     'name' => basename($colaborador->{$campo}),
                 ];
@@ -133,9 +135,10 @@ class ContratosController extends Controller
         foreach ($docsDB as $doc) {
             $documentosMap[$doc->campo][] = [
                 'id' => $doc->id,
-                'path' => $doc->path,
+                'contrato_id' => $doc->contrato_id,
+                'path' => $doc->path ? Storage::url($doc->path) : null,
                 'fecha' => $doc->fecha_documento?->format('Y-m-d'),
-                'name' => $doc->nombre_original ?? basename($doc->path),
+                'name' => $doc->nombre_original ?? ($doc->path ? basename($doc->path) : null),
                 'tipo_contrato' => $doc->tipo_contrato,
             ];
         }
@@ -308,6 +311,7 @@ class ContratosController extends Controller
                 'tipo_contrato' => $colaborador->tipo_contrato,
                 'fecha_ingreso_empresa' => $formatFecha($colaborador->fecha_ingreso_empresa),
                 'fecha_retiro_empresa' => $formatFecha($colaborador->fecha_retiro_empresa),
+                'fecha_vencimiento_vigente' => $formatFecha($ultimaProrroga?->fecha_nueva ?? $colaborador->fecha_retiro_empresa),
                 'contrato_actual_id' => $contratoActual?->id,
                 'cantidad_prorrogas_contrato_actual' => $contratoVigencia->cantidadProrrogas($colaborador, $contratoActual),
                 'contrato_actual_es_aprendiz' => $contratoActual
@@ -354,10 +358,15 @@ class ContratosController extends Controller
                     ->values()
                     ->all(),
 
-                // Indicador de alerta: ≤ 35 días para el vencimiento
-                'dias_para_vencimiento' => $colaborador->fecha_retiro_empresa
-                    ? (int) now()->startOfDay()->diffInDays($colaborador->fecha_retiro_empresa, false)
-                    : null,
+                // Indicador de alerta: ≤ 35 días para el vencimiento.
+                // Si hay prórrogas, la fecha vigente es la fecha_nueva de la última prórroga;
+                // si no, se usa fecha_retiro_empresa del colaborador.
+                'dias_para_vencimiento' => (function () use ($colaborador, $ultimaProrroga) {
+                    $fechaVigente = $ultimaProrroga?->fecha_nueva ?? $colaborador->fecha_retiro_empresa;
+                    return $fechaVigente
+                        ? (int) now()->startOfDay()->diffInDays($fechaVigente, false)
+                        : null;
+                })(),
 
                 // ¿Ya se registró una finalización? Si sí, no mostrar banner ni permitir más prórrogas
                 'tiene_finalizacion' => $colaborador->tieneFinalizacionConfirmada(),
@@ -442,7 +451,12 @@ class ContratosController extends Controller
             $rules[$campo] = ['nullable', 'array'];
             $rules["{$campo}.*"] = ['file', 'mimes:pdf,doc,docx,jpg,jpeg,png'];
         }
-        $rules['tipo_contrato'] = ['nullable', 'string'];
+        $rules['contrato_id'] = [
+            'required',
+            'integer',
+            Rule::exists('colaborador_contratos', 'id')
+                ->where('colaborador_id', $colaborador->id),
+        ];
 
         if (! $request->hasFile('documento_contrato') && ! $request->hasFile('documento_prorroga')) {
             return back()->withErrors([
@@ -450,9 +464,8 @@ class ContratosController extends Controller
             ]);
         }
 
-        $request->validate($rules);
-
-        $tipoContrato = $request->input('tipo_contrato');
+        $validated = $request->validate($rules);
+        $contrato = $colaborador->contratos()->findOrFail($validated['contrato_id']);
 
         foreach ($camposPermitidos as $campo) {
             $archivos = $request->file($campo, []);
@@ -460,13 +473,33 @@ class ContratosController extends Controller
 
             foreach (array_filter($archivos) as $archivo) {
                 $path = $archivo->store('colaboradores/documentos', 'public');
-                $colaborador->documentos()->create([
+                if (! $path) {
+                    return back()->withErrors([
+                        'documentos' => 'No fue posible guardar el archivo. Intenta nuevamente.',
+                    ]);
+                }
+
+                $documento = $contrato->documentos()->first();
+                $pathAnterior = $documento?->path;
+                $atributos = [
+                    'colaborador_id' => $colaborador->id,
+                    'contrato_id' => $contrato->id,
                     'campo' => $campo,
                     'path' => $path,
                     'nombre_original' => $archivo->getClientOriginalName(),
-                    'tipo_contrato' => $campo === 'documento_contrato' ? $tipoContrato : null,
-                    'fecha_documento' => now()->toDateString(),
-                ]);
+                    'tipo_contrato' => $contrato->tipo_contrato,
+                    'fecha_documento' => $contrato->fecha_inicio,
+                ];
+
+                if ($documento) {
+                    $documento->update($atributos);
+                } else {
+                    $documento = $colaborador->documentos()->create($atributos);
+                }
+
+                if ($pathAnterior && $pathAnterior !== $path) {
+                    Storage::disk('public')->delete($pathAnterior);
+                }
             }
         }
 
@@ -489,6 +522,31 @@ class ContratosController extends Controller
         $documento->delete();
 
         return back()->with('status', 'Documento eliminado correctamente.');
+    }
+
+    /**
+     * Elimina solo el archivo físico del documento y limpia el path,
+     * dejando el registro en la base de datos.
+     */
+    public function clearArchivoDocumento(Colaborador $colaborador, ColaboradorDocumento $documento): RedirectResponse
+    {
+        if (
+            $documento->colaborador_id !== $colaborador->id
+            || ! array_key_exists($documento->campo, self::CAMPOS_CONTRATO)
+        ) {
+            abort(403);
+        }
+
+        if ($documento->path && Storage::disk('public')->exists($documento->path)) {
+            Storage::disk('public')->delete($documento->path);
+        }
+
+        $documento->update([
+            'path' => null,
+            'nombre_original' => null,
+        ]);
+
+        return back()->with('status', 'Archivo quitado correctamente.');
     }
 
     /**
@@ -712,5 +770,84 @@ class ContratosController extends Controller
         $nombreArchivo = 'prorroga-contrato-'.str($colaborador->nombre_completo)->slug().'.pdf';
 
         return $pdf->download($nombreArchivo);
+    }
+
+    /**
+     * Edita directamente un registro de colaborador_contratos.
+     */
+    public function updateContratoHistorial(
+        Request $request,
+        Colaborador $colaborador,
+        ColaboradorContrato $contrato,
+    ): RedirectResponse {
+        abort_if($contrato->colaborador_id !== $colaborador->id, 403);
+        abort_if($colaborador->tieneFinalizacionConfirmada(), 403, 'El contrato ya fue finalizado.');
+
+        $data = $request->validate([
+            'fecha_inicio'      => ['nullable', 'date'],
+            'fecha_fin'         => ['nullable', 'date'],
+            'tipo_contrato'     => ['nullable', 'string', 'max:255'],
+            'tipo_contrato_otro'=> ['nullable', 'string', 'max:255'],
+        ]);
+
+        DB::transaction(function () use ($contrato, $colaborador, $data): void {
+            $contrato->update($data);
+            $contrato->documentos()->update([
+                'fecha_documento' => $contrato->fecha_inicio,
+                'tipo_contrato' => $contrato->tipo_contrato,
+            ]);
+
+            if ($contrato->estado === 'activo') {
+                $colaborador->update([
+                    'fecha_ingreso_empresa' => $contrato->fecha_inicio,
+                    'fecha_retiro_empresa' => $contrato->fecha_fin,
+                    'tipo_contrato' => $contrato->tipo_contrato,
+                    'tipo_contrato_otro' => $contrato->tipo_contrato_otro,
+                ]);
+            }
+        });
+
+        return back()->with('status', 'Contrato actualizado correctamente.');
+    }
+
+    /**
+     * Elimina un registro de colaborador_contratos y sus prórrogas asociadas.
+     */
+    public function destroyContratoHistorial(
+        Colaborador $colaborador,
+        ColaboradorContrato $contrato,
+    ): RedirectResponse {
+        abort_if($contrato->colaborador_id !== $colaborador->id, 403);
+
+        $rutasDocumentos = $contrato->documentos()
+            ->whereNotNull('path')
+            ->pluck('path')
+            ->merge(
+                $contrato->prorrogas()
+                    ->whereNotNull('documento_path')
+                    ->pluck('documento_path'),
+            )
+            ->unique();
+
+        DB::transaction(function () use ($contrato, $colaborador): void {
+            $contrato->delete();
+
+            if ($contrato->estado === 'activo') {
+                $colaborador->update([
+                    'fecha_ingreso_empresa' => null,
+                    'fecha_retiro_empresa' => null,
+                    'tipo_contrato' => null,
+                    'tipo_contrato_otro' => null,
+                ]);
+            }
+        });
+
+        foreach ($rutasDocumentos as $ruta) {
+            if (Storage::disk('public')->exists($ruta)) {
+                Storage::disk('public')->delete($ruta);
+            }
+        }
+
+        return back()->with('status', 'Contrato eliminado correctamente.');
     }
 }

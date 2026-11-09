@@ -2,6 +2,7 @@
 
 namespace App\Models\Seguridad;
 
+use App\Models\Gente\ColaboradorContrato;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -11,6 +12,7 @@ class ColaboradorDocumento extends Model
 
     protected $fillable = [
         'colaborador_id',
+        'contrato_id',
         'campo',
         'path',
         'nombre_original',
@@ -28,5 +30,10 @@ class ColaboradorDocumento extends Model
     public function colaborador(): BelongsTo
     {
         return $this->belongsTo(Colaborador::class);
+    }
+
+    public function contrato(): BelongsTo
+    {
+        return $this->belongsTo(ColaboradorContrato::class, 'contrato_id');
     }
 }

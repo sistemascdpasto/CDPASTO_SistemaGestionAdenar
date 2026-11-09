@@ -30,9 +30,10 @@ import {
     Trash2,
     Upload,
     User,
+    X,
     XCircle,
 } from 'lucide-react';
-import { FormEventHandler, useEffect, useRef, useState } from 'react';
+import { FormEventHandler, useRef, useState } from 'react';
 
 interface HistorialCargoItem {
     id: number;
@@ -79,6 +80,7 @@ interface ColaboradorContrato {
     tipo_contrato: string | null;
     fecha_ingreso_empresa: string | null;
     fecha_retiro_empresa: string | null;
+    fecha_vencimiento_vigente?: string | null;
     is_active: boolean;
     imagen: string | null;
 
@@ -119,10 +121,16 @@ interface HistorialContratoItem {
     es_aprendiz?: boolean;
 }
 
-
-interface DocumentoContratoItem extends DocumentInfo {
+interface DocumentoContratoItem extends Omit<DocumentInfo, 'path' | 'name'> {
+    path: string | null;
+    name?: string | null;
     id?: number | null;
+    contrato_id?: number | null;
     tipo_contrato?: string | null;
+}
+
+interface DocumentoPreavisoItem extends DocumentInfo {
+    id: number;
 }
 
 interface FechaPreavisoItem {
@@ -132,12 +140,7 @@ interface FechaPreavisoItem {
     estado: string;
     fecha_desde?: string | null;
     fecha_hasta?: string | null;
-    documento: {
-        id: number;
-        name: string;
-        path: string;
-        fecha?: string | null;
-    } | null;
+    documento: DocumentoPreavisoItem | null;
 }
 
 interface Props {
@@ -148,7 +151,7 @@ interface Props {
         tiposContrato: string[];
     };
     fechas_preaviso?: FechaPreavisoItem[];
-    otros_preavisos?: DocumentoContratoItem[];
+    otros_preavisos?: DocumentoPreavisoItem[];
 }
 
 function formatFecha(fecha: string | null | undefined): string {
@@ -184,7 +187,13 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
         { title: colaborador.nombre_completo, href: `/modules/gente/contratos/${colaborador.id}` },
     ];
 
-    const { data: _data, post, processing: _processing, errors, reset } = useForm<{
+    const {
+        data: _data,
+        post,
+        processing: _processing,
+        errors,
+        reset,
+    } = useForm<{
         documento_contrato: File[];
         documento_carnet_ingreso_cd: File[];
         documento_preaviso_terminacion: File[];
@@ -234,6 +243,14 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
     const [pasoActual, setPasoActual] = useState(1);
     const [contratoEnEdicion, setContratoEnEdicion] = useState(false);
     const [eliminandoContrato, setEliminandoContrato] = useState(false);
+    const [contratoEditandoId, setContratoEditandoId] = useState<number | null>(null);
+    const [contratoEditandoDatos, setContratoEditandoDatos] = useState<{ fecha_inicio: string; fecha_fin: string; tipo_contrato: string }>({
+        fecha_inicio: '',
+        fecha_fin: '',
+        tipo_contrato: '',
+    });
+    const [guardandoContratoHistorial, setGuardandoContratoHistorial] = useState(false);
+    const [eliminandoContratoHistorial, setEliminandoContratoHistorial] = useState<number | null>(null);
     const [eliminandoAntecedente, setEliminandoAntecedente] = useState(false);
     const [prorrogaEnEdicion, setProrrogaEnEdicion] = useState<number | null>(null);
     const [eliminandoId, setEliminandoId] = useState<number | null>(null);
@@ -255,38 +272,26 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
     const [_mostrarFormNuevaFecha, _setMostrarFormNuevaFecha] = useState(false);
     const [nuevaFechaInput, setNuevaFechaInput] = useState('');
     const [subiendoContrato, setSubiendoContrato] = useState<string | null>(null);
-    const [draggingContrato, setDraggingContrato] = useState(false);
-    const [tipoContratoSeleccionado, setTipoContratoSeleccionado] = useState<string>('');
-    const contratoInputRef = useRef<HTMLInputElement | null>(null);
-    const nombreContratoSubiendoRef = useRef<string | null>(null);
+    const [contratoSubiendoId, setContratoSubiendoId] = useState<number | null>(null);
+    const [draggingContratoId, setDraggingContratoId] = useState<number | null>(null);
+    const contratoInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
-    const handleSubirContrato = (file: File) => {
-        nombreContratoSubiendoRef.current = file.name;
+    const handleSubirContrato = (contratoId: number, file: File) => {
+        setContratoSubiendoId(contratoId);
         setSubiendoContrato(file.name);
         const fd = new FormData();
         fd.append('documento_contrato[]', file);
-        if (tipoContratoSeleccionado) fd.append('tipo_contrato', tipoContratoSeleccionado);
+        fd.append('contrato_id', String(contratoId));
         router.post(`/modules/gente/contratos/${colaborador.id}/documentos`, fd, {
             forceFormData: true,
             preserveScroll: true,
             onFinish: () => {
-                nombreContratoSubiendoRef.current = null;
+                setContratoSubiendoId(null);
                 setSubiendoContrato(null);
-                setTipoContratoSeleccionado('');
             },
         });
     };
 
-    // Precarga el tipo del siguiente contrato sin PDF desde historial_contratos
-    useEffect(() => {
-        const docs = documentos['documento_contrato'] || [];
-        const contratos = colaborador.historial_contratos ?? [];
-        const proximo = contratos[docs.length];
-        if (proximo && !tipoContratoSeleccionado) {
-            setTipoContratoSeleccionado(proximo.tipo_contrato);
-        }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [colaborador.historial_contratos, documentos]);
     const preavisoInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
     const handleSubirPreaviso = (fecha: string, file: File) => {
@@ -335,7 +340,7 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
             },
         ]);
         setNuevaFechaInput('');
-        setMostrarFormNuevaFecha(false);
+        _setMostrarFormNuevaFecha(false);
     };
 
     const handleSubirDocumentoProrroga = (prorrogaId: number, file: File) => {
@@ -360,18 +365,14 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
         if (!confirm('¿Estás seguro de eliminar el documento de esta prórroga?')) return;
         setEliminandoDocProrroga(prorrogaId);
         router.delete(`/modules/gente/contratos/${colaborador.id}/prorrogas/${prorrogaId}/documento`, {
-                preserveScroll: true,
-                onFinish: () => setEliminandoDocProrroga(null),
+            preserveScroll: true,
+            onFinish: () => setEliminandoDocProrroga(null),
         });
     };
 
     const handleEliminarProrroga = (prorroga: ProrrogaItem) => {
         const tipo = prorroga.tipo === 'finalizacion' ? 'finalización' : 'prórroga';
-        if (
-            !confirm(
-                `¿Eliminar esta ${tipo} y sus fechas del historial? No se modificarán las fechas actuales del contrato ni otros registros.`,
-            )
-        ) {
+        if (!confirm(`¿Eliminar esta ${tipo} y sus fechas del historial? No se modificarán las fechas actuales del contrato ni otros registros.`)) {
             return;
         }
 
@@ -412,11 +413,7 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
     };
 
     const handleEliminarDatosContrato = () => {
-        if (
-            !confirm(
-                '¿Eliminar las fechas y el tipo del contrato? Se conservarán el colaborador, el cargo, sus documentos y los historiales.',
-            )
-        ) {
+        if (!confirm('¿Eliminar las fechas y el tipo del contrato? Se conservarán el colaborador, el cargo, sus documentos y los historiales.')) {
             return;
         }
 
@@ -424,6 +421,33 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
         router.delete(route('gente.contratos.datos.destroy', colaborador.id), {
             preserveScroll: true,
             onFinish: () => setEliminandoContrato(false),
+        });
+    };
+
+    const handleEliminarContratoHistorial = (contratoId: number) => {
+        if (!confirm('¿Eliminar este contrato y sus prórrogas asociadas? Esta acción no se puede deshacer.')) return;
+        setEliminandoContratoHistorial(contratoId);
+        router.delete(route('gente.contratos.historial.destroy', { colaborador: colaborador.id, contrato: contratoId }), {
+            preserveScroll: true,
+            onFinish: () => setEliminandoContratoHistorial(null),
+        });
+    };
+
+    const iniciarEdicionContratoHistorial = (c: { id: number; fecha_inicio: string | null; fecha_fin: string | null; tipo_contrato: string }) => {
+        setContratoEditandoDatos({
+            fecha_inicio: c.fecha_inicio ?? '',
+            fecha_fin: c.fecha_fin ?? '',
+            tipo_contrato: c.tipo_contrato ?? '',
+        });
+        setContratoEditandoId(c.id);
+    };
+
+    const guardarEdicionContratoHistorial = (contratoId: number) => {
+        setGuardandoContratoHistorial(true);
+        router.patch(route('gente.contratos.historial.update', { colaborador: colaborador.id, contrato: contratoId }), contratoEditandoDatos, {
+            preserveScroll: true,
+            onSuccess: () => setContratoEditandoId(null),
+            onFinish: () => setGuardandoContratoHistorial(false),
         });
     };
 
@@ -480,13 +504,32 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
         });
     };
 
+    const handleQuitarArchivo = (doc: DocumentoContratoItem) => {
+        if (!doc.id || !doc.path) return;
+        if (!confirm('¿Quitar el archivo? El registro se mantendrá y podrás subir uno nuevo.')) return;
+        setEliminandoId(doc.id);
+        router.patch(
+            `/modules/gente/contratos/${colaborador.id}/documentos/${doc.id}/archivo`,
+            {},
+            {
+                preserveScroll: true,
+                onFinish: () => setEliminandoId(null),
+            },
+        );
+    };
+
     const tieneFinalizacion = colaborador.tiene_finalizacion ?? false;
-    const tieneDatosContrato = Boolean(
-        colaborador.fecha_ingreso_empresa || colaborador.fecha_retiro_empresa || colaborador.tipo_contrato,
-    );
+    const tieneDatosContrato = Boolean(colaborador.fecha_ingreso_empresa || colaborador.fecha_retiro_empresa || colaborador.tipo_contrato);
     const { label: estadoLabel, variant: estadoVariant } = estadoContrato(colaborador.fecha_retiro_empresa, tieneFinalizacion);
     const todasFechasPreaviso = [...fechas_preaviso, ...fechasPreavisoExtra];
     const historialContratos = colaborador.historial_contratos ?? [];
+    const documentosContrato = documentos['documento_contrato'] || [];
+    const documentoPorContrato = new Map(
+        documentosContrato
+            .filter((documento): documento is DocumentoContratoItem & { contrato_id: number } => documento.contrato_id != null)
+            .map((documento) => [documento.contrato_id, documento]),
+    );
+    const documentosSinContrato = documentosContrato.filter((documento) => documento.contrato_id == null);
     const _totalArchivosNuevos = Object.values(_data).reduce((acc, files) => acc + (files?.length || 0), 0);
     const _errorDelCampoContrato = (campo: string) =>
         Object.entries(errors)
@@ -718,7 +761,9 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                 </p>
                                 <p className="text-muted-foreground mt-0.5 text-xs">
                                     Fecha de finalización:{' '}
-                                    <span className="font-medium">{formatFecha(colaborador.fecha_retiro_empresa)}</span>
+                                    <span className="font-medium">
+                                        {formatFecha(colaborador.fecha_vencimiento_vigente ?? colaborador.fecha_retiro_empresa)}
+                                    </span>
                                     {' — '}Confirma la finalización del contrato si corresponde.
                                 </p>
                             </div>
@@ -746,7 +791,10 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                         </span>
                     </div>
                     <div className="bg-muted mb-4 h-1.5 w-full overflow-hidden rounded-full sm:hidden">
-                        <div className="h-full rounded-full bg-gradient-to-r from-[#1a3a5c] via-[#1e5f74] to-[#2a9d8f] transition-all" style={{ width: `${(pasoActual / 2) * 100}%` }} />
+                        <div
+                            className="h-full rounded-full bg-gradient-to-r from-[#1a3a5c] via-[#1e5f74] to-[#2a9d8f] transition-all"
+                            style={{ width: `${(pasoActual / 2) * 100}%` }}
+                        />
                     </div>
 
                     {/* Pills de pasos (desktop y tablet) */}
@@ -763,7 +811,9 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                             >
                                 <div
                                     className={`flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-colors ${
-                                        pasoActual === 1 ? 'bg-gradient-to-br from-[#1a3a5c] via-[#1e5f74] to-[#2a9d8f] text-white shadow-xs' : 'bg-muted text-muted-foreground'
+                                        pasoActual === 1
+                                            ? 'bg-gradient-to-br from-[#1a3a5c] via-[#1e5f74] to-[#2a9d8f] text-white shadow-xs'
+                                            : 'bg-muted text-muted-foreground'
                                     }`}
                                 >
                                     <History className="size-4" />
@@ -788,7 +838,9 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                             >
                                 <div
                                     className={`flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-colors ${
-                                        pasoActual === 2 ? 'bg-gradient-to-br from-[#1a3a5c] via-[#1e5f74] to-[#2a9d8f] text-white shadow-xs' : 'bg-muted text-muted-foreground'
+                                        pasoActual === 2
+                                            ? 'bg-gradient-to-br from-[#1a3a5c] via-[#1e5f74] to-[#2a9d8f] text-white shadow-xs'
+                                            : 'bg-muted text-muted-foreground'
                                     }`}
                                 >
                                     <FolderOpen className="size-4" />
@@ -811,7 +863,7 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                     <div className="space-y-6">
                         {/* Tabla de contrato actual + previo */}
                         <div>
-                            <div className="text-muted-foreground flex items-center gap-2 text-xs font-semibold tracking-wider uppercase mb-2">
+                            <div className="text-muted-foreground mb-2 flex items-center gap-2 text-xs font-semibold tracking-wider uppercase">
                                 <FileText className="size-3.5" />
                                 <span>Historial de contratos</span>
                             </div>
@@ -835,13 +887,61 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                                         <TableCell>
                                                             <div className="flex flex-col gap-1">
                                                                 <span className="text-sm font-medium">Contrato {i + 1}</span>
-                                                                {c.tipo_contrato
-                                                                    ? <Badge variant="outline" className="text-xs w-fit">{c.tipo_contrato}</Badge>
-                                                                    : <span className="text-muted-foreground text-xs">Sin tipo</span>}
+                                                                {contratoEditandoId === c.id ? (
+                                                                    <Select
+                                                                        value={contratoEditandoDatos.tipo_contrato}
+                                                                        onValueChange={(v) =>
+                                                                            setContratoEditandoDatos((p) => ({ ...p, tipo_contrato: v }))
+                                                                        }
+                                                                    >
+                                                                        <SelectTrigger className="h-7 text-xs">
+                                                                            <SelectValue placeholder="Tipo" />
+                                                                        </SelectTrigger>
+                                                                        <SelectContent>
+                                                                            {catalogos.tiposContrato.map((t) => (
+                                                                                <SelectItem key={t} value={t}>
+                                                                                    {t}
+                                                                                </SelectItem>
+                                                                            ))}
+                                                                        </SelectContent>
+                                                                    </Select>
+                                                                ) : c.tipo_contrato ? (
+                                                                    <Badge variant="outline" className="w-fit text-xs">
+                                                                        {c.tipo_contrato}
+                                                                    </Badge>
+                                                                ) : (
+                                                                    <span className="text-muted-foreground text-xs">Sin tipo</span>
+                                                                )}
                                                             </div>
                                                         </TableCell>
-                                                        <TableCell>{c.fecha_inicio ?? '—'}</TableCell>
-                                                        <TableCell>{c.fecha_fin ?? '—'}</TableCell>
+                                                        <TableCell>
+                                                            {contratoEditandoId === c.id ? (
+                                                                <Input
+                                                                    type="date"
+                                                                    className="h-8 text-xs"
+                                                                    value={contratoEditandoDatos.fecha_inicio}
+                                                                    onChange={(e) =>
+                                                                        setContratoEditandoDatos((p) => ({ ...p, fecha_inicio: e.target.value }))
+                                                                    }
+                                                                />
+                                                            ) : (
+                                                                (c.fecha_inicio ?? '—')
+                                                            )}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            {contratoEditandoId === c.id ? (
+                                                                <Input
+                                                                    type="date"
+                                                                    className="h-8 text-xs"
+                                                                    value={contratoEditandoDatos.fecha_fin}
+                                                                    onChange={(e) =>
+                                                                        setContratoEditandoDatos((p) => ({ ...p, fecha_fin: e.target.value }))
+                                                                    }
+                                                                />
+                                                            ) : (
+                                                                (c.fecha_fin ?? '—')
+                                                            )}
+                                                        </TableCell>
                                                         <TableCell>{colaborador.cargo || '—'}</TableCell>
                                                         <TableCell>
                                                             <Badge variant={c.estado === 'activo' ? estadoVariant : 'secondary'}>
@@ -851,15 +951,15 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                                         <TableCell>
                                                             {c.estado === 'activo' && !tieneFinalizacion && (
                                                                 <div className="flex items-center gap-1">
-                                                                    {contratoEnEdicion ? (
+                                                                    {contratoEditandoId === c.id ? (
                                                                         <>
                                                                             <Button
                                                                                 type="button"
                                                                                 size="sm"
-                                                                                disabled={guardandoContrato}
-                                                                                onClick={guardarEdicionContrato}
+                                                                                disabled={guardandoContratoHistorial}
+                                                                                onClick={() => guardarEdicionContratoHistorial(c.id)}
                                                                             >
-                                                                                {guardandoContrato ? (
+                                                                                {guardandoContratoHistorial ? (
                                                                                     <LoaderCircle className="size-4 animate-spin" />
                                                                                 ) : (
                                                                                     <Save className="size-4" />
@@ -870,8 +970,8 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                                                                 type="button"
                                                                                 variant="outline"
                                                                                 size="sm"
-                                                                                onClick={cancelarEdicionContrato}
-                                                                                disabled={guardandoContrato}
+                                                                                onClick={() => setContratoEditandoId(null)}
+                                                                                disabled={guardandoContratoHistorial}
                                                                             >
                                                                                 Cancelar
                                                                             </Button>
@@ -882,27 +982,25 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                                                                 type="button"
                                                                                 variant="outline"
                                                                                 size="icon"
-                                                                                onClick={iniciarEdicionContrato}
+                                                                                onClick={() => iniciarEdicionContratoHistorial(c)}
                                                                                 title="Editar"
                                                                             >
                                                                                 <Pencil className="size-4" />
                                                                             </Button>
-                                                                            {tieneDatosContrato && (
-                                                                                <Button
-                                                                                    type="button"
-                                                                                    variant="destructive"
-                                                                                    size="icon"
-                                                                                    disabled={eliminandoContrato}
-                                                                                    onClick={handleEliminarDatosContrato}
-                                                                                    title="Eliminar"
-                                                                                >
-                                                                                    {eliminandoContrato ? (
-                                                                                        <LoaderCircle className="size-4 animate-spin" />
-                                                                                    ) : (
-                                                                                        <Trash2 className="size-4" />
-                                                                                    )}
-                                                                                </Button>
-                                                                            )}
+                                                                            <Button
+                                                                                type="button"
+                                                                                variant="destructive"
+                                                                                size="icon"
+                                                                                disabled={eliminandoContratoHistorial === c.id}
+                                                                                onClick={() => handleEliminarContratoHistorial(c.id)}
+                                                                                title="Eliminar contrato"
+                                                                            >
+                                                                                {eliminandoContratoHistorial === c.id ? (
+                                                                                    <LoaderCircle className="size-4 animate-spin" />
+                                                                                ) : (
+                                                                                    <Trash2 className="size-4" />
+                                                                                )}
+                                                                            </Button>
                                                                         </>
                                                                     )}
                                                                 </div>
@@ -916,9 +1014,7 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                                         <TableCell>{formatFecha(colaborador.fecha_ultima_laboral)}</TableCell>
                                                         <TableCell>{colaborador.cargo_anterior || '—'}</TableCell>
                                                         <TableCell>
-                                                            {colaborador.motivo_retiro
-                                                                ? `Retiro: ${colaborador.motivo_retiro}`
-                                                                : 'Contrato anterior'}
+                                                            {colaborador.motivo_retiro ? `Retiro: ${colaborador.motivo_retiro}` : 'Contrato anterior'}
                                                         </TableCell>
                                                         <TableCell>Finalizado</TableCell>
                                                         <TableCell>—</TableCell>
@@ -941,7 +1037,7 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                                     </TableRow>
                                                 )}
                                             </>
-                                        ) : (
+                                        ) : tieneDatosContrato ? (
                                             <>
                                                 <TableRow>
                                                     <TableCell>
@@ -952,7 +1048,10 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                                                     <Select
                                                                         value={datosContrato.tipo_contrato || '__sin_tipo_contrato__'}
                                                                         onValueChange={(value) =>
-                                                                            setDatosContrato('tipo_contrato', value === '__sin_tipo_contrato__' ? '' : value)
+                                                                            setDatosContrato(
+                                                                                'tipo_contrato',
+                                                                                value === '__sin_tipo_contrato__' ? '' : value,
+                                                                            )
                                                                         }
                                                                         disabled={guardandoContrato}
                                                                     >
@@ -962,16 +1061,20 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                                                         <SelectContent>
                                                                             <SelectItem value="__sin_tipo_contrato__">Sin tipo</SelectItem>
                                                                             {catalogos.tiposContrato.map((tipo) => (
-                                                                                <SelectItem key={tipo} value={tipo}>{tipo}</SelectItem>
+                                                                                <SelectItem key={tipo} value={tipo}>
+                                                                                    {tipo}
+                                                                                </SelectItem>
                                                                             ))}
                                                                         </SelectContent>
                                                                     </Select>
                                                                     <InputError message={erroresContrato.tipo_contrato} />
                                                                 </div>
+                                                            ) : colaborador.tipo_contrato ? (
+                                                                <Badge variant="outline" className="w-fit text-xs">
+                                                                    {colaborador.tipo_contrato}
+                                                                </Badge>
                                                             ) : (
-                                                                colaborador.tipo_contrato
-                                                                    ? <Badge variant="outline" className="text-xs w-fit">{colaborador.tipo_contrato}</Badge>
-                                                                    : <span className="text-muted-foreground text-xs">Sin tipo</span>
+                                                                <span className="text-muted-foreground text-xs">Sin tipo</span>
                                                             )}
                                                         </div>
                                                     </TableCell>
@@ -1008,8 +1111,9 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                                         ) : (
                                                             formatFecha(
                                                                 prorrogas.length > 0
-                                                                    ? (prorrogas[prorrogas.length - 1].fecha_anterior ?? colaborador.fecha_retiro_empresa)
-                                                                    : (colaborador.contrato_fecha_hasta ?? colaborador.fecha_retiro_empresa)
+                                                                    ? (prorrogas[prorrogas.length - 1].fecha_anterior ??
+                                                                          colaborador.fecha_retiro_empresa)
+                                                                    : (colaborador.contrato_fecha_hasta ?? colaborador.fecha_retiro_empresa),
                                                             )
                                                         )}
                                                     </TableCell>
@@ -1018,7 +1122,9 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                                             <div className="grid min-w-36 gap-1">
                                                                 <Select
                                                                     value={datosContrato.cargo || '__sin_cargo__'}
-                                                                    onValueChange={(value) => setDatosContrato('cargo', value === '__sin_cargo__' ? '' : value)}
+                                                                    onValueChange={(value) =>
+                                                                        setDatosContrato('cargo', value === '__sin_cargo__' ? '' : value)
+                                                                    }
                                                                     disabled={guardandoContrato}
                                                                 >
                                                                     <SelectTrigger aria-label="Cargo" className="h-9">
@@ -1107,9 +1213,7 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                                         <TableCell>{formatFecha(colaborador.fecha_ultima_laboral)}</TableCell>
                                                         <TableCell>{colaborador.cargo_anterior || '—'}</TableCell>
                                                         <TableCell>
-                                                            {colaborador.motivo_retiro
-                                                                ? `Retiro: ${colaborador.motivo_retiro}`
-                                                                : 'Contrato anterior'}
+                                                            {colaborador.motivo_retiro ? `Retiro: ${colaborador.motivo_retiro}` : 'Contrato anterior'}
                                                         </TableCell>
                                                         <TableCell>Finalizado</TableCell>
                                                         <TableCell>—</TableCell>
@@ -1132,376 +1236,395 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                                     </TableRow>
                                                 )}
                                             </>
+                                        ) : (
+                                            <TableRow>
+                                                <TableCell colSpan={6} className="text-muted-foreground py-6 text-center text-sm">
+                                                    No hay contratos registrados.
+                                                </TableCell>
+                                            </TableRow>
                                         )}
                                     </TableBody>
                                 </Table>
                             </div>
                         </div>
 
-                {/* ── Historial de prórrogas ────────────────────────────────────── */}
-                <div className="space-y-2">
+                        {/* ── Historial de prórrogas ────────────────────────────────────── */}
+                        <div className="space-y-2">
                             <div className="text-muted-foreground flex items-center gap-2 text-xs font-semibold tracking-wider uppercase">
-                        <History className="size-3.5" />
-                        <span>Historial de prórrogas y finalizaciones</span>
-                    </div>
+                                <History className="size-3.5" />
+                                <span>Historial de prórrogas y finalizaciones</span>
+                            </div>
                             <div className="border-border bg-card overflow-hidden rounded-xl border shadow-xs">
-                        <Table className="table-fixed">
-                            <TableHeader>
-                                <TableRow className="bg-muted/40">
-                                    <TableHead className="w-[calc(100%/6)] font-semibold">Tipo</TableHead>
-                                    <TableHead className="w-[calc(100%/6)] font-semibold">Contrato</TableHead>
-                                    <TableHead className="w-[calc(100%/6)] font-semibold">Terminación</TableHead>
-                                    <TableHead className="w-[calc(100%/6)] font-semibold">Registrado por</TableHead>
-                                    <TableHead className="w-[calc(100%/6)] font-semibold">Fecha registro</TableHead>
-                                    <TableHead className="w-[calc(100%/6)] font-semibold">Acciones</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {prorrogas.length === 0 ? (
-                                    <TableRow>
+                                <Table className="table-fixed">
+                                    <TableHeader>
+                                        <TableRow className="bg-muted/40">
+                                            <TableHead className="w-[calc(100%/6)] font-semibold">Tipo</TableHead>
+                                            <TableHead className="w-[calc(100%/6)] font-semibold">Contrato</TableHead>
+                                            <TableHead className="w-[calc(100%/6)] font-semibold">Terminación</TableHead>
+                                            <TableHead className="w-[calc(100%/6)] font-semibold">Registrado por</TableHead>
+                                            <TableHead className="w-[calc(100%/6)] font-semibold">Fecha registro</TableHead>
+                                            <TableHead className="w-[calc(100%/6)] font-semibold">Acciones</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {prorrogas.length === 0 ? (
+                                            <TableRow>
                                                 <TableCell colSpan={6} className="text-muted-foreground py-6 text-center text-xs">
-                                            Sin registros de prórrogas o finalizaciones.
-                                        </TableCell>
-                                    </TableRow>
-                                ) : (
-                                    prorrogas.map((p, idx) => {
-                                        const contratoProrroga = historialContratos.find((contrato) => contrato.id === p.contrato_id);
-                                        const numeroProrroga = p.numero_prorroga ?? prorrogas.length - idx;
-                                        const esAprendiz = contratoProrroga?.es_aprendiz
-                                            ?? ((p.contrato_id === null || p.contrato_id === undefined) && colaborador.contrato_actual_es_aprendiz);
-                                        const esProrrogaAnual = !esAprendiz && numeroProrroga > 3;
-                                        const numeroContrato = contratoProrroga
-                                            ? historialContratos.findIndex((contrato) => contrato.id === contratoProrroga.id) + 1
-                                            : null;
+                                                    Sin registros de prórrogas o finalizaciones.
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : (
+                                            prorrogas.map((p, idx) => {
+                                                const contratoProrroga = historialContratos.find((contrato) => contrato.id === p.contrato_id);
+                                                const numeroProrroga = p.numero_prorroga ?? prorrogas.length - idx;
+                                                const esAprendiz =
+                                                    contratoProrroga?.es_aprendiz ??
+                                                    ((p.contrato_id === null || p.contrato_id === undefined) &&
+                                                        colaborador.contrato_actual_es_aprendiz);
+                                                const esProrrogaAnual = !esAprendiz && numeroProrroga > 3;
+                                                const numeroContrato = contratoProrroga
+                                                    ? historialContratos.findIndex((contrato) => contrato.id === contratoProrroga.id) + 1
+                                                    : null;
 
-                                        return (
-                                        <TableRow key={p.id}>
-                                                    <TableCell>
-                                                        {p.tipo === 'finalizacion' ? (
-                                                            <span className="font-medium text-red-600 dark:text-red-400">Finalización</span>
-                                                        ) : (
-                                                            <span className="text-foreground font-medium">
-                                                                {numeroContrato ? `Contrato ${numeroContrato} · ` : 'Contrato sin asociar · '}
-                                                                {esProrrogaAnual
-                                                                    ? `Prórroga anual ${numeroProrroga - 3}`
-                                                                    : `Prórroga ${numeroProrroga}`}
-                                                            </span>
-                                                        )}
-                                                    </TableCell>
-                                                    <TableCell className="text-sm">
-                                                        {prorrogaEnEdicion === p.id ? (
-                                                            <div className="grid min-w-36 gap-1">
-                                                                <Input
-                                                                    type="date"
-                                                                    value={datosProrroga.fecha_anterior}
-                                                                    onChange={(e) => setDatosProrroga('fecha_anterior', e.target.value)}
-                                                                    disabled={guardandoProrroga}
-                                                                    aria-label="Fecha anterior"
-                                                                    className="h-9"
-                                                                />
-                                                                <InputError message={erroresProrroga.fecha_anterior} />
-                                                        {datosProrroga.tipo === 'prorroga' && (
-                                                            <>
-                                                                <Input
-                                                                    type="date"
-                                                                    value={datosProrroga.fecha_inicio}
-                                                                    onChange={(e) => setDatosProrroga('fecha_inicio', e.target.value)}
-                                                                    disabled={guardandoProrroga}
-                                                                    aria-label="Fecha de inicio de la prórroga"
-                                                                    className="h-9"
-                                                                />
-                                                                <InputError message={erroresProrroga.fecha_inicio} />
-                                                            </>
-                                                        )}
-                                                    </div>
-                                                ) : (
-                                                    <div>
-                                                        {p.tipo === 'prorroga' && formatFecha(p.fecha_inicio)}
-                                                    </div>
-                                                )}
-                                            </TableCell>
-                                                    <TableCell className="text-sm font-medium">
-                                                        {prorrogaEnEdicion === p.id ? (
-                                                            <div className="grid min-w-36 gap-1">
-                                                                <Input
-                                                                    type="date"
-                                                                    value={datosProrroga.fecha_nueva}
-                                                                    onChange={(e) => setDatosProrroga('fecha_nueva', e.target.value)}
-                                                                    disabled={guardandoProrroga}
-                                                                    aria-label="Nueva fecha"
-                                                                    className="h-9"
-                                                                />
-                                                                <InputError message={erroresProrroga.fecha_nueva} />
-                                                            </div>
-                                                        ) : (
-                                                            formatFecha(p.fecha_nueva)
-                                                        )}
-                                                    </TableCell>
-                                                    <TableCell className="text-muted-foreground text-xs">
-                                                        {p.registrado_por || '—'}
-                                                    </TableCell>
-                                                    <TableCell className="text-muted-foreground text-xs whitespace-nowrap">
-                                                        {p.fecha_registro}
-                                                    </TableCell>
-                                            <TableCell className="text-xs">
-                                                        <div className="mb-2 flex items-center gap-1">
+                                                return (
+                                                    <TableRow key={p.id}>
+                                                        <TableCell>
+                                                            {p.tipo === 'finalizacion' ? (
+                                                                <span className="font-medium text-red-600 dark:text-red-400">Finalización</span>
+                                                            ) : (
+                                                                <span className="text-foreground font-medium">
+                                                                    {numeroContrato ? `Contrato ${numeroContrato} · ` : 'Contrato sin asociar · '}
+                                                                    {esProrrogaAnual
+                                                                        ? `Prórroga anual ${numeroProrroga - 3}`
+                                                                        : `Prórroga ${numeroProrroga}`}
+                                                                </span>
+                                                            )}
+                                                        </TableCell>
+                                                        <TableCell className="text-sm">
                                                             {prorrogaEnEdicion === p.id ? (
-                                                                <>
-                                                                    <Button
-                                                                        type="button"
-                                                                        variant="outline"
-                                                                        size="icon"
-                                                                        className="size-8"
+                                                                <div className="grid min-w-36 gap-1">
+                                                                    <Input
+                                                                        type="date"
+                                                                        value={datosProrroga.fecha_anterior}
+                                                                        onChange={(e) => setDatosProrroga('fecha_anterior', e.target.value)}
                                                                         disabled={guardandoProrroga}
-                                                                        onClick={() => guardarEdicionProrroga(p.id)}
-                                                                        title="Guardar cambios"
-                                                                    >
-                                                                        {guardandoProrroga ? (
-                                                                            <LoaderCircle className="size-4 animate-spin" />
-                                                                        ) : (
-                                                                            <Save className="size-4" />
-                                                                        )}
-                                                                    </Button>
+                                                                        aria-label="Fecha anterior"
+                                                                        className="h-9"
+                                                                    />
+                                                                    <InputError message={erroresProrroga.fecha_anterior} />
+                                                                    {datosProrroga.tipo === 'prorroga' && (
+                                                                        <>
+                                                                            <Input
+                                                                                type="date"
+                                                                                value={datosProrroga.fecha_inicio}
+                                                                                onChange={(e) => setDatosProrroga('fecha_inicio', e.target.value)}
+                                                                                disabled={guardandoProrroga}
+                                                                                aria-label="Fecha de inicio de la prórroga"
+                                                                                className="h-9"
+                                                                            />
+                                                                            <InputError message={erroresProrroga.fecha_inicio} />
+                                                                        </>
+                                                                    )}
+                                                                </div>
+                                                            ) : (
+                                                                <div>{p.tipo === 'prorroga' && formatFecha(p.fecha_inicio)}</div>
+                                                            )}
+                                                        </TableCell>
+                                                        <TableCell className="text-sm font-medium">
+                                                            {prorrogaEnEdicion === p.id ? (
+                                                                <div className="grid min-w-36 gap-1">
+                                                                    <Input
+                                                                        type="date"
+                                                                        value={datosProrroga.fecha_nueva}
+                                                                        onChange={(e) => setDatosProrroga('fecha_nueva', e.target.value)}
+                                                                        disabled={guardandoProrroga}
+                                                                        aria-label="Nueva fecha"
+                                                                        className="h-9"
+                                                                    />
+                                                                    <InputError message={erroresProrroga.fecha_nueva} />
+                                                                </div>
+                                                            ) : (
+                                                                formatFecha(p.fecha_nueva)
+                                                            )}
+                                                        </TableCell>
+                                                        <TableCell className="text-muted-foreground text-xs">{p.registrado_por || '—'}</TableCell>
+                                                        <TableCell className="text-muted-foreground text-xs whitespace-nowrap">
+                                                            {p.fecha_registro}
+                                                        </TableCell>
+                                                        <TableCell className="text-xs">
+                                                            <div className="mb-2 flex items-center gap-1">
+                                                                {prorrogaEnEdicion === p.id ? (
+                                                                    <>
+                                                                        <Button
+                                                                            type="button"
+                                                                            variant="outline"
+                                                                            size="icon"
+                                                                            className="size-8"
+                                                                            disabled={guardandoProrroga}
+                                                                            onClick={() => guardarEdicionProrroga(p.id)}
+                                                                            title="Guardar cambios"
+                                                                        >
+                                                                            {guardandoProrroga ? (
+                                                                                <LoaderCircle className="size-4 animate-spin" />
+                                                                            ) : (
+                                                                                <Save className="size-4" />
+                                                                            )}
+                                                                        </Button>
+                                                                        <Button
+                                                                            type="button"
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            className="size-8"
+                                                                            disabled={guardandoProrroga}
+                                                                            onClick={() => {
+                                                                                setProrrogaEnEdicion(null);
+                                                                                limpiarErroresProrroga();
+                                                                            }}
+                                                                            title="Cancelar edición"
+                                                                        >
+                                                                            <XCircle className="size-4" />
+                                                                        </Button>
+                                                                    </>
+                                                                ) : !tieneFinalizacion ? (
                                                                     <Button
                                                                         type="button"
                                                                         variant="ghost"
                                                                         size="icon"
                                                                         className="size-8"
-                                                                        disabled={guardandoProrroga}
-                                                                        onClick={() => {
-                                                                            setProrrogaEnEdicion(null);
-                                                                            limpiarErroresProrroga();
-                                                                        }}
-                                                                        title="Cancelar edición"
+                                                                        disabled={prorrogaEnEdicion !== null || guardandoProrroga}
+                                                                        onClick={() => iniciarEdicionProrroga(p)}
+                                                                        title="Editar registro"
                                                                     >
-                                                                        <XCircle className="size-4" />
+                                                                        <Pencil className="size-4" />
                                                                     </Button>
-                                                                </>
-                                                            ) : !tieneFinalizacion ? (
+                                                                ) : null}
                                                                 <Button
                                                                     type="button"
                                                                     variant="ghost"
                                                                     size="icon"
-                                                                    className="size-8"
-                                                                    disabled={prorrogaEnEdicion !== null || guardandoProrroga}
-                                                                    onClick={() => iniciarEdicionProrroga(p)}
-                                                                    title="Editar registro"
+                                                                    className="text-destructive hover:bg-destructive/10 size-8"
+                                                                    disabled={
+                                                                        eliminandoProrroga === p.id || prorrogaEnEdicion !== null || guardandoProrroga
+                                                                    }
+                                                                    onClick={() => handleEliminarProrroga(p)}
+                                                                    title="Eliminar registro de prórroga"
+                                                                    aria-label={`Eliminar ${p.tipo === 'finalizacion' ? 'finalización' : 'prórroga'}`}
                                                                 >
-                                                                    <Pencil className="size-4" />
+                                                                    {eliminandoProrroga === p.id ? (
+                                                                        <LoaderCircle className="size-4 animate-spin" />
+                                                                    ) : (
+                                                                        <Trash2 className="size-4" />
+                                                                    )}
                                                                 </Button>
-                                                            ) : null}
-                                                            <Button
-                                                                type="button"
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="size-8 text-destructive hover:bg-destructive/10"
-                                                                disabled={eliminandoProrroga === p.id || prorrogaEnEdicion !== null || guardandoProrroga}
-                                                                onClick={() => handleEliminarProrroga(p)}
-                                                                title="Eliminar registro de prórroga"
-                                                                aria-label={`Eliminar ${p.tipo === 'finalizacion' ? 'finalización' : 'prórroga'}`}
-                                                            >
-                                                                {eliminandoProrroga === p.id ? (
-                                                                    <LoaderCircle className="size-4 animate-spin" />
-                                                                ) : (
-                                                                    <Trash2 className="size-4" />
-                                                                )}
-                                                            </Button>
-                                                        </div>
-                                                {p.documento_path ? (
-                                                    <div className="flex items-center gap-1.5">
-                                                        <a
-                                                            href={p.documento_path}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                                    className="inline-flex items-center gap-1 font-medium text-emerald-600 hover:text-emerald-700 hover:underline dark:text-emerald-400"
-                                                            title={p.documento_nombre || 'Ver prórroga'}
-                                                        >
-                                                            <FileText className="size-3.5 shrink-0" />
-                                                            <span className="max-w-[130px] truncate">{p.documento_nombre || 'Prórroga'}</span>
-                                                        </a>
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="size-6 text-red-500 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30"
-                                                            disabled={eliminandoDocProrroga === p.id}
-                                                            onClick={() => handleEliminarDocumentoProrroga(p.id)}
-                                                            title="Eliminar documento de prórroga"
-                                                        >
-                                                            {eliminandoDocProrroga === p.id ? (
-                                                                <LoaderCircle className="size-3.5 animate-spin" />
+                                                            </div>
+                                                            {p.documento_path ? (
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <a
+                                                                        href={p.documento_path}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="inline-flex items-center gap-1 font-medium text-emerald-600 hover:text-emerald-700 hover:underline dark:text-emerald-400"
+                                                                        title={p.documento_nombre || 'Ver prórroga'}
+                                                                    >
+                                                                        <FileText className="size-3.5 shrink-0" />
+                                                                        <span className="max-w-[130px] truncate">
+                                                                            {p.documento_nombre || 'Prórroga'}
+                                                                        </span>
+                                                                    </a>
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        className="size-6 text-red-500 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30"
+                                                                        disabled={eliminandoDocProrroga === p.id}
+                                                                        onClick={() => handleEliminarDocumentoProrroga(p.id)}
+                                                                        title="Eliminar documento de prórroga"
+                                                                    >
+                                                                        {eliminandoDocProrroga === p.id ? (
+                                                                            <LoaderCircle className="size-3.5 animate-spin" />
+                                                                        ) : (
+                                                                            <Trash2 className="size-3.5" />
+                                                                        )}
+                                                                    </Button>
+                                                                </div>
                                                             ) : (
-                                                                <Trash2 className="size-3.5" />
-                                                            )}
-                                                        </Button>
-                                                    </div>
-                                                ) : (
-                                                    <div
-                                                        onDragOver={(e) => {
-                                                            e.preventDefault();
-                                                            e.stopPropagation();
-                                                            setDraggingId(p.id);
-                                                        }}
-                                                        onDragLeave={(e) => {
-                                                            e.preventDefault();
-                                                            e.stopPropagation();
-                                                            setDraggingId(null);
-                                                        }}
-                                                        onDrop={(e) => {
-                                                            e.preventDefault();
-                                                            e.stopPropagation();
-                                                            setDraggingId(null);
-                                                            const file = e.dataTransfer.files?.[0];
-                                                            if (file) handleSubirDocumentoProrroga(p.id, file);
-                                                        }}
-                                                        onClick={() => fileInputRefs.current[p.id]?.click()}
-                                                                className={`group flex cursor-pointer items-center justify-center gap-1.5 rounded-md border border-dashed px-2.5 py-1.5 transition-all select-none ${
-                                                            draggingId === p.id
-                                                                        ? 'border-emerald-500 bg-emerald-50 text-emerald-700 ring-2 ring-emerald-400/20 dark:bg-emerald-950/30 dark:text-emerald-300'
-                                                                        : 'border-muted-foreground/30 hover:bg-muted/40 text-muted-foreground hover:text-foreground hover:border-emerald-500/60'
-                                                        }`}
-                                                    >
-                                                        <input
-                                                            type="file"
-                                                                    ref={(el) => {
-                                                                        fileInputRefs.current[p.id] = el;
+                                                                <div
+                                                                    onDragOver={(e) => {
+                                                                        e.preventDefault();
+                                                                        e.stopPropagation();
+                                                                        setDraggingId(p.id);
                                                                     }}
-                                                            className="hidden"
-                                                            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                                                            onChange={(e) => {
-                                                                const file = e.target.files?.[0];
-                                                                if (file) handleSubirDocumentoProrroga(p.id, file);
-                                                            }}
-                                                        />
-                                                        {subiendoDocProrroga === p.id ? (
-                                                            <>
-                                                                <LoaderCircle className="size-3.5 animate-spin text-emerald-600" />
-                                                                        <span className="text-xs font-medium">Subiendo...</span>
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <Upload className="size-3.5 shrink-0 transition-transform group-hover:-translate-y-0.5" />
-                                                                <span className="text-xs">
-                                                                    {draggingId === p.id ? 'Suelta el archivo' : 'Arrastra o haz clic'}
-                                                                </span>
-                                                            </>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </TableCell>
+                                                                    onDragLeave={(e) => {
+                                                                        e.preventDefault();
+                                                                        e.stopPropagation();
+                                                                        setDraggingId(null);
+                                                                    }}
+                                                                    onDrop={(e) => {
+                                                                        e.preventDefault();
+                                                                        e.stopPropagation();
+                                                                        setDraggingId(null);
+                                                                        const file = e.dataTransfer.files?.[0];
+                                                                        if (file) handleSubirDocumentoProrroga(p.id, file);
+                                                                    }}
+                                                                    onClick={() => fileInputRefs.current[p.id]?.click()}
+                                                                    className={`group flex cursor-pointer items-center justify-center gap-1.5 rounded-md border border-dashed px-2.5 py-1.5 transition-all select-none ${
+                                                                        draggingId === p.id
+                                                                            ? 'border-emerald-500 bg-emerald-50 text-emerald-700 ring-2 ring-emerald-400/20 dark:bg-emerald-950/30 dark:text-emerald-300'
+                                                                            : 'border-muted-foreground/30 hover:bg-muted/40 text-muted-foreground hover:text-foreground hover:border-emerald-500/60'
+                                                                    }`}
+                                                                >
+                                                                    <input
+                                                                        type="file"
+                                                                        ref={(el) => {
+                                                                            fileInputRefs.current[p.id] = el;
+                                                                        }}
+                                                                        className="hidden"
+                                                                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                                                        onChange={(e) => {
+                                                                            const file = e.target.files?.[0];
+                                                                            if (file) handleSubirDocumentoProrroga(p.id, file);
+                                                                        }}
+                                                                    />
+                                                                    {subiendoDocProrroga === p.id ? (
+                                                                        <>
+                                                                            <LoaderCircle className="size-3.5 animate-spin text-emerald-600" />
+                                                                            <span className="text-xs font-medium">Subiendo...</span>
+                                                                        </>
+                                                                    ) : (
+                                                                        <>
+                                                                            <Upload className="size-3.5 shrink-0 transition-transform group-hover:-translate-y-0.5" />
+                                                                            <span className="text-xs">
+                                                                                {draggingId === p.id ? 'Suelta el archivo' : 'Arrastra o haz clic'}
+                                                                            </span>
+                                                                        </>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                );
+                                            })
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </div>
+
+                        {/* Historial de activación / desactivación */}
+                        <div className="space-y-2">
+                            <div className="text-muted-foreground flex items-center gap-2 text-xs font-semibold tracking-wider uppercase">
+                                <Clock className="size-3.5" />
+                                <span>Historial de activación o desactivación</span>
+                            </div>
+                            <div className="border-border bg-card overflow-hidden rounded-xl border shadow-xs">
+                                <Table className="table-fixed">
+                                    <TableHeader>
+                                        <TableRow className="bg-muted/40">
+                                            <TableHead className="w-[calc(100%/5)] font-semibold">Evento</TableHead>
+                                            <TableHead className="w-[calc(100%/5)] font-semibold">Fecha</TableHead>
+                                            <TableHead className="w-[calc(100%/5)] font-semibold">Motivo</TableHead>
+                                            <TableHead className="w-[calc(100%/5)] font-semibold">Observaciones</TableHead>
+                                            <TableHead className="w-[calc(100%/5)] font-semibold">Registrado por</TableHead>
                                         </TableRow>
-                                        );
-                                    })
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
-                </div>
-
-                {/* Historial de activación / desactivación */}
-                <div className="space-y-2">
-                            <div className="text-muted-foreground flex items-center gap-2 text-xs font-semibold tracking-wider uppercase">
-                        <Clock className="size-3.5" />
-                        <span>Historial de activación o desactivación</span>
-                    </div>
-                            <div className="border-border bg-card overflow-hidden rounded-xl border shadow-xs">
-                        <Table className="table-fixed">
-                            <TableHeader>
-                                <TableRow className="bg-muted/40">
-                                    <TableHead className="w-[calc(100%/5)] font-semibold">Evento</TableHead>
-                                    <TableHead className="w-[calc(100%/5)] font-semibold">Fecha</TableHead>
-                                    <TableHead className="w-[calc(100%/5)] font-semibold">Motivo</TableHead>
-                                    <TableHead className="w-[calc(100%/5)] font-semibold">Observaciones</TableHead>
-                                    <TableHead className="w-[calc(100%/5)] font-semibold">Registrado por</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {historialActivaciones.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={5} className="text-muted-foreground py-6 text-center text-xs">
-                                            Sin registros de cambio de activación o desactivación.
-                                        </TableCell>
-                                    </TableRow>
-                                ) : (
-                                    historialActivaciones.map((item, index) => {
-                                        const esFinalizacion = item.tipo === 'finalizacion_contrato';
-                                        const esActivacion = item.is_active;
-
-                                        const badgeClasses = esFinalizacion
-                                            ? 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400'
-                                            : esActivacion
-                                                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
-                                                : 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400';
-
-                                        const etiqueta = esFinalizacion
-                                            ? 'Finalización de contrato'
-                                            : esActivacion
-                                                ? 'Activación'
-                                                : 'Desactivación';
-
-                                        return (
-                                            <TableRow key={item.id ?? index} className={esFinalizacion ? 'bg-red-50/40 dark:bg-red-950/10' : ''}>
-                                                <TableCell>
-                                                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${badgeClasses}`}>
-                                                        {etiqueta}
-                                                    </span>
-                                                </TableCell>
-                                                <TableCell className="whitespace-nowrap text-sm">{item.fecha || '—'}</TableCell>
-                                                <TableCell className="text-sm">{item.motivo || '—'}</TableCell>
-                                                <TableCell className="text-muted-foreground text-xs">{item.observaciones || '—'}</TableCell>
-                                                <TableCell className="text-muted-foreground text-xs">{item.usuario || '—'}</TableCell>
-                                            </TableRow>
-                                        );
-                                    })
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
-                </div>
-
-                {/* Historial de cargos */}
-                <div className="space-y-2">
-                            <div className="text-muted-foreground flex items-center gap-2 text-xs font-semibold tracking-wider uppercase">
-                        <Briefcase className="size-3.5" />
-                        <span>Historial de cargos</span>
-                    </div>
-                            <div className="border-border bg-card overflow-hidden rounded-xl border shadow-xs">
-                        <Table className="table-fixed">
-                            <TableHeader>
-                                <TableRow className="bg-muted/40">
-                                    <TableHead className="w-1/5 font-semibold">Cargo</TableHead>
-                                    <TableHead className="w-1/5 font-semibold">Fecha de inicio</TableHead>
-                                    <TableHead className="w-1/5 font-semibold">Fecha de fin</TableHead>
-                                    <TableHead className="w-1/5 font-semibold">Estado</TableHead>
-                                    <TableHead className="w-1/5 font-semibold">Pertenece a</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {historialCargos.length === 0 ? (
-                                    <TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {historialActivaciones.length === 0 ? (
+                                            <TableRow>
                                                 <TableCell colSpan={5} className="text-muted-foreground py-6 text-center text-xs">
-                                            Sin registros de cargos.
-                                        </TableCell>
-                                    </TableRow>
-                                ) : (
-                                    historialCargos.map((h) => (
-                                        <TableRow key={h.id}>
-                                            <TableCell className="font-medium text-foreground">{h.cargo}</TableCell>
-                                            <TableCell className="whitespace-nowrap text-sm">{formatFecha(h.fecha_inicio)}</TableCell>
-                                            <TableCell className="whitespace-nowrap text-sm">{formatFecha(h.fecha_fin)}</TableCell>
-                                            <TableCell className="text-xs">
-                                                <span className={h.estado === 'ACTIVO' ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}>
-                                                    {h.estado === 'ACTIVO' ? 'Activo' : 'Inactivo'}
-                                                </span>
-                                            </TableCell>
-                                            <TableCell className="text-xs">{h.pertenece_a}</TableCell>
+                                                    Sin registros de cambio de activación o desactivación.
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : (
+                                            historialActivaciones.map((item, index) => {
+                                                const esFinalizacion = item.tipo === 'finalizacion_contrato';
+                                                const esActivacion = item.is_active;
+
+                                                const badgeClasses = esFinalizacion
+                                                    ? 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400'
+                                                    : esActivacion
+                                                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
+                                                      : 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400';
+
+                                                const etiqueta = esFinalizacion
+                                                    ? 'Finalización de contrato'
+                                                    : esActivacion
+                                                      ? 'Activación'
+                                                      : 'Desactivación';
+
+                                                return (
+                                                    <TableRow
+                                                        key={item.id ?? index}
+                                                        className={esFinalizacion ? 'bg-red-50/40 dark:bg-red-950/10' : ''}
+                                                    >
+                                                        <TableCell>
+                                                            <span
+                                                                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${badgeClasses}`}
+                                                            >
+                                                                {etiqueta}
+                                                            </span>
+                                                        </TableCell>
+                                                        <TableCell className="text-sm whitespace-nowrap">{item.fecha || '—'}</TableCell>
+                                                        <TableCell className="text-sm">{item.motivo || '—'}</TableCell>
+                                                        <TableCell className="text-muted-foreground text-xs">{item.observaciones || '—'}</TableCell>
+                                                        <TableCell className="text-muted-foreground text-xs">{item.usuario || '—'}</TableCell>
+                                                    </TableRow>
+                                                );
+                                            })
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </div>
+
+                        {/* Historial de cargos */}
+                        <div className="space-y-2">
+                            <div className="text-muted-foreground flex items-center gap-2 text-xs font-semibold tracking-wider uppercase">
+                                <Briefcase className="size-3.5" />
+                                <span>Historial de cargos</span>
+                            </div>
+                            <div className="border-border bg-card overflow-hidden rounded-xl border shadow-xs">
+                                <Table className="table-fixed">
+                                    <TableHeader>
+                                        <TableRow className="bg-muted/40">
+                                            <TableHead className="w-1/5 font-semibold">Cargo</TableHead>
+                                            <TableHead className="w-1/5 font-semibold">Fecha de inicio</TableHead>
+                                            <TableHead className="w-1/5 font-semibold">Fecha de fin</TableHead>
+                                            <TableHead className="w-1/5 font-semibold">Estado</TableHead>
+                                            <TableHead className="w-1/5 font-semibold">Pertenece a</TableHead>
                                         </TableRow>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
-                </div>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {historialCargos.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={5} className="text-muted-foreground py-6 text-center text-xs">
+                                                    Sin registros de cargos.
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : (
+                                            historialCargos.map((h) => (
+                                                <TableRow key={h.id}>
+                                                    <TableCell className="text-foreground font-medium">{h.cargo}</TableCell>
+                                                    <TableCell className="text-sm whitespace-nowrap">{formatFecha(h.fecha_inicio)}</TableCell>
+                                                    <TableCell className="text-sm whitespace-nowrap">{formatFecha(h.fecha_fin)}</TableCell>
+                                                    <TableCell className="text-xs">
+                                                        <span
+                                                            className={
+                                                                h.estado === 'ACTIVO'
+                                                                    ? 'text-emerald-600 dark:text-emerald-400'
+                                                                    : 'text-muted-foreground'
+                                                            }
+                                                        >
+                                                            {h.estado === 'ACTIVO' ? 'Activo' : 'Inactivo'}
+                                                        </span>
+                                                    </TableCell>
+                                                    <TableCell className="text-xs">{h.pertenece_a}</TableCell>
+                                                </TableRow>
+                                            ))
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </div>
 
                         {/* Botón avanzar al paso 2 */}
                         <div className="flex justify-end pt-2">
@@ -1518,169 +1641,161 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                 {/* ══════════════════════════════════════════════════════════════════ */}
                 {pasoActual === 2 && (
                     <div className="space-y-6">
-
                         {/* ── Contrato ── */}
                         <div className="space-y-3">
                             <div className="flex items-center gap-2">
-                                <FileText className="size-4 text-muted-foreground" />
+                                <FileText className="text-muted-foreground size-4" />
                                 <h3 className="text-foreground text-sm font-semibold">Contrato</h3>
                             </div>
-                            <div className="divide-border divide-y rounded-xl border overflow-hidden">
-                                {(documentos['documento_contrato'] || []).map((doc, index) => {
-                                    const contratos = colaborador.historial_contratos ?? [];
-                                    const contratosConFecha = contratos.filter((item) => item.fecha_inicio);
-                                    const contrato =
-                                        contratosConFecha[index] ?? (contratosConFecha.length === 0 ? contratos[index] : undefined);
-                                    const tipoContrato =
-                                        contrato?.tipo_contrato ?? doc.tipo_contrato ?? (index === 0 ? colaborador.tipo_contrato : null);
-                                    const fechaInicio = contrato?.fecha_inicio ?? (index === 0 ? colaborador.fecha_ingreso_empresa : null);
+                            <div className="divide-border divide-y overflow-hidden rounded-xl border">
+                                {historialContratos.map((contrato, index) => {
+                                    const documento = documentoPorContrato.get(contrato.id);
+                                    const subiendoEsteContrato = contratoSubiendoId === contrato.id;
+                                    const arrastrandoEsteContrato = draggingContratoId === contrato.id;
 
                                     return (
-                                    <div key={doc.id ?? doc.path} className="flex items-center gap-4 px-4 py-3 bg-card transition-colors">
-                                        <div className="flex min-w-0 flex-1 items-center gap-3">
-                                            <FileText className="size-3.5 shrink-0 text-muted-foreground" />
-                                            <span className="text-foreground text-sm font-semibold whitespace-nowrap">Contrato {index + 1}</span>
-                                            {tipoContrato && (
-                                                <Badge variant="outline" className="text-[10px] px-2 py-0.5 shrink-0">
-                                                    {tipoContrato}
+                                        <div key={contrato.id} className="bg-card flex items-center gap-4 px-4 py-3 transition-colors">
+                                            <div className="flex min-w-0 flex-1 items-center gap-3">
+                                                <FileText className="text-muted-foreground size-3.5 shrink-0" />
+                                                <span className="text-foreground text-sm font-semibold whitespace-nowrap">Contrato {index + 1}</span>
+                                                <Badge variant="outline" className="shrink-0 px-2 py-0.5 text-[10px]">
+                                                    {contrato.tipo_contrato || 'Sin tipo'}
                                                 </Badge>
-                                            )}
-                                            {fechaInicio && (
                                                 <span className="text-muted-foreground text-xs whitespace-nowrap">
-                                                    {formatFecha(fechaInicio)}
-                                                    {contrato?.fecha_fin ? ` — ${formatFecha(contrato.fecha_fin)}` : ''}
+                                                    {formatFecha(contrato.fecha_inicio)} — {formatFecha(contrato.fecha_fin)}
                                                 </span>
-                                            )}
-                                        </div>
-                                        <div className="flex items-center gap-1.5 shrink-0">
-                                            <a
-                                                href={doc.path}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="inline-flex items-center gap-1 truncate text-xs font-medium text-emerald-700 hover:underline dark:text-emerald-400"
-                                                title={doc.name}
-                                            >
-                                                <span className="max-w-[160px] truncate">{doc.name}</span>
-                                                <ExternalLink className="text-muted-foreground size-3 shrink-0" />
-                                            </a>
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="icon"
-                                                className="size-6 shrink-0 text-red-500 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30"
-                                                disabled={eliminandoId === doc.id}
-                                                onClick={() => handleEliminarDocumento(doc)}
-                                                title="Eliminar documento"
-                                            >
-                                                {eliminandoId === doc.id ? <LoaderCircle className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
-                                            </Button>
-                                        </div>
-                                    </div>
-                                    );
-                                })}
-                                {/* Fila para subir nuevo o ir al wizard */}
-                                {(() => {
-                                    const docs = documentos['documento_contrato'] || [];
-                                    const contratos = colaborador.historial_contratos ?? [];
-                                    const hayContratoPendiente = contratos.length > docs.length;
-
-                                    // No hay contrato pendiente → botón para crear uno nuevo en el wizard
-                                    if (!hayContratoPendiente) {
-                                        return (
-                                            <div className="flex items-center justify-between gap-3 px-4 py-3 bg-card">
-                                                <span className="text-muted-foreground text-xs">¿Nuevo contrato? Ingresa las fechas y cargo primero.</span>
-                                                <Button
-                                                    type="button"
-                                                    variant="outline"
-                                                    size="sm"
-                                                    className="gap-1.5 text-xs"
-                                                    asChild
-                                                >
-                                                    <Link href={`/modules/gente/colaboradores/${colaborador.id}/wizard?paso=3&redirect_to=contratos`}>
-                                                        <ArrowRight className="size-3.5" />
-                                                        Actualizar datos
-                                                    </Link>
-                                                </Button>
                                             </div>
-                                        );
-                                    }
-
-                                    // Hay contrato pendiente → mostrar fila de subida normal
-                                    return (
-                                        <div className="flex items-center gap-3 px-4 py-3 bg-card transition-colors">
-                                            <div className="flex min-w-0 flex-1 items-center gap-2">
-                                                {subiendoContrato ? (
+                                            <div className="flex shrink-0 items-center gap-1.5">
+                                                {documento?.path ? (
                                                     <>
-                                                        <LoaderCircle className="size-3.5 shrink-0 animate-spin text-emerald-600" />
-                                                        <span className="text-foreground truncate text-sm font-semibold max-w-[220px]">{subiendoContrato}</span>
+                                                        <a
+                                                            href={documento.path}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="inline-flex max-w-[180px] items-center gap-1 truncate text-xs font-medium text-emerald-700 hover:underline dark:text-emerald-400"
+                                                            title={documento.name ?? 'Abrir documento'}
+                                                        >
+                                                            <span className="truncate">{documento.name ?? 'Abrir documento'}</span>
+                                                            <ExternalLink className="text-muted-foreground size-3 shrink-0" />
+                                                        </a>
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="text-muted-foreground hover:bg-muted hover:text-foreground size-6 shrink-0"
+                                                            disabled={eliminandoId === documento.id}
+                                                            onClick={() => handleQuitarArchivo(documento)}
+                                                            title="Quitar archivo sin borrar el contrato"
+                                                        >
+                                                            <X className="size-3.5" />
+                                                        </Button>
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="size-6 shrink-0 text-red-500 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30"
+                                                            disabled={eliminandoId === documento.id}
+                                                            onClick={() => handleEliminarDocumento(documento)}
+                                                            title="Eliminar archivo del contrato"
+                                                        >
+                                                            {eliminandoId === documento.id ? (
+                                                                <LoaderCircle className="size-3.5 animate-spin" />
+                                                            ) : (
+                                                                <Trash2 className="size-3.5" />
+                                                            )}
+                                                        </Button>
                                                     </>
                                                 ) : (
-                                                    <>
-                                                        <Upload className="size-3.5 shrink-0 text-muted-foreground" />
-                                                        <span className="text-muted-foreground text-xs whitespace-nowrap">Contrato {docs.length + 1}</span>
-                                                        {(() => {
-                                                            const c = contratos[docs.length];
-                                                            if (!c?.fecha_inicio) return null;
-                                                            return (
-                                                                <span className="text-muted-foreground text-xs whitespace-nowrap">
-                                                                    {formatFecha(c.fecha_inicio)}{c.fecha_fin ? ` — ${formatFecha(c.fecha_fin)}` : ''}
-                                                                </span>
-                                                            );
-                                                        })()}
-                                                        <Select
-                                                            value={tipoContratoSeleccionado || '__sin_tipo__'}
-                                                            onValueChange={(v) => setTipoContratoSeleccionado(v === '__sin_tipo__' ? '' : v)}
-                                                        >
-                                                            <SelectTrigger className="h-7 text-xs w-44">
-                                                                <SelectValue placeholder="Tipo de contrato" />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                <SelectItem value="__sin_tipo__">Sin tipo</SelectItem>
-                                                                {catalogos.tiposContrato.map((t) => (
-                                                                    <SelectItem key={t} value={t}>{t}</SelectItem>
-                                                                ))}
-                                                            </SelectContent>
-                                                        </Select>
-                                                    </>
+                                                    <span className="text-muted-foreground text-xs">Sin archivo</span>
                                                 )}
-                                            </div>
-                                            <div className="shrink-0">
                                                 <input
                                                     type="file"
-                                                    ref={contratoInputRef}
+                                                    ref={(element) => {
+                                                        contratoInputRefs.current[contrato.id] = element;
+                                                    }}
                                                     className="hidden"
                                                     accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                                                    disabled={!!subiendoContrato || eliminandoId !== null}
-                                                    onChange={(e) => {
-                                                        const file = e.target.files?.[0];
-                                                        if (!file) return;
-                                                        handleSubirContrato(file);
-                                                        e.target.value = '';
+                                                    disabled={subiendoContrato !== null || eliminandoId !== null}
+                                                    onChange={(event) => {
+                                                        const file = event.target.files?.[0];
+                                                        if (file) handleSubirContrato(contrato.id, file);
+                                                        event.target.value = '';
                                                     }}
                                                 />
-                                                <div
-                                                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDraggingContrato(true); }}
-                                                    onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setDraggingContrato(false); }}
-                                                    onDrop={(e) => {
-                                                        e.preventDefault(); e.stopPropagation(); setDraggingContrato(false);
-                                                        const file = e.dataTransfer.files?.[0];
-                                                        if (!file || subiendoContrato) return;
-                                                        handleSubirContrato(file);
+                                                <button
+                                                    type="button"
+                                                    disabled={subiendoContrato !== null || eliminandoId !== null}
+                                                    onDragOver={(event) => {
+                                                        event.preventDefault();
+                                                        event.stopPropagation();
+                                                        setDraggingContratoId(contrato.id);
                                                     }}
-                                                    onClick={() => !subiendoContrato && contratoInputRef.current?.click()}
-                                                    className={`group flex cursor-pointer items-center gap-1.5 rounded-md border border-dashed px-3 py-1.5 text-xs transition-all select-none ${
-                                                        draggingContrato
+                                                    onDragLeave={(event) => {
+                                                        event.preventDefault();
+                                                        event.stopPropagation();
+                                                        setDraggingContratoId(null);
+                                                    }}
+                                                    onDrop={(event) => {
+                                                        event.preventDefault();
+                                                        event.stopPropagation();
+                                                        setDraggingContratoId(null);
+                                                        const file = event.dataTransfer.files[0];
+                                                        if (file) handleSubirContrato(contrato.id, file);
+                                                    }}
+                                                    onClick={() => contratoInputRefs.current[contrato.id]?.click()}
+                                                    className={`group flex cursor-pointer items-center gap-1.5 rounded-md border border-dashed px-3 py-1.5 text-xs transition-all select-none disabled:cursor-not-allowed disabled:opacity-50 ${
+                                                        arrastrandoEsteContrato
                                                             ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300'
-                                                            : 'border-muted-foreground/30 text-muted-foreground hover:border-emerald-500/60 hover:bg-muted/40 hover:text-foreground'
+                                                            : 'border-muted-foreground/30 text-muted-foreground hover:bg-muted/40 hover:text-foreground hover:border-emerald-500/60'
                                                     }`}
                                                 >
-                                                    <Upload className="size-3.5 shrink-0 transition-transform group-hover:-translate-y-0.5" />
-                                                    <span>{subiendoContrato ? 'Subiendo...' : draggingContrato ? 'Suelta aquí' : 'Subir contrato'}</span>
-                                                </div>
+                                                    {subiendoEsteContrato ? (
+                                                        <LoaderCircle className="size-3.5 animate-spin" />
+                                                    ) : (
+                                                        <Upload className="size-3.5 shrink-0 transition-transform group-hover:-translate-y-0.5" />
+                                                    )}
+                                                    <span>
+                                                        {subiendoEsteContrato
+                                                            ? 'Subiendo...'
+                                                            : arrastrandoEsteContrato
+                                                              ? 'Suelta aquí'
+                                                              : documento?.path
+                                                                ? 'Reemplazar'
+                                                                : 'Subir contrato'}
+                                                    </span>
+                                                </button>
                                             </div>
                                         </div>
                                     );
-                                })()}
+                                })}
+                                {documentosSinContrato.map((documento, index) => (
+                                    <div key={documento.id ?? documento.path ?? index} className="bg-card flex items-center gap-3 px-4 py-3">
+                                        <span className="text-muted-foreground min-w-0 flex-1 truncate text-xs">
+                                            Documento sin contrato asociado: {documento.name ?? 'archivo no disponible'}
+                                        </span>
+                                        {documento.path && (
+                                            <a
+                                                href={documento.path}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-emerald-700 hover:underline dark:text-emerald-400"
+                                            >
+                                                Abrir
+                                            </a>
+                                        )}
+                                    </div>
+                                ))}
+                                {historialContratos.length === 0 && documentosSinContrato.length === 0 && (
+                                    <div className="bg-card flex items-center justify-between gap-3 px-4 py-3">
+                                        <span className="text-muted-foreground text-xs">No hay contratos registrados para cargar documentos.</span>
+                                        <Button type="button" variant="outline" size="sm" className="gap-1.5 text-xs" asChild>
+                                            <Link href={`/modules/gente/colaboradores/${colaborador.id}/wizard?paso=3&redirect_to=contratos`}>
+                                                <ArrowRight className="size-3.5" />
+                                                Registrar contrato
+                                            </Link>
+                                        </Button>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -1696,13 +1811,12 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                     No se han detectado fechas de finalización aún.
                                 </div>
                             ) : (
-                                <div className="divide-border divide-y rounded-xl border overflow-hidden">
+                                <div className="divide-border divide-y overflow-hidden rounded-xl border">
                                     {todasFechasPreaviso.map((fp) => {
                                         const estaSubiendo = subiendoPreavisoFecha === fp.fecha;
                                         const estaArrastrando = draggingPreavisoFecha === fp.fecha;
-                                        const etiquetaFecha = fp.fecha_desde && fp.fecha_hasta
-                                            ? `${fp.fecha_desde} — ${fp.fecha_hasta}`
-                                            : fp.fecha_formateada;
+                                        const etiquetaFecha =
+                                            fp.fecha_desde && fp.fecha_hasta ? `${fp.fecha_desde} — ${fp.fecha_hasta}` : fp.fecha_formateada;
 
                                         return (
                                             <div
@@ -1712,7 +1826,9 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                                 }`}
                                             >
                                                 <div className="flex min-w-0 flex-1 items-center gap-2">
-                                                    <Calendar className={`size-3.5 shrink-0 ${fp.es_actual ? 'text-cyan-700 dark:text-cyan-300' : 'text-muted-foreground'}`} />
+                                                    <Calendar
+                                                        className={`size-3.5 shrink-0 ${fp.es_actual ? 'text-cyan-700 dark:text-cyan-300' : 'text-muted-foreground'}`}
+                                                    />
                                                     <span className="text-foreground text-sm font-semibold">{etiquetaFecha}</span>
                                                     {fp.es_actual && (
                                                         <Badge className="bg-[#1e5f74] px-2 py-0.5 text-[10px] text-white hover:bg-[#1a3a5c]">
@@ -1753,10 +1869,20 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                                         </div>
                                                     ) : (
                                                         <div
-                                                            onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDraggingPreavisoFecha(fp.fecha); }}
-                                                            onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setDraggingPreavisoFecha(null); }}
+                                                            onDragOver={(e) => {
+                                                                e.preventDefault();
+                                                                e.stopPropagation();
+                                                                setDraggingPreavisoFecha(fp.fecha);
+                                                            }}
+                                                            onDragLeave={(e) => {
+                                                                e.preventDefault();
+                                                                e.stopPropagation();
+                                                                setDraggingPreavisoFecha(null);
+                                                            }}
                                                             onDrop={(e) => {
-                                                                e.preventDefault(); e.stopPropagation(); setDraggingPreavisoFecha(null);
+                                                                e.preventDefault();
+                                                                e.stopPropagation();
+                                                                setDraggingPreavisoFecha(null);
                                                                 const file = e.dataTransfer.files?.[0];
                                                                 if (file) handleSubirPreaviso(fp.fecha, file);
                                                             }}
@@ -1764,12 +1890,14 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                                             className={`group flex cursor-pointer items-center gap-1.5 rounded-md border border-dashed px-3 py-1.5 text-xs transition-all select-none ${
                                                                 estaArrastrando
                                                                     ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300'
-                                                                    : 'border-muted-foreground/30 text-muted-foreground hover:border-emerald-500/60 hover:bg-muted/40 hover:text-foreground'
+                                                                    : 'border-muted-foreground/30 text-muted-foreground hover:bg-muted/40 hover:text-foreground hover:border-emerald-500/60'
                                                             }`}
                                                         >
                                                             <input
                                                                 type="file"
-                                                                ref={(el) => { preavisoInputRefs.current[fp.fecha] = el; }}
+                                                                ref={(el) => {
+                                                                    preavisoInputRefs.current[fp.fecha] = el;
+                                                                }}
                                                                 className="hidden"
                                                                 accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                                                                 onChange={(e) => {
@@ -1778,9 +1906,15 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                                                 }}
                                                             />
                                                             {estaSubiendo ? (
-                                                                <><LoaderCircle className="size-3.5 animate-spin text-emerald-600" /><span>Subiendo...</span></>
+                                                                <>
+                                                                    <LoaderCircle className="size-3.5 animate-spin text-emerald-600" />
+                                                                    <span>Subiendo...</span>
+                                                                </>
                                                             ) : (
-                                                                <><Upload className="size-3.5 shrink-0 transition-transform group-hover:-translate-y-0.5" /><span>{estaArrastrando ? 'Suelta aquí' : 'Subir preaviso'}</span></>
+                                                                <>
+                                                                    <Upload className="size-3.5 shrink-0 transition-transform group-hover:-translate-y-0.5" />
+                                                                    <span>{estaArrastrando ? 'Suelta aquí' : 'Subir preaviso'}</span>
+                                                                </>
                                                             )}
                                                         </div>
                                                     )}
@@ -1796,13 +1930,25 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                     <p className="text-muted-foreground text-xs font-medium">Otros preavisos registrados:</p>
                                     <div className="flex flex-wrap gap-2">
                                         {otros_preavisos.map((op) => (
-                                            <div key={op.id ?? op.path} className="bg-card border-border inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs">
-                                                <a href={op.path} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-emerald-600 hover:underline">
+                                            <div
+                                                key={op.id ?? op.path}
+                                                className="bg-card border-border inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs"
+                                            >
+                                                <a
+                                                    href={op.path}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="flex items-center gap-1 text-emerald-600 hover:underline"
+                                                >
                                                     <FileText className="size-3" />
                                                     <span className="max-w-[150px] truncate">{op.name || 'Preaviso'}</span>
                                                 </a>
                                                 {op.id && (
-                                                    <button type="button" onClick={() => handleEliminarPreaviso(op.id!)} className="ml-1 text-red-500 hover:text-red-700">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleEliminarPreaviso(op.id!)}
+                                                        className="ml-1 text-red-500 hover:text-red-700"
+                                                    >
                                                         <Trash2 className="size-3" />
                                                     </button>
                                                 )}
@@ -1813,16 +1959,16 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                             )}
                         </div>
 
-                {/* Botón volver al paso 1 */}
-                <div className="flex justify-start pt-2">
+                        {/* Botón volver al paso 1 */}
+                        <div className="flex justify-start pt-2">
                             <Button type="button" variant="outline" onClick={() => setPasoActual(1)} className="gap-2">
-                        <ArrowLeft className="size-4" />
-                        Volver a Tablas de contrato
-                    </Button>
-                </div>
+                                <ArrowLeft className="size-4" />
+                                Volver a Tablas de contrato
+                            </Button>
+                        </div>
+                    </div>
+                )}
             </div>
-        )}
-    </div>
-</AppLayout>
+        </AppLayout>
     );
 }

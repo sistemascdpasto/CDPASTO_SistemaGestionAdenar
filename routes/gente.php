@@ -150,6 +150,8 @@ Route::middleware(['auth', 'active', 'role:Administrador|Gente|Contratos', 'subm
             ->name('contratos.documentos.store');
         Route::delete('contratos/{colaborador}/documentos/{documento}', [ContratosController::class, 'destroyDocumento'])
             ->name('contratos.documentos.destroy');
+        Route::patch('contratos/{colaborador}/documentos/{documento}/archivo', [ContratosController::class, 'clearArchivoDocumento'])
+            ->name('contratos.documentos.archivo.clear');
         Route::post('contratos/{colaborador}/preavisos', [ContratosController::class, 'storePreaviso'])
             ->name('contratos.preavisos.store');
         Route::post('contratos/{colaborador}/prorrogas/{prorroga}/documento', [ContratosController::class, 'storeDocumentoProrroga'])
@@ -162,6 +164,10 @@ Route::middleware(['auth', 'active', 'role:Administrador|Gente|Contratos', 'subm
             ->name('contratos.datos.update');
         Route::delete('contratos/{colaborador}/datos', [ContratosController::class, 'destroyDatosContrato'])
             ->name('contratos.datos.destroy');
+        Route::patch('contratos/{colaborador}/historial/{contrato}', [ContratosController::class, 'updateContratoHistorial'])
+            ->name('contratos.historial.update');
+        Route::delete('contratos/{colaborador}/historial/{contrato}', [ContratosController::class, 'destroyContratoHistorial'])
+            ->name('contratos.historial.destroy');
         Route::delete('contratos/{colaborador}/antecedente', [ContratosController::class, 'destroyAntecedente'])
             ->name('contratos.antecedente.destroy');
         Route::delete('contratos/{colaborador}/prorrogas/{prorroga}/documento', [ContratosController::class, 'destroyDocumentoProrroga'])
