@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
-import { Eye, FileSpreadsheet, FileStack, Search, Users } from 'lucide-react';
+import { Eye, FileSpreadsheet, FileStack, Search, Users, X } from 'lucide-react';
 import { useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -43,6 +43,9 @@ interface PaginatedData<T> {
 interface Filters {
     search: string;
     estado: string;
+    estado_contrato: string;
+    fecha_desde: string;
+    fecha_hasta: string;
 }
 
 interface Props {
@@ -68,39 +71,63 @@ function estadoContrato(
     const retiro = new Date(fechaRetiro);
     const diasRestantes = Math.ceil((retiro.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
     if (diasRestantes < 0) return { label: 'Vencido', variant: 'destructive' };
-    if (diasRestantes <= 30) return { label: `Vence en ${diasRestantes}d`, variant: 'outline' };
+    if (diasRestantes <= 35) return { label: `Vence en ${diasRestantes}d`, variant: 'outline' };
     return { label: 'Vigente', variant: 'default' };
 }
 
 export default function ContratosIndex({ colaboradores, filters }: Props) {
-    const [search, setSearch] = useState(filters?.search || '');
-    const [estado, setEstado] = useState(filters?.estado || 'todos');
+    const [search,          setSearch]          = useState(filters?.search          || '');
+    const [estado,          setEstado]          = useState(filters?.estado          || 'todos');
+    const [estadoContrato,  setEstadoContrato]  = useState(filters?.estado_contrato || 'todos');
+    const [fechaDesde,      setFechaDesde]      = useState(filters?.fecha_desde     || '');
+    const [fechaHasta,      setFechaHasta]      = useState(filters?.fecha_hasta     || '');
 
     const rows = colaboradores?.data || [];
 
-    const handleFilter = (newSearch = search, newEstado = estado) => {
+    const hayFiltrosActivos =
+        search !== '' ||
+        estado !== 'todos' ||
+        estadoContrato !== 'todos' ||
+        fechaDesde !== '' ||
+        fechaHasta !== '';
+
+    const handleFilter = (
+        s  = search,
+        e  = estado,
+        ec = estadoContrato,
+        fd = fechaDesde,
+        fh = fechaHasta,
+    ) => {
         router.get(
             '/modules/gente/contratos',
             {
-                search: newSearch,
-                estado: newEstado === 'todos' ? '' : newEstado,
+                search:          s,
+                estado:          e  === 'todos' ? '' : e,
+                estado_contrato: ec === 'todos' ? '' : ec,
+                fecha_desde:     fd,
+                fecha_hasta:     fh,
             },
             { preserveState: true, replace: true },
         );
     };
 
-    const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const val = e.target.value;
-        setSearch(val);
-        handleFilter(val, estado);
+    const limpiarFiltros = () => {
+        setSearch('');
+        setEstado('todos');
+        setEstadoContrato('todos');
+        setFechaDesde('');
+        setFechaHasta('');
+        handleFilter('', 'todos', 'todos', '', '');
     };
 
-    const handleEstadoChange = (val: string) => {
-        setEstado(val);
-        handleFilter(search, val);
-    };
-
-    const exportUrl = `/modules/gente/contratos/exportar?search=${encodeURIComponent(search)}&estado=${encodeURIComponent(estado === 'todos' ? '' : estado)}`;
+    const exportParams = new URLSearchParams({
+        search,
+        estado:          estado         === 'todos' ? '' : estado,
+        estado_contrato: estadoContrato === 'todos' ? '' : estadoContrato,
+        fecha_desde:     fechaDesde,
+        fecha_hasta:     fechaHasta,
+    }).toString();
+    const exportUrl = `/modules/gente/contratos/exportar?${exportParams}`;
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -142,7 +169,8 @@ export default function ContratosIndex({ colaboradores, filters }: Props) {
                         <CardTitle className="text-base font-semibold">Lista de contratos</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        {/* Filtros */}
+
+                        {/* Fila 1: búsqueda + colaborador activo/inactivo */}
                         <div className="flex flex-col gap-3 sm:flex-row">
                             <div className="relative flex-1">
                                 <Search className="text-muted-foreground absolute top-2.5 left-2.5 h-4 w-4" />
@@ -150,13 +178,19 @@ export default function ContratosIndex({ colaboradores, filters }: Props) {
                                     type="text"
                                     placeholder="Buscar por nombre o cédula..."
                                     value={search}
-                                    onChange={handleSearchChange}
+                                    onChange={(e) => {
+                                        setSearch(e.target.value);
+                                        handleFilter(e.target.value, estado, estadoContrato, fechaDesde, fechaHasta);
+                                    }}
                                     className="pl-9"
                                 />
                             </div>
-                            <Select value={estado} onValueChange={handleEstadoChange}>
-                                <SelectTrigger className="w-full sm:w-48">
-                                    <SelectValue placeholder="Estado" />
+                            <Select
+                                value={estado}
+                                onValueChange={(v) => { setEstado(v); handleFilter(search, v, estadoContrato, fechaDesde, fechaHasta); }}
+                            >
+                                <SelectTrigger className="w-full sm:w-44">
+                                    <SelectValue placeholder="Colaborador" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="todos">Todos</SelectItem>
@@ -164,6 +198,61 @@ export default function ContratosIndex({ colaboradores, filters }: Props) {
                                     <SelectItem value="inactivo">Inactivos</SelectItem>
                                 </SelectContent>
                             </Select>
+                        </div>
+
+                        {/* Fila 2: estado de contrato + rango de fechas de vencimiento */}
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                            <div className="flex flex-col gap-1">
+                                <span className="text-muted-foreground text-xs font-medium">Estado del contrato</span>
+                                <Select
+                                    value={estadoContrato}
+                                    onValueChange={(v) => { setEstadoContrato(v); handleFilter(search, estado, v, fechaDesde, fechaHasta); }}
+                                >
+                                    <SelectTrigger className="w-full sm:w-48">
+                                        <SelectValue placeholder="Estado contrato" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="todos">Todos</SelectItem>
+                                        <SelectItem value="vigente">Vigente</SelectItem>
+                                        <SelectItem value="por_vencer">Por vencer (≤35 días)</SelectItem>
+                                        <SelectItem value="vencido">Vencido</SelectItem>
+                                        <SelectItem value="finalizado">Finalizado</SelectItem>
+                                        <SelectItem value="sin_fecha">Sin fecha fin</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="flex flex-col gap-1">
+                                <span className="text-muted-foreground text-xs font-medium">Vencimiento desde</span>
+                                <Input
+                                    type="date"
+                                    value={fechaDesde}
+                                    onChange={(e) => { setFechaDesde(e.target.value); handleFilter(search, estado, estadoContrato, e.target.value, fechaHasta); }}
+                                    className="w-full sm:w-40"
+                                />
+                            </div>
+
+                            <div className="flex flex-col gap-1">
+                                <span className="text-muted-foreground text-xs font-medium">Vencimiento hasta</span>
+                                <Input
+                                    type="date"
+                                    value={fechaHasta}
+                                    onChange={(e) => { setFechaHasta(e.target.value); handleFilter(search, estado, estadoContrato, fechaDesde, e.target.value); }}
+                                    className="w-full sm:w-40"
+                                />
+                            </div>
+
+                            {hayFiltrosActivos && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={limpiarFiltros}
+                                    className="text-muted-foreground hover:text-foreground gap-1.5 self-end"
+                                >
+                                    <X className="h-3.5 w-3.5" />
+                                    Limpiar filtros
+                                </Button>
+                            )}
                         </div>
 
                         {/* Tabla */}

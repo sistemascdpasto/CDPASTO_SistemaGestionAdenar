@@ -7,6 +7,7 @@ use App\Models\Flota\Vehiculo;
 use App\Models\Gente\Sac;
 use App\Models\Reparto\CincoPorque;
 use App\Models\Seguridad\Alerta;
+use App\Models\Seguridad\AlertaDescartada;
 use App\Models\Seguridad\Colaborador;
 use App\Models\Seguridad\CondicionSalud;
 use App\Models\Seguridad\EvaluacionMedica;
@@ -24,14 +25,28 @@ class NotificacionesService
 {
     private const MAX_ITEMS = 8;
 
+    /** ID del usuario actual — se fija en paraUsuario() y lo usan los métodos privados para filtrar descartadas. */
+    private int $userId;
+
+    /** IDs de alertas ya descartadas por el usuario — se carga una sola vez en paraUsuario(). */
+    private \Illuminate\Support\Collection $descartadasIds;
+
     public function __construct(private readonly EppEstadoService $eppEstado) {}
 
     public function paraUsuario(User $user): array
     {
+        $this->userId = $user->id;
+        // Cargar una sola vez para todos los grupos que lo necesiten.
+        $this->descartadasIds = AlertaDescartada::query()
+            ->where('user_id', $this->userId)
+            ->pluck('alerta_id');
         $es = fn (string $rol) => $user->hasRole('Administrador') || $user->hasRole($rol);
 
         $constructores = [];
 
+        if ($es('Contratos')) {
+            $constructores[] = fn () => $this->contratosProximosAVencer();
+        }
         if ($es('Gente') || $es('Seguridad')) {
             $constructores[] = fn () => $this->pruebasPeriodo();
         }
@@ -116,6 +131,75 @@ class NotificacionesService
         ]);
     }
 
+    private function contratosProximosAVencer(): ?array
+    {
+        $diasAnticipacion = (int) config('seguridad.dias_alerta_vencimiento_contrato');
+        $limite = Carbon::today()->addDays($diasAnticipacion);
+        $hoy = Carbon::today();
+
+        // IDs de alertas retiro_proximo ya descartadas por este usuario.
+        // Alertas activas de tipo retiro_proximo no descartadas, indexadas por colaborador_id
+        // para poder adjuntar el alerta_id a cada ítem de la campana.
+        $alertasPorColaborador = Alerta::query()
+            ->where('tipo', 'retiro_proximo')
+            ->where('atendida', false)
+            ->whereNotIn('id', $this->descartadasIds)
+            ->whereNotNull('colaborador_id')
+            ->pluck('id', 'colaborador_id');
+
+        // Colaboradores activos con contrato vigente (sin finalización confirmada)
+        // cuya fecha de vencimiento real (última prórroga o contrato base) cae
+        // dentro del período de anticipación configurado. Misma lógica que
+        // RevisarVencimientoContratos y la pantalla de contratos.
+        $colaboradores = Colaborador::query()
+            ->completos()
+            ->where('is_active', true)
+            ->whereNotNull('fecha_retiro_empresa')
+            ->whereDoesntHave('prorrogas', fn ($q) => $q->where('tipo', 'finalizacion'))
+            ->with(['prorrogas' => fn ($q) => $q->where('tipo', 'prorroga')->orderByDesc('created_at')])
+            ->get(['id', 'nombres', 'apellidos', 'fecha_retiro_empresa']);
+
+        $items = [];
+        foreach ($colaboradores as $colaborador) {
+            $ultimaProrroga = $colaborador->prorrogas->first();
+            $fechaVencimiento = $ultimaProrroga?->fecha_nueva ?? $colaborador->fecha_retiro_empresa;
+
+            if (! $fechaVencimiento || $fechaVencimiento->gt($limite)) {
+                continue;
+            }
+
+            // Si la alerta fue descartada por este usuario, no mostrarla.
+            $alertaId = $alertasPorColaborador->get($colaborador->id);
+            if ($alertaId === null) {
+                continue;
+            }
+
+            $diasRestantes = (int) $hoy->diffInDays($fechaVencimiento, false);
+            $vencido = $diasRestantes < 0;
+
+            $detalle = $vencido
+                ? 'Vencido hace '.abs($diasRestantes).(abs($diasRestantes) === 1 ? ' día' : ' días')
+                : ($diasRestantes === 0
+                    ? 'Vence hoy'
+                    : 'Vence en '.$diasRestantes.(abs($diasRestantes) === 1 ? ' día' : ' días'));
+
+            $items[] = [
+                'titulo' => $colaborador->nombre_completo,
+                'detalle' => $detalle,
+                'fecha' => $fechaVencimiento->format('d/m/Y'),
+                'url' => '/modules/gente/contratos/'.$colaborador->id,
+                'alerta_id' => $alertaId,
+                'critico' => $vencido || $diasRestantes <= 7,
+                'orden' => $diasRestantes,
+            ];
+        }
+
+        return $this->grupo('contratos_vencimiento', 'Contratos próximos a vencer', 'calendar-clock', '#B45309', $items, [
+            'label' => 'Ver todos los contratos',
+            'url' => '/modules/gente/contratos',
+        ]);
+    }
+
     private function sacSinResolver(): ?array
     {
         $registros = Sac::query()
@@ -146,20 +230,24 @@ class NotificacionesService
      */
     private function alertasDeTabla(string $pilar, string $key, string $titulo, string $icono, string $color, string $url): ?array
     {
-        $alertas = Alerta::query()
-            ->with(['colaborador:id,nombres,apellidos', 'alcoholimetro:id,codigo'])
+        $baseQuery = fn () => Alerta::query()
             ->where('pilar', $pilar)
             ->where('atendida', false)
+            ->whereNotIn('id', $this->descartadasIds);
+
+        $alertas = $baseQuery()
+            ->with(['colaborador:id,nombres,apellidos', 'alcoholimetro:id,codigo'])
             ->latest()
             ->limit(self::MAX_ITEMS)
             ->get();
-        $total = Alerta::query()->where('pilar', $pilar)->where('atendida', false)->count();
+        $total = $baseQuery()->count();
 
         $items = $alertas->map(fn (Alerta $a) => [
             'titulo' => AlertaCatalogo::labelDeTipo($a->tipo),
             'detalle' => $a->mensaje,
             'fecha' => $a->created_at?->diffForHumans(),
             'url' => $url,
+            'alerta_id' => $a->id,
             'critico' => in_array($a->tipo, ['prueba_positiva', 'no_apto', 'salud_mala'], true),
         ])->all();
 

@@ -4,6 +4,7 @@ use App\Http\Controllers\ChatbotController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Gente\SeguimientoPruebasController;
 use App\Http\Controllers\NotificacionesController;
+use App\Http\Controllers\NotificacionesDescartarController;
 use App\Http\Controllers\Reparto\CompensacionVariableController;
 use App\Http\Controllers\Reparto\ModulacionController;
 use App\Http\Controllers\Seguridad\RutaCriticaController;
@@ -36,6 +37,7 @@ Route::middleware(['auth', 'active'])->group(function () {
 
     // Campana de notificaciones del header: feed unificado por rol.
     Route::get('notificaciones', [NotificacionesController::class, 'index'])->name('notificaciones.index');
+    Route::post('notificaciones/{alerta}/descartar', NotificacionesDescartarController::class)->name('notificaciones.descartar');
 
     Route::middleware('module.access')->group(function () {
         Route::get('modules/{module}', function (string $module) {

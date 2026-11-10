@@ -27,6 +27,8 @@ interface NotificacionItem {
     detalle: string | null;
     fecha: string | null;
     url: string;
+    /** ID de la alerta en BD — presente cuando el ítem proviene de la tabla alertas. */
+    alerta_id?: number;
     critico?: boolean;
 }
 
@@ -63,19 +65,9 @@ export function NotificationsBell() {
     const page = usePage();
     const [data, setData] = useState<NotificacionesResponse>({ total: 0, grupos: [] });
     const [loading, setLoading] = useState(true);
-    // Claves descartadas persisten en localStorage (solo oculta de la campana,
-    // no borra de la BD ni de la vista modules/seguridad/alertas)
-    const [descartados, setDescartados] = useState<Set<string>>(new Set());
-
-    const STORAGE_KEY = 'bell_descartadas';
-
-    // Cargar descartadas de localStorage al montar
-    useEffect(() => {
-        try {
-            const raw = localStorage.getItem(STORAGE_KEY);
-            if (raw) setDescartados(new Set(JSON.parse(raw)));
-        } catch { /* ignore */ }
-    }, []);
+    // Claves descartadas optimistamente en la sesión actual (evitan parpadeo
+    // mientras el servidor confirma). Ya NO se persisten en localStorage.
+    const [descartandoIds, setDescartandoIds] = useState<Set<string>>(new Set());
 
     const cargar = useCallback(() => {
         setLoading(true);
@@ -92,25 +84,60 @@ export function NotificationsBell() {
         cargar();
     }, [cargar, page.url]);
 
-    const descartar = (e: React.MouseEvent, clave: string) => {
+    const descartar = (e: React.MouseEvent, grupoKey: string, item: NotificacionItem) => {
         e.preventDefault();
         e.stopPropagation();
-        setDescartados((prev) => {
-            const next = new Set(prev).add(clave);
-            try { localStorage.setItem(STORAGE_KEY, JSON.stringify([...next])); } catch { /* ignore */ }
-            return next;
-        });
+
+        const clave = claveItem(grupoKey, item);
+
+        // Ocultar optimistamente de inmediato
+        setDescartandoIds((prev) => new Set(prev).add(clave));
+
+        if (item.alerta_id) {
+            // Persistir en BD para que no vuelva a aparecer en ninguna sesión
+            fetch(`/notificaciones/${item.alerta_id}/descartar`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? '',
+                    Accept: 'application/json',
+                },
+            })
+                .then((r) => {
+                    if (r.ok || r.status === 404) {
+                        // 200 → descarte guardado; 404 → la alerta ya no existe,
+                        // en ambos casos el ítem no debe volver.
+                        cargar();
+                    } else {
+                        // Error real del servidor (500, 422, etc.): revertir
+                        setDescartandoIds((prev) => {
+                            const next = new Set(prev);
+                            next.delete(clave);
+                            return next;
+                        });
+                    }
+                })
+                .catch(() => {
+                    // Error de red: revertir el ocultamiento optimista
+                    setDescartandoIds((prev) => {
+                        const next = new Set(prev);
+                        next.delete(clave);
+                        return next;
+                    });
+                });
+        }
+        // Ítems sin alerta_id (SAC, 5 por qué, etc.) solo se ocultan
+        // optimistamente en la sesión actual — no tienen registro en alertas.
     };
 
     // Clave estable: grupo + url + titulo (no depende del índice del array)
     const claveItem = (grupoKey: string, item: NotificacionItem) =>
         `${grupoKey}::${item.url}::${item.titulo}`;
 
-    // Filtrar items descartados y recalcular totales
+    // Filtrar items descartados optimistamente y recalcular totales
     const gruposFiltrados = data.grupos
         .map((grupo) => ({
             ...grupo,
-            items: grupo.items.filter((item) => !descartados.has(claveItem(grupo.key, item))),
+            items: grupo.items.filter((item) => !descartandoIds.has(claveItem(grupo.key, item))),
         }))
         .filter((grupo) => grupo.items.length > 0)
         .map((grupo) => ({ ...grupo, total: grupo.items.length }));
@@ -182,8 +209,8 @@ export function NotificationsBell() {
                                             >
                                                 <button
                                                     type="button"
-                                                    onClick={(e) => descartar(e, clave)}
-                                                    title="Quitar de la campana"
+                                                    onClick={(e) => descartar(e, grupo.key, item)}
+                                                    title="Descartar"
                                                     className="absolute right-2 top-2 flex size-5 items-center justify-center rounded text-muted-foreground/50 opacity-0 transition-all hover:bg-red-50 hover:text-red-600 group-hover:opacity-100 dark:hover:bg-red-950/30"
                                                 >
                                                     <X className="size-3.5" />

@@ -38,7 +38,17 @@ class ContratosExport implements FromCollection, WithColumnWidths, WithCustomSta
         ['grupo' => 'F4CCCC', 'fila' => 'FCEBEB'],
     ];
 
+    // Fondo rojo claro para filas en alerta (≤ 35 días para vencer o ya vencidas)
+    private const COLOR_ALERTA_FILA  = 'FFFFE0E0'; // rojo muy claro
+    private const COLOR_ALERTA_TEXTO = 'FF9B1C1C'; // rojo oscuro para el texto
+
     private int $cantidadProrrogas;
+
+    /** Números de fila (base 1, donde fila 3 = primer colaborador) que deben resaltarse en rojo. */
+    private array $filasEnAlerta = [];
+
+    /** Contador interno para saber en qué fila del sheet va el map(). */
+    private int $filaActual = 3;
 
     /**
      * @param  Collection<int, Colaborador>  $colaboradores
@@ -84,6 +94,25 @@ class ContratosExport implements FromCollection, WithColumnWidths, WithCustomSta
      */
     public function map($colaborador): array
     {
+        // Detectar si este colaborador está en el umbral de alerta (≤ 35 días
+        // para vencer o ya vencido) y no tiene finalización confirmada.
+        if (! $colaborador->tiene_finalizacion) {
+            $fechaVigente = $colaborador->ultima_fecha_prorroga
+                ? Carbon::parse($colaborador->ultima_fecha_prorroga)
+                : $colaborador->fecha_retiro_empresa;
+
+            if ($fechaVigente) {
+                $diasRestantes = (int) today()->diffInDays($fechaVigente, false);
+                $diasUmbral = (int) config('seguridad.dias_alerta_vencimiento_contrato', 35);
+
+                if ($diasRestantes <= $diasUmbral) {
+                    $this->filasEnAlerta[] = $this->filaActual;
+                }
+            }
+        }
+
+        $this->filaActual++;
+
         $prorrogas = $colaborador->prorrogas;
         $fechaTerminacionInicial = $prorrogas->first()?->fecha_anterior ?? $colaborador->fecha_retiro_empresa;
         $fila = [
@@ -195,6 +224,26 @@ class ContratosExport implements FromCollection, WithColumnWidths, WithCustomSta
                     $sheet->getStyle('A3:'.$lastColumn.$ultimaFila)
                         ->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_HAIR);
                 }
+
+                // Resaltar en rojo las filas cuyo contrato vence en ≤ 35 días
+                // o ya venció. Se aplica al final para sobreescribir los colores
+                // de prórroga sin afectar los encabezados.
+                foreach ($this->filasEnAlerta as $fila) {
+                    $rangoFila = 'A'.$fila.':'.$lastColumn.$fila;
+                    $sheet->getStyle($rangoFila)
+                        ->getFill()
+                        ->setFillType(Fill::FILL_SOLID)
+                        ->getStartColor()
+                        ->setARGB(self::COLOR_ALERTA_FILA);
+                    $sheet->getStyle($rangoFila)
+                        ->getFont()
+                        ->getColor()
+                        ->setARGB(self::COLOR_ALERTA_TEXTO);
+                    $sheet->getStyle($rangoFila)
+                        ->getFont()
+                        ->setBold(true);
+                }
+
                 $sheet->getRowDimension(1)->setRowHeight(23);
                 $sheet->getRowDimension(2)->setRowHeight(22);
                 $sheet->freezePane(Coordinate::stringFromColumnIndex(count(self::DATOS_PERSONALES) + 1).'3');
@@ -215,11 +264,18 @@ class ContratosExport implements FromCollection, WithColumnWidths, WithCustomSta
             return 'FINALIZADO';
         }
 
-        if (! $colaborador->fecha_retiro_empresa) {
+        // Usar la fecha vigente real: última prórroga si existe, o contrato base.
+        // Misma lógica que la pantalla (fecha_vencimiento_vigente) y el comando
+        // de correos (RevisarVencimientoContratos).
+        $fechaVigente = $colaborador->ultima_fecha_prorroga
+            ? Carbon::parse($colaborador->ultima_fecha_prorroga)
+            : $colaborador->fecha_retiro_empresa;
+
+        if (! $fechaVigente) {
             return 'SIN FECHA FIN';
         }
 
-        return $colaborador->fecha_retiro_empresa->isBefore(today()) ? 'VENCIDO' : 'VIGENTE';
+        return $fechaVigente->isBefore(today()) ? 'VENCIDO' : 'VIGENTE';
     }
 
     private function tienePreaviso(Colaborador $colaborador, mixed $fechaTerminacion): bool

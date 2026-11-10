@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Gente\ContratoProrroga;
 use App\Models\Seguridad\Alerta;
 use App\Models\Seguridad\Colaborador;
 use App\Services\Seguridad\AlertaNotifier;
@@ -14,11 +15,12 @@ class RevisarVencimientoContratos extends Command
                             {--force : Reenviar notificación a usuarios con rol Contratos aunque la alerta ya exista}
                             {--solo-frecuentes : Notificar únicamente a usuarios con la casilla de 3 veces al día marcada}';
 
-    protected $description = 'Genera alertas para colaboradores cuyo contrato está próximo a vencer (HU03)';
+    protected $description = 'Genera alertas para colaboradores cuyo contrato (o última prórroga) está próximo a vencer (HU03)';
 
     public function handle(): int
     {
-        $limite = Carbon::now()->addDays((int) config('seguridad.dias_alerta_vencimiento_contrato'));
+        $diasAnticipacion = (int) config('seguridad.dias_alerta_vencimiento_contrato');
+        $limite = Carbon::now()->addDays($diasAnticipacion);
         $procesadas = 0;
         $soloFrecuentes = (bool) $this->option('solo-frecuentes');
 
@@ -26,9 +28,19 @@ class RevisarVencimientoContratos extends Command
             ->completos()
             ->where('is_active', true)
             ->whereNotNull('fecha_retiro_empresa')
-            ->where('fecha_retiro_empresa', '<=', $limite)
             ->whereDoesntHave('prorrogas', fn ($q) => $q->where('tipo', 'finalizacion'))
-            ->each(function (Colaborador $colaborador) use (&$procesadas, $soloFrecuentes) {
+            ->with(['prorrogas' => fn ($q) => $q->where('tipo', 'prorroga')->orderByDesc('created_at')])
+            ->each(function (Colaborador $colaborador) use ($limite, &$procesadas, $soloFrecuentes) {
+                // Usar la fecha_nueva de la última prórroga si existe,
+                // igual que como lo muestra la pantalla de contratos
+                // (fecha_vencimiento_vigente = $ultimaProrroga?->fecha_nueva ?? fecha_retiro_empresa).
+                $ultimaProrroga = $colaborador->prorrogas->first();
+                $fechaVencimiento = $ultimaProrroga?->fecha_nueva ?? $colaborador->fecha_retiro_empresa;
+
+                if (! $fechaVencimiento || $fechaVencimiento->gt($limite)) {
+                    return;
+                }
+
                 $alerta = Alerta::query()
                     ->where('colaborador_id', $colaborador->id)
                     ->where('tipo', 'retiro_proximo')
@@ -39,7 +51,7 @@ class RevisarVencimientoContratos extends Command
                     $alerta = Alerta::create([
                         'tipo' => 'retiro_proximo',
                         'colaborador_id' => $colaborador->id,
-                        'mensaje' => "El contrato de {$colaborador->nombre_completo} vence el {$colaborador->fecha_retiro_empresa->toDateString()}.",
+                        'mensaje' => "El contrato de {$colaborador->nombre_completo} vence el {$fechaVencimiento->toDateString()}.",
                     ]);
                 }
 
