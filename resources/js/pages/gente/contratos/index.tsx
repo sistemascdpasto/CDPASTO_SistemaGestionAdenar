@@ -44,8 +44,10 @@ interface Filters {
     search: string;
     estado: string;
     estado_contrato: string;
-    fecha_desde: string;
-    fecha_hasta: string;
+    fecha_inicio_desde: string;
+    fecha_inicio_hasta: string;
+    fecha_fin_desde: string;
+    fecha_fin_hasta: string;
 }
 
 interface Props {
@@ -63,69 +65,91 @@ function calcularEstadoContrato(
     fechaRetiro: string | null,
     tieneFinalizacion = false,
 ): { label: string; variant: 'default' | 'destructive' | 'secondary' | 'outline' } {
-    if (tieneFinalizacion) {
-        return { label: 'Finalizado', variant: 'secondary' };
-    }
-    if (!fechaRetiro) return { label: 'Sin fecha fin', variant: 'secondary' };
-    const hoy = new Date();
+    if (tieneFinalizacion) return { label: 'Finalizado', variant: 'secondary' };
+    if (!fechaRetiro)      return { label: 'Sin fecha fin', variant: 'secondary' };
+    const hoy    = new Date();
     const retiro = new Date(fechaRetiro);
-    const diasRestantes = Math.ceil((retiro.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
-    if (diasRestantes < 0) return { label: 'Vencido', variant: 'destructive' };
-    if (diasRestantes <= 35) return { label: `Vence en ${diasRestantes}d`, variant: 'outline' };
+    const dias   = Math.ceil((retiro.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
+    if (dias < 0)   return { label: 'Vencido', variant: 'destructive' };
+    if (dias <= 35) return { label: `Vence en ${dias}d`, variant: 'outline' };
     return { label: 'Vigente', variant: 'default' };
 }
 
+/** X posicionada en la esquina derecha del contenedor relativo */
+function ClearBtn({ onClear }: { onClear: () => void }) {
+    return (
+        <button
+            type="button"
+            onClick={onClear}
+            className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2.5 z-10 -translate-y-1/2"
+        >
+            <X className="h-3.5 w-3.5" />
+        </button>
+    );
+}
+
+/** Columna de filtro con label + slot relativo para la X */
+function FilterCol({ label, hasValue, onClear, children }: {
+    label: string;
+    hasValue: boolean;
+    onClear: () => void;
+    children: React.ReactNode;
+}) {
+    return (
+        <div className="flex flex-col gap-1">
+            <span className="text-muted-foreground text-xs font-medium">{label}</span>
+            <div className="relative">
+                {children}
+                {hasValue && <ClearBtn onClear={onClear} />}
+            </div>
+        </div>
+    );
+}
+
 export default function ContratosIndex({ colaboradores, filters }: Props) {
-    const [search,          setSearch]          = useState(filters?.search          || '');
-    const [estado,          setEstado]          = useState(filters?.estado          || 'todos');
-    const [estadoContrato,  setEstadoContrato]  = useState(filters?.estado_contrato || 'todos');
-    const [fechaDesde,      setFechaDesde]      = useState(filters?.fecha_desde     || '');
-    const [fechaHasta,      setFechaHasta]      = useState(filters?.fecha_hasta     || '');
+    const [search,           setSearch]           = useState(filters?.search             || '');
+    const [estado,           setEstado]           = useState(filters?.estado             || 'activo');
+    const [estadoContrato,   setEstadoContrato]   = useState(filters?.estado_contrato    || 'todos');
+    const [fechaInicioDesde, setFechaInicioDesde] = useState(filters?.fecha_inicio_desde || '');
+    const [fechaInicioHasta, setFechaInicioHasta] = useState(filters?.fecha_inicio_hasta || '');
+    const [fechaFinDesde,    setFechaFinDesde]    = useState(filters?.fecha_fin_desde    || '');
+    const [fechaFinHasta,    setFechaFinHasta]    = useState(filters?.fecha_fin_hasta    || '');
 
     const rows = colaboradores?.data || [];
 
-    const hayFiltrosActivos =
-        search !== '' ||
-        estado !== 'todos' ||
-        estadoContrato !== 'todos' ||
-        fechaDesde !== '' ||
-        fechaHasta !== '';
-
     const handleFilter = (
-        s  = search,
-        e  = estado,
-        ec = estadoContrato,
-        fd = fechaDesde,
-        fh = fechaHasta,
+        s   = search,
+        e   = estado,
+        ec  = estadoContrato,
+        fid = fechaInicioDesde,
+        fih = fechaInicioHasta,
+        ffd = fechaFinDesde,
+        ffh = fechaFinHasta,
     ) => {
         router.get(
             '/modules/gente/contratos',
             {
-                search:          s,
-                estado:          e  === 'todos' ? '' : e,
-                estado_contrato: ec === 'todos' ? '' : ec,
-                fecha_desde:     fd,
-                fecha_hasta:     fh,
+                search:             s,
+                estado:             e  === 'todos' ? '' : e,
+                estado_contrato:    ec === 'todos' ? '' : ec,
+                fecha_inicio_desde: fid,
+                fecha_inicio_hasta: fih,
+                fecha_fin_desde:    ffd,
+                fecha_fin_hasta:    ffh,
             },
             { preserveState: true, replace: true },
         );
     };
 
-    const limpiarFiltros = () => {
-        setSearch('');
-        setEstado('todos');
-        setEstadoContrato('todos');
-        setFechaDesde('');
-        setFechaHasta('');
-        handleFilter('', 'todos', 'todos', '', '');
-    };
-
+    // El exportUrl siempre refleja los filtros activos en ese momento
     const exportParams = new URLSearchParams({
         search,
-        estado:          estado         === 'todos' ? '' : estado,
-        estado_contrato: estadoContrato === 'todos' ? '' : estadoContrato,
-        fecha_desde:     fechaDesde,
-        fecha_hasta:     fechaHasta,
+        estado:             estado          === 'todos' ? '' : estado,
+        estado_contrato:    estadoContrato  === 'todos' ? '' : estadoContrato,
+        fecha_inicio_desde: fechaInicioDesde,
+        fecha_inicio_hasta: fechaInicioHasta,
+        fecha_fin_desde:    fechaFinDesde,
+        fecha_fin_hasta:    fechaFinHasta,
     }).toString();
     const exportUrl = `/modules/gente/contratos/exportar?${exportParams}`;
 
@@ -170,46 +194,59 @@ export default function ContratosIndex({ colaboradores, filters }: Props) {
                     </CardHeader>
                     <CardContent className="space-y-4">
 
-                        {/* Fila 1: búsqueda + colaborador activo/inactivo */}
-                        <div className="flex flex-col gap-3 sm:flex-row">
-                            <div className="relative flex-1">
-                                <Search className="text-muted-foreground absolute top-2.5 left-2.5 h-4 w-4" />
-                                <Input
-                                    type="text"
-                                    placeholder="Buscar por nombre o cédula..."
-                                    value={search}
-                                    onChange={(e) => {
-                                        setSearch(e.target.value);
-                                        handleFilter(e.target.value, estado, estadoContrato, fechaDesde, fechaHasta);
-                                    }}
-                                    className="pl-9"
-                                />
+                        {/* ── Fila 1: 4 columnas iguales ── */}
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+                            {/* Búsqueda — ocupa 2 columnas */}
+                            <div className="flex flex-col gap-1 sm:col-span-2">
+                                <span className="text-muted-foreground text-xs font-medium">Buscar</span>
+                                <div className="relative">
+                                    <Search className="text-muted-foreground absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2" />
+                                    <Input
+                                        type="text"
+                                        placeholder="Nombre, apellido o cédula..."
+                                        value={search}
+                                        onChange={(e) => { setSearch(e.target.value); handleFilter(e.target.value, estado, estadoContrato, fechaInicioDesde, fechaInicioHasta, fechaFinDesde, fechaFinHasta); }}
+                                        className="pl-9 pr-8"
+                                    />
+                                    {search !== '' && (
+                                        <ClearBtn onClear={() => { setSearch(''); handleFilter('', estado, estadoContrato, fechaInicioDesde, fechaInicioHasta, fechaFinDesde, fechaFinHasta); }} />
+                                    )}
+                                </div>
                             </div>
-                            <Select
-                                value={estado}
-                                onValueChange={(v) => { setEstado(v); handleFilter(search, v, estadoContrato, fechaDesde, fechaHasta); }}
-                            >
-                                <SelectTrigger className="w-full sm:w-44">
-                                    <SelectValue placeholder="Colaborador" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="todos">Todos</SelectItem>
-                                    <SelectItem value="activo">Activos</SelectItem>
-                                    <SelectItem value="inactivo">Inactivos</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
 
-                        {/* Fila 2: estado de contrato + rango de fechas de vencimiento */}
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                            <div className="flex flex-col gap-1">
-                                <span className="text-muted-foreground text-xs font-medium">Estado del contrato</span>
+                            {/* Estado de registro */}
+                            <FilterCol
+                                label="Estado de registro"
+                                hasValue={estado !== 'todos'}
+                                onClear={() => { setEstado('todos'); handleFilter(search, 'todos', estadoContrato, fechaInicioDesde, fechaInicioHasta, fechaFinDesde, fechaFinHasta); }}
+                            >
+                                <Select
+                                    value={estado}
+                                    onValueChange={(v) => { setEstado(v); handleFilter(search, v, estadoContrato, fechaInicioDesde, fechaInicioHasta, fechaFinDesde, fechaFinHasta); }}
+                                >
+                                    <SelectTrigger className={`w-full ${estado !== 'todos' ? 'pr-8' : ''}`}>
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="todos">Todos</SelectItem>
+                                        <SelectItem value="activo">Activos</SelectItem>
+                                        <SelectItem value="inactivo">Inactivos</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </FilterCol>
+
+                            {/* Estado del contrato */}
+                            <FilterCol
+                                label="Estado del contrato"
+                                hasValue={estadoContrato !== 'todos'}
+                                onClear={() => { setEstadoContrato('todos'); handleFilter(search, estado, 'todos', fechaInicioDesde, fechaInicioHasta, fechaFinDesde, fechaFinHasta); }}
+                            >
                                 <Select
                                     value={estadoContrato}
-                                    onValueChange={(v) => { setEstadoContrato(v); handleFilter(search, estado, v, fechaDesde, fechaHasta); }}
+                                    onValueChange={(v) => { setEstadoContrato(v); handleFilter(search, estado, v, fechaInicioDesde, fechaInicioHasta, fechaFinDesde, fechaFinHasta); }}
                                 >
-                                    <SelectTrigger className="w-full sm:w-48">
-                                        <SelectValue placeholder="Estado contrato" />
+                                    <SelectTrigger className={`w-full ${estadoContrato !== 'todos' ? 'pr-8' : ''}`}>
+                                        <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="todos">Todos</SelectItem>
@@ -220,39 +257,62 @@ export default function ContratosIndex({ colaboradores, filters }: Props) {
                                         <SelectItem value="sin_fecha">Sin fecha fin</SelectItem>
                                     </SelectContent>
                                 </Select>
-                            </div>
+                            </FilterCol>
+                        </div>
 
-                            <div className="flex flex-col gap-1">
-                                <span className="text-muted-foreground text-xs font-medium">Vencimiento desde</span>
+                        {/* ── Fila 2: 4 columnas iguales — fechas ── */}
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+                            <FilterCol
+                                label="Fecha inicio desde"
+                                hasValue={fechaInicioDesde !== ''}
+                                onClear={() => { setFechaInicioDesde(''); handleFilter(search, estado, estadoContrato, '', fechaInicioHasta, fechaFinDesde, fechaFinHasta); }}
+                            >
                                 <Input
                                     type="date"
-                                    value={fechaDesde}
-                                    onChange={(e) => { setFechaDesde(e.target.value); handleFilter(search, estado, estadoContrato, e.target.value, fechaHasta); }}
-                                    className="w-full sm:w-40"
+                                    value={fechaInicioDesde}
+                                    onChange={(e) => { setFechaInicioDesde(e.target.value); handleFilter(search, estado, estadoContrato, e.target.value, fechaInicioHasta, fechaFinDesde, fechaFinHasta); }}
+                                    className={`w-full ${fechaInicioDesde !== '' ? 'pr-8' : ''}`}
                                 />
-                            </div>
+                            </FilterCol>
 
-                            <div className="flex flex-col gap-1">
-                                <span className="text-muted-foreground text-xs font-medium">Vencimiento hasta</span>
+                            <FilterCol
+                                label="Fecha inicio hasta"
+                                hasValue={fechaInicioHasta !== ''}
+                                onClear={() => { setFechaInicioHasta(''); handleFilter(search, estado, estadoContrato, fechaInicioDesde, '', fechaFinDesde, fechaFinHasta); }}
+                            >
                                 <Input
                                     type="date"
-                                    value={fechaHasta}
-                                    onChange={(e) => { setFechaHasta(e.target.value); handleFilter(search, estado, estadoContrato, fechaDesde, e.target.value); }}
-                                    className="w-full sm:w-40"
+                                    value={fechaInicioHasta}
+                                    onChange={(e) => { setFechaInicioHasta(e.target.value); handleFilter(search, estado, estadoContrato, fechaInicioDesde, e.target.value, fechaFinDesde, fechaFinHasta); }}
+                                    className={`w-full ${fechaInicioHasta !== '' ? 'pr-8' : ''}`}
                                 />
-                            </div>
+                            </FilterCol>
 
-                            {hayFiltrosActivos && (
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={limpiarFiltros}
-                                    className="text-muted-foreground hover:text-foreground gap-1.5 self-end"
-                                >
-                                    <X className="h-3.5 w-3.5" />
-                                    Limpiar filtros
-                                </Button>
-                            )}
+                            <FilterCol
+                                label="Fecha finalización desde"
+                                hasValue={fechaFinDesde !== ''}
+                                onClear={() => { setFechaFinDesde(''); handleFilter(search, estado, estadoContrato, fechaInicioDesde, fechaInicioHasta, '', fechaFinHasta); }}
+                            >
+                                <Input
+                                    type="date"
+                                    value={fechaFinDesde}
+                                    onChange={(e) => { setFechaFinDesde(e.target.value); handleFilter(search, estado, estadoContrato, fechaInicioDesde, fechaInicioHasta, e.target.value, fechaFinHasta); }}
+                                    className={`w-full ${fechaFinDesde !== '' ? 'pr-8' : ''}`}
+                                />
+                            </FilterCol>
+
+                            <FilterCol
+                                label="Fecha finalización hasta"
+                                hasValue={fechaFinHasta !== ''}
+                                onClear={() => { setFechaFinHasta(''); handleFilter(search, estado, estadoContrato, fechaInicioDesde, fechaInicioHasta, fechaFinDesde, ''); }}
+                            >
+                                <Input
+                                    type="date"
+                                    value={fechaFinHasta}
+                                    onChange={(e) => { setFechaFinHasta(e.target.value); handleFilter(search, estado, estadoContrato, fechaInicioDesde, fechaInicioHasta, fechaFinDesde, e.target.value); }}
+                                    className={`w-full ${fechaFinHasta !== '' ? 'pr-8' : ''}`}
+                                />
+                            </FilterCol>
                         </div>
 
                         {/* Tabla */}

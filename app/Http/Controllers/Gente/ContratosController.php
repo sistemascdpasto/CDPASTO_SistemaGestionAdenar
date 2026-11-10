@@ -36,23 +36,27 @@ class ContratosController extends Controller
     public function index(Request $request): Response
     {
         $search          = $request->string('search')->trim()->toString();
-        $estado          = $request->string('estado')->trim()->toString();
+        $estado          = $request->string('estado', 'activo')->trim()->toString();
         $estadoContrato  = $request->string('estado_contrato')->trim()->toString();
-        $fechaDesde      = $request->string('fecha_desde')->trim()->toString();
-        $fechaHasta      = $request->string('fecha_hasta')->trim()->toString();
+        $fechaInicioDesde = $request->string('fecha_inicio_desde')->trim()->toString();
+        $fechaInicioHasta = $request->string('fecha_inicio_hasta')->trim()->toString();
+        $fechaFinDesde   = $request->string('fecha_fin_desde')->trim()->toString();
+        $fechaFinHasta   = $request->string('fecha_fin_hasta')->trim()->toString();
 
-        $colaboradores = $this->consultaContratos($search, $estado, $estadoContrato, $fechaDesde, $fechaHasta)
+        $colaboradores = $this->consultaContratos($search, $estado, $estadoContrato, $fechaInicioDesde, $fechaInicioHasta, $fechaFinDesde, $fechaFinHasta)
             ->paginate(15)
             ->withQueryString();
 
         return Inertia::render('gente/contratos/index', [
             'colaboradores' => $colaboradores,
             'filters' => [
-                'search'          => $search,
-                'estado'          => $estado,
-                'estado_contrato' => $estadoContrato,
-                'fecha_desde'     => $fechaDesde,
-                'fecha_hasta'     => $fechaHasta,
+                'search'           => $search,
+                'estado'           => $estado,
+                'estado_contrato'  => $estadoContrato,
+                'fecha_inicio_desde' => $fechaInicioDesde,
+                'fecha_inicio_hasta' => $fechaInicioHasta,
+                'fecha_fin_desde'  => $fechaFinDesde,
+                'fecha_fin_hasta'  => $fechaFinHasta,
             ],
         ]);
     }
@@ -60,12 +64,14 @@ class ContratosController extends Controller
     public function exportar(Request $request)
     {
         $search          = $request->string('search')->trim()->toString();
-        $estado          = $request->string('estado')->trim()->toString();
+        $estado          = $request->string('estado', 'activo')->trim()->toString();
         $estadoContrato  = $request->string('estado_contrato')->trim()->toString();
-        $fechaDesde      = $request->string('fecha_desde')->trim()->toString();
-        $fechaHasta      = $request->string('fecha_hasta')->trim()->toString();
+        $fechaInicioDesde = $request->string('fecha_inicio_desde')->trim()->toString();
+        $fechaInicioHasta = $request->string('fecha_inicio_hasta')->trim()->toString();
+        $fechaFinDesde   = $request->string('fecha_fin_desde')->trim()->toString();
+        $fechaFinHasta   = $request->string('fecha_fin_hasta')->trim()->toString();
 
-        $colaboradores = $this->consultaContratos($search, $estado, $estadoContrato, $fechaDesde, $fechaHasta)
+        $colaboradores = $this->consultaContratos($search, $estado, $estadoContrato, $fechaInicioDesde, $fechaInicioHasta, $fechaFinDesde, $fechaFinHasta)
             ->with([
                 'prorrogas' => fn (HasMany $query) => $query
                     ->where('tipo', 'prorroga')
@@ -85,15 +91,14 @@ class ContratosController extends Controller
         string $search,
         string $estado,
         string $estadoContrato = '',
-        string $fechaDesde = '',
-        string $fechaHasta = '',
+        string $fechaInicioDesde = '',
+        string $fechaInicioHasta = '',
+        string $fechaFinDesde = '',
+        string $fechaFinHasta = '',
     ): Builder {
         $diasAlerta = (int) config('seguridad.dias_alerta_vencimiento_contrato', 35);
         $hoy        = Carbon::today();
 
-        // La fecha de finalización vigente real es: MAX(prorrogas.fecha_nueva) si existe,
-        // sino fecha_retiro_empresa. Como withMax devuelve un string, usamos COALESCE
-        // en la subquery para poder filtrar sobre ella directamente en SQL.
         return Colaborador::query()
             ->select([
                 'id',
@@ -116,83 +121,57 @@ class ContratosController extends Controller
                 $query->where(function ($query) use ($search) {
                     $query->where('nombres', 'like', "%{$search}%")
                         ->orWhere('apellidos', 'like', "%{$search}%")
-                        ->orWhere('cedula', 'like', "%{$search}%");
+                        ->orWhere('cedula', 'like', "%{$search}%")
+                        ->orWhereRaw("CONCAT(nombres, ' ', apellidos) LIKE ?", ["%{$search}%"])
+                        ->orWhereRaw("CONCAT(apellidos, ' ', nombres) LIKE ?", ["%{$search}%"]);
                 });
             })
             ->when($estado === 'activo',   fn ($q) => $q->where('is_active', true))
             ->when($estado === 'inactivo', fn ($q) => $q->where('is_active', false))
             // ── Filtro por estado del contrato ────────────────────────────────
-            ->when($estadoContrato !== '', function ($query) use ($estadoContrato, $hoy, $diasAlerta) {
-                // La fecha vigente real = COALESCE(MAX prórroga, fecha_retiro_empresa).
-                // Se expresa como subquery para poder usarla en WHERE.
-                $fechaVigenteSql = DB::raw('COALESCE(
-                    (SELECT MAX(cp.fecha_nueva) FROM contrato_prorrogas cp
-                     WHERE cp.colaborador_id = colaboradores.id AND cp.tipo = \'prorroga\'
-                     AND cp.deleted_at IS NULL),
-                    colaboradores.fecha_retiro_empresa
-                )');
-
-                match ($estadoContrato) {
-                    // Vigente: fecha vigente existe y es futura y más de 35 días
-                    'vigente' => $query
-                        ->whereDoesntHave('prorrogas', fn ($q) => $q->where('tipo', 'finalizacion'))
-                        ->whereNotNull('fecha_retiro_empresa')
-                        ->whereRaw('COALESCE(
-                            (SELECT MAX(cp.fecha_nueva) FROM contrato_prorrogas cp
-                             WHERE cp.colaborador_id = colaboradores.id AND cp.tipo = \'prorroga\'
-                             AND cp.deleted_at IS NULL),
-                            colaboradores.fecha_retiro_empresa
-                        ) > ?', [$hoy->copy()->addDays($diasAlerta)->toDateString()]),
-
-                    // Por vencer: fecha vigente existe y está entre hoy y hoy+35 días
-                    'por_vencer' => $query
-                        ->whereDoesntHave('prorrogas', fn ($q) => $q->where('tipo', 'finalizacion'))
-                        ->whereNotNull('fecha_retiro_empresa')
-                        ->whereRaw('COALESCE(
-                            (SELECT MAX(cp.fecha_nueva) FROM contrato_prorrogas cp
-                             WHERE cp.colaborador_id = colaboradores.id AND cp.tipo = \'prorroga\'
-                             AND cp.deleted_at IS NULL),
-                            colaboradores.fecha_retiro_empresa
-                        ) BETWEEN ? AND ?', [
-                            $hoy->toDateString(),
-                            $hoy->copy()->addDays($diasAlerta)->toDateString(),
-                        ]),
-
-                    // Vencido: fecha vigente existe y ya pasó
-                    'vencido' => $query
-                        ->whereDoesntHave('prorrogas', fn ($q) => $q->where('tipo', 'finalizacion'))
-                        ->whereNotNull('fecha_retiro_empresa')
-                        ->whereRaw('COALESCE(
-                            (SELECT MAX(cp.fecha_nueva) FROM contrato_prorrogas cp
-                             WHERE cp.colaborador_id = colaboradores.id AND cp.tipo = \'prorroga\'
-                             AND cp.deleted_at IS NULL),
-                            colaboradores.fecha_retiro_empresa
-                        ) < ?', [$hoy->toDateString()]),
-
-                    // Finalizado: tiene prórroga de tipo finalizacion
-                    'finalizado' => $query
-                        ->whereHas('prorrogas', fn ($q) => $q->where('tipo', 'finalizacion')),
-
-                    // Sin fecha fin
-                    'sin_fecha' => $query->whereNull('fecha_retiro_empresa'),
-
-                    default => null,
-                };
-            })
+            ->when($estadoContrato === 'vigente', fn ($q) => $q
+                ->whereDoesntHave('prorrogas', fn ($p) => $p->where('tipo', 'finalizacion'))
+                ->whereNotNull('fecha_retiro_empresa')
+                ->whereRaw($this->sqlFechaVigente().' > ?', [$hoy->copy()->addDays($diasAlerta)->toDateString()]))
+            ->when($estadoContrato === 'por_vencer', fn ($q) => $q
+                ->whereDoesntHave('prorrogas', fn ($p) => $p->where('tipo', 'finalizacion'))
+                ->whereNotNull('fecha_retiro_empresa')
+                ->whereRaw($this->sqlFechaVigente().' BETWEEN ? AND ?', [
+                    $hoy->toDateString(),
+                    $hoy->copy()->addDays($diasAlerta)->toDateString(),
+                ]))
+            ->when($estadoContrato === 'vencido', fn ($q) => $q
+                ->whereDoesntHave('prorrogas', fn ($p) => $p->where('tipo', 'finalizacion'))
+                ->whereNotNull('fecha_retiro_empresa')
+                ->whereRaw($this->sqlFechaVigente().' < ?', [$hoy->toDateString()]))
+            ->when($estadoContrato === 'finalizado', fn ($q) => $q
+                ->whereHas('prorrogas', fn ($p) => $p->where('tipo', 'finalizacion')))
+            ->when($estadoContrato === 'sin_fecha', fn ($q) => $q
+                ->whereNull('fecha_retiro_empresa'))
+            // ── Filtro por rango de fecha de inicio de contrato ───────────────
+            ->when($fechaInicioDesde !== '', fn ($q) => $q->whereDate('fecha_ingreso_empresa', '>=', $fechaInicioDesde))
+            ->when($fechaInicioHasta !== '', fn ($q) => $q->whereDate('fecha_ingreso_empresa', '<=', $fechaInicioHasta))
             // ── Filtro por rango de fecha de finalización vigente ─────────────
-            ->when($fechaDesde !== '', fn ($q) => $q->whereRaw('COALESCE(
-                (SELECT MAX(cp.fecha_nueva) FROM contrato_prorrogas cp
-                 WHERE cp.colaborador_id = colaboradores.id AND cp.tipo = \'prorroga\'
-                 AND cp.deleted_at IS NULL),
-                colaboradores.fecha_retiro_empresa
-            ) >= ?', [$fechaDesde]))
-            ->when($fechaHasta !== '', fn ($q) => $q->whereRaw('COALESCE(
-                (SELECT MAX(cp.fecha_nueva) FROM contrato_prorrogas cp
-                 WHERE cp.colaborador_id = colaboradores.id AND cp.tipo = \'prorroga\'
-                 AND cp.deleted_at IS NULL),
-                colaboradores.fecha_retiro_empresa
-            ) <= ?', [$fechaHasta]))
+            ->when($fechaFinDesde !== '', fn ($q) => $q
+                ->whereRaw($this->sqlFechaVigente().' >= ?', [$fechaFinDesde]))
+            ->when($fechaFinHasta !== '', fn ($q) => $q
+                ->whereRaw($this->sqlFechaVigente().' <= ?', [$fechaFinHasta]))
             ->orderBy('nombres');
+    }
+
+    /**
+     * Expresión SQL que devuelve la fecha de vencimiento vigente real:
+     * la fecha_nueva de la última prórroga si existe, o fecha_retiro_empresa.
+     * Se usa en whereRaw para filtrar sin cargar relaciones en memoria.
+     */
+    private function sqlFechaVigente(): string
+    {
+        return 'COALESCE(
+            (SELECT MAX(cp.fecha_nueva) FROM contrato_prorrogas cp
+             WHERE cp.colaborador_id = colaboradores.id
+               AND cp.tipo = "prorroga"),
+            colaboradores.fecha_retiro_empresa
+        )';
     }
 
     /**
