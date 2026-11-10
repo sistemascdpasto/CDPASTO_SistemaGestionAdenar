@@ -59,7 +59,7 @@ function formatFecha(fecha: string | null): string {
     return `${day}/${month}/${year}`;
 }
 
-function estadoContrato(
+function calcularEstadoContrato(
     fechaRetiro: string | null,
     tieneFinalizacion = false,
 ): { label: string; variant: 'default' | 'destructive' | 'secondary' | 'outline' } {
@@ -280,7 +280,7 @@ export default function ContratosIndex({ colaboradores, filters }: Props) {
                                     ) : (
                                         rows.map((row) => {
                                             const fechaFinContrato = row.ultima_fecha_prorroga ?? row.fecha_retiro_empresa;
-                                            const { label, variant } = estadoContrato(fechaFinContrato, Boolean(row.tiene_finalizacion));
+                                            const { label, variant } = calcularEstadoContrato(fechaFinContrato, Boolean(row.tiene_finalizacion));
                                             return (
                                                 <TableRow key={row.id}>
                                                     <TableCell className="text-center text-sm">{row.cantidad_prorrogas}</TableCell>
