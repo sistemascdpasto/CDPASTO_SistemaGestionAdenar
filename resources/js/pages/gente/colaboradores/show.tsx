@@ -331,8 +331,7 @@ export default function ColaboradorShow({
                         )}
                         <div className="px-5 py-3">
                             <p className={`text-sm font-semibold ${colaborador.is_active ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-600'}`}>
-                                {colaborador.is_active ? 'Activo' : 'Inactivo'}
-                            </p>{colaborador.tiene_finalizacion ? 'Finalizado' : colaborador.is_active ? 'Activo' : 'Inactivo'}
+                                {colaborador.tiene_finalizacion ? 'Finalizado' : colaborador.is_active ? 'Activo' : 'Inactivo'}
                             </p>
                         </div>
                     </div>

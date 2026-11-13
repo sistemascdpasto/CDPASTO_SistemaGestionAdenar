@@ -229,9 +229,8 @@ export function ProrrogarContratoDialog({
 
         if (esProrrogaAnual) {
             setModoPersonalizado(false);
-            setData({
-                ...data,
-                fecha_inicio_prorroga: nuevaFechaInicio,
+            setData({  ...data,
+                     fecha_inicio_prorroga: nuevaFechaInicio,
                 fecha_retiro_empresa: nuevaFechaInicio ? calcularFechaFinAnual(nuevaFechaInicio) : '',
                 contrato_id: nuevoContratoId,
                 crear_nuevo_contrato: esCreacion,
