@@ -1,9 +1,7 @@
 import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
@@ -252,7 +250,6 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
     // Estados para preavisos por fecha
     const [subiendoPreavisoFecha, setSubiendoPreavisoFecha] = useState<string | null>(null);
     const [draggingPreavisoFecha, setDraggingPreavisoFecha] = useState<string | null>(null);
-    const [fechasPreavisoExtra, setFechasPreavisoExtra] = useState<FechaPreavisoItem[]>([]);
     const [subiendoContrato, setSubiendoContrato] = useState<string | null>(null);
     const [contratoSubiendoId, setContratoSubiendoId] = useState<number | null>(null);
     const [draggingContratoId, setDraggingContratoId] = useState<number | null>(null);
@@ -481,7 +478,7 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
     const { label: estadoLabel, variant: estadoVariant } = historialContratos.length === 0
         ? { label: 'Sin contrato', variant: 'secondary' as const }
         : estadoContrato(colaborador.fecha_vencimiento_vigente ?? colaborador.fecha_retiro_empresa, tieneFinalizacion);
-    const todasFechasPreaviso = [...fechas_preaviso, ...fechasPreavisoExtra];
+    const todasFechasPreaviso = [...fechas_preaviso];
     const documentosContrato = documentos['documento_contrato'] || [];
     const documentoPorContrato = new Map(
         documentosContrato

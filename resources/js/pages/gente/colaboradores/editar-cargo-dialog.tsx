@@ -61,7 +61,7 @@ export function EditarCargoDialog({
                 estado: cargoItem.estado || 'ACTIVO',
             });
         }
-    }, [cargoItem, open]);
+    }, [cargoItem, open, setData]);
 
     if (!cargoItem) return null;
 
