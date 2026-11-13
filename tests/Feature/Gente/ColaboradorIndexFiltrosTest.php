@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Gente;
 
+use App\Models\Gente\Cargo;
+use App\Models\GeovictoriaAsistencia;
 use App\Models\Seguridad\Colaborador;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -138,15 +140,24 @@ class ColaboradorIndexFiltrosTest extends TestCase
     public function test_catalogos_are_not_empty(): void
     {
         $user = $this->seguridadUser();
+        $cargoGeovictoria = 'CARGO GEO VICTORIA';
+        GeovictoriaAsistencia::create([
+            'identificador' => 'catalogo-prueba',
+            'fecha' => now()->toDateString(),
+            'cargo' => $cargoGeovictoria,
+        ]);
 
         $response = $this->actingAs($user)->get(route('gente.colaboradores.index'));
 
-        $response->assertInertia(function ($page) {
+        $response->assertInertia(function ($page) use ($cargoGeovictoria) {
             $catalogos = $page->toArray()['props']['catalogos'];
 
             $this->assertNotEmpty($catalogos['cargos']);
+            $this->assertContains($cargoGeovictoria, $catalogos['cargos']);
             $this->assertNotEmpty($catalogos['centros']);
             $this->assertNotEmpty($catalogos['tiposDocumento']);
         });
+
+        $this->assertDatabaseHas('cargos', ['nombre' => $cargoGeovictoria]);
     }
 }

@@ -102,7 +102,7 @@ class ColaboradorRegistrosDuranteContratoTest extends TestCase
         $colaborador->update([
             'fecha_ingreso_empresa' => '2025-01-01',
             'fecha_retiro_empresa' => '2027-12-31',
-            'is_active' => false,
+            'is_active' => true,
         ]);
         Storage::fake('public');
         $documentoPath = 'colaboradores/prorrogas/soporte.pdf';
@@ -133,7 +133,7 @@ class ColaboradorRegistrosDuranteContratoTest extends TestCase
         $this->assertModelMissing($prorroga);
         $this->assertModelExists($otroRegistro);
         $this->assertSame('2027-12-31', $colaborador->fresh()->fecha_retiro_empresa->toDateString());
-        $this->assertFalse($colaborador->fresh()->is_active);
+        $this->assertTrue($colaborador->fresh()->is_active);
         Storage::disk('public')->assertMissing($documentoPath);
     }
 

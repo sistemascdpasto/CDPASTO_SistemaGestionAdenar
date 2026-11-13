@@ -14,9 +14,9 @@ import {
     Building2,
     FileText,
     GraduationCap,
-    History,
     LoaderCircle,
     Plus,
+    Power,
     QrCode,
     Trash2,
     Umbrella,
@@ -92,12 +92,12 @@ export function Paso3InformacionPuesto({
     const contratoPrincipal = historialContratos[0] ?? null;
     const cargoInicial = (colaborador.cargo as string) ?? '';
     const areaInicial = (colaborador.area as Paso3FormData['area']) ?? 'Operativa';
-
-    const esModificacion = historialContratos.length > 0;
+    const estadoInicial = Boolean(colaborador.is_active);
 
     // Si viene desde contratos con redirect_to, activar el checkbox por defecto.
-    // Si es modificación (ya tiene contratos), siempre activo y no desmarcable.
-    const [esNuevoContrato, setEsNuevoContrato] = useState(redirectTo === 'contratos' || esReingreso || esModificacion);
+    const [esNuevoContrato, setEsNuevoContrato] = useState(redirectTo === 'contratos' || esReingreso);
+    const [estadoActivo, setEstadoActivo] = useState(estadoInicial);
+    const cambioEstado = estadoActivo !== estadoInicial;
 
     const [nuevoFechaInicio, setNuevoFechaInicio] = useState('');
     const [nuevoFechaFin, setNuevoFechaFin] = useState('');
@@ -106,14 +106,14 @@ export function Paso3InformacionPuesto({
     const [nuevoPerfil, setNuevoPerfil] = useState('');
     // nuevoArea and nuevoCargo are handled by existing area/cargo fields; no separate inputs needed
 
-    // En modificación, el cambio de cargo también es obligatorio
-    const [deseaCambioCargoArea, setDeseaCambioCargoArea] = useState(esModificacion);
+    const [deseaCambioCargoArea, setDeseaCambioCargoArea] = useState(false);
 
     // Estados editables para el historial (campos editables o eliminables)
     const [contratosEditables, setContratosEditables] = useState<HistorialContrato[]>(historialContratos.slice(1));
     const [cargosEditables, setCargosEditables] = useState<HistorialCargo[]>(historialCargos);
 
     const { data, setData, post, processing, errors, transform } = useForm<Paso3FormData>({
+        is_active: estadoInicial,
         area: areaInicial,
         cargo: cargoInicial,
         perfil: '',
@@ -176,7 +176,7 @@ export function Paso3InformacionPuesto({
         setData(field === 'fecha_inicio' ? 'fecha_ingreso_empresa' : 'fecha_retiro_empresa', value);
     };
 
-    const cargoActualParaSena = (data.cargo ?? '');
+    const cargoActualParaSena = data.cargo ?? '';
     const esAprendizSena = cargoActualParaSena.toUpperCase().includes('APRENDIZ');
     const fechaRetiroColaborador = colaborador.fecha_retiro_empresa as string | null;
     const mostrarMotivoRetiro = Boolean(fechaRetiroColaborador && fechaRetiroColaborador <= hoyISO);
@@ -189,15 +189,21 @@ export function Paso3InformacionPuesto({
             ...formData,
             _method: 'PATCH',
             redirect_to: redirectTo ?? '',
-            es_nuevo_contrato: esNuevoContrato ? '1' : '0',
-            nuevo_fecha_inicio: esNuevoContrato ? nuevoFechaInicio : '',
-            nuevo_fecha_fin: esNuevoContrato ? nuevoFechaFin : '',
-            nuevo_tipo_contrato: esNuevoContrato ? nuevoTipoContrato : '',
-            nuevo_tipo_contrato_otro: esNuevoContrato ? nuevoTipoContratoOtro : '',
-            nuevo_area: esNuevoContrato ? (formData.area ?? '') : '',
-            nuevo_cargo: esNuevoContrato ? (formData.cargo ?? '') : '',
-            guardar_historial_cargo: (deseaCambioCargoArea || esNuevoContrato) ? 'si' : 'no',
-            cargo_fecha_inicio: deseaCambioCargoArea ? (esNuevoContrato ? nuevoFechaInicio : formData.cargo_fecha_inicio) : (esNuevoContrato ? nuevoFechaInicio : ''),
+            es_nuevo_contrato: esNuevoContrato || cambioEstado ? '1' : '0',
+            nuevo_fecha_inicio: esNuevoContrato || cambioEstado ? nuevoFechaInicio : '',
+            nuevo_fecha_fin: esNuevoContrato || cambioEstado ? nuevoFechaFin : '',
+            nuevo_tipo_contrato: esNuevoContrato || cambioEstado ? nuevoTipoContrato : '',
+            nuevo_tipo_contrato_otro: esNuevoContrato || cambioEstado ? nuevoTipoContratoOtro : '',
+            nuevo_area: esNuevoContrato || cambioEstado ? (formData.area ?? '') : '',
+            nuevo_cargo: esNuevoContrato || cambioEstado ? (formData.cargo ?? '') : '',
+            guardar_historial_cargo: deseaCambioCargoArea || esNuevoContrato || cambioEstado ? 'si' : 'no',
+            cargo_fecha_inicio: deseaCambioCargoArea
+                ? cambioEstado || !esNuevoContrato
+                    ? formData.cargo_fecha_inicio
+                    : nuevoFechaInicio
+                : esNuevoContrato || cambioEstado
+                  ? nuevoFechaInicio
+                  : '',
             perfil: esNuevoContrato ? nuevoPerfil : (formData.perfil ?? ''),
             contratos_editados: JSON.stringify(contratosEditables),
             cargos_editados: JSON.stringify(cargosEditables),
@@ -207,13 +213,43 @@ export function Paso3InformacionPuesto({
 
     return (
         <form onSubmit={submit} className="grid gap-6">
-            {/* 1. CENTRO: Centro de trabajo y ubicación */}
             <SeccionCard
-                icon={Building2}
-                titulo="Centro"
-                subtitulo="Centro de trabajo y ubicación"
+                icon={Power}
+                titulo="Estado del colaborador"
+                subtitulo="Los cambios de estado requieren registrar un nuevo contrato y cargo"
                 tono="azul"
             >
+                <div className="flex items-start gap-3">
+                    <Checkbox
+                        id="is_active"
+                        checked={estadoActivo}
+                        onCheckedChange={(checked) => {
+                            const activo = checked === true;
+                            setEstadoActivo(activo);
+                            setData('is_active', activo);
+                            if (activo !== estadoInicial) {
+                                setEsNuevoContrato(true);
+                                setDeseaCambioCargoArea(true);
+                                setData('guardar_historial_cargo', 'si');
+                            }
+                        }}
+                        disabled={processing}
+                    />
+                    <div className="grid gap-1">
+                        <Label htmlFor="is_active" className="cursor-pointer">
+                            {estadoActivo ? 'Colaborador activo' : 'Colaborador inactivo'}
+                        </Label>
+                        {cambioEstado && (
+                            <p className="text-muted-foreground text-sm">
+                                Indique las fechas del nuevo contrato y la fecha efectiva del nuevo cargo.
+                            </p>
+                        )}
+                    </div>
+                </div>
+            </SeccionCard>
+
+            {/* 1. CENTRO: Centro de trabajo y ubicación */}
+            <SeccionCard icon={Building2} titulo="Centro" subtitulo="Centro de trabajo y ubicación" tono="azul">
                 <div className="grid gap-4 sm:grid-cols-2">
                     <div className="grid gap-2">
                         <Label htmlFor="centro">Centro</Label>
@@ -251,29 +287,30 @@ export function Paso3InformacionPuesto({
             </SeccionCard>
 
             {/* 2. CONTRATO: Tipo de contrato, fechas y condiciones */}
-            <SeccionCard
-                icon={FileText}
-                titulo="Contrato"
-                subtitulo="Tipo de contrato, fechas y condiciones"
-                tono="azul"
-            >
+            <SeccionCard icon={FileText} titulo="Contrato" subtitulo="Tipo de contrato, fechas y condiciones" tono="azul">
                 <div className="space-y-4">
                     {/* Contrato 1 */}
                     <div className="grid gap-4 rounded-lg border p-4 sm:grid-cols-2">
-                        <div className="sm:col-span-2 flex items-center justify-between pb-2 border-b">
-                            <span className="text-xs font-bold text-foreground">Contrato 1</span>
-                            {(contratosEditables.length > 0 && contratoPrincipal) && (
+                        <div className="flex items-center justify-between border-b pb-2 sm:col-span-2">
+                            <span className="text-foreground text-xs font-bold">Contrato 1</span>
+                            {contratosEditables.length > 0 && contratoPrincipal && (
                                 <Button
                                     type="button"
                                     variant="ghost"
                                     size="sm"
-                                    className="h-7 text-xs text-muted-foreground hover:text-destructive gap-1 px-2"
+                                    className="text-muted-foreground hover:text-destructive h-7 gap-1 px-2 text-xs"
                                     title="Eliminar Contrato 1"
                                     onClick={() => {
                                         if (!confirm('¿Eliminar el Contrato 1 y sus prórrogas?')) return;
-                                        router.delete(route('gente.contratos.historial.destroy', { colaborador: colaborador.id, contrato: contratoPrincipal.id }), {
-                                            preserveScroll: true,
-                                        });
+                                        router.delete(
+                                            route('gente.contratos.historial.destroy', {
+                                                colaborador: colaborador.id,
+                                                contrato: contratoPrincipal.id,
+                                            }),
+                                            {
+                                                preserveScroll: true,
+                                            },
+                                        );
                                     }}
                                     disabled={processing}
                                 >
@@ -345,7 +382,11 @@ export function Paso3InformacionPuesto({
                             <>
                                 <div className="grid gap-2 sm:col-span-2">
                                     <Label htmlFor="motivo_retiro">Motivo de retiro</Label>
-                                    <Select value={data.motivo_retiro} onValueChange={(value) => setData('motivo_retiro', value)} disabled={processing}>
+                                    <Select
+                                        value={data.motivo_retiro}
+                                        onValueChange={(value) => setData('motivo_retiro', value)}
+                                        disabled={processing}
+                                    >
                                         <SelectTrigger id="motivo_retiro">
                                             <SelectValue placeholder="Selecciona el motivo" />
                                         </SelectTrigger>
@@ -380,20 +421,23 @@ export function Paso3InformacionPuesto({
                         <div className="space-y-4">
                             {contratosEditables.map((c, i) => (
                                 <div key={c.id} className="grid gap-4 rounded-lg border p-4 sm:grid-cols-2">
-                                    <div className="sm:col-span-2 flex items-center justify-between pb-2 border-b">
-                                        <span className="text-xs font-bold text-foreground">Contrato {i + 2}</span>
+                                    <div className="flex items-center justify-between border-b pb-2 sm:col-span-2">
+                                        <span className="text-foreground text-xs font-bold">Contrato {i + 2}</span>
                                         <Button
                                             type="button"
                                             variant="ghost"
                                             size="sm"
-                                            className="h-7 text-xs text-muted-foreground hover:text-destructive gap-1 px-2"
+                                            className="text-muted-foreground hover:text-destructive h-7 gap-1 px-2 text-xs"
                                             title={`Eliminar Contrato ${i + 2}`}
                                             onClick={() => {
                                                 if (!confirm(`¿Eliminar el registro de Contrato ${i + 2}?`)) return;
                                                 setContratosEditables((prev) => prev.filter((item) => item.id !== c.id));
-                                                router.delete(route('gente.contratos.historial.destroy', { colaborador: colaborador.id, contrato: c.id }), {
-                                                    preserveScroll: true,
-                                                });
+                                                router.delete(
+                                                    route('gente.contratos.historial.destroy', { colaborador: colaborador.id, contrato: c.id }),
+                                                    {
+                                                        preserveScroll: true,
+                                                    },
+                                                );
                                             }}
                                             disabled={processing}
                                         >
@@ -468,17 +512,21 @@ export function Paso3InformacionPuesto({
                             onCheckedChange={(checked) => {
                                 setEsNuevoContrato(checked === true);
                             }}
-                            disabled={processing || esReingreso || esModificacion}
+                            disabled={processing || esReingreso || cambioEstado}
                         />
                         <Label htmlFor="es_nuevo_contrato" className="cursor-pointer text-sm font-medium text-amber-800 dark:text-amber-300">
-                            {esReingreso ? 'Registrar nuevo contrato por reingreso' : esModificacion ? 'Registrar nuevo contrato (obligatorio al modificar)' : 'Agregar nuevo contrato'}
+                            {esReingreso
+                                ? 'Registrar nuevo contrato por reingreso'
+                                : cambioEstado
+                                  ? 'Registrar nuevo contrato (obligatorio al cambiar el estado)'
+                                  : 'Agregar nuevo contrato'}
                         </Label>
                     </div>
 
                     {/* Campos del nuevo contrato (con Área y Cargo propios del nuevo contrato) */}
                     {esNuevoContrato && (
                         <div className="space-y-4 rounded-xl border border-amber-200 bg-amber-50/20 p-4 sm:col-span-2 dark:border-amber-800/30 dark:bg-amber-950/10">
-                            <p className="text-xs font-semibold text-amber-900 dark:text-amber-200 uppercase tracking-wider">
+                            <p className="text-xs font-semibold tracking-wider text-amber-900 uppercase dark:text-amber-200">
                                 Datos del nuevo contrato
                             </p>
                             <div className="grid gap-4 sm:grid-cols-2">
@@ -534,6 +582,7 @@ export function Paso3InformacionPuesto({
                                                 onChange={(e) => setNuevoTipoContratoOtro(e.target.value)}
                                                 disabled={processing}
                                             />
+                                            <InputError message={errors.nuevo_tipo_contrato_otro} />
                                         </div>
                                     )}
                                 </div>
@@ -597,12 +646,12 @@ export function Paso3InformacionPuesto({
                                     </Select>
                                     {nuevoPerfil && (
                                         <div className="relative">
-                                            <p className="text-muted-foreground whitespace-pre-line rounded-md bg-muted/50 px-3 py-2 pr-8 text-xs leading-relaxed">
+                                            <p className="text-muted-foreground bg-muted/50 rounded-md px-3 py-2 pr-8 text-xs leading-relaxed whitespace-pre-line">
                                                 {nuevoPerfil}
                                             </p>
                                             <button
                                                 type="button"
-                                                className="absolute top-1.5 right-1.5 rounded p-0.5 text-muted-foreground hover:text-destructive"
+                                                className="text-muted-foreground hover:text-destructive absolute top-1.5 right-1.5 rounded p-0.5"
                                                 title="Quitar perfil"
                                                 onClick={() => setNuevoPerfil('')}
                                             >
@@ -618,26 +667,21 @@ export function Paso3InformacionPuesto({
             </SeccionCard>
 
             {/* 3. CARGO Y ÁREA: Debajo de las tarjetas Centro y Contrato */}
-            <SeccionCard
-                icon={Briefcase}
-                titulo="Cargo y Área"
-                subtitulo="Área, dependencia, cargo y cambio de asignación"
-                tono="verde"
-            >
+            <SeccionCard icon={Briefcase} titulo="Cargo y Área" subtitulo="Área, dependencia, cargo y cambio de asignación" tono="verde">
                 <div className="grid gap-4">
                     {/* Campos editables de los cargos registrados */}
                     {cargosEditables.length > 0 ? (
                         <div className="space-y-4">
                             {cargosEditables.map((c, i) => (
                                 <div key={c.id} className="grid gap-4 rounded-lg border p-4 sm:grid-cols-2">
-                                    <div className="sm:col-span-2 flex items-center justify-between pb-2 border-b">
+                                    <div className="flex items-center justify-between border-b pb-2 sm:col-span-2">
                                         <div className="flex items-center gap-2">
-                                            <span className="text-xs font-bold text-foreground">Cargo {i + 1}</span>
+                                            <span className="text-foreground text-xs font-bold">Cargo {i + 1}</span>
                                             <span
                                                 className={
                                                     c.estado === 'ACTIVO'
                                                         ? 'rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'
-                                                        : 'rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground'
+                                                        : 'bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-[11px] font-semibold'
                                                 }
                                             >
                                                 {c.estado === 'ACTIVO' ? 'Activo' : 'Inactivo'}
@@ -648,14 +692,17 @@ export function Paso3InformacionPuesto({
                                                 type="button"
                                                 variant="ghost"
                                                 size="sm"
-                                                className="h-7 text-xs text-muted-foreground hover:text-destructive gap-1 px-2"
+                                                className="text-muted-foreground hover:text-destructive h-7 gap-1 px-2 text-xs"
                                                 title={`Eliminar Cargo ${i + 1}`}
                                                 onClick={() => {
                                                     if (!confirm(`¿Eliminar el registro de Cargo ${i + 1} ("${c.cargo}")?`)) return;
                                                     setCargosEditables((prev) => prev.filter((item) => item.id !== c.id));
-                                                    router.delete(route('gente.colaboradores.cargos.destroy', { colaborador: colaborador.id, cargo: c.id }), {
-                                                        preserveScroll: true,
-                                                    });
+                                                    router.delete(
+                                                        route('gente.colaboradores.cargos.destroy', { colaborador: colaborador.id, cargo: c.id }),
+                                                        {
+                                                            preserveScroll: true,
+                                                        },
+                                                    );
                                                 }}
                                                 disabled={processing}
                                             >
@@ -701,7 +748,7 @@ export function Paso3InformacionPuesto({
                                             disabled={processing}
                                         />
                                         {catalogos.perfilesCargos[c.cargo] && (
-                                            <p className="text-muted-foreground whitespace-pre-line rounded-md bg-muted/50 px-3 py-2 text-xs leading-relaxed">
+                                            <p className="text-muted-foreground bg-muted/50 rounded-md px-3 py-2 text-xs leading-relaxed whitespace-pre-line">
                                                 {catalogos.perfilesCargos[c.cargo]}
                                             </p>
                                         )}
@@ -745,7 +792,7 @@ export function Paso3InformacionPuesto({
                                             </SelectContent>
                                         </Select>
                                         {c.perfil && (
-                                            <p className="text-muted-foreground whitespace-pre-line rounded-md bg-muted/50 px-3 py-2 text-xs leading-relaxed">
+                                            <p className="text-muted-foreground bg-muted/50 rounded-md px-3 py-2 text-xs leading-relaxed whitespace-pre-line">
                                                 {c.perfil}
                                             </p>
                                         )}
@@ -756,8 +803,8 @@ export function Paso3InformacionPuesto({
                     ) : (
                         /* Si no hay registros de historial de cargos aún, mostrar card con el mismo estilo */
                         <div className="grid gap-4 rounded-lg border p-4 sm:grid-cols-2">
-                            <div className="sm:col-span-2 pb-2 border-b">
-                                <span className="text-xs font-bold text-foreground">Cargo 1</span>
+                            <div className="border-b pb-2 sm:col-span-2">
+                                <span className="text-foreground text-xs font-bold">Cargo 1</span>
                             </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="cargo">Cargo</Label>
@@ -769,7 +816,7 @@ export function Paso3InformacionPuesto({
                                     disabled={processing}
                                 />
                                 {catalogos.perfilesCargos[data.cargo ?? ''] && (
-                                    <p className="text-muted-foreground whitespace-pre-line rounded-md bg-muted/50 px-3 py-2 text-xs leading-relaxed">
+                                    <p className="text-muted-foreground bg-muted/50 rounded-md px-3 py-2 text-xs leading-relaxed whitespace-pre-line">
                                         {catalogos.perfilesCargos[data.cargo ?? '']}
                                     </p>
                                 )}
@@ -777,7 +824,11 @@ export function Paso3InformacionPuesto({
                             </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="area">Área o dependencia</Label>
-                                <Select value={data.area} onValueChange={(value) => setData('area', value as Paso3FormData['area'])} disabled={processing}>
+                                <Select
+                                    value={data.area}
+                                    onValueChange={(value) => setData('area', value as Paso3FormData['area'])}
+                                    disabled={processing}
+                                >
                                     <SelectTrigger id="area">
                                         <SelectValue placeholder="Selecciona el área" />
                                     </SelectTrigger>
@@ -812,15 +863,18 @@ export function Paso3InformacionPuesto({
                                     }));
                                 }
                             }}
-                            disabled={processing || esModificacion}
+                            disabled={processing || cambioEstado}
                         />
                         <div>
-                            <Label htmlFor="desea_cambio_cargo_area" className="cursor-pointer text-sm font-semibold text-emerald-900 dark:text-emerald-200">
+                            <Label
+                                htmlFor="desea_cambio_cargo_area"
+                                className="cursor-pointer text-sm font-semibold text-emerald-900 dark:text-emerald-200"
+                            >
                                 ¿Desea realizar un cambio de cargo y/o área?
                             </Label>
                             <p className="text-muted-foreground text-xs">
-                                {esModificacion
-                                    ? 'Obligatorio al modificar: registra la nueva asignación en el historial conservando los datos anteriores.'
+                                {cambioEstado
+                                    ? 'Obligatorio al cambiar el estado: registra una nueva asignación en el historial.'
                                     : 'Registra una nueva asignación en el historial conservando los datos anteriores.'}
                             </p>
                         </div>
@@ -829,80 +883,88 @@ export function Paso3InformacionPuesto({
                     {/* Si está activo el check, mostrar los campos para el nuevo cargo y su fecha efectiva */}
                     {deseaCambioCargoArea && (
                         <div className="grid gap-4 border-l-2 border-emerald-400 pl-3 sm:grid-cols-2 dark:border-emerald-500/40">
-                            <div className="grid gap-2">
-                                <Label htmlFor="nueva_area_cambio">Nueva área o dependencia</Label>
-                                <Select value={data.area} onValueChange={(value) => setData('area', value as Paso3FormData['area'])} disabled={processing}>
-                                    <SelectTrigger id="nueva_area_cambio">
-                                        <SelectValue placeholder="Selecciona el área" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Administrativa">Administrativa</SelectItem>
-                                        <SelectItem value="Operativa">Operativa</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <InputError message={errors.area} />
-                            </div>
-
-                            <div className="grid gap-2">
-                                <Label htmlFor="nuevo_cargo_cambio">Nuevo cargo</Label>
-                                <CargoCombobox
-                                    id="nuevo_cargo_cambio"
-                                    value={data.cargo ?? ''}
-                                    onChange={(value) => {
-                                        setData('cargo', value);
-                                        // Precargar perfil si hay coincidencia
-                                        if (catalogos.perfilesCargos[value] && !data.perfil) {
-                                            setData('perfil', catalogos.perfilesCargos[value]);
-                                        }
-                                    }}
-                                    cargos={catalogos.cargos}
-                                    disabled={processing}
-                                />
-                                {catalogos.perfilesCargos[data.cargo ?? ''] && (
-                                    <p className="text-muted-foreground whitespace-pre-line rounded-md bg-muted/50 px-3 py-2 text-xs leading-relaxed">
-                                        {catalogos.perfilesCargos[data.cargo ?? '']}
-                                    </p>
-                                )}
-                                <InputError message={errors.cargo} />
-                            </div>
-
-                            {/* Perfil del cambio de cargo */}
-                            <div className="grid gap-2">
-                                <Label>Perfil / Funciones del cargo</Label>
-                                <Select
-                                    value={Object.entries(catalogos.perfilesCargos).find(([, v]) => v === data.perfil)?.[0] ?? ''}
-                                    onValueChange={(nombre) => setData('perfil', catalogos.perfilesCargos[nombre] ?? '')}
-                                    disabled={processing}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Selecciona un perfil..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {Object.keys(catalogos.perfilesCargos).map((nombre) => (
-                                            <SelectItem key={nombre} value={nombre}>
-                                                {nombre}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                {data.perfil && (
-                                    <div className="relative">
-                                        <p className="text-muted-foreground whitespace-pre-line rounded-md bg-muted/50 px-3 py-2 pr-8 text-xs leading-relaxed">
-                                            {data.perfil}
-                                        </p>
-                                        <button
-                                            type="button"
-                                            className="absolute top-1.5 right-1.5 rounded p-0.5 text-muted-foreground hover:text-destructive"
-                                            title="Quitar perfil"
-                                            onClick={() => setData('perfil', '')}
+                            {!esNuevoContrato && (
+                                <>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="nueva_area_cambio">Nueva área o dependencia</Label>
+                                        <Select
+                                            value={data.area}
+                                            onValueChange={(value) => setData('area', value as Paso3FormData['area'])}
+                                            disabled={processing}
                                         >
-                                            <X className="size-3.5" />
-                                        </button>
+                                            <SelectTrigger id="nueva_area_cambio">
+                                                <SelectValue placeholder="Selecciona el área" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="Administrativa">Administrativa</SelectItem>
+                                                <SelectItem value="Operativa">Operativa</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <InputError message={errors.area} />
                                     </div>
-                                )}
-                            </div>
 
-                            {!esNuevoContrato ? (
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="nuevo_cargo_cambio">Nuevo cargo</Label>
+                                        <CargoCombobox
+                                            id="nuevo_cargo_cambio"
+                                            value={data.cargo ?? ''}
+                                            onChange={(value) => {
+                                                setData('cargo', value);
+                                                // Precargar perfil si hay coincidencia
+                                                if (catalogos.perfilesCargos[value] && !data.perfil) {
+                                                    setData('perfil', catalogos.perfilesCargos[value]);
+                                                }
+                                            }}
+                                            cargos={catalogos.cargos}
+                                            disabled={processing}
+                                        />
+                                        {catalogos.perfilesCargos[data.cargo ?? ''] && (
+                                            <p className="text-muted-foreground bg-muted/50 rounded-md px-3 py-2 text-xs leading-relaxed whitespace-pre-line">
+                                                {catalogos.perfilesCargos[data.cargo ?? '']}
+                                            </p>
+                                        )}
+                                        <InputError message={errors.cargo} />
+                                    </div>
+
+                                    {/* Perfil del cambio de cargo */}
+                                    <div className="grid gap-2">
+                                        <Label>Perfil / Funciones del cargo</Label>
+                                        <Select
+                                            value={Object.entries(catalogos.perfilesCargos).find(([, v]) => v === data.perfil)?.[0] ?? ''}
+                                            onValueChange={(nombre) => setData('perfil', catalogos.perfilesCargos[nombre] ?? '')}
+                                            disabled={processing}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Selecciona un perfil..." />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {Object.keys(catalogos.perfilesCargos).map((nombre) => (
+                                                    <SelectItem key={nombre} value={nombre}>
+                                                        {nombre}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        {data.perfil && (
+                                            <div className="relative">
+                                                <p className="text-muted-foreground bg-muted/50 rounded-md px-3 py-2 pr-8 text-xs leading-relaxed whitespace-pre-line">
+                                                    {data.perfil}
+                                                </p>
+                                                <button
+                                                    type="button"
+                                                    className="text-muted-foreground hover:text-destructive absolute top-1.5 right-1.5 rounded p-0.5"
+                                                    title="Quitar perfil"
+                                                    onClick={() => setData('perfil', '')}
+                                                >
+                                                    <X className="size-3.5" />
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </>
+                            )}
+
+                            {!esNuevoContrato || cambioEstado ? (
                                 <div className="grid gap-2 sm:col-span-2">
                                     <Label htmlFor="cargo_fecha_inicio">Fecha efectiva del cambio</Label>
                                     <Input
@@ -914,12 +976,14 @@ export function Paso3InformacionPuesto({
                                     />
                                     <InputError message={errors.cargo_fecha_inicio} />
                                     <p className="text-muted-foreground text-xs">
-                                        La fecha del cambio es independiente de la fecha de inicio del contrato. El cargo anterior se cerrará un día antes de esta fecha.
+                                        La fecha del cambio es independiente de la fecha de inicio del contrato. El cargo anterior se cerrará un día
+                                        antes de esta fecha.
                                     </p>
                                 </div>
                             ) : (
-                                <div className="sm:col-span-2 rounded-lg bg-emerald-50/50 p-2 text-xs text-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-300">
-                                    Se aplicará el nuevo cargo y área con la fecha de inicio del nuevo contrato ({nuevoFechaInicio || 'indicada en la tarjeta Contrato'}). No se requiere fecha adicional.
+                                <div className="rounded-lg bg-emerald-50/50 p-2 text-xs text-emerald-800 sm:col-span-2 dark:bg-emerald-950/20 dark:text-emerald-300">
+                                    Se aplicará el nuevo cargo y área con la fecha de inicio del nuevo contrato (
+                                    {nuevoFechaInicio || 'indicada en la tarjeta Contrato'}). No se requiere fecha adicional.
                                 </div>
                             )}
                         </div>
@@ -967,7 +1031,12 @@ export function Paso3InformacionPuesto({
                         />
                         <div className="grid gap-2">
                             <Label htmlFor="sena_nit">NIT</Label>
-                            <Input id="sena_nit" value={data.sena_nit ?? ''} onChange={(e) => setData('sena_nit', e.target.value)} disabled={processing} />
+                            <Input
+                                id="sena_nit"
+                                value={data.sena_nit ?? ''}
+                                onChange={(e) => setData('sena_nit', e.target.value)}
+                                disabled={processing}
+                            />
                             <InputError message={errors.sena_nit} />
                         </div>
                         <div className="grid gap-2 sm:col-span-2">

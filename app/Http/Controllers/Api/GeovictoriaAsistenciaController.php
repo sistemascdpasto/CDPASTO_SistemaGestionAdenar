@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\StoreGeovictoriaAsistenciasRequest;
 use App\Models\GeovictoriaAsistencia;
+use App\Services\Seguridad\ColaboradorCatalogoService;
 use Illuminate\Http\JsonResponse;
 
 class GeovictoriaAsistenciaController extends Controller
@@ -15,7 +16,10 @@ class GeovictoriaAsistenciaController extends Controller
      * procesar_datos.py / ejecutar_ciclo.py), y hace upsert por
      * (identificador, fecha) igual que su propia base de datos local.
      */
-    public function store(StoreGeovictoriaAsistenciasRequest $request): JsonResponse
+    public function store(
+        StoreGeovictoriaAsistenciasRequest $request,
+        ColaboradorCatalogoService $catalogos,
+    ): JsonResponse
     {
         $registros = $request->validated()['registros'];
         $ahora = now();
@@ -54,6 +58,8 @@ class GeovictoriaAsistenciaController extends Controller
                 'horas_descanso_previo', 'descanso_no_efectivo', 'hora_minima_entrada', 'updated_at',
             ]
         );
+
+        $catalogos->sincronizarCargosGeovictoria(array_column($registros, 'cargo'));
 
         return response()->json(['procesados' => count($filas)], 201);
     }

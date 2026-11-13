@@ -136,6 +136,166 @@ class ColaboradorWizardTest extends TestCase
         );
     }
 
+    public function test_normal_paso3_edit_does_not_create_a_contract_for_legacy_contract_data(): void
+    {
+        $user = $this->genteUser();
+        $colaborador = Colaborador::create([
+            'cedula' => '900100222',
+            'nombres' => 'Edición',
+            'apellidos' => 'Normal',
+            'cargo' => 'CONDUCTOR',
+            'tipo_contrato' => 'Término fijo',
+            'is_active' => true,
+            'estado_registro' => 'completo',
+            'wizard_step' => 4,
+        ]);
+
+        $this->actingAs($user)->patch(route('gente.colaboradores.paso3.update', $colaborador), [
+            'is_active' => true,
+            'es_nuevo_contrato' => '0',
+            'cargo' => 'CONDUCTOR',
+        ])->assertRedirect();
+
+        $this->assertSame(0, $colaborador->contratos()->count());
+        $this->assertSame('Término fijo', $colaborador->fresh()->tipo_contrato);
+    }
+
+    public function test_changing_status_requires_new_contract_and_cargo_dates(): void
+    {
+        $user = $this->genteUser();
+        $colaborador = Colaborador::create([
+            'cedula' => '900100223',
+            'nombres' => 'Cambio',
+            'apellidos' => 'Estado',
+            'is_active' => true,
+            'estado_registro' => 'completo',
+            'wizard_step' => 4,
+        ]);
+
+        $this->actingAs($user)->patch(route('gente.colaboradores.paso3.update', $colaborador), [
+            'is_active' => false,
+            'es_nuevo_contrato' => '1',
+        ])->assertSessionHasErrors([
+            'cargo',
+            'cargo_fecha_inicio',
+            'nuevo_tipo_contrato',
+            'nuevo_cargo',
+            'nuevo_fecha_inicio',
+            'nuevo_fecha_fin',
+        ]);
+
+        $this->assertTrue($colaborador->fresh()->is_active);
+        $this->assertSame(0, $colaborador->contratos()->count());
+    }
+
+    public function test_deactivating_creates_a_finalized_contract_and_new_inactive_cargo_history(): void
+    {
+        $user = $this->genteUser();
+        $fechaInicio = now()->addDay()->toDateString();
+        $fechaFin = now()->addMonths(6)->toDateString();
+        $inicioAnterior = now()->subYear()->toDateString();
+        $finAnterior = now()->subDay()->toDateString();
+        $colaborador = Colaborador::create([
+            'cedula' => '900100224',
+            'nombres' => 'Cambio',
+            'apellidos' => 'Con datos',
+            'cargo' => 'CONDUCTOR',
+            'tipo_contrato' => 'Término fijo',
+            'fecha_ingreso_empresa' => $inicioAnterior,
+            'fecha_retiro_empresa' => $finAnterior,
+            'area' => 'Operativa',
+            'is_active' => true,
+            'estado_registro' => 'completo',
+            'wizard_step' => 4,
+        ]);
+        $colaborador->contratos()->create([
+            'tipo_contrato' => 'Término fijo',
+            'fecha_inicio' => $inicioAnterior,
+            'fecha_fin' => $finAnterior,
+            'estado' => 'activo',
+        ]);
+        $colaborador->cargos()->create([
+            'cargo' => 'CONDUCTOR',
+            'area' => 'Operativa',
+            'fecha_inicio' => $inicioAnterior,
+            'estado' => 'ACTIVO',
+        ]);
+
+        $this->actingAs($user)->patch(route('gente.colaboradores.paso3.update', $colaborador), [
+            'is_active' => false,
+            'es_nuevo_contrato' => '1',
+            'nuevo_tipo_contrato' => 'Término fijo',
+            'nuevo_fecha_inicio' => $fechaInicio,
+            'nuevo_fecha_fin' => $fechaFin,
+            'nuevo_cargo' => 'SUPERVISOR',
+            'nuevo_area' => 'Operativa',
+            'cargo' => 'SUPERVISOR',
+            'area' => 'Operativa',
+            'cargo_fecha_inicio' => $fechaInicio,
+            'guardar_historial_cargo' => 'si',
+        ])->assertRedirect();
+
+        $colaborador->refresh();
+        $this->assertFalse($colaborador->is_active);
+        $this->assertSame('finalizado', $colaborador->contratos()->latest('id')->firstOrFail()->estado);
+        $this->assertSame('SUPERVISOR', $colaborador->cargos()->latest('id')->firstOrFail()->cargo);
+        $this->assertSame('INACTIVO', $colaborador->cargos()->latest('id')->firstOrFail()->estado);
+        $this->assertSame($fechaFin, $colaborador->cargos()->latest('id')->firstOrFail()->fecha_fin->toDateString());
+        $this->assertFalse($colaborador->activacionHistorial()->latest('id')->firstOrFail()->is_active);
+    }
+
+    public function test_reactivating_creates_a_new_contract_and_cargo_and_syncs_the_linked_user(): void
+    {
+        $user = $this->genteUser();
+        $cuenta = User::factory()->create(['is_active' => false]);
+        $fechaInicio = now()->addDay()->toDateString();
+        $fechaFin = now()->addMonths(6)->toDateString();
+        $colaborador = Colaborador::create([
+            'cedula' => '900100225',
+            'nombres' => 'Reactivación',
+            'apellidos' => 'Con datos',
+            'user_id' => $cuenta->id,
+            'cargo' => 'CONDUCTOR',
+            'is_active' => false,
+            'estado_registro' => 'completo',
+            'wizard_step' => 4,
+        ]);
+        $colaborador->cargos()->create([
+            'cargo' => 'CONDUCTOR',
+            'area' => 'Operativa',
+            'fecha_inicio' => now()->subYear()->toDateString(),
+            'fecha_fin' => now()->subDay()->toDateString(),
+            'estado' => 'INACTIVO',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('gente.colaboradores.edit', ['colaborador' => $colaborador, 'paso' => 3]))
+            ->assertInertia(fn ($page) => $page
+                ->component('gente/colaboradores/wizard/index')
+                ->where('currentStep', 3)
+            );
+
+        $this->actingAs($user)->patch(route('gente.colaboradores.paso3.update', $colaborador), [
+            'is_active' => true,
+            'es_nuevo_contrato' => '1',
+            'nuevo_tipo_contrato' => 'Término fijo',
+            'nuevo_fecha_inicio' => $fechaInicio,
+            'nuevo_fecha_fin' => $fechaFin,
+            'nuevo_cargo' => 'CONDUCTOR',
+            'nuevo_area' => 'Operativa',
+            'cargo' => 'CONDUCTOR',
+            'area' => 'Operativa',
+            'cargo_fecha_inicio' => $fechaInicio,
+            'guardar_historial_cargo' => 'si',
+        ])->assertRedirect(route('gente.colaboradores.show', $colaborador));
+
+        $this->assertTrue($colaborador->fresh()->is_active);
+        $this->assertTrue($cuenta->fresh()->is_active);
+        $this->assertSame('activo', $colaborador->contratos()->latest('id')->firstOrFail()->estado);
+        $this->assertSame('ACTIVO', $colaborador->cargos()->latest('id')->firstOrFail()->estado);
+        $this->assertTrue($colaborador->activacionHistorial()->latest('id')->firstOrFail()->is_active);
+    }
+
     public function test_wizard_sorts_contract_history_by_start_date_and_keeps_each_contract_dates(): void
     {
         $user = $this->genteUser();

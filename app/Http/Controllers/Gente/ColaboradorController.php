@@ -203,11 +203,6 @@ class ColaboradorController extends Controller
                 ->with('status', 'El colaborador tiene el contrato finalizado y no se puede editar.');
         }
 
-        if (! $colaborador->is_active) {
-            return to_route('gente.colaboradores.show', $colaborador)
-                ->with('status', 'El colaborador está inactivo. Actívelo primero para poder editarlo.');
-        }
-
         $maxStep = max(1, (int) $colaborador->wizard_step);
         // Un borrador arranca en el siguiente paso sin completar; un
         // colaborador completo arranca en el Paso 1 para revisar desde el
@@ -420,9 +415,26 @@ class ColaboradorController extends Controller
         ContratoVigenciaService $contratoVigencia,
     ): RedirectResponse
     {
-        $this->asegurarEditable($colaborador);
+        $estadoSolicitado = $request->boolean('is_active', (bool) $colaborador->is_active);
+        $cambioEstado = $estadoSolicitado !== (bool) $colaborador->is_active;
+
+        if ($colaborador->is_active) {
+            $this->asegurarEditable($colaborador);
+        } else {
+            abort_if(
+                $colaborador->tieneFinalizacionConfirmada(),
+                403,
+                'El contrato ya fue finalizado y no se puede modificar.',
+            );
+            abort_unless(
+                $cambioEstado && $estadoSolicitado,
+                403,
+                'Debe reactivar al colaborador desde este paso para continuar.',
+            );
+        }
 
         $data = $request->validated();
+        unset($data['is_active']);
 
         $data = $this->resolverOtros($data, [
             'tipo_contrato' => ['tipo_contrato', 'tipo_contrato_otro'],
@@ -480,7 +492,7 @@ class ColaboradorController extends Controller
         $tipoContrato = $colaborador->fresh()->tipo_contrato;
         $fechaInicio  = $colaborador->fresh()->fecha_ingreso_empresa;
         $fechaFin     = $colaborador->fresh()->contrato_fecha_hasta ?? $colaborador->fresh()->fecha_retiro_empresa;
-        $esNuevoContrato = $request->boolean('es_nuevo_contrato') || $colaborador->esReingreso();
+        $esNuevoContrato = $request->boolean('es_nuevo_contrato') || $colaborador->esReingreso() || $cambioEstado;
 
         // Actualizar contratos editados del historial
         $contratosEditados = json_decode($request->input('contratos_editados', '[]'), true);
@@ -518,7 +530,7 @@ class ColaboradorController extends Controller
             }
         }
 
-        if ($tipoContrato) {
+        if ($tipoContrato || $cambioEstado) {
             if ($esNuevoContrato) {
                 // Crear nuevo registro con los campos dedicados del nuevo contrato
                 $contratoCreado = $contratoVigencia->crearContratoActual($colaborador, [
@@ -531,15 +543,39 @@ class ColaboradorController extends Controller
                     'registrado_por'     => $request->user()?->id,
                 ]);
 
-                // Asignar en el historial de cargos el cargo y área del nuevo contrato
+                if (! $estadoSolicitado) {
+                    $contratoCreado->update(['estado' => 'finalizado']);
+                }
+
                 $cargoContrato = $datosNuevoContrato['cargo'] ?: $cargo;
                 $areaContrato = $datosNuevoContrato['area'] ?: ($data['area'] ?? $colaborador->area);
-                $fechaInicioContrato = $datosNuevoContrato['fecha_inicio'] ?: $fechaInicio;
+                $fechaInicioContrato = $cambioEstado
+                    ? $cargoFechaInicio
+                    : ($datosNuevoContrato['fecha_inicio'] ?: $fechaInicio);
                 if ($cargoContrato && $fechaInicioContrato) {
-                    $cargoHistorial->asignar($colaborador, $cargoContrato, $fechaInicioContrato, $areaContrato);
+                    $cargoHistorial->asignar(
+                        $colaborador,
+                        $cargoContrato,
+                        $fechaInicioContrato,
+                        $areaContrato,
+                        $cargoPerfil,
+                        $cambioEstado,
+                    );
+
+                    if ($cambioEstado && ! $estadoSolicitado) {
+                        $cargoAsignado = $colaborador->cargos()
+                            ->where('cargo', $cargoContrato)
+                            ->whereDate('fecha_inicio', $fechaInicioContrato)
+                            ->latest('id')
+                            ->first();
+
+                        $cargoAsignado?->update([
+                            'fecha_fin' => $datosNuevoContrato['fecha_fin'],
+                            'estado' => 'INACTIVO',
+                        ]);
+                    }
                 }
             } else {
-                // Actualizar el contrato más reciente si existe, si no crear uno
                 $contratoActual = $contratoVigencia->contratoActual($colaborador);
                 if ($contratoActual) {
                     $contratoActual->refresh();
@@ -560,15 +596,6 @@ class ColaboradorController extends Controller
                         'tipo_contrato_otro' => $colaborador->fresh()->tipo_contrato_otro,
                         ...$fechasContratoActual,
                     ]);
-                } else {
-                    $colaborador->contratos()->create([
-                        'tipo_contrato'      => $tipoContrato,
-                        'tipo_contrato_otro' => $colaborador->fresh()->tipo_contrato_otro,
-                        'fecha_inicio'       => $fechaInicio,
-                        'fecha_fin'          => $fechaFin,
-                        'estado'             => 'activo',
-                        'registrado_por'     => $request->user()?->id,
-                    ]);
                 }
             }
         }
@@ -576,9 +603,33 @@ class ColaboradorController extends Controller
         // Reglas del historial de cargos (3 escenarios). Devuelve un mensaje
         // informativo cuando el cargo no cambió (Escenario B); el resto del
         // guardado del paso ya se hizo arriba.
-        $info = $cargoHistorial->registrarCambio($colaborador, $cargo, $cargoFechaInicio, $data['area'] ?? null, $cargoPerfil);
+        $info = $cambioEstado
+            ? null
+            : $cargoHistorial->registrarCambio($colaborador, $cargo, $cargoFechaInicio, $data['area'] ?? null, $cargoPerfil);
+
+        if ($cambioEstado) {
+            $colaborador->update(['is_active' => $estadoSolicitado]);
+            $colaborador->user?->update(['is_active' => $estadoSolicitado]);
+            $colaborador->activacionHistorial()->create([
+                'is_active' => $estadoSolicitado,
+                'tipo' => $estadoSolicitado ? 'activacion' : 'desactivacion',
+                'fecha' => now(),
+                'motivo' => $estadoSolicitado
+                    ? 'Reactivación registrada desde el wizard'
+                    : (($data['motivo_retiro'] ?? null) ?: 'Desactivación registrada desde el wizard'),
+                'observaciones' => 'Cambio de estado registrado junto con un nuevo contrato y cargo.',
+                'user_id' => $request->user()?->id,
+            ]);
+        }
 
         $this->storeDocuments($request, $colaborador, ColaboradorDocumentoCampos::paso3());
+
+        if ($cambioEstado) {
+            return to_route('gente.colaboradores.show', $colaborador)
+                ->with('status', $estadoSolicitado
+                    ? 'Colaborador activado con un nuevo contrato y cargo registrados.'
+                    : 'Colaborador desactivado con un nuevo contrato y cargo registrados.');
+        }
 
         // Si viene desde la vista de contratos, regresar allí
         if ($request->input('redirect_to') === 'contratos') {
@@ -763,7 +814,17 @@ class ColaboradorController extends Controller
         ContratoVigenciaService $contratoVigencia,
     ): RedirectResponse
     {
-        $this->asegurarEditable($colaborador);
+        $esFinalizacionSolicitada = $request->input('tipo', 'prorroga') === 'finalizacion';
+
+        if ($colaborador->is_active || ! $esFinalizacionSolicitada) {
+            $this->asegurarEditable($colaborador);
+        } else {
+            abort_if(
+                $colaborador->tieneFinalizacionConfirmada(),
+                403,
+                'El contrato ya fue finalizado y no se puede modificar.',
+            );
+        }
 
         $datos = $request->validated();
         $contratoActual = $contratoVigencia->contratoActual($colaborador);
@@ -882,45 +943,21 @@ class ColaboradorController extends Controller
     }
 
     /**
-     * HU04: botón dedicado en la vista de detalle para activar/desactivar
-     * al colaborador en el sistema. Se sincroniza en ambos sentidos con la
-     * cuenta de usuario vinculada (si tiene una), para que no quede activa
-     * en Gestión de Usuarios un colaborador desactivado, ni bloqueada la
-     * cuenta de uno que se vuelve a activar.
+     * La transición de estado se completa en el paso 3 del wizard para
+     * exigir el contrato y el cargo correspondientes.
      */
     public function toggleActivo(Colaborador $colaborador): RedirectResponse
     {
-        // El toggle solo está bloqueado por finalización de contrato.
-        // Un colaborador inactivo SÍ puede ser reactivado desde aquí.
         abort_if(
             $colaborador->tieneFinalizacionConfirmada(),
             403,
             'El contrato ya fue finalizado. No se puede cambiar el estado.',
         );
 
-        $nuevoEstado = ! $colaborador->is_active;
-
-        $colaborador->update(['is_active' => $nuevoEstado]);
-        $colaborador->user?->update(['is_active' => $nuevoEstado]);
-
-        try {
-            $colaborador->activacionHistorial()->create([
-                'is_active'     => $nuevoEstado,
-                'tipo'          => $nuevoEstado ? 'activacion' : 'desactivacion',
-                'fecha'         => now(),
-                'motivo'        => $nuevoEstado
-                    ? 'Reactivación manual'
-                    : ($colaborador->motivo_retiro ?: 'Desactivación manual'),
-                'observaciones' => $nuevoEstado
-                    ? 'Colaborador reactivado. Puede ser editado con normalidad.'
-                    : 'Colaborador desactivado. Edición bloqueada hasta reactivación.',
-                'user_id'       => auth()->id(),
-            ]);
-        } catch (\Throwable) {
-            // No interrumpe el flujo
-        }
-
-        return back()->with('status', $nuevoEstado ? 'Colaborador activado.' : 'Colaborador desactivado.');
+        return to_route('gente.colaboradores.edit', [
+            'colaborador' => $colaborador,
+            'paso' => 3,
+        ]);
     }
 
     /**
@@ -966,10 +1003,7 @@ class ColaboradorController extends Controller
             unset($data['imagen']);
         }
 
-        $colaborador->update([
-            ...$data,
-            'is_active' => $request->boolean('is_active', true),
-        ]);
+        $colaborador->update($data);
 
         // Reglas del historial de cargos: la misma lógica central que usa el
         // wizard (ver CargoHistorialService::registrarCambio). Devuelve un

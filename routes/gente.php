@@ -86,7 +86,7 @@ Route::middleware(['auth', 'active', 'role:Administrador|Gente|Contratos', 'subm
         Route::patch('colaboradores/{colaborador}/paso-4', [ColaboradorController::class, 'updatePaso4'])
             ->name('colaboradores.paso4.update');
 
-        // HU04: activar/desactivar desde la vista de detalle.
+        // Compatibilidad: enviar los cambios de estado al paso 3 del wizard.
         Route::patch('colaboradores/{colaborador}/toggle-activo', [ColaboradorController::class, 'toggleActivo'])
             ->name('colaboradores.toggle-activo');
 

@@ -132,8 +132,6 @@ class UpdateColaboradorRequest extends FormRequest
             'licencia_conduccion_categorias' => ['nullable', 'array'],
             'licencia_conduccion_categorias.*' => [Rule::in(config('seguridad.colaboradores.licencia_conduccion_categorias'))],
 
-            'is_active' => ['boolean'],
-
             ...$this->documentoRules(ColaboradorDocumentoCampos::todas()),
         ];
     }

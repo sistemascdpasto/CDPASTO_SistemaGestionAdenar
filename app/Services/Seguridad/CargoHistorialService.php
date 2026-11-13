@@ -19,7 +19,14 @@ class CargoHistorialService
      * existe un cargo ACTIVO, se cierra (fecha_fin = fecha_inicio - 1 día,
      * estado = INACTIVO) sin eliminarlo, y se crea el nuevo registro ACTIVO.
      */
-    public function asignar(Colaborador $colaborador, string $cargo, string $fechaInicio, ?string $area = null, ?string $perfil = null): void
+    public function asignar(
+        Colaborador $colaborador,
+        string $cargo,
+        string $fechaInicio,
+        ?string $area = null,
+        ?string $perfil = null,
+        bool $forzarNuevoRegistro = false,
+    ): void
     {
         $fechaInicio = Carbon::parse($fechaInicio)->startOfDay();
 
@@ -28,7 +35,7 @@ class CargoHistorialService
             ->latest('fecha_inicio')
             ->first();
 
-        if ($cargoActivo && $cargoActivo->cargo === $cargo && ($area === null || $cargoActivo->area === $area)) {
+        if (! $forzarNuevoRegistro && $cargoActivo && $cargoActivo->cargo === $cargo && ($area === null || $cargoActivo->area === $area)) {
             return;
         }
 

@@ -20,7 +20,7 @@ use Illuminate\Contracts\Validation\Validator;
  */
 trait ValidatesCargoHistorial
 {
-    protected function validarFechaInicioCargo(Validator $validator): void
+    protected function validarFechaInicioCargo(Validator $validator, bool $validarMismoCargo = false): void
     {
         $colaborador = $this->route('colaborador');
         $cargo = $this->input('cargo');
@@ -34,7 +34,7 @@ trait ValidatesCargoHistorial
         $cargoActualNombre = $colaborador->cargoActual?->cargo ?? $colaborador->cargo;
 
         // Mismo cargo + fecha (Escenario B): no bloquea.
-        if ($cargo === $cargoActualNombre) {
+        if ($cargo === $cargoActualNombre && ! $validarMismoCargo) {
             return;
         }
 

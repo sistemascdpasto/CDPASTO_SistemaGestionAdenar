@@ -12,7 +12,7 @@ class ColaboradorToggleActivoTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_it_toggles_is_active_on_each_call(): void
+    public function test_toggle_redirects_to_the_wizard_without_changing_status(): void
     {
         Role::create(['name' => 'Gente', 'guard_name' => 'web']);
         $user = User::factory()->create();
@@ -27,14 +27,13 @@ class ColaboradorToggleActivoTest extends TestCase
             'wizard_step' => 4,
         ]);
 
-        $this->actingAs($user)->patch(route('gente.colaboradores.toggle-activo', $colaborador))->assertRedirect();
-        $this->assertFalse($colaborador->fresh()->is_active);
-
-        $this->actingAs($user)->patch(route('gente.colaboradores.toggle-activo', $colaborador))->assertRedirect();
+        $this->actingAs($user)
+            ->patch(route('gente.colaboradores.toggle-activo', $colaborador))
+            ->assertRedirect(route('gente.colaboradores.edit', ['colaborador' => $colaborador, 'paso' => 3]));
         $this->assertTrue($colaborador->fresh()->is_active);
     }
 
-    public function test_it_does_not_fail_when_the_colaborador_has_no_linked_user(): void
+    public function test_toggle_does_not_change_status_when_the_colaborador_has_no_linked_user(): void
     {
         Role::create(['name' => 'Gente', 'guard_name' => 'web']);
         $user = User::factory()->create();
@@ -49,11 +48,13 @@ class ColaboradorToggleActivoTest extends TestCase
             'wizard_step' => 4,
         ]);
 
-        $this->actingAs($user)->patch(route('gente.colaboradores.toggle-activo', $colaborador))->assertRedirect();
-        $this->assertFalse($colaborador->fresh()->is_active);
+        $this->actingAs($user)
+            ->patch(route('gente.colaboradores.toggle-activo', $colaborador))
+            ->assertRedirect(route('gente.colaboradores.edit', ['colaborador' => $colaborador, 'paso' => 3]));
+        $this->assertTrue($colaborador->fresh()->is_active);
     }
 
-    public function test_it_syncs_is_active_on_the_linked_user_in_both_directions(): void
+    public function test_toggle_does_not_change_the_linked_user_status(): void
     {
         Role::create(['name' => 'Gente', 'guard_name' => 'web']);
         $user = User::factory()->create();
@@ -71,11 +72,9 @@ class ColaboradorToggleActivoTest extends TestCase
             'user_id' => $cuenta->id,
         ]);
 
-        $this->actingAs($user)->patch(route('gente.colaboradores.toggle-activo', $colaborador))->assertRedirect();
-        $this->assertFalse($colaborador->fresh()->is_active);
-        $this->assertFalse($cuenta->fresh()->is_active);
-
-        $this->actingAs($user)->patch(route('gente.colaboradores.toggle-activo', $colaborador))->assertRedirect();
+        $this->actingAs($user)
+            ->patch(route('gente.colaboradores.toggle-activo', $colaborador))
+            ->assertRedirect(route('gente.colaboradores.edit', ['colaborador' => $colaborador, 'paso' => 3]));
         $this->assertTrue($colaborador->fresh()->is_active);
         $this->assertTrue($cuenta->fresh()->is_active);
     }

@@ -300,19 +300,7 @@ class ContratosController extends Controller
 
         $contratoActual = $contratoVigencia->contratoActual($colaborador);
 
-        // Si el colaborador no tiene ningún contrato en la base de datos,
-        // limpiar fechas residuales de retiro y prórrogas huérfanas
-        if (! $contratoActual && ! $colaborador->contratos()->exists()) {
-            if ($colaborador->fecha_retiro_empresa || $colaborador->fecha_ingreso_empresa || $colaborador->tipo_contrato) {
-                $colaborador->update([
-                    'fecha_ingreso_empresa' => null,
-                    'fecha_retiro_empresa' => null,
-                    'tipo_contrato' => null,
-                    'tipo_contrato_otro' => null,
-                ]);
-            }
-            $colaborador->prorrogas()->whereNull('contrato_id')->delete();
-        } elseif ($contratoActual) {
+        if ($contratoActual) {
             $ultimaProrrogaContratoActual = $contratoActual->prorrogas()
                 ->where('tipo', 'prorroga')
                 ->orderByDesc('fecha_nueva')
@@ -613,13 +601,12 @@ class ContratosController extends Controller
                     })
                     ->values(),
 
-                // Historial de contratos (orden cronológico descendente: más recientes arriba, históricos al final)
+                // Historial de contratos en orden cronológico, con fechas vacías al final.
                 'historial_contratos' => $colaborador->contratos()
                     ->reorder()
-                    ->orderByRaw('CASE WHEN estado = "activo" THEN 0 ELSE 1 END')
                     ->orderByRaw('CASE WHEN fecha_inicio IS NULL THEN 1 ELSE 0 END')
-                    ->orderByDesc('fecha_inicio')
-                    ->orderByDesc('id')
+                    ->orderBy('fecha_inicio')
+                    ->orderBy('id')
                     ->withCount(['prorrogas as cantidad_prorrogas' => fn ($query) => $query->where('tipo', 'prorroga')])
                     ->withExists(['prorrogas as tiene_finalizacion' => fn ($query) => $query->where('tipo', 'finalizacion')])
                     ->with(['prorrogas' => fn ($q) => $q->where('tipo', 'prorroga')->orderByDesc('fecha_nueva')->orderByDesc('id')])

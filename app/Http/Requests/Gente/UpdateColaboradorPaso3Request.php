@@ -5,6 +5,7 @@ namespace App\Http\Requests\Gente;
 use App\Http\Requests\Gente\Concerns\ValidatesCargoHistorial;
 use App\Http\Requests\Gente\Concerns\ValidatesColaboradorDocumentos;
 use App\Http\Requests\Seguridad\Concerns\ValidatesFutureDates;
+use App\Models\Seguridad\Colaborador;
 use App\Support\Seguridad\ColaboradorDocumentoCampos;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -30,10 +31,10 @@ class UpdateColaboradorPaso3Request extends FormRequest
 
         return [
             'area' => ['nullable', Rule::in(['Administrativa', 'Operativa'])],
-            'cargo' => ['nullable', 'string', 'max:100'],
+            'cargo' => ['nullable', Rule::requiredIf(fn () => $this->cambiaEstado()), 'string', 'max:100'],
             'perfil' => ['nullable', 'string'],
             'guardar_historial_cargo' => ['nullable', Rule::in(['si', 'no'])],
-            'cargo_fecha_inicio' => ['nullable', 'date'],
+            'cargo_fecha_inicio' => ['nullable', Rule::requiredIf(fn () => $this->cambiaEstado()), 'date'],
 
             'sena_especialidad' => ['nullable', 'string', 'max:150'],
             'sena_numero_grupo' => ['nullable', 'integer'],
@@ -49,25 +50,31 @@ class UpdateColaboradorPaso3Request extends FormRequest
             'motivo_retiro_observaciones' => ['nullable', 'string', 'max:2000'],
             'tipo_contrato' => ['nullable', 'string', 'max:100'],
             'tipo_contrato_otro' => ['nullable', 'string', 'max:100'],
-            'es_nuevo_contrato' => ['nullable', 'boolean'],
+            'es_nuevo_contrato' => ['nullable', 'boolean', Rule::requiredIf(fn () => $this->cambiaEstado())],
             'nuevo_tipo_contrato' => [
                 'nullable',
-                Rule::requiredIf(fn () => $this->route('colaborador')?->esReingreso()),
+                Rule::requiredIf(fn () => $this->cambiaEstado() || $this->route('colaborador')?->esReingreso()),
                 'string',
                 'max:100',
             ],
-            'nuevo_tipo_contrato_otro' => ['nullable', 'string', 'max:100'],
-            'nuevo_cargo' => ['nullable', 'string', 'max:100'],
+            'nuevo_tipo_contrato_otro' => [
+                'nullable',
+                Rule::requiredIf(fn () => $this->input('nuevo_tipo_contrato') === 'Otro'),
+                'string',
+                'max:100',
+            ],
+            'nuevo_cargo' => ['nullable', Rule::requiredIf(fn () => $this->cambiaEstado()), 'string', 'max:100'],
             'nuevo_area' => ['nullable', Rule::in(['Administrativa', 'Operativa'])],
             'nuevo_fecha_inicio' => [
                 'nullable',
                 'required_if:es_nuevo_contrato,1',
-                Rule::requiredIf(fn () => $this->route('colaborador')?->esReingreso()),
+                Rule::requiredIf(fn () => $this->cambiaEstado() || $this->route('colaborador')?->esReingreso()),
                 'date',
             ],
-            'nuevo_fecha_fin' => ['nullable', 'date', 'after_or_equal:nuevo_fecha_inicio'],
+            'nuevo_fecha_fin' => ['nullable', Rule::requiredIf(fn () => $this->cambiaEstado()), 'date', 'after_or_equal:nuevo_fecha_inicio'],
             'contratos_editados' => ['nullable', 'json'],
             'cargos_editados' => ['nullable', 'json'],
+            'is_active' => ['nullable', 'boolean'],
 
             'codigo_qr_skap' => ['nullable', 'string', 'max:100'],
 
@@ -85,6 +92,15 @@ class UpdateColaboradorPaso3Request extends FormRequest
     {
         $validator->after(fn () => $this->logArchivosDocumentoRechazados($validator, ColaboradorDocumentoCampos::paso3()));
 
-        $validator->after(fn (Validator $v) => $this->validarFechaInicioCargo($v));
+        $validator->after(fn (Validator $v) => $this->validarFechaInicioCargo($v, $this->cambiaEstado()));
+    }
+
+    private function cambiaEstado(): bool
+    {
+        $colaborador = $this->route('colaborador');
+
+        return $colaborador instanceof Colaborador
+            && $this->has('is_active')
+            && $this->boolean('is_active') !== (bool) $colaborador->is_active;
     }
 }

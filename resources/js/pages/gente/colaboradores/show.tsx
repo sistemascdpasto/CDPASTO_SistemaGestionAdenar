@@ -368,7 +368,7 @@ export default function ColaboradorShow({
                     {canManageColaboradores && !colaborador.tiene_finalizacion && (
                         <Button
                             variant={colaborador.is_active ? 'destructive' : 'default'}
-                            onClick={() => router.patch(route('gente.colaboradores.toggle-activo', colaborador.id), {}, { preserveScroll: true })}
+                            onClick={() => router.get(route('gente.colaboradores.edit', colaborador.id), { paso: 3 })}
                         >
                             <Power className="mr-2 size-4" />
                             {colaborador.is_active ? 'Desactivar' : 'Activar'}

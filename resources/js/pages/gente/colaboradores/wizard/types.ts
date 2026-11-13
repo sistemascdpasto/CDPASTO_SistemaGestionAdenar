@@ -96,6 +96,7 @@ export type Paso2FormData = {
 };
 
 export type Paso3FormData = {
+    is_active: boolean;
     area: 'Administrativa' | 'Operativa' | '';
     cargo: string;
     perfil: string;

@@ -6,6 +6,7 @@ use App\Models\Gente\Cargo;
 use App\Models\Gente\OpcionCatalogo;
 use App\Models\GeovictoriaAsistencia;
 use App\Models\Seguridad\Colaborador;
+use App\Models\Seguridad\ColaboradorCargo;
 
 class ColaboradorCatalogoService
 {
@@ -14,14 +15,41 @@ class ColaboradorCatalogoService
      */
     public function cargos(): array
     {
-        return GeovictoriaAsistencia::query()
+        $cargosGeovictoria = GeovictoriaAsistencia::query()
             ->whereNotNull('cargo')
             ->where('cargo', '!=', '')
             ->distinct()
             ->pluck('cargo')
+            ->map(fn (string $cargo) => trim($cargo))
+            ->filter()
+            ->unique()
+            ->values();
+
+        $this->sincronizarCargosGeovictoria($cargosGeovictoria);
+
+        return $cargosGeovictoria
+            ->merge(ColaboradorCargo::query()
+                ->whereNotNull('cargo')
+                ->where('cargo', '!=', '')
+                ->distinct()
+                ->pluck('cargo'))
+            ->unique()
             ->sort()
             ->values()
             ->all();
+    }
+
+    /**
+     * Adds GeoVictoria cargo names to the local catalog without replacing
+     * profiles already maintained in the application.
+     *
+     * @param  iterable<mixed>  $nombres
+     */
+    public function sincronizarCargosGeovictoria(iterable $nombres): void
+    {
+        foreach (collect($nombres)->map(fn ($cargo) => trim((string) $cargo))->filter()->unique() as $nombre) {
+            Cargo::firstOrCreate(['nombre' => $nombre]);
+        }
     }
 
     /**

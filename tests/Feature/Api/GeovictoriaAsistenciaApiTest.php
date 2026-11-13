@@ -83,6 +83,7 @@ class GeovictoriaAsistenciaApiTest extends TestCase
             'identificador' => '87654321',
             'descanso_no_efectivo' => true,
         ]);
+        $this->assertDatabaseHas('cargos', ['nombre' => 'Movilizador']);
     }
 
     public function test_it_upserts_by_identificador_and_fecha(): void

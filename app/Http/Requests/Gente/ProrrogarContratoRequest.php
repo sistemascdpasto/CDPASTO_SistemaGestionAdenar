@@ -58,21 +58,13 @@ class ProrrogarContratoRequest extends FormRequest
 
                 $contratoEvaluar = $contratoObjetivo ?? $contratoActual;
 
-                $cantidadProrrogas = ($colaborador instanceof Colaborador && $contratoEvaluar)
+                $cantidadProrrogas = $colaborador instanceof Colaborador
                     ? $contratoVigencia->cantidadProrrogas($colaborador, $contratoEvaluar)
                     : 0;
                 $esAprendiz = $colaborador instanceof Colaborador
                     && $contratoVigencia->esAprendiz($colaborador, $contratoEvaluar);
                 $numeroProrroga = $cantidadProrrogas + 1;
                 $esProrrogaAnual = ! $esAprendiz && ContratoProrroga::esProrrogaAnual($numeroProrroga);
-
-                // No contract exists and not creating a new historical contract -> reject prórroga
-                if (! $this->boolean('crear_nuevo_contrato')) {
-                    if (! $colaborador->contratos()->exists()) {
-                        $validator->errors()->add('contrato_id', 'No es posible crear una prórroga porque el colaborador no tiene contratos asociados.');
-                        return;
-                    }
-                }
 
                 if (! $this->filled('fecha_inicio_prorroga')) {
                     if ($esProrrogaAnual) {
