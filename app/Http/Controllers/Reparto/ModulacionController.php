@@ -9,6 +9,8 @@ use App\Models\Reparto\ModulacionItem;
 use App\Models\Reparto\ModulacionNovedad;
 use App\Models\Seguridad\Colaborador;
 use App\Services\Reparto\ModulacionUbicacionesService;
+use App\Services\Reparto\ModulacionTripulacionService;
+use App\Services\Seguridad\ColaboradorCatalogoService;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\JsonResponse;
@@ -101,7 +103,11 @@ class ModulacionController extends Controller
         }
     }
 
-    public function index(Request $request): Response
+    public function index(
+        Request $request,
+        ColaboradorCatalogoService $catalogos,
+        ModulacionTripulacionService $tripulacion,
+    ): Response
     {
         $this->ensureFijoColumnExists();
 
@@ -191,22 +197,6 @@ class ModulacionController extends Controller
             }
         }
 
-        $colaboradores = Colaborador::select(['id', 'cedula', 'nombres', 'apellidos', 'cargo', 'area'])
-            ->where('is_active', true)
-            ->orderBy('nombres')
-            ->get()
-            ->map(function ($c) {
-                return [
-                    'id' => $c->id,
-                    'cedula' => $c->cedula,
-                    'nombres' => $c->nombres,
-                    'apellidos' => $c->apellidos,
-                    'nombre_completo' => trim("{$c->nombres} {$c->apellidos}"),
-                    'cargo' => $c->cargo ?? '',
-                    'area' => $c->area,
-                ];
-            });
-
         $vehiculos = Vehiculo::where('is_active', true)
             ->orderBy('placa')
             ->pluck('placa');
@@ -218,7 +208,8 @@ class ModulacionController extends Controller
             'fecha'          => $fecha,
             'modulacion'     => $modulacion,
             'fijosIniciales' => $fijosIniciales,
-            'colaboradores'  => $colaboradores,
+            'colaboradores'  => $tripulacion->colaboradoresActivos(),
+            'cargosCatalogo' => $catalogos->cargos(),
             'vehiculos'      => $vehiculos,
             'currentUser'    => $request->user()?->name ?? 'Usuario',
             'readOnly'       => $request->boolean('readOnly', false),
@@ -227,7 +218,11 @@ class ModulacionController extends Controller
         ]);
     }
 
-    public function checkFecha(Request $request)
+    public function checkFecha(
+        Request $request,
+        ColaboradorCatalogoService $catalogos,
+        ModulacionTripulacionService $tripulacion,
+    )
     {
         $this->ensureFijoColumnExists();
         $fecha = trim((string)$request->input('fecha', date('Y-m-d')));
@@ -262,6 +257,8 @@ class ModulacionController extends Controller
             'exists'         => (bool)$modulacion,
             'modulacion'     => $modulacion,
             'fijosIniciales' => $fijosIniciales,
+            'cargosCatalogo' => $catalogos->cargos(),
+            'colaboradores'  => $tripulacion->colaboradoresActivos(),
         ]);
     }
 
@@ -306,28 +303,8 @@ class ModulacionController extends Controller
             $rutasDetalle = $items->map(function ($item) {
                 $docTras = trim((string)($item->doc_tras ?? ''));
 
-                $responsable = '';
                 $tripulacion = is_array($item->tripulacion) ? $item->tripulacion : [];
-
-                foreach ($tripulacion as $m) {
-                    $cargo = strtoupper((string)($m['cargo'] ?? ''));
-                    if (str_contains($cargo, 'RESPONSABLE')) {
-                        $responsable = trim((string)($m['nombres'] ?? ''));
-                        break;
-                    }
-                }
-                if ($responsable === '') {
-                    foreach ($tripulacion as $m) {
-                        $cargo = strtoupper((string)($m['cargo'] ?? ''));
-                        if (str_contains($cargo, 'CONDUCTOR')) {
-                            $responsable = trim((string)($m['nombres'] ?? ''));
-                            break;
-                        }
-                    }
-                }
-                if ($responsable === '') {
-                    $responsable = trim((string)($item->nombres ?? ($tripulacion[0]['nombres'] ?? '')));
-                }
+                $responsable = trim((string)($item->nombres ?? ($tripulacion[0]['nombres'] ?? '')));
 
                 $destinosList = [];
                 $viajes = is_array($item->viajes) ? $item->viajes : [];
@@ -438,7 +415,11 @@ class ModulacionController extends Controller
         ]);
     }
 
-    public function storeBatch(Request $request, ModulacionUbicacionesService $ubicaciones): RedirectResponse
+    public function storeBatch(
+        Request $request,
+        ModulacionUbicacionesService $ubicaciones,
+        ModulacionTripulacionService $tripulacionService,
+    ): RedirectResponse
     {
         $this->ensureFijoColumnExists();
 
@@ -570,18 +551,22 @@ class ModulacionController extends Controller
         }
 
         // Reemplazar o guardar rutas de modulación
+        $validated['rutas'] = $tripulacionService->preservarCargosGuardados($validated['rutas'], $modulacion);
         $modulacion->items()->delete();
 
         foreach ($validated['rutas'] as $ruta) {
             $tripulacion = $ruta['tripulacion'] ?? [];
             $firstMember = $tripulacion[0] ?? null;
+            $cargoRuta = is_array($firstMember) && array_key_exists('cargo', $firstMember)
+                ? $firstMember['cargo']
+                : ($ruta['cargo'] ?? null);
 
             $modulacion->items()->create([
                 'placa' => $ruta['placa'],
                 'placa_adicional' => !empty($ruta['placa_adicional']) ? strtoupper(trim($ruta['placa_adicional'])) : null,
                 'doc_tras' => $ruta['doc_tras'] ?? null,
                 'ud' => $ruta['ud'] ?? null,
-                'cargo' => $ruta['cargo'] ?? ($firstMember['cargo'] ?? null),
+                'cargo' => $cargoRuta,
                 'colaborador_id' => $firstMember['colaborador_id'] ?? null,
                 'cedula' => $firstMember['cedula'] ?? null,
                 'nombres' => $firstMember['nombres'] ?? null,
@@ -748,7 +733,11 @@ class ModulacionController extends Controller
      * para que el frontend pueda guardar cada viaje sin recargar la página,
      * evitando pérdida de datos si se recarga el navegador.
      */
-    public function storeBatchApi(Request $request, ModulacionUbicacionesService $ubicaciones): JsonResponse
+    public function storeBatchApi(
+        Request $request,
+        ModulacionUbicacionesService $ubicaciones,
+        ModulacionTripulacionService $tripulacionService,
+    ): JsonResponse
     {
         $this->ensureFijoColumnExists();
 
@@ -871,17 +860,21 @@ class ModulacionController extends Controller
         }
 
         // Reemplazar items
+        $validated['rutas'] = $tripulacionService->preservarCargosGuardados($validated['rutas'], $modulacion);
         $modulacion->items()->delete();
         foreach ($validated['rutas'] as $ruta) {
             $tripulacion = $ruta['tripulacion'] ?? [];
             $firstMember = $tripulacion[0] ?? null;
+            $cargoRuta = is_array($firstMember) && array_key_exists('cargo', $firstMember)
+                ? $firstMember['cargo']
+                : ($ruta['cargo'] ?? null);
 
             $modulacion->items()->create([
                 'placa' => $ruta['placa'],
                 'placa_adicional' => !empty($ruta['placa_adicional']) ? strtoupper(trim($ruta['placa_adicional'])) : null,
                 'doc_tras' => $ruta['doc_tras'] ?? null,
                 'ud' => $ruta['ud'] ?? null,
-                'cargo' => $ruta['cargo'] ?? ($firstMember['cargo'] ?? null),
+                'cargo' => $cargoRuta,
                 'colaborador_id' => $firstMember['colaborador_id'] ?? null,
                 'cedula' => $firstMember['cedula'] ?? null,
                 'nombres' => $firstMember['nombres'] ?? null,

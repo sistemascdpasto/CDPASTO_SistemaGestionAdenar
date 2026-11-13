@@ -158,6 +158,7 @@ interface Props {
     fecha: string;
     modulacion: ModulacionData | null;
     colaboradores: ColaboradorOption[];
+    cargosCatalogo?: string[];
     vehiculos: string[];
     currentUser: string;
     readOnly?: boolean;
@@ -771,7 +772,8 @@ const cleanString = (val: unknown, fallback: string = '') => {
 export default function ModulacionIndex({
     fecha: initialFecha,
     modulacion,
-    colaboradores = [],
+    colaboradores: colaboradoresIniciales = [],
+    cargosCatalogo = [],
     vehiculos = [],
     currentUser,
     readOnly = false,
@@ -802,6 +804,16 @@ export default function ModulacionIndex({
         return `${y}-${m}-${day}`;
     });
     const [activeModulacionId, setActiveModulacionId] = useState<number | null>(modulacion?.id ?? null);
+    const [colaboradores, setColaboradores] = useState<ColaboradorOption[]>(colaboradoresIniciales);
+    const [cargosCatalogoActualizados, setCargosCatalogoActualizados] = useState<string[]>(cargosCatalogo);
+
+    useEffect(() => {
+        setColaboradores(colaboradoresIniciales);
+    }, [colaboradoresIniciales]);
+
+    useEffect(() => {
+        setCargosCatalogoActualizados(cargosCatalogo);
+    }, [cargosCatalogo]);
 
     // UD Programado por
     const [udProgramadoPor, setUdProgramadoPor] = useState<string>(() =>
@@ -915,8 +927,16 @@ export default function ModulacionIndex({
                     nombres?: string;
                     cargo?: string;
                 }>;
+                cargosCatalogo?: string[];
+                colaboradores?: ColaboradorOption[];
             };
             if (controller.signal.aborted) return;
+            if (Array.isArray(data.cargosCatalogo)) {
+                setCargosCatalogoActualizados(data.cargosCatalogo);
+            }
+            if (Array.isArray(data.colaboradores)) {
+                setColaboradores(data.colaboradores);
+            }
             if (data.exists && data.modulacion) {
                 setActiveModulacionId(data.modulacion.id ?? null);
                 const rutasExistentes = mapModulacionItems((data.modulacion.items ?? []) as ModulacionItemData[]);
@@ -1037,7 +1057,6 @@ export default function ModulacionIndex({
     // Filtros de búsqueda para el Checklist de tripulación
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [cargoFilter, setCargoFilter] = useState<string>('todos');
-
     // COLABORADORES FIJOS
     const fijosColaboradorIds = useMemo(() => {
         const ids = new Set<string>();
@@ -1176,12 +1195,29 @@ export default function ModulacionIndex({
         // Normalizar los viajes precargados — NO se precargan: los viajes, clientes y peso
         // son nuevos cada día. Solo se mantiene la tripulación y el cargo.
         const viajesPrecargados: Viaje[] = [];
+        const tripulacionPrecargada = (rutaPrevia?.tripulacion ?? []).map((miembro) => {
+            const colaborador = colaboradores.find(
+                (actual) =>
+                    (miembro.colaborador_id && String(actual.id) === String(miembro.colaborador_id)) ||
+                    (miembro.cedula && actual.cedula === miembro.cedula),
+            );
+
+            return colaborador
+                ? {
+                      ...miembro,
+                      colaborador_id: colaborador.id,
+                      cedula: colaborador.cedula || miembro.cedula,
+                      nombres: colaborador.nombre_completo || miembro.nombres,
+                      cargo: colaborador.cargo,
+                  }
+                : miembro;
+        });
 
         setCurrentRoute({
             placa: placaUpper,
             doc_tras: '',  // el documento de transporte es nuevo cada día
-            cargo: rutaPrevia?.cargo ?? '',
-            tripulacion: rutaPrevia?.tripulacion ?? [],
+            cargo: tripulacionPrecargada[0]?.cargo ?? rutaPrevia?.cargo ?? '',
+            tripulacion: tripulacionPrecargada,
             viajes: viajesPrecargados,
         });
         setEditingIndex(null);
@@ -1895,7 +1931,12 @@ export default function ModulacionIndex({
             );
 
             if (isCheckedInCurrent) {
-                selected.push(col);
+                const miembroGuardado = currentRoute.tripulacion.find(
+                    (miembro) =>
+                        (miembro.colaborador_id && String(miembro.colaborador_id).trim() === colIdStr) ||
+                        (miembro.cedula && colCedStr !== '' && String(miembro.cedula).trim() === colCedStr),
+                );
+                selected.push({ ...col, cargo: miembroGuardado?.cargo ?? col.cargo });
                 return;
             }
 
@@ -1950,12 +1991,15 @@ export default function ModulacionIndex({
     const cargosOperativos = useMemo(() => {
         return Array.from(
             new Set(
-                baseColaboradoresOperativos
-                    .map((col) => col.cargo)
-                    .filter(Boolean),
+                [
+                    ...cargosCatalogoActualizados,
+                    ...baseColaboradoresOperativos.map((col) => col.cargo),
+                ]
+                    .map((cargo) => cargo.trim())
+                    .filter((cargo) => cargo !== ''),
             ),
         ).sort((a, b) => a.localeCompare(b));
-    }, [baseColaboradoresOperativos]);
+    }, [baseColaboradoresOperativos, cargosCatalogoActualizados]);
 
     // ─── CÁLCULO DE PERSONAL PENDIENTE POR PROGRAMAR A RUTAS ─────────────────
     const personalFaltantePorProgramar = useMemo(() => {
@@ -3036,7 +3080,9 @@ export default function ModulacionIndex({
                                                         className="cursor-pointer border-b border-border px-3 py-2 text-sm last:border-b-0 hover:bg-muted"
                                                     >
                                                         <div className="font-medium text-foreground">{c.nombre_completo}</div>
-                                                        <div className="text-xs text-muted-foreground">{c.cedula} · {c.cargo}</div>
+                                                        <div className="text-xs text-muted-foreground">
+                                                            CC: {c.cedula || '—'} · Área: {c.area || '—'} · Cargo: {c.cargo || '—'}
+                                                        </div>
                                                     </div>
                                                 ))}
                                         </div>
@@ -3130,7 +3176,8 @@ export default function ModulacionIndex({
                                                         <div className="min-w-0 flex-1">
                                                             <p className="text-xs font-semibold text-foreground truncate">{String(col.nombre_completo ?? '')}</p>
                                                             {col.cedula && <p className="text-[10px] font-mono text-muted-foreground">Cédula: {col.cedula}</p>}
-                                                            {col.cargo && <p className="text-[10px] text-muted-foreground truncate">{col.cargo}</p>}
+                                                            <p className="text-[10px] text-muted-foreground truncate">Área: {col.area || '—'}</p>
+                                                            {col.cargo && <p className="text-[10px] text-muted-foreground truncate">Cargo: {col.cargo}</p>}
                                                         </div>
                                                         {isFijo && isChecked && (
                                                             <Badge className="shrink-0 bg-emerald-600 text-[9px] px-1.5 py-0 text-white">FIJO</Badge>
@@ -3234,9 +3281,12 @@ export default function ModulacionIndex({
                                                         <span>CC: {col.cedula || '—'}</span>
                                                     </div>
 
+                                                    <p className="text-[11px] text-muted-foreground truncate" title={col.area || '—'}>
+                                                        Área: {col.area || '—'}
+                                                    </p>
                                                     {col.cargo && (
                                                         <p className="text-[11px] text-muted-foreground truncate" title={col.cargo}>
-                                                            {col.cargo}
+                                                            Cargo: {col.cargo}
                                                         </p>
                                                     )}
                                                 </div>

@@ -5,6 +5,7 @@ namespace Tests\Feature\Reparto;
 use App\Models\Reparto\Modulacion;
 use App\Models\Reparto\ModulacionItem;
 use App\Models\Reparto\ModulacionNovedad;
+use App\Models\GeovictoriaAsistencia;
 use App\Models\Seguridad\Colaborador;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -159,6 +160,147 @@ class ModulacionDeletionTest extends TestCase
                     ->has('colaboradores', 2)
                     ->where('colaboradores.0.cargo', 'RESPONSABLE DE REPARTO')
                     ->where('colaboradores.0.area', 'Operativa'));
+    }
+
+    public function test_modulacion_carga_y_sincroniza_el_catalogo_de_cargos_de_geovictoria(): void
+    {
+        GeovictoriaAsistencia::create([
+            'identificador' => '900333333',
+            'fecha' => '2026-11-13',
+            'nombres' => 'Carla',
+            'cargo' => 'CARGO NUEVO DE GEOVICTORIA',
+        ]);
+
+        $this->actingAs($this->usuarioReparto())
+            ->get(route('reparto.modulacion.index', ['fecha' => '2026-11-13']))
+            ->assertInertia(fn ($page) => $page
+                ->component('reparto/modulacion/index')
+                ->where('cargosCatalogo', ['CARGO NUEVO DE GEOVICTORIA']));
+
+        $this->assertDatabaseHas('cargos', ['nombre' => 'CARGO NUEVO DE GEOVICTORIA']);
+    }
+
+    public function test_check_fecha_refresca_el_catalogo_de_cargos_de_geovictoria(): void
+    {
+        GeovictoriaAsistencia::create([
+            'identificador' => '900444444',
+            'fecha' => '2026-11-13',
+            'nombres' => 'Diego',
+            'cargo' => 'CARGO ACTUALIZADO',
+        ]);
+        Colaborador::create([
+            'cedula' => '900555555',
+            'nombres' => 'Elena',
+            'apellidos' => 'Actualizada',
+            'cargo' => 'CARGO VIGENTE',
+            'area' => 'Operativa',
+            'estado_registro' => 'completo',
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($this->usuarioReparto())
+            ->getJson(route('reparto.modulacion.checkFecha', ['fecha' => '2026-11-14']))
+            ->assertOk()
+            ->assertJsonPath('cargosCatalogo.0', 'CARGO ACTUALIZADO')
+            ->assertJsonPath('colaboradores.0.cargo', 'CARGO VIGENTE');
+
+        $this->assertDatabaseHas('cargos', ['nombre' => 'CARGO ACTUALIZADO']);
+    }
+
+    public function test_nueva_programacion_guarda_el_cargo_vigente_del_colaborador(): void
+    {
+        $colaborador = Colaborador::create([
+            'cedula' => '900666666',
+            'nombres' => 'Fabio',
+            'apellidos' => 'Actual',
+            'cargo' => 'CARGO VIGENTE',
+            'area' => 'Operativa',
+            'estado_registro' => 'completo',
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($this->usuarioReparto())
+            ->postJson(route('reparto.modulacion.storeBatchApi'), [
+                'fecha' => '2026-11-15',
+                'rutas' => [[
+                    'placa' => 'DDD444',
+                    'tripulacion' => [[
+                        'colaborador_id' => $colaborador->id,
+                        'cedula' => $colaborador->cedula,
+                        'nombres' => $colaborador->nombre_completo,
+                        'cargo' => 'CARGO ANTERIOR',
+                    ]],
+                    'viajes' => [],
+                ]],
+            ])
+            ->assertOk();
+
+        $this->assertSame(
+            'CARGO VIGENTE',
+            Modulacion::query()->whereDate('fecha', '2026-11-15')->firstOrFail()->items()->firstOrFail()->tripulacion[0]['cargo'],
+        );
+    }
+
+    public function test_editar_programacion_conserva_el_cargo_historico_guardado(): void
+    {
+        $colaborador = Colaborador::create([
+            'cedula' => '900777777',
+            'nombres' => 'Gloria',
+            'apellidos' => 'Actualizada',
+            'cargo' => 'CARGO ACTUAL',
+            'area' => 'Operativa',
+            'estado_registro' => 'completo',
+            'is_active' => true,
+        ]);
+        $modulacion = $this->crearPlaneacion();
+        $ruta = $this->crearRuta($modulacion, 'EEE555');
+        $ruta->update([
+            'tripulacion' => [[
+                'colaborador_id' => $colaborador->id,
+                'cedula' => $colaborador->cedula,
+                'nombres' => $colaborador->nombre_completo,
+                'cargo' => 'CARGO HISTORICO',
+            ]],
+        ]);
+
+        $this->actingAs($this->usuarioReparto())
+            ->postJson(route('reparto.modulacion.storeBatchApi'), [
+                'modulacion_id' => $modulacion->id,
+                'fecha' => $modulacion->fecha,
+                'rutas' => [[
+                    'placa' => $ruta->placa,
+                    'tripulacion' => [[
+                        'colaborador_id' => $colaborador->id,
+                        'cedula' => $colaborador->cedula,
+                        'nombres' => $colaborador->nombre_completo,
+                        'cargo' => $colaborador->cargo,
+                    ]],
+                    'viajes' => [],
+                ]],
+            ])
+            ->assertOk();
+
+        $this->assertSame(
+            'CARGO HISTORICO',
+            $modulacion->fresh()->items()->firstOrFail()->tripulacion[0]['cargo'],
+        );
+    }
+
+    public function test_historial_no_depende_de_nombres_de_cargos_para_mostrar_el_responsable(): void
+    {
+        $modulacion = $this->crearPlaneacion();
+        $ruta = $this->crearRuta($modulacion, 'CCC333');
+        $ruta->update([
+            'tripulacion' => [
+                ['nombres' => 'Primer tripulante', 'cargo' => 'CARGO DINAMICO A'],
+                ['nombres' => 'Segundo tripulante', 'cargo' => 'CARGO DINAMICO B'],
+            ],
+        ]);
+
+        $this->actingAs($this->usuarioReparto())
+            ->get(route('reparto.modulacion.historial'))
+            ->assertInertia(fn ($page) => $page
+                ->where('planeaciones.data.0.rutas_detalle.0.responsable', 'Primer tripulante'));
     }
 
     public function test_eliminar_una_ruta_con_otras_rutas_conserva_la_planeacion(): void
