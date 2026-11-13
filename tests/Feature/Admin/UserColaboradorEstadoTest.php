@@ -151,8 +151,26 @@ class UserColaboradorEstadoTest extends TestCase
         $gente = User::factory()->create();
         $gente->assignRole(Role::findOrCreate('Gente', 'web'));
         [$user, $colaborador] = $this->usuarioConColaborador();
+        $colaborador->update([
+            'cargo' => 'CONDUCTOR',
+            'area' => 'Operativa',
+        ]);
+        $fechaInicio = now()->addDay()->toDateString();
+        $fechaFin = now()->addMonths(6)->toDateString();
 
-        $this->actingAs($gente)->patch(route('gente.colaboradores.toggle-activo', $colaborador))->assertRedirect();
+        $this->actingAs($gente)->patch(route('gente.colaboradores.paso3.update', $colaborador), [
+            'is_active' => false,
+            'es_nuevo_contrato' => '1',
+            'nuevo_tipo_contrato' => 'Término fijo',
+            'nuevo_fecha_inicio' => $fechaInicio,
+            'nuevo_fecha_fin' => $fechaFin,
+            'nuevo_cargo' => 'SUPERVISOR',
+            'nuevo_area' => 'Operativa',
+            'cargo' => 'SUPERVISOR',
+            'area' => 'Operativa',
+            'cargo_fecha_inicio' => $fechaInicio,
+            'guardar_historial_cargo' => 'si',
+        ])->assertRedirect(route('gente.colaboradores.show', $colaborador));
 
         $this->assertFalse($colaborador->fresh()->is_active);
         $this->assertFalse($user->fresh()->is_active);
