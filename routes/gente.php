@@ -12,6 +12,7 @@ use App\Http\Controllers\Gente\DpoAcademyController;
 use App\Http\Controllers\Gente\GeovictoriaAsistenciaController;
 use App\Http\Controllers\Gente\LlamadoAtencionController;
 use App\Http\Controllers\Gente\PlanPremiacionController;
+use App\Http\Controllers\Gente\PerfilCargoController;
 use App\Http\Controllers\Gente\ReferenciaExternaController;
 use App\Http\Controllers\Gente\ResponsableRutaController;
 use App\Http\Controllers\Gente\SacController;
@@ -54,6 +55,8 @@ Route::middleware(['auth', 'active', 'role:Administrador|Gente|Contratos', 'subm
         // Carga masiva desde el Excel de nómina ("BASE ACTUALIZADA").
         Route::post('colaboradores/importar', [ColaboradorImportController::class, 'store'])
             ->name('colaboradores.importar');
+        Route::post('perfiles-cargos', [PerfilCargoController::class, 'store'])
+            ->name('perfiles-cargos.store');
 
         // El pluralizador en inglés de Laravel no singulariza bien "colaboradores"
         // (produce "colaboradore"), así que se fuerza el nombre del parámetro.

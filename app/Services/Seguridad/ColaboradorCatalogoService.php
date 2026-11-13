@@ -4,6 +4,7 @@ namespace App\Services\Seguridad;
 
 use App\Models\Gente\Cargo;
 use App\Models\Gente\OpcionCatalogo;
+use App\Models\Gente\PerfilCargo;
 use App\Models\GeovictoriaAsistencia;
 use App\Models\Seguridad\Colaborador;
 use App\Models\Seguridad\ColaboradorCargo;
@@ -53,18 +54,24 @@ class ColaboradorCatalogoService
     }
 
     /**
-     * Devuelve los perfiles (descripción de funciones) indexados por nombre de cargo.
-     * Solo los cargos que tienen perfil definido en la tabla cargos.
+     * Devuelve las observaciones indexadas por el nombre del perfil.
      *
      * @return array<string, string>
      */
     public function perfilesCargos(): array
     {
-        return Cargo::query()
+        $perfilesLegados = Cargo::query()
             ->whereNotNull('perfil')
             ->where('perfil', '!=', '')
             ->pluck('perfil', 'nombre')
             ->all();
+
+        $perfiles = PerfilCargo::query()
+            ->orderBy('nombre')
+            ->pluck('observaciones', 'nombre')
+            ->all();
+
+        return array_merge($perfilesLegados, $perfiles);
     }
 
     /**

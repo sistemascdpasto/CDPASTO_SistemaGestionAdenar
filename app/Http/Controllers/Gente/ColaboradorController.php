@@ -227,6 +227,7 @@ class ColaboradorController extends Controller
                     'id'           => $c->id,
                     'cargo'        => $c->cargo,
                     'area'         => $c->area,
+                    'perfil_nombre' => $c->perfil_nombre,
                     'perfil'       => $c->perfil,
                     'fecha_inicio' => $c->fecha_inicio?->toDateString(),
                     'fecha_fin'    => $c->fecha_fin?->toDateString(),
@@ -475,14 +476,16 @@ class ColaboradorController extends Controller
             'nuevo_area',
             'contratos_editados',
             'cargos_editados',
+            'registrar_cargo_inicial',
         ] as $field) {
             unset($data[$field]);
         }
 
         $cargo = $data['cargo'] ?? null;
         $cargoFechaInicio = $data['cargo_fecha_inicio'] ?? null;
+        $cargoPerfilNombre = $data['perfil_nombre'] ?? null;
         $cargoPerfil = $data['perfil'] ?? null;
-        unset($data['cargo'], $data['cargo_fecha_inicio'], $data['guardar_historial_cargo'], $data['perfil']);
+        unset($data['cargo'], $data['cargo_fecha_inicio'], $data['guardar_historial_cargo'], $data['perfil_nombre'], $data['perfil']);
 
         $colaborador->update([
             ...$data,
@@ -516,6 +519,7 @@ class ColaboradorController extends Controller
                 $cargoHist->update([
                     'cargo'        => $cargoData['cargo'] ?? $cargoHist->cargo,
                     'area'         => $cargoData['area'] ?? $cargoHist->area,
+                    'perfil_nombre' => $cargoData['perfil_nombre'] ?? $cargoHist->perfil_nombre,
                     'perfil'       => $cargoData['perfil'] ?? $cargoHist->perfil,
                     'fecha_inicio' => $cargoData['fecha_inicio'] ?? $cargoHist->fecha_inicio,
                     'fecha_fin'    => ! empty($cargoData['fecha_fin']) ? $cargoData['fecha_fin'] : null,
@@ -560,6 +564,7 @@ class ColaboradorController extends Controller
                         $areaContrato,
                         $cargoPerfil,
                         $cambioEstado,
+                        $cargoPerfilNombre,
                     );
 
                     if ($cambioEstado && ! $estadoSolicitado) {
@@ -605,7 +610,15 @@ class ColaboradorController extends Controller
         // guardado del paso ya se hizo arriba.
         $info = $cambioEstado
             ? null
-            : $cargoHistorial->registrarCambio($colaborador, $cargo, $cargoFechaInicio, $data['area'] ?? null, $cargoPerfil);
+            : $cargoHistorial->registrarCambio(
+                $colaborador,
+                $cargo,
+                $cargoFechaInicio,
+                $data['area'] ?? null,
+                $cargoPerfil,
+                $request->boolean('registrar_cargo_inicial'),
+                $cargoPerfilNombre,
+            );
 
         if ($cambioEstado) {
             $colaborador->update(['is_active' => $estadoSolicitado]);
@@ -659,6 +672,7 @@ class ColaboradorController extends Controller
         $validated = $request->validate([
             'cargo' => ['required', 'string', 'max:100'],
             'area' => ['nullable', 'string', 'max:100'],
+            'perfil_nombre' => ['nullable', 'string', 'max:150'],
             'perfil' => ['nullable', 'string'],
             'fecha_inicio' => ['required', 'date'],
             'fecha_fin' => ['nullable', 'date'],

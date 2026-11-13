@@ -40,6 +40,7 @@ interface HistorialCargoItem {
     id: number;
     cargo: string;
     area?: string | null;
+    perfil_nombre?: string | null;
     fecha_inicio: string | null;
     fecha_fin: string | null;
     estado: string;

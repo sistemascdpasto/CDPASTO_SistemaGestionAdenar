@@ -611,6 +611,43 @@ class ColaboradorWizardTest extends TestCase
         $this->assertNull($colaborador->fresh()->cargoActual);
     }
 
+    public function test_paso3_can_register_date_and_profile_for_an_existing_legacy_cargo(): void
+    {
+        $user = $this->genteUser();
+        $colaborador = Colaborador::create([
+            'cedula' => '900100211',
+            'nombres' => 'Cargo',
+            'apellidos' => 'Legado',
+            'cargo' => 'CONDUCTOR',
+            'area' => 'Operativa',
+            'fecha_ingreso_empresa' => '2026-01-01',
+            'fecha_retiro_empresa' => '2026-12-31',
+            'is_active' => true,
+            'estado_registro' => 'completo',
+            'wizard_step' => 4,
+        ]);
+
+        $this->actingAs($user)
+            ->patch(route('gente.colaboradores.paso3.update', $colaborador), [
+                'cargo' => 'CONDUCTOR',
+                'area' => 'Operativa',
+                'perfil_nombre' => 'Perfil conductor',
+                'perfil' => 'Conducir y cuidar el vehículo asignado.',
+                'cargo_fecha_inicio' => '2026-02-01',
+                'registrar_cargo_inicial' => '1',
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('gente.colaboradores.wizard', ['colaborador' => $colaborador, 'paso' => 4]));
+
+        $cargo = $colaborador->cargos()->firstOrFail();
+        $this->assertSame('CONDUCTOR', $cargo->cargo);
+        $this->assertSame('Operativa', $cargo->area);
+        $this->assertSame('Perfil conductor', $cargo->perfil_nombre);
+        $this->assertSame('Conducir y cuidar el vehículo asignado.', $cargo->perfil);
+        $this->assertSame('2026-02-01', $cargo->fecha_inicio->toDateString());
+        $this->assertSame('ACTIVO', $cargo->estado);
+    }
+
     /**
      * Confirma la clave exacta que Laravel usa para un archivo rechazado
      * dentro de un campo de arreglo (`campo.0`, no `campo`) — es la clave que

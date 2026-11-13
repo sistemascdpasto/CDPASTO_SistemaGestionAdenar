@@ -592,6 +592,7 @@ class ContratosController extends Controller
                             'id' => $c->id,
                             'cargo' => $c->cargo,
                             'area' => $c->area,
+                            'perfil_nombre' => $c->perfil_nombre,
                             'perfil' => $c->perfil,
                             'fecha_inicio' => $formatFecha($c->fecha_inicio),
                             'fecha_fin' => $formatFecha($c->fecha_fin),

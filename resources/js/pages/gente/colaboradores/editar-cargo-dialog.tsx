@@ -15,11 +15,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useForm } from '@inertiajs/react';
 import { Briefcase, LoaderCircle } from 'lucide-react';
 import { FormEventHandler, useEffect } from 'react';
+import { PerfilCargoSelect } from './wizard/components/perfil-cargo-select';
+
+const perfilesCargosVacios: Record<string, string> = {};
 
 export interface CargoEditableItem {
     id: number;
     cargo: string;
     area?: string | null;
+    perfil_nombre?: string | null;
     perfil?: string | null;
     fecha_inicio: string | null;
     fecha_fin: string | null;
@@ -39,11 +43,12 @@ export function EditarCargoDialog({
     onOpenChange,
     colaboradorId,
     cargoItem,
-    perfilesCargos = {},
+    perfilesCargos = perfilesCargosVacios,
 }: EditarCargoDialogProps) {
     const { data, setData, patch, processing, errors, reset } = useForm({
         cargo: '',
         area: '',
+        perfil_nombre: '',
         perfil: '',
         fecha_inicio: '',
         fecha_fin: '',
@@ -55,13 +60,18 @@ export function EditarCargoDialog({
             setData({
                 cargo: cargoItem.cargo || '',
                 area: cargoItem.area || 'Operativa',
+                perfil_nombre:
+                    cargoItem.perfil_nombre ||
+                    (perfilesCargos[cargoItem.cargo] === cargoItem.perfil
+                        ? cargoItem.cargo
+                        : Object.entries(perfilesCargos).find(([, value]) => value === cargoItem.perfil)?.[0] ?? ''),
                 perfil: cargoItem.perfil || '',
                 fecha_inicio: cargoItem.fecha_inicio ? cargoItem.fecha_inicio.slice(0, 10) : '',
                 fecha_fin: cargoItem.fecha_fin ? cargoItem.fecha_fin.slice(0, 10) : '',
                 estado: cargoItem.estado || 'ACTIVO',
             });
         }
-    }, [cargoItem, open, setData]);
+    }, [cargoItem, open, perfilesCargos, setData]);
 
     if (!cargoItem) return null;
 
@@ -98,10 +108,8 @@ export function EditarCargoDialog({
                             onChange={(e) => {
                                 const val = e.target.value;
                                 setData('cargo', val);
-                                // Precargar perfil si hay coincidencia y el campo está vacío
-                                if (perfilesCargos[val] && !data.perfil) {
-                                    setData('perfil', perfilesCargos[val]);
-                                }
+                                setData('perfil_nombre', perfilesCargos[val] ? val : '');
+                                setData('perfil', perfilesCargos[val] ?? '');
                             }}
                             placeholder="Nombre del cargo"
                             disabled={processing}
@@ -125,22 +133,16 @@ export function EditarCargoDialog({
 
                     <div className="grid gap-2">
                         <Label htmlFor="editar_cargo_perfil">Perfil / Funciones del cargo</Label>
-                        <Select
-                            value={Object.entries(perfilesCargos).find(([, v]) => v === data.perfil)?.[0] ?? ''}
-                            onValueChange={(nombre) => setData('perfil', perfilesCargos[nombre] ?? '')}
+                        <PerfilCargoSelect
+                            id="editar_cargo_perfil"
+                            value={data.perfil_nombre}
+                            perfilesCargos={perfilesCargos}
+                            onChange={(nombre, observaciones) => {
+                                setData('perfil_nombre', nombre);
+                                setData('perfil', observaciones);
+                            }}
                             disabled={processing}
-                        >
-                            <SelectTrigger id="editar_cargo_perfil">
-                                <SelectValue placeholder="Selecciona un perfil..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {Object.keys(perfilesCargos).map((nombre) => (
-                                    <SelectItem key={nombre} value={nombre}>
-                                        {nombre}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        />
                         {data.perfil && (
                             <p className="text-muted-foreground whitespace-pre-line rounded-md bg-muted/50 px-3 py-2 text-xs leading-relaxed">
                                 {data.perfil}

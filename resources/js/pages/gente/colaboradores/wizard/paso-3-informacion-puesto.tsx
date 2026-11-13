@@ -30,6 +30,7 @@ import { ExternalSelect } from './components/external-select';
 import { SimpleFileField } from './components/simple-file-field';
 import { type ColaboradorRecord, type Paso3FormData } from './types';
 import { errorDeArchivo } from './utils';
+import { PerfilCargoSelect } from './components/perfil-cargo-select';
 
 const getHoyLocalISO = () => {
     const d = new Date();
@@ -55,6 +56,7 @@ type HistorialCargo = {
     id: number;
     cargo: string;
     area?: string | null;
+    perfil_nombre?: string | null;
     perfil?: string | null;
     fecha_inicio: string;
     fecha_fin: string | null;
@@ -103,10 +105,12 @@ export function Paso3InformacionPuesto({
     const [nuevoFechaFin, setNuevoFechaFin] = useState('');
     const [nuevoTipoContrato, setNuevoTipoContrato] = useState('');
     const [nuevoTipoContratoOtro, setNuevoTipoContratoOtro] = useState('');
+    const [nuevoPerfilNombre, setNuevoPerfilNombre] = useState('');
     const [nuevoPerfil, setNuevoPerfil] = useState('');
     // nuevoArea and nuevoCargo are handled by existing area/cargo fields; no separate inputs needed
 
     const [deseaCambioCargoArea, setDeseaCambioCargoArea] = useState(false);
+    const [cargoBaseEditado, setCargoBaseEditado] = useState(false);
 
     // Estados editables para el historial (campos editables o eliminables)
     const [contratosEditables, setContratosEditables] = useState<HistorialContrato[]>(historialContratos.slice(1));
@@ -116,9 +120,14 @@ export function Paso3InformacionPuesto({
         is_active: estadoInicial,
         area: areaInicial,
         cargo: cargoInicial,
-        perfil: '',
+        perfil_nombre:
+            historialCargos.length === 0 && catalogos.perfilesCargos[cargoInicial] ? cargoInicial : '',
+        perfil: historialCargos.length === 0 ? (catalogos.perfilesCargos[cargoInicial] ?? '') : '',
         guardar_historial_cargo: 'no',
-        cargo_fecha_inicio: '',
+        cargo_fecha_inicio:
+            historialCargos.length === 0
+                ? (contratoPrincipal?.fecha_inicio ?? (colaborador.fecha_ingreso_empresa as string) ?? '')
+                : '',
 
         sena_especialidad: (colaborador.sena_especialidad as string) ?? '',
         sena_numero_grupo: colaborador.sena_numero_grupo?.toString() ?? '',
@@ -162,6 +171,8 @@ export function Paso3InformacionPuesto({
             if (activo && id === activo.id) {
                 if (field === 'cargo') setData('cargo', value);
                 if (field === 'area') setData('area', value as Paso3FormData['area']);
+                if (field === 'perfil_nombre') setData('perfil_nombre', value);
+                if (field === 'perfil') setData('perfil', value);
             }
             return updated;
         });
@@ -183,27 +194,44 @@ export function Paso3InformacionPuesto({
 
     const existing = (key: string) => (colaborador?.[key] as { path: string; fecha: string | null }[]) ?? [];
 
+    const perfilNombreGuardado = (
+        nombreGuardado: string | null | undefined,
+        cargo: string,
+        observaciones: string | null | undefined,
+    ) => {
+        if (nombreGuardado) return nombreGuardado;
+        if (observaciones && catalogos.perfilesCargos[cargo] === observaciones) return cargo;
+
+        return Object.entries(catalogos.perfilesCargos).find(([, value]) => value === observaciones)?.[0] ?? '';
+    };
+
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
+        const registrarCargoInicial =
+            cargosEditables.length === 0 && cargoBaseEditado && !deseaCambioCargoArea && !esNuevoContrato && !cambioEstado;
         transform((formData) => ({
             ...formData,
             _method: 'PATCH',
             redirect_to: redirectTo ?? '',
             es_nuevo_contrato: esNuevoContrato || cambioEstado ? '1' : '0',
+            registrar_cargo_inicial: registrarCargoInicial ? '1' : '0',
+            perfil_nombre: esNuevoContrato ? nuevoPerfilNombre : (formData.perfil_nombre ?? ''),
             nuevo_fecha_inicio: esNuevoContrato || cambioEstado ? nuevoFechaInicio : '',
             nuevo_fecha_fin: esNuevoContrato || cambioEstado ? nuevoFechaFin : '',
             nuevo_tipo_contrato: esNuevoContrato || cambioEstado ? nuevoTipoContrato : '',
             nuevo_tipo_contrato_otro: esNuevoContrato || cambioEstado ? nuevoTipoContratoOtro : '',
             nuevo_area: esNuevoContrato || cambioEstado ? (formData.area ?? '') : '',
             nuevo_cargo: esNuevoContrato || cambioEstado ? (formData.cargo ?? '') : '',
-            guardar_historial_cargo: deseaCambioCargoArea || esNuevoContrato || cambioEstado ? 'si' : 'no',
+            guardar_historial_cargo: deseaCambioCargoArea || esNuevoContrato || cambioEstado || registrarCargoInicial ? 'si' : 'no',
             cargo_fecha_inicio: deseaCambioCargoArea
                 ? cambioEstado || !esNuevoContrato
                     ? formData.cargo_fecha_inicio
                     : nuevoFechaInicio
                 : esNuevoContrato || cambioEstado
                   ? nuevoFechaInicio
-                  : '',
+                  : registrarCargoInicial
+                    ? formData.cargo_fecha_inicio
+                    : '',
             perfil: esNuevoContrato ? nuevoPerfil : (formData.perfil ?? ''),
             contratos_editados: JSON.stringify(contratosEditables),
             cargos_editados: JSON.stringify(cargosEditables),
@@ -595,10 +623,9 @@ export function Paso3InformacionPuesto({
                                         value={data.cargo ?? ''}
                                         onChange={(value) => {
                                             setData('cargo', value);
-                                            // Precargar perfil si hay coincidencia y el campo está vacío
-                                            if (catalogos.perfilesCargos[value] && !nuevoPerfil) {
-                                                setNuevoPerfil(catalogos.perfilesCargos[value]);
-                                            }
+                                            const perfil = catalogos.perfilesCargos[value] ?? '';
+                                            setNuevoPerfilNombre(perfil ? value : '');
+                                            setNuevoPerfil(perfil);
                                         }}
                                         cargos={catalogos.cargos}
                                         disabled={processing}
@@ -627,23 +654,17 @@ export function Paso3InformacionPuesto({
 
                                 {/* Perfil / Funciones del cargo del nuevo contrato */}
                                 <div className="grid gap-2 sm:col-span-2">
-                                    <Label>Perfil / Funciones del cargo</Label>
-                                    <Select
-                                        value={Object.entries(catalogos.perfilesCargos).find(([, v]) => v === nuevoPerfil)?.[0] ?? ''}
-                                        onValueChange={(nombre) => setNuevoPerfil(catalogos.perfilesCargos[nombre] ?? '')}
+                                    <Label htmlFor="nuevo_contrato_perfil">Perfil / Funciones del cargo</Label>
+                                    <PerfilCargoSelect
+                                        id="nuevo_contrato_perfil"
+                                        value={nuevoPerfilNombre}
+                                        perfilesCargos={catalogos.perfilesCargos}
+                                        onChange={(nombre, observaciones) => {
+                                            setNuevoPerfilNombre(nombre);
+                                            setNuevoPerfil(observaciones);
+                                        }}
                                         disabled={processing}
-                                    >
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Selecciona un perfil..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {Object.keys(catalogos.perfilesCargos).map((nombre) => (
-                                                <SelectItem key={nombre} value={nombre}>
-                                                    {nombre}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                    />
                                     {nuevoPerfil && (
                                         <div className="relative">
                                             <p className="text-muted-foreground bg-muted/50 rounded-md px-3 py-2 pr-8 text-xs leading-relaxed whitespace-pre-line">
@@ -653,7 +674,10 @@ export function Paso3InformacionPuesto({
                                                 type="button"
                                                 className="text-muted-foreground hover:text-destructive absolute top-1.5 right-1.5 rounded p-0.5"
                                                 title="Quitar perfil"
-                                                onClick={() => setNuevoPerfil('')}
+                                                onClick={() => {
+                                                    setNuevoPerfilNombre('');
+                                                    setNuevoPerfil('');
+                                                }}
                                             >
                                                 <X className="size-3.5" />
                                             </button>
@@ -739,10 +763,9 @@ export function Paso3InformacionPuesto({
                                             value={c.cargo}
                                             onChange={(value) => {
                                                 setCargoField(c.id, 'cargo', value);
-                                                // Precargar perfil si hay coincidencia
-                                                if (catalogos.perfilesCargos[value] && !c.perfil) {
-                                                    setCargoField(c.id, 'perfil', catalogos.perfilesCargos[value]);
-                                                }
+                                                const perfil = catalogos.perfilesCargos[value] ?? '';
+                                                setCargoField(c.id, 'perfil_nombre', perfil ? value : '');
+                                                setCargoField(c.id, 'perfil', perfil);
                                             }}
                                             cargos={catalogos.cargos}
                                             disabled={processing}
@@ -772,25 +795,17 @@ export function Paso3InformacionPuesto({
                                     </div>
 
                                     <div className="grid gap-2 sm:col-span-2">
-                                        <Label>Perfil / Funciones del cargo</Label>
-                                        <Select
-                                            value={Object.entries(catalogos.perfilesCargos).find(([, v]) => v === c.perfil)?.[0] ?? ''}
-                                            onValueChange={(nombre) => {
-                                                setCargoField(c.id, 'perfil', catalogos.perfilesCargos[nombre] ?? '');
+                                        <Label htmlFor={`perfil_cargo_${c.id}`}>Perfil / Funciones del cargo</Label>
+                                        <PerfilCargoSelect
+                                            id={`perfil_cargo_${c.id}`}
+                                            value={perfilNombreGuardado(c.perfil_nombre, c.cargo, c.perfil)}
+                                            perfilesCargos={catalogos.perfilesCargos}
+                                            onChange={(nombre, observaciones) => {
+                                                setCargoField(c.id, 'perfil_nombre', nombre);
+                                                setCargoField(c.id, 'perfil', observaciones);
                                             }}
                                             disabled={processing}
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Selecciona un perfil..." />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {Object.keys(catalogos.perfilesCargos).map((nombre) => (
-                                                    <SelectItem key={nombre} value={nombre}>
-                                                        {nombre}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                                        />
                                         {c.perfil && (
                                             <p className="text-muted-foreground bg-muted/50 rounded-md px-3 py-2 text-xs leading-relaxed whitespace-pre-line">
                                                 {c.perfil}
@@ -807,26 +822,44 @@ export function Paso3InformacionPuesto({
                                 <span className="text-foreground text-xs font-bold">Cargo 1</span>
                             </div>
                             <div className="grid gap-2">
+                                <Label htmlFor="cargo_base_fecha_inicio">Fecha de inicio</Label>
+                                <Input
+                                    id="cargo_base_fecha_inicio"
+                                    type="date"
+                                    value={data.cargo_fecha_inicio}
+                                    onChange={(e) => {
+                                        setData('cargo_fecha_inicio', e.target.value);
+                                        setCargoBaseEditado(true);
+                                    }}
+                                    disabled={processing}
+                                />
+                                <InputError message={errors.cargo_fecha_inicio} />
+                            </div>
+                            <div className="grid gap-2">
                                 <Label htmlFor="cargo">Cargo</Label>
                                 <CargoCombobox
                                     id="cargo"
                                     value={data.cargo ?? ''}
-                                    onChange={(value) => setData('cargo', value)}
+                                    onChange={(value) => {
+                                        setData('cargo', value);
+                                        const perfil = catalogos.perfilesCargos[value] ?? '';
+                                        setData('perfil_nombre', perfil ? value : '');
+                                        setData('perfil', perfil);
+                                        setCargoBaseEditado(true);
+                                    }}
                                     cargos={catalogos.cargos}
                                     disabled={processing}
                                 />
-                                {catalogos.perfilesCargos[data.cargo ?? ''] && (
-                                    <p className="text-muted-foreground bg-muted/50 rounded-md px-3 py-2 text-xs leading-relaxed whitespace-pre-line">
-                                        {catalogos.perfilesCargos[data.cargo ?? '']}
-                                    </p>
-                                )}
                                 <InputError message={errors.cargo} />
                             </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="area">Área o dependencia</Label>
                                 <Select
                                     value={data.area}
-                                    onValueChange={(value) => setData('area', value as Paso3FormData['area'])}
+                                    onValueChange={(value) => {
+                                        setData('area', value as Paso3FormData['area']);
+                                        setCargoBaseEditado(true);
+                                    }}
                                     disabled={processing}
                                 >
                                     <SelectTrigger id="area">
@@ -838,6 +871,26 @@ export function Paso3InformacionPuesto({
                                     </SelectContent>
                                 </Select>
                                 <InputError message={errors.area} />
+                            </div>
+                            <div className="grid gap-2 sm:col-span-2">
+                                <Label htmlFor="cargo_base_perfil">Perfil / Funciones del cargo</Label>
+                                <PerfilCargoSelect
+                                    id="cargo_base_perfil"
+                                    value={perfilNombreGuardado(data.perfil_nombre, data.cargo, data.perfil)}
+                                    perfilesCargos={catalogos.perfilesCargos}
+                                    onChange={(nombre, observaciones) => {
+                                        setData('perfil_nombre', nombre);
+                                        setData('perfil', observaciones);
+                                        setCargoBaseEditado(true);
+                                    }}
+                                    disabled={processing}
+                                />
+                                {data.perfil && (
+                                    <p className="text-muted-foreground bg-muted/50 rounded-md px-3 py-2 text-xs leading-relaxed whitespace-pre-line">
+                                        {data.perfil}
+                                    </p>
+                                )}
+                                <InputError message={errors.perfil} />
                             </div>
                         </div>
                     )}
@@ -910,10 +963,9 @@ export function Paso3InformacionPuesto({
                                             value={data.cargo ?? ''}
                                             onChange={(value) => {
                                                 setData('cargo', value);
-                                                // Precargar perfil si hay coincidencia
-                                                if (catalogos.perfilesCargos[value] && !data.perfil) {
-                                                    setData('perfil', catalogos.perfilesCargos[value]);
-                                                }
+                                                const perfil = catalogos.perfilesCargos[value] ?? '';
+                                                setData('perfil_nombre', perfil ? value : '');
+                                                setData('perfil', perfil);
                                             }}
                                             cargos={catalogos.cargos}
                                             disabled={processing}
@@ -928,23 +980,17 @@ export function Paso3InformacionPuesto({
 
                                     {/* Perfil del cambio de cargo */}
                                     <div className="grid gap-2">
-                                        <Label>Perfil / Funciones del cargo</Label>
-                                        <Select
-                                            value={Object.entries(catalogos.perfilesCargos).find(([, v]) => v === data.perfil)?.[0] ?? ''}
-                                            onValueChange={(nombre) => setData('perfil', catalogos.perfilesCargos[nombre] ?? '')}
+                                        <Label htmlFor="nuevo_cargo_cambio_perfil">Perfil / Funciones del cargo</Label>
+                                        <PerfilCargoSelect
+                                            id="nuevo_cargo_cambio_perfil"
+                                            value={perfilNombreGuardado(data.perfil_nombre, data.cargo, data.perfil)}
+                                            perfilesCargos={catalogos.perfilesCargos}
+                                            onChange={(nombre, observaciones) => {
+                                                setData('perfil_nombre', nombre);
+                                                setData('perfil', observaciones);
+                                            }}
                                             disabled={processing}
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Selecciona un perfil..." />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {Object.keys(catalogos.perfilesCargos).map((nombre) => (
-                                                    <SelectItem key={nombre} value={nombre}>
-                                                        {nombre}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                                        />
                                         {data.perfil && (
                                             <div className="relative">
                                                 <p className="text-muted-foreground bg-muted/50 rounded-md px-3 py-2 pr-8 text-xs leading-relaxed whitespace-pre-line">
@@ -954,7 +1000,10 @@ export function Paso3InformacionPuesto({
                                                     type="button"
                                                     className="text-muted-foreground hover:text-destructive absolute top-1.5 right-1.5 rounded p-0.5"
                                                     title="Quitar perfil"
-                                                    onClick={() => setData('perfil', '')}
+                                                    onClick={() => {
+                                                        setData('perfil_nombre', '');
+                                                        setData('perfil', '');
+                                                    }}
                                                 >
                                                     <X className="size-3.5" />
                                                 </button>

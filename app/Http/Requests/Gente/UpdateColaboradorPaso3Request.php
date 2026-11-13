@@ -31,10 +31,21 @@ class UpdateColaboradorPaso3Request extends FormRequest
 
         return [
             'area' => ['nullable', Rule::in(['Administrativa', 'Operativa'])],
-            'cargo' => ['nullable', Rule::requiredIf(fn () => $this->cambiaEstado()), 'string', 'max:100'],
+            'cargo' => [
+                'nullable',
+                Rule::requiredIf(fn () => $this->cambiaEstado() || $this->boolean('registrar_cargo_inicial')),
+                'string',
+                'max:100',
+            ],
+            'perfil_nombre' => ['nullable', 'string', 'max:150'],
             'perfil' => ['nullable', 'string'],
             'guardar_historial_cargo' => ['nullable', Rule::in(['si', 'no'])],
-            'cargo_fecha_inicio' => ['nullable', Rule::requiredIf(fn () => $this->cambiaEstado()), 'date'],
+            'registrar_cargo_inicial' => ['nullable', 'boolean'],
+            'cargo_fecha_inicio' => [
+                'nullable',
+                Rule::requiredIf(fn () => $this->cambiaEstado() || $this->boolean('registrar_cargo_inicial')),
+                'date',
+            ],
 
             'sena_especialidad' => ['nullable', 'string', 'max:150'],
             'sena_numero_grupo' => ['nullable', 'integer'],
@@ -92,7 +103,10 @@ class UpdateColaboradorPaso3Request extends FormRequest
     {
         $validator->after(fn () => $this->logArchivosDocumentoRechazados($validator, ColaboradorDocumentoCampos::paso3()));
 
-        $validator->after(fn (Validator $v) => $this->validarFechaInicioCargo($v, $this->cambiaEstado()));
+        $validator->after(fn (Validator $v) => $this->validarFechaInicioCargo(
+            $v,
+            $this->cambiaEstado() || $this->boolean('registrar_cargo_inicial'),
+        ));
     }
 
     private function cambiaEstado(): bool

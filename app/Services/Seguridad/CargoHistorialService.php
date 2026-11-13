@@ -26,6 +26,7 @@ class CargoHistorialService
         ?string $area = null,
         ?string $perfil = null,
         bool $forzarNuevoRegistro = false,
+        ?string $perfilNombre = null,
     ): void
     {
         $fechaInicio = Carbon::parse($fechaInicio)->startOfDay();
@@ -39,7 +40,7 @@ class CargoHistorialService
             return;
         }
 
-        DB::transaction(function () use ($colaborador, $cargo, $fechaInicio, $cargoActivo, $area, $perfil) {
+        DB::transaction(function () use ($colaborador, $cargo, $fechaInicio, $cargoActivo, $area, $perfil, $perfilNombre) {
             if ($cargoActivo) {
                 $cargoActivo->update([
                     'fecha_fin' => $fechaInicio->copy()->subDay(),
@@ -50,6 +51,7 @@ class CargoHistorialService
             $colaborador->cargos()->create([
                 'cargo' => $cargo,
                 'area' => $area ?? $colaborador->area,
+                'perfil_nombre' => $perfilNombre,
                 'perfil' => $perfil,
                 'fecha_inicio' => $fechaInicio,
                 'fecha_fin' => null,
@@ -95,11 +97,31 @@ class CargoHistorialService
      *  - Escenario C (cargo cambiado + fecha): la validación del request ya
      *    garantizó que la fecha pertenece al contrato o a una prórroga, así
      *    que se asigna el nuevo cargo cerrando el anterior.
+     *  - Registro inicial explícito: crea el historial para un cargo legado
+     *    que existe en colaboradores.cargo pero aún no tiene filas de historial.
      *
      * @return string|null  Mensaje informativo (Escenario B) o null.
      */
-    public function registrarCambio(Colaborador $colaborador, ?string $cargo, ?string $fechaInicio, ?string $area = null, ?string $perfil = null): ?string
+    public function registrarCambio(
+        Colaborador $colaborador,
+        ?string $cargo,
+        ?string $fechaInicio,
+        ?string $area = null,
+        ?string $perfil = null,
+        bool $registrarCargoInicial = false,
+        ?string $perfilNombre = null,
+    ): ?string
     {
+        if ($registrarCargoInicial && ! $colaborador->cargos()->exists()) {
+            if (! $cargo || ! $fechaInicio) {
+                throw new \InvalidArgumentException('El cargo y la fecha de inicio son obligatorios para registrar el historial inicial.');
+            }
+
+            $this->asignar($colaborador, $cargo, $fechaInicio, $area, $perfil, true, $perfilNombre);
+
+            return null;
+        }
+
         if (! $cargo) {
             return null;
         }
@@ -111,7 +133,7 @@ class CargoHistorialService
                 return 'El cargo y área seleccionados son los mismos actuales; no se registró un cambio en el historial.';
             }
 
-            $this->asignar($colaborador, $cargo, $fechaInicio, $area, $perfil);
+            $this->asignar($colaborador, $cargo, $fechaInicio, $area, $perfil, false, $perfilNombre);
 
             return null;
         }

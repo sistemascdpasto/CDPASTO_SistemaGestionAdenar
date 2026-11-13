@@ -13,6 +13,7 @@ class ColaboradorCargo extends Model
         'colaborador_id',
         'cargo',
         'area',
+        'perfil_nombre',
         'perfil',
         'fecha_inicio',
         'fecha_fin',
