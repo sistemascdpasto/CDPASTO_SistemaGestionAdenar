@@ -26,6 +26,11 @@ class ProrrogarContratoRequest extends FormRequest
             'tipo' => ['nullable', 'in:prorroga,finalizacion'],
             'observaciones' => ['nullable', 'string', 'max:500'],
             'documento' => ['nullable', 'file', 'mimes:pdf,doc,docx,jpg,jpeg,png'],
+            'contrato_id' => ['nullable', 'integer', 'exists:colaborador_contratos,id'],
+            'crear_nuevo_contrato' => ['nullable', 'boolean'],
+            'nuevo_contrato_tipo' => ['nullable', 'string', 'max:255'],
+            'nuevo_contrato_inicio' => ['nullable', 'date'],
+            'nuevo_contrato_fin' => ['nullable', 'date'],
         ];
     }
 
@@ -42,16 +47,32 @@ class ProrrogarContratoRequest extends FormRequest
 
                 $colaborador = $this->route('colaborador');
                 $contratoVigencia = app(ContratoVigenciaService::class);
+                $contratoId = $this->input('contrato_id');
+                $contratoObjetivo = ($contratoId && $colaborador instanceof Colaborador)
+                    ? $colaborador->contratos()->find($contratoId)
+                    : null;
+
                 $contratoActual = $colaborador instanceof Colaborador
                     ? $contratoVigencia->contratoActual($colaborador)
                     : null;
-                $cantidadProrrogas = $colaborador instanceof Colaborador
-                    ? $contratoVigencia->cantidadProrrogas($colaborador, $contratoActual)
+
+                $contratoEvaluar = $contratoObjetivo ?? $contratoActual;
+
+                $cantidadProrrogas = ($colaborador instanceof Colaborador && $contratoEvaluar)
+                    ? $contratoVigencia->cantidadProrrogas($colaborador, $contratoEvaluar)
                     : 0;
                 $esAprendiz = $colaborador instanceof Colaborador
-                    && $contratoVigencia->esAprendiz($colaborador, $contratoActual);
+                    && $contratoVigencia->esAprendiz($colaborador, $contratoEvaluar);
                 $numeroProrroga = $cantidadProrrogas + 1;
                 $esProrrogaAnual = ! $esAprendiz && ContratoProrroga::esProrrogaAnual($numeroProrroga);
+
+                // No contract exists and not creating a new historical contract -> reject prórroga
+                if (! $this->boolean('crear_nuevo_contrato')) {
+                    if (! $colaborador->contratos()->exists()) {
+                        $validator->errors()->add('contrato_id', 'No es posible crear una prórroga porque el colaborador no tiene contratos asociados.');
+                        return;
+                    }
+                }
 
                 if (! $this->filled('fecha_inicio_prorroga')) {
                     if ($esProrrogaAnual) {
@@ -75,15 +96,34 @@ class ProrrogarContratoRequest extends FormRequest
                     return;
                 }
 
-                if (
-                    $colaborador instanceof Colaborador
-                    && $colaborador->fecha_retiro_empresa
-                    && $fechaInicio->lessThanOrEqualTo($colaborador->fecha_retiro_empresa->startOfDay())
-                ) {
-                    $validator->errors()->add(
-                        'fecha_inicio_prorroga',
-                        'La fecha de inicio debe ser posterior al vencimiento del contrato actual.',
-                    );
+                $esParaContratoActual = ! $contratoObjetivo || ($contratoActual && $contratoObjetivo->id === $contratoActual->id);
+
+                if ($this->boolean('crear_nuevo_contrato')) {
+                    // Contrato histórico nuevo: no se compara contra el contrato actual
+                } elseif ($esParaContratoActual) {
+                    if (
+                        $colaborador instanceof Colaborador
+                        && $colaborador->fecha_retiro_empresa
+                        && $fechaInicio->lessThanOrEqualTo($colaborador->fecha_retiro_empresa->startOfDay())
+                    ) {
+                        $validator->errors()->add(
+                            'fecha_inicio_prorroga',
+                            'La fecha de inicio debe ser posterior al vencimiento del contrato actual.',
+                        );
+                    }
+                } elseif ($contratoObjetivo) {
+                    $ultimaProrrogaObj = $contratoObjetivo->prorrogas()
+                        ->where('tipo', 'prorroga')
+                        ->orderByDesc('fecha_nueva')
+                        ->orderByDesc('id')
+                        ->first();
+                    $finSecuencia = $ultimaProrrogaObj?->fecha_nueva ?? $contratoObjetivo->fecha_fin;
+                    if ($finSecuencia && $fechaInicio->lessThanOrEqualTo(\Illuminate\Support\Carbon::parse($finSecuencia)->startOfDay())) {
+                        $validator->errors()->add(
+                            'fecha_inicio_prorroga',
+                            'La fecha de inicio debe ser posterior a la fecha final del contrato seleccionado (' . \Illuminate\Support\Carbon::parse($finSecuencia)->format('d/m/Y') . ').',
+                        );
+                    }
                 }
 
                 if ($fechaFin->lessThan($fechaInicio)) {

@@ -40,6 +40,7 @@ class UpdateColaboradorPaso1Request extends FormRequest
             'nombres' => ['required', 'string', 'max:100'],
             'apellidos' => ['required', 'string', 'max:100'],
             'imagen' => ['nullable', 'image', 'max:2048'],
+            'eliminar_imagen' => ['nullable', 'boolean'],
 
             'tipo_documento' => ['required', Rule::in([
                 ...config('seguridad.colaboradores.tipos_documento', []),

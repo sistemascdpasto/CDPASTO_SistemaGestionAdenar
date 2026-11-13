@@ -127,16 +127,17 @@ export function Paso1DatosPersonales({ colaborador, catalogos, usuarios }: Paso1
     return (
         <form onSubmit={submit} className="grid gap-6">
             <SeccionCard icon={IdCard} titulo="Identificación" subtitulo="Documento de identidad del colaborador" tono="verde">
-                <div className="mb-5 flex justify-center">
-                    <PhotoUploader
-                        file={data.imagen}
-                        existingPath={(colaborador?.imagen as string | null | undefined) ?? null}
-                        onChange={(file) => setData('imagen', file)}
-                        error={errors.imagen}
-                        disabled={processing}
-                    />
-                </div>
-                <div className="flex-1 grid gap-4 sm:grid-cols-3 content-start">
+                <div className="flex gap-6 items-start">
+                    <div className="shrink-0">
+                        <PhotoUploader
+                            file={data.imagen}
+                            existingPath={(colaborador?.imagen as string | null | undefined) ?? null}
+                            onChange={(file) => setData('imagen', file)}
+                            error={errors.imagen}
+                            disabled={processing}
+                        />
+                    </div>
+                    <div className="flex-1 grid gap-4 sm:grid-cols-3 content-start">
                     <div className="grid gap-2">
                         <Label htmlFor="tipo_documento">Tipo de documento <span className="text-red-600">*</span></Label>
                         <Select
@@ -191,6 +192,7 @@ export function Paso1DatosPersonales({ colaborador, catalogos, usuarios }: Paso1
                         error={errors.expedido_en}
                         disabled={processing}
                     />
+                </div>
                 </div>
                 <div className="mt-4">
                     <SimpleFileField

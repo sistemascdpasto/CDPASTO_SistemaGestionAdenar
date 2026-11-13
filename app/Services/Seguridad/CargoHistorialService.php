@@ -19,7 +19,7 @@ class CargoHistorialService
      * existe un cargo ACTIVO, se cierra (fecha_fin = fecha_inicio - 1 día,
      * estado = INACTIVO) sin eliminarlo, y se crea el nuevo registro ACTIVO.
      */
-    public function asignar(Colaborador $colaborador, string $cargo, string $fechaInicio): void
+    public function asignar(Colaborador $colaborador, string $cargo, string $fechaInicio, ?string $area = null, ?string $perfil = null): void
     {
         $fechaInicio = Carbon::parse($fechaInicio)->startOfDay();
 
@@ -28,11 +28,11 @@ class CargoHistorialService
             ->latest('fecha_inicio')
             ->first();
 
-        if ($cargoActivo && $cargoActivo->cargo === $cargo) {
+        if ($cargoActivo && $cargoActivo->cargo === $cargo && ($area === null || $cargoActivo->area === $area)) {
             return;
         }
 
-        DB::transaction(function () use ($colaborador, $cargo, $fechaInicio, $cargoActivo) {
+        DB::transaction(function () use ($colaborador, $cargo, $fechaInicio, $cargoActivo, $area, $perfil) {
             if ($cargoActivo) {
                 $cargoActivo->update([
                     'fecha_fin' => $fechaInicio->copy()->subDay(),
@@ -42,12 +42,17 @@ class CargoHistorialService
 
             $colaborador->cargos()->create([
                 'cargo' => $cargo,
+                'area' => $area ?? $colaborador->area,
+                'perfil' => $perfil,
                 'fecha_inicio' => $fechaInicio,
                 'fecha_fin' => null,
                 'estado' => 'ACTIVO',
             ]);
 
-            $colaborador->update(['cargo' => $cargo]);
+            $colaborador->update([
+                'cargo' => $cargo,
+                ...($area !== null ? ['area' => $area] : []),
+            ]);
         });
     }
 
@@ -86,7 +91,7 @@ class CargoHistorialService
      *
      * @return string|null  Mensaje informativo (Escenario B) o null.
      */
-    public function registrarCambio(Colaborador $colaborador, ?string $cargo, ?string $fechaInicio): ?string
+    public function registrarCambio(Colaborador $colaborador, ?string $cargo, ?string $fechaInicio, ?string $area = null, ?string $perfil = null): ?string
     {
         if (! $cargo) {
             return null;
@@ -95,16 +100,19 @@ class CargoHistorialService
         $cargoActualNombre = $colaborador->cargoActual?->cargo ?? $colaborador->cargo;
 
         if (! empty($fechaInicio)) {
-            if ($cargo === $cargoActualNombre) {
-                return 'El cargo seleccionado es el mismo que el cargo actual; no se registró un cambio en el historial.';
+            if ($cargo === $cargoActualNombre && ($area === null || $colaborador->area === $area)) {
+                return 'El cargo y área seleccionados son los mismos actuales; no se registró un cambio en el historial.';
             }
 
-            $this->asignar($colaborador, $cargo, $fechaInicio);
+            $this->asignar($colaborador, $cargo, $fechaInicio, $area, $perfil);
 
             return null;
         }
 
         $this->actualizarSinHistorial($colaborador, $cargo);
+        if ($area !== null) {
+            $colaborador->update(['area' => $area]);
+        }
 
         return null;
     }

@@ -12,6 +12,8 @@ class ColaboradorCargo extends Model
     protected $fillable = [
         'colaborador_id',
         'cargo',
+        'area',
+        'perfil',
         'fecha_inicio',
         'fecha_fin',
         'estado',

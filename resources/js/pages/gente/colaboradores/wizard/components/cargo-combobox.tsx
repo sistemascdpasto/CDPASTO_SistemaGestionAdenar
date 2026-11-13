@@ -1,4 +1,4 @@
-﻿import { ChevronDown, X } from 'lucide-react';
+import { ChevronDown, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 
@@ -21,12 +21,12 @@ export function CargoCombobox({
     id,
     className = '',
 }: CargoComboboxProps) {
-    const [query, setQuery]     = useState(value);
+    const [query, setQuery]     = useState(value ?? '');
     const [open, setOpen]       = useState(false);
     const containerRef          = useRef<HTMLDivElement>(null);
 
     // Sincronizar query cuando el valor externo cambia (ej. reset de formulario)
-    useEffect(() => { setQuery(value); }, [value]);
+    useEffect(() => { setQuery(value ?? ''); }, [value]);
 
     // Cerrar al hacer clic fuera
     useEffect(() => {
@@ -71,7 +71,7 @@ export function CargoCombobox({
                 <input
                     id={id}
                     type="text"
-                    value={query}
+                    value={query ?? ''}
                     disabled={disabled}
                     placeholder={placeholder}
                     autoComplete="off"

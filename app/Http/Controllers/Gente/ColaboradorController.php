@@ -203,6 +203,11 @@ class ColaboradorController extends Controller
                 ->with('status', 'El colaborador tiene el contrato finalizado y no se puede editar.');
         }
 
+        if (! $colaborador->is_active) {
+            return to_route('gente.colaboradores.show', $colaborador)
+                ->with('status', 'El colaborador está inactivo. Actívelo primero para poder editarlo.');
+        }
+
         $maxStep = max(1, (int) $colaborador->wizard_step);
         // Un borrador arranca en el siguiente paso sin completar; un
         // colaborador completo arranca en el Paso 1 para revisar desde el
@@ -218,7 +223,20 @@ class ColaboradorController extends Controller
             'currentStep' => $currentStep,
             'esReingreso' => $colaborador->esReingreso(),
             'catalogos' => $this->catalogos($catalogos),
-            'historialCargos' => $colaborador->cargos()->orderByDesc('fecha_inicio')->get(),
+            'historialCargos' => $colaborador->cargos()
+                ->reorder()
+                ->orderBy('fecha_inicio')
+                ->orderBy('id')
+                ->get()
+                ->map(fn ($c) => [
+                    'id'           => $c->id,
+                    'cargo'        => $c->cargo,
+                    'area'         => $c->area,
+                    'perfil'       => $c->perfil,
+                    'fecha_inicio' => $c->fecha_inicio?->toDateString(),
+                    'fecha_fin'    => $c->fecha_fin?->toDateString(),
+                    'estado'       => $c->estado,
+                ])->values()->all(),
             'historialContratos' => $colaborador->contratos()
                 ->reorder()
                 ->orderBy('fecha_inicio')
@@ -290,6 +308,7 @@ class ColaboradorController extends Controller
             'tiposContrato' => $catalogos->tiposContrato(),
             'cargosAnteriores' => OpcionCatalogo::opcionesDe('cargo_anterior'),
             'cargos' => $catalogos->cargos(),
+            'perfilesCargos' => $catalogos->perfilesCargos(),
             'centros' => config('seguridad.colaboradores.centros'),
             'centrosTrabajo' => config('seguridad.colaboradores.centros_trabajo'),
             'motivosRetiro' => config('seguridad.colaboradores.motivos_retiro'),
@@ -301,7 +320,7 @@ class ColaboradorController extends Controller
 
     public function updatePaso1(UpdateColaboradorPaso1Request $request, Colaborador $colaborador): RedirectResponse
     {
-        $this->asegurarContratoNoFinalizado($colaborador);
+        $this->asegurarEditable($colaborador);
 
         $data = $request->validated();
 
@@ -317,16 +336,19 @@ class ColaboradorController extends Controller
             unset($data[$field]);
         }
 
-        if ($request->hasFile('imagen')) {
-            if ($colaborador->imagen) {
+        if ($request->boolean('eliminar_imagen')) {
+            if (!empty($colaborador->imagen) && is_string($colaborador->imagen) && Storage::disk('public')->exists($colaborador->imagen)) {
+                Storage::disk('public')->delete($colaborador->imagen);
+            }
+            $data['imagen'] = null;
+        } elseif ($request->hasFile('imagen')) {
+            if (!empty($colaborador->imagen) && is_string($colaborador->imagen) && Storage::disk('public')->exists($colaborador->imagen)) {
                 Storage::disk('public')->delete($colaborador->imagen);
             }
 
             $data['imagen'] = $request->file('imagen')->store('colaboradores', 'public');
         } else {
-            // Sin archivo nuevo, no se toca la foto ya guardada — 'imagen'
-            // siempre llega en el request (aunque sea vacía) porque Inertia
-            // envía todos los campos del formulario en cada envío.
+            // Sin archivo nuevo ni orden de eliminación, no se toca la foto ya guardada
             unset($data['imagen']);
         }
 
@@ -340,9 +362,40 @@ class ColaboradorController extends Controller
         return to_route('gente.colaboradores.wizard', ['colaborador' => $colaborador, 'paso' => 2]);
     }
 
+    public function updateFoto(Request $request, Colaborador $colaborador): RedirectResponse
+    {
+        $this->asegurarEditable($colaborador);
+
+        $request->validate([
+            'imagen' => ['required', 'image', 'max:2048'],
+        ]);
+
+        if (!empty($colaborador->imagen) && is_string($colaborador->imagen) && Storage::disk('public')->exists($colaborador->imagen)) {
+            Storage::disk('public')->delete($colaborador->imagen);
+        }
+
+        $path = $request->file('imagen')->store('colaboradores', 'public');
+        $colaborador->update(['imagen' => $path]);
+
+        return back()->with('status', 'Foto actualizada correctamente.');
+    }
+
+    public function destroyFoto(Colaborador $colaborador): RedirectResponse
+    {
+        $this->asegurarEditable($colaborador);
+
+        if (!empty($colaborador->imagen) && is_string($colaborador->imagen) && Storage::disk('public')->exists($colaborador->imagen)) {
+            Storage::disk('public')->delete($colaborador->imagen);
+        }
+
+        $colaborador->update(['imagen' => null]);
+
+        return back()->with('status', 'Foto eliminada correctamente.');
+    }
+
     public function updatePaso2(UpdateColaboradorPaso2Request $request, Colaborador $colaborador): RedirectResponse
     {
-        $this->asegurarContratoNoFinalizado($colaborador);
+        $this->asegurarEditable($colaborador);
 
         $data = $request->validated();
 
@@ -367,7 +420,7 @@ class ColaboradorController extends Controller
         ContratoVigenciaService $contratoVigencia,
     ): RedirectResponse
     {
-        $this->asegurarContratoNoFinalizado($colaborador);
+        $this->asegurarEditable($colaborador);
 
         $data = $request->validated();
 
@@ -395,6 +448,8 @@ class ColaboradorController extends Controller
             'tipo_contrato_otro' => $data['nuevo_tipo_contrato_otro'] ?? null,
             'fecha_inicio' => $data['nuevo_fecha_inicio'] ?? null,
             'fecha_fin' => $data['nuevo_fecha_fin'] ?? null,
+            'cargo' => $data['nuevo_cargo'] ?? null,
+            'area' => $data['nuevo_area'] ?? null,
         ];
 
         foreach ([
@@ -404,14 +459,18 @@ class ColaboradorController extends Controller
             'nuevo_tipo_contrato_otro',
             'nuevo_fecha_inicio',
             'nuevo_fecha_fin',
+            'nuevo_cargo',
+            'nuevo_area',
             'contratos_editados',
+            'cargos_editados',
         ] as $field) {
             unset($data[$field]);
         }
 
         $cargo = $data['cargo'] ?? null;
         $cargoFechaInicio = $data['cargo_fecha_inicio'] ?? null;
-        unset($data['cargo'], $data['cargo_fecha_inicio'], $data['guardar_historial_cargo']);
+        $cargoPerfil = $data['perfil'] ?? null;
+        unset($data['cargo'], $data['cargo_fecha_inicio'], $data['guardar_historial_cargo'], $data['perfil']);
 
         $colaborador->update([
             ...$data,
@@ -437,16 +496,48 @@ class ColaboradorController extends Controller
             }
         }
 
+        // Actualizar cargos editados del historial
+        $cargosEditados = json_decode($request->input('cargos_editados', '[]'), true);
+        foreach ($cargosEditados as $cargoData) {
+            $cargoHist = $colaborador->cargos()->find($cargoData['id'] ?? null);
+            if ($cargoHist) {
+                $cargoHist->update([
+                    'cargo'        => $cargoData['cargo'] ?? $cargoHist->cargo,
+                    'area'         => $cargoData['area'] ?? $cargoHist->area,
+                    'perfil'       => $cargoData['perfil'] ?? $cargoHist->perfil,
+                    'fecha_inicio' => $cargoData['fecha_inicio'] ?? $cargoHist->fecha_inicio,
+                    'fecha_fin'    => ! empty($cargoData['fecha_fin']) ? $cargoData['fecha_fin'] : null,
+                    'estado'       => $cargoData['estado'] ?? $cargoHist->estado,
+                ]);
+                if ($cargoHist->estado === 'ACTIVO') {
+                    $colaborador->update([
+                        'cargo' => $cargoHist->cargo,
+                        ...(! empty($cargoHist->area) ? ['area' => $cargoHist->area] : []),
+                    ]);
+                }
+            }
+        }
+
         if ($tipoContrato) {
             if ($esNuevoContrato) {
                 // Crear nuevo registro con los campos dedicados del nuevo contrato
-                $contratoVigencia->crearContratoActual($colaborador, [
+                $contratoCreado = $contratoVigencia->crearContratoActual($colaborador, [
                     'tipo_contrato'      => $datosNuevoContrato['tipo_contrato'] ?: $tipoContrato,
                     'tipo_contrato_otro' => $datosNuevoContrato['tipo_contrato_otro'],
                     'fecha_inicio'       => $datosNuevoContrato['fecha_inicio'] ?: $fechaInicio,
                     'fecha_fin'          => $datosNuevoContrato['fecha_fin'] ?: $fechaFin,
+                    'cargo'              => $datosNuevoContrato['cargo'] ?: $cargo,
+                    'area'               => $datosNuevoContrato['area'] ?: ($data['area'] ?? $colaborador->area),
                     'registrado_por'     => $request->user()?->id,
                 ]);
+
+                // Asignar en el historial de cargos el cargo y área del nuevo contrato
+                $cargoContrato = $datosNuevoContrato['cargo'] ?: $cargo;
+                $areaContrato = $datosNuevoContrato['area'] ?: ($data['area'] ?? $colaborador->area);
+                $fechaInicioContrato = $datosNuevoContrato['fecha_inicio'] ?: $fechaInicio;
+                if ($cargoContrato && $fechaInicioContrato) {
+                    $cargoHistorial->asignar($colaborador, $cargoContrato, $fechaInicioContrato, $areaContrato);
+                }
             } else {
                 // Actualizar el contrato más reciente si existe, si no crear uno
                 $contratoActual = $contratoVigencia->contratoActual($colaborador);
@@ -485,7 +576,7 @@ class ColaboradorController extends Controller
         // Reglas del historial de cargos (3 escenarios). Devuelve un mensaje
         // informativo cuando el cargo no cambió (Escenario B); el resto del
         // guardado del paso ya se hizo arriba.
-        $info = $cargoHistorial->registrarCambio($colaborador, $cargo, $cargoFechaInicio);
+        $info = $cargoHistorial->registrarCambio($colaborador, $cargo, $cargoFechaInicio, $data['area'] ?? null, $cargoPerfil);
 
         $this->storeDocuments($request, $colaborador, ColaboradorDocumentoCampos::paso3());
 
@@ -504,15 +595,54 @@ class ColaboradorController extends Controller
         return $redirect;
     }
 
-    public function destroyCargo(Colaborador $colaborador, ColaboradorCargo $cargo): RedirectResponse
+    public function updateCargo(Request $request, Colaborador $colaborador, $cargo): RedirectResponse
     {
-        $this->asegurarContratoNoFinalizado($colaborador);
+        $this->asegurarEditable($colaborador);
 
-        abort_if($cargo->colaborador_id !== $colaborador->id, 403);
+        $cargoModel = $cargo instanceof ColaboradorCargo
+            ? $cargo
+            : ($colaborador->cargos()->find($cargo) ?? ColaboradorCargo::findOrFail($cargo));
 
-        $eraActivo = $cargo->estado === 'ACTIVO';
+        abort_if((int) $cargoModel->colaborador_id !== (int) $colaborador->id, 403);
 
-        $cargo->delete();
+        $validated = $request->validate([
+            'cargo' => ['required', 'string', 'max:100'],
+            'area' => ['nullable', 'string', 'max:100'],
+            'perfil' => ['nullable', 'string'],
+            'fecha_inicio' => ['required', 'date'],
+            'fecha_fin' => ['nullable', 'date'],
+            'estado' => ['nullable', 'string', 'in:ACTIVO,INACTIVO'],
+        ]);
+
+        $cargoModel->update($validated);
+
+        if ($cargoModel->estado === 'ACTIVO') {
+            $colaborador->update([
+                'cargo' => $cargoModel->cargo,
+                ...(! empty($cargoModel->area) ? ['area' => $cargoModel->area] : []),
+            ]);
+        }
+
+        return back()->with('status', 'Registro de cargo actualizado correctamente.');
+    }
+
+    public function destroyCargo(Colaborador $colaborador, $cargo): RedirectResponse
+    {
+        $this->asegurarEditable($colaborador);
+
+        $cargoModel = $cargo instanceof ColaboradorCargo
+            ? $cargo
+            : ($colaborador->cargos()->find($cargo) ?? ColaboradorCargo::find($cargo));
+
+        if (! $cargoModel) {
+            return back()->with('status', 'Registro de cargo eliminado.');
+        }
+
+        abort_if((int) $cargoModel->colaborador_id !== (int) $colaborador->id, 403);
+
+        $eraActivo = $cargoModel->estado === 'ACTIVO';
+
+        $cargoModel->delete();
 
         // Si se eliminó el cargo activo, reactivar el más reciente que quede
         if ($eraActivo) {
@@ -523,7 +653,10 @@ class ColaboradorController extends Controller
 
             if ($anterior) {
                 $anterior->update(['estado' => 'ACTIVO', 'fecha_fin' => null]);
-                $colaborador->update(['cargo' => $anterior->cargo]);
+                $colaborador->update([
+                    'cargo' => $anterior->cargo,
+                    ...(! empty($anterior->area) ? ['area' => $anterior->area] : []),
+                ]);
             } else {
                 $colaborador->update(['cargo' => null]);
             }
@@ -534,7 +667,7 @@ class ColaboradorController extends Controller
 
     public function updatePaso4(UpdateColaboradorPaso4Request $request, Colaborador $colaborador): RedirectResponse
     {
-        $this->asegurarContratoNoFinalizado($colaborador);
+        $this->asegurarEditable($colaborador);
 
         $data = $request->validated();
 
@@ -607,6 +740,20 @@ class ColaboradorController extends Controller
     }
 
     /**
+     * Exporta la hoja de vida del colaborador como PDF.
+     */
+    public function exportarPdf(Colaborador $colaborador): \Illuminate\Http\Response
+    {
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('gente.colaborador-pdf', [
+            'colaborador' => $colaborador,
+        ])->setPaper('a4', 'portrait');
+
+        $nombreArchivo = 'hoja-de-vida-' . str($colaborador->nombre_completo)->slug() . '.pdf';
+
+        return $pdf->download($nombreArchivo);
+    }
+
+    /**
      * Prorroga el contrato de un colaborador actualizando fecha_retiro_empresa
      * y marcando como atendida cualquier alerta de retiro_proximo pendiente.
      */
@@ -616,26 +763,68 @@ class ColaboradorController extends Controller
         ContratoVigenciaService $contratoVigencia,
     ): RedirectResponse
     {
-        $this->asegurarContratoNoFinalizado($colaborador);
+        $this->asegurarEditable($colaborador);
 
         $datos = $request->validated();
-
-        $fechaAnterior = $colaborador->fecha_retiro_empresa
-            ? $colaborador->fecha_retiro_empresa->toDateString()
-            : null;
-
         $contratoActual = $contratoVigencia->contratoActual($colaborador);
         $tipo = $datos['tipo'] ?? 'prorroga';
         $esFinalizacion = $tipo === 'finalizacion';
+        $nuevaFechaRetiro = $request->date('fecha_retiro_empresa');
 
-        if ($esFinalizacion) {
-            $contratoActual?->update(['estado' => 'finalizado']);
+        // 1. Resolver el contrato objetivo para la prórroga
+        $contratoDestino = null;
+        if (! empty($datos['crear_nuevo_contrato'])) {
+            $contratoDestino = $colaborador->contratos()->create([
+                'tipo_contrato' => $datos['nuevo_contrato_tipo'] ?? 'Término Fijo',
+                'fecha_inicio' => $datos['nuevo_contrato_inicio'] ?? $datos['fecha_inicio_prorroga'],
+                'fecha_fin' => $datos['nuevo_contrato_fin'] ?? $nuevaFechaRetiro,
+                'estado' => 'finalizado',
+                'observaciones' => 'Contrato histórico creado al registrar prórroga.',
+                'registrado_por' => $request->user()->id,
+            ]);
+        } elseif (! empty($datos['contrato_id'])) {
+            $contratoDestino = $colaborador->contratos()->find($datos['contrato_id']);
+        } else {
+            // Detección automática por continuidad de fechas
+            $fechaInicioBuscada = $datos['fecha_inicio_prorroga'] ?? null;
+            if ($fechaInicioBuscada) {
+                foreach ($colaborador->contratos()->get() as $c) {
+                    $ultP = $c->prorrogas()->where('tipo', 'prorroga')->orderByDesc('fecha_nueva')->orderByDesc('id')->first();
+                    $finSec = $ultP?->fecha_nueva?->toDateString() ?? $c->fecha_fin?->toDateString();
+                    if ($finSec && \Illuminate\Support\Carbon::parse($finSec)->addDay()->toDateString() === $fechaInicioBuscada) {
+                        $contratoDestino = $c;
+                        break;
+                    }
+                }
+            }
+            $contratoDestino ??= $contratoActual;
         }
 
-        $colaborador->update([
-            'fecha_retiro_empresa' => $request->date('fecha_retiro_empresa'),
-            'is_active' => $esFinalizacion ? false : $colaborador->is_active,
-        ]);
+        if ($esFinalizacion) {
+            $contratoDestino?->update(['estado' => 'finalizado']);
+            if ($contratoActual && $contratoDestino?->id !== $contratoActual->id) {
+                $contratoActual->update(['estado' => 'finalizado']);
+            }
+        }
+
+        // 2. Determinar la fecha anterior específica de la secuencia de este contrato
+        $ultProrrogaDestino = $contratoDestino?->prorrogas()
+            ->where('tipo', 'prorroga')
+            ->orderByDesc('fecha_nueva')
+            ->orderByDesc('id')
+            ->first();
+        $fechaAnteriorSecuencia = $ultProrrogaDestino?->fecha_nueva?->toDateString()
+            ?? $contratoDestino?->fecha_fin?->toDateString()
+            ?? ($colaborador->fecha_retiro_empresa ? $colaborador->fecha_retiro_empresa->toDateString() : null);
+
+        // 3. Actualizar fecha_retiro_empresa solo si es el contrato activo o si la fecha nueva es mayor/vigente
+        $esContratoVigente = ! $contratoActual || ($contratoDestino && $contratoDestino->id === $contratoActual->id);
+        if ($esContratoVigente || ! $colaborador->fecha_retiro_empresa || $nuevaFechaRetiro->greaterThanOrEqualTo($colaborador->fecha_retiro_empresa)) {
+            $colaborador->update([
+                'fecha_retiro_empresa' => $nuevaFechaRetiro,
+                'is_active' => $esFinalizacion ? false : $colaborador->is_active,
+            ]);
+        }
 
         if ($esFinalizacion && $colaborador->user) {
             $colaborador->user->update(['is_active' => false]);
@@ -667,11 +856,11 @@ class ColaboradorController extends Controller
         // Registrar en el historial de prórrogas
         ContratoProrroga::create([
             'colaborador_id' => $colaborador->id,
-            'contrato_id' => $contratoActual?->id,
+            'contrato_id' => $contratoDestino?->id,
             'registrado_por' => $request->user()->id,
-            'fecha_anterior' => $fechaAnterior ?? $request->date('fecha_retiro_empresa'),
+            'fecha_anterior' => $fechaAnteriorSecuencia ?? $nuevaFechaRetiro,
             'fecha_inicio' => $esFinalizacion ? null : ($datos['fecha_inicio_prorroga'] ?? null),
-            'fecha_nueva' => $request->date('fecha_retiro_empresa'),
+            'fecha_nueva' => $nuevaFechaRetiro,
             'tipo' => $tipo,
             'observaciones' => $datos['observaciones'] ?? null,
             'documento_path' => $documentoPath,
@@ -701,7 +890,13 @@ class ColaboradorController extends Controller
      */
     public function toggleActivo(Colaborador $colaborador): RedirectResponse
     {
-        $this->asegurarContratoNoFinalizado($colaborador);
+        // El toggle solo está bloqueado por finalización de contrato.
+        // Un colaborador inactivo SÍ puede ser reactivado desde aquí.
+        abort_if(
+            $colaborador->tieneFinalizacionConfirmada(),
+            403,
+            'El contrato ya fue finalizado. No se puede cambiar el estado.',
+        );
 
         $nuevoEstado = ! $colaborador->is_active;
 
@@ -710,15 +905,19 @@ class ColaboradorController extends Controller
 
         try {
             $colaborador->activacionHistorial()->create([
-                'is_active' => $nuevoEstado,
-                'tipo' => $nuevoEstado ? 'activacion' : 'desactivacion',
-                'fecha' => now(),
-                'motivo' => $nuevoEstado ? 'Reactivación en el sistema para reingreso' : ($colaborador->motivo_retiro ?: 'Desactivación de colaborador'),
-                'observaciones' => $nuevoEstado ? 'Colaborador reactivado en el sistema.' : $colaborador->motivo_retiro_observaciones,
-                'user_id' => auth()->id(),
+                'is_active'     => $nuevoEstado,
+                'tipo'          => $nuevoEstado ? 'activacion' : 'desactivacion',
+                'fecha'         => now(),
+                'motivo'        => $nuevoEstado
+                    ? 'Reactivación manual'
+                    : ($colaborador->motivo_retiro ?: 'Desactivación manual'),
+                'observaciones' => $nuevoEstado
+                    ? 'Colaborador reactivado. Puede ser editado con normalidad.'
+                    : 'Colaborador desactivado. Edición bloqueada hasta reactivación.',
+                'user_id'       => auth()->id(),
             ]);
         } catch (\Throwable) {
-            // Continúa sin interrumpir
+            // No interrumpe el flujo
         }
 
         return back()->with('status', $nuevoEstado ? 'Colaborador activado.' : 'Colaborador desactivado.');
@@ -740,7 +939,7 @@ class ColaboradorController extends Controller
 
     public function update(UpdateColaboradorRequest $request, Colaborador $colaborador, CargoHistorialService $cargoHistorial, ColaboradorAutoprovisionService $autoprovision): RedirectResponse
     {
-        $this->asegurarContratoNoFinalizado($colaborador);
+        $this->asegurarEditable($colaborador);
 
         $data = $request->validated();
 
@@ -752,8 +951,13 @@ class ColaboradorController extends Controller
         $cargoFechaInicio = $data['cargo_fecha_inicio'] ?? null;
         unset($data['cargo'], $data['cargo_fecha_inicio']);
 
-        if ($request->hasFile('imagen')) {
-            if ($colaborador->imagen) {
+        if ($request->boolean('eliminar_imagen')) {
+            if (!empty($colaborador->imagen) && is_string($colaborador->imagen) && Storage::disk('public')->exists($colaborador->imagen)) {
+                Storage::disk('public')->delete($colaborador->imagen);
+            }
+            $data['imagen'] = null;
+        } elseif ($request->hasFile('imagen')) {
+            if (!empty($colaborador->imagen) && is_string($colaborador->imagen) && Storage::disk('public')->exists($colaborador->imagen)) {
                 Storage::disk('public')->delete($colaborador->imagen);
             }
 
@@ -787,12 +991,22 @@ class ColaboradorController extends Controller
 
     public function destroy(Colaborador $colaborador): RedirectResponse
     {
-        $this->asegurarContratoNoFinalizado($colaborador);
+        $this->asegurarEditable($colaborador);
 
         foreach ($this->documentPaths($colaborador) as $paths) {
-            foreach ($paths as $path) {
-                Storage::disk('public')->delete($path['path']);
+            if (!is_iterable($paths)) {
+                continue;
             }
+            foreach ($paths as $path) {
+                $location = is_array($path) ? ($path['path'] ?? null) : $path;
+                if (!empty($location) && is_string($location) && Storage::disk('public')->exists($location)) {
+                    Storage::disk('public')->delete($location);
+                }
+            }
+        }
+
+        if (!empty($colaborador->imagen) && is_string($colaborador->imagen) && Storage::disk('public')->exists($colaborador->imagen)) {
+            Storage::disk('public')->delete($colaborador->imagen);
         }
 
         $colaborador->delete();
@@ -800,12 +1014,18 @@ class ColaboradorController extends Controller
         return to_route('gente.colaboradores.index')->with('status', 'Colaborador eliminado correctamente.');
     }
 
-    private function asegurarContratoNoFinalizado(Colaborador $colaborador): void
+    private function asegurarEditable(Colaborador $colaborador): void
     {
         abort_if(
             $colaborador->tieneFinalizacionConfirmada(),
             403,
             'El contrato ya fue finalizado y no se puede modificar.',
+        );
+
+        abort_if(
+            ! $colaborador->is_active,
+            403,
+            'El colaborador está inactivo y no se puede modificar. Actívelo primero.',
         );
     }
 

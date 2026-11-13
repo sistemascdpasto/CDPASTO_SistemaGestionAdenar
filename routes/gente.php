@@ -69,12 +69,20 @@ Route::middleware(['auth', 'active', 'role:Administrador|Gente|Contratos', 'subm
             ->name('colaboradores.wizard');
         Route::patch('colaboradores/{colaborador}/paso-1', [ColaboradorController::class, 'updatePaso1'])
             ->name('colaboradores.paso1.update');
+        Route::post('colaboradores/{colaborador}/foto', [ColaboradorController::class, 'updateFoto'])
+            ->name('colaboradores.foto.update');
+        Route::delete('colaboradores/{colaborador}/foto', [ColaboradorController::class, 'destroyFoto'])
+            ->name('colaboradores.foto.destroy');
         Route::patch('colaboradores/{colaborador}/paso-2', [ColaboradorController::class, 'updatePaso2'])
             ->name('colaboradores.paso2.update');
         Route::patch('colaboradores/{colaborador}/paso-3', [ColaboradorController::class, 'updatePaso3'])
             ->name('colaboradores.paso3.update');
+        Route::patch('colaboradores/{colaborador}/cargos/{cargo}', [ColaboradorController::class, 'updateCargo'])
+            ->name('colaboradores.cargos.update')
+            ->withoutScopedBindings();
         Route::delete('colaboradores/{colaborador}/cargos/{cargo}', [ColaboradorController::class, 'destroyCargo'])
-            ->name('colaboradores.cargos.destroy');
+            ->name('colaboradores.cargos.destroy')
+            ->withoutScopedBindings();
         Route::patch('colaboradores/{colaborador}/paso-4', [ColaboradorController::class, 'updatePaso4'])
             ->name('colaboradores.paso4.update');
 
@@ -165,13 +173,21 @@ Route::middleware(['auth', 'active', 'role:Administrador|Gente|Contratos', 'subm
         Route::delete('contratos/{colaborador}/datos', [ContratosController::class, 'destroyDatosContrato'])
             ->name('contratos.datos.destroy');
         Route::patch('contratos/{colaborador}/historial/{contrato}', [ContratosController::class, 'updateContratoHistorial'])
-            ->name('contratos.historial.update');
+            ->name('contratos.historial.update')
+            ->withoutScopedBindings();
         Route::delete('contratos/{colaborador}/historial/{contrato}', [ContratosController::class, 'destroyContratoHistorial'])
-            ->name('contratos.historial.destroy');
+            ->name('contratos.historial.destroy')
+            ->withoutScopedBindings();
         Route::delete('contratos/{colaborador}/antecedente', [ContratosController::class, 'destroyAntecedente'])
             ->name('contratos.antecedente.destroy');
         Route::delete('contratos/{colaborador}/prorrogas/{prorroga}/documento', [ContratosController::class, 'destroyDocumentoProrroga'])
             ->name('contratos.prorrogas.documento.destroy');
+
+        // Historial de activación / desactivación
+        Route::patch('contratos/{colaborador}/activaciones/{activacion}', [ContratosController::class, 'updateActivacion'])
+            ->name('contratos.activaciones.update');
+        Route::delete('contratos/{colaborador}/activaciones/{activacion}', [ContratosController::class, 'destroyActivacion'])
+            ->name('contratos.activaciones.destroy');
 
         // SAC (Escritura: Importar / Limpiar)
         Route::post('sac/importar', [SacController::class, 'importar'])
@@ -196,6 +212,9 @@ Route::middleware(['auth', 'active', 'role:Administrador|Seguridad|Reparto|Flota
         Route::resource('colaboradores', ColaboradorController::class)
             ->parameters(['colaboradores' => 'colaborador'])
             ->only(['index', 'show']);
+
+        Route::get('colaboradores/{colaborador}/pdf', [ColaboradorController::class, 'exportarPdf'])
+            ->name('colaboradores.pdf');
 
         Route::get('plan-padrinos/alertas-bell', [SeguimientoPruebasController::class, 'alertasBell'])
             ->name('plan-padrinos.alertas-bell');
@@ -257,6 +276,14 @@ Route::middleware(['auth', 'active', 'role:Administrador|Seguridad|Reparto|Flota
         // Carta de prórroga de contrato en PDF
         Route::get('contratos/{colaborador}/prorroga-pdf', [ContratosController::class, 'exportarProrrogaPdf'])
             ->name('contratos.prorroga-pdf');
+
+        // Certificado laboral en PDF
+        Route::get('contratos/{colaborador}/certificado-laboral-pdf', [ContratosController::class, 'exportarCertificadoLaboralPdf'])
+            ->name('contratos.certificado-laboral-pdf');
+
+        // Certificado laboral con funciones en PDF
+        Route::get('contratos/{colaborador}/certificado-laboral-con-funciones-pdf', [ContratosController::class, 'exportarCertificadoLaboralConFuncionesPdf'])
+            ->name('contratos.certificado-laboral-con-funciones-pdf');
 
         // SAC (Lectura, Plantilla & Exportar)
         Route::get('sac', [SacController::class, 'index'])

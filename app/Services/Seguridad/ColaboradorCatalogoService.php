@@ -2,6 +2,7 @@
 
 namespace App\Services\Seguridad;
 
+use App\Models\Gente\Cargo;
 use App\Models\Gente\OpcionCatalogo;
 use App\Models\GeovictoriaAsistencia;
 use App\Models\Seguridad\Colaborador;
@@ -13,12 +14,28 @@ class ColaboradorCatalogoService
      */
     public function cargos(): array
     {
-        return collect(config('seguridad.colaboradores.cargos', []))
-            ->merge(Colaborador::query()->whereNotNull('cargo')->where('cargo', '!=', '')->distinct()->pluck('cargo'))
-            ->merge(GeovictoriaAsistencia::query()->whereNotNull('cargo')->where('cargo', '!=', '')->distinct()->pluck('cargo'))
-            ->unique()
+        return GeovictoriaAsistencia::query()
+            ->whereNotNull('cargo')
+            ->where('cargo', '!=', '')
+            ->distinct()
+            ->pluck('cargo')
             ->sort()
             ->values()
+            ->all();
+    }
+
+    /**
+     * Devuelve los perfiles (descripción de funciones) indexados por nombre de cargo.
+     * Solo los cargos que tienen perfil definido en la tabla cargos.
+     *
+     * @return array<string, string>
+     */
+    public function perfilesCargos(): array
+    {
+        return Cargo::query()
+            ->whereNotNull('perfil')
+            ->where('perfil', '!=', '')
+            ->pluck('perfil', 'nombre')
             ->all();
     }
 

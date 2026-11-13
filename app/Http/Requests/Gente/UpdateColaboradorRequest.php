@@ -48,6 +48,7 @@ class UpdateColaboradorRequest extends FormRequest
             'apellidos' => ['required', 'string', 'max:100'],
             'turno' => ['nullable', Rule::in(['manana', 'tarde', 'noche'])],
             'imagen' => ['nullable', 'image', 'max:2048'],
+            'eliminar_imagen' => ['nullable', 'boolean'],
 
             // Paso 1
             'tipo_documento' => ['nullable', Rule::in([...(TipoDocumento::pluck('nombre')->all()), 'Otro'])],

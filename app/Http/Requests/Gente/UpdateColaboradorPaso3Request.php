@@ -31,6 +31,7 @@ class UpdateColaboradorPaso3Request extends FormRequest
         return [
             'area' => ['nullable', Rule::in(['Administrativa', 'Operativa'])],
             'cargo' => ['nullable', 'string', 'max:100'],
+            'perfil' => ['nullable', 'string'],
             'guardar_historial_cargo' => ['nullable', Rule::in(['si', 'no'])],
             'cargo_fecha_inicio' => ['nullable', 'date'],
 
@@ -56,6 +57,8 @@ class UpdateColaboradorPaso3Request extends FormRequest
                 'max:100',
             ],
             'nuevo_tipo_contrato_otro' => ['nullable', 'string', 'max:100'],
+            'nuevo_cargo' => ['nullable', 'string', 'max:100'],
+            'nuevo_area' => ['nullable', Rule::in(['Administrativa', 'Operativa'])],
             'nuevo_fecha_inicio' => [
                 'nullable',
                 'required_if:es_nuevo_contrato,1',
@@ -64,6 +67,7 @@ class UpdateColaboradorPaso3Request extends FormRequest
             ],
             'nuevo_fecha_fin' => ['nullable', 'date', 'after_or_equal:nuevo_fecha_inicio'],
             'contratos_editados' => ['nullable', 'json'],
+            'cargos_editados' => ['nullable', 'json'],
 
             'codigo_qr_skap' => ['nullable', 'string', 'max:100'],
 

@@ -507,8 +507,8 @@ export default function ColaboradoresIndex({
                                             {colaborador.estado_registro === 'borrador' ? (
                                                 <Badge variant="secondary">Borrador · Paso {colaborador.wizard_step ?? 1}</Badge>
                                             ) : (
-                                                <Badge variant={colaborador.tiene_finalizacion ? 'secondary' : colaborador.is_active ? 'default' : 'destructive'}>
-                                                    {colaborador.tiene_finalizacion ? 'Finalizado' : colaborador.is_active ? 'Activo' : 'Inactivo'}
+                                                <Badge variant={colaborador.is_active ? 'default' : 'destructive'}>
+                                                    {colaborador.is_active ? 'Activo' : 'Inactivo'}
                                                 </Badge>
                                             )}
                                         </TableCell>
@@ -566,14 +566,14 @@ export default function ColaboradoresIndex({
                                                         label="Ver"
                                                         href={route('gente.colaboradores.show', colaborador.id)}
                                                     />
-                                                    {canManageColaboradores && !colaborador.tiene_finalizacion && (
+                                                    {canManageColaboradores && colaborador.is_active && !colaborador.tiene_finalizacion && (
                                                         <IconActionButton
                                                             icon={Pencil}
                                                             label="Editar"
                                                             href={route('gente.colaboradores.edit', colaborador.id)}
                                                         />
                                                     )}
-                                                    {canManageColaboradores && !colaborador.tiene_finalizacion && (
+                                                    {canManageColaboradores && colaborador.is_active && !colaborador.tiene_finalizacion && (
                                                         <Dialog>
                                                             <TooltipProvider delayDuration={200}>
                                                                 <Tooltip>

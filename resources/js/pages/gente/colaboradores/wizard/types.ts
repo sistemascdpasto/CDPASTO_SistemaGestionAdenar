@@ -98,6 +98,7 @@ export type Paso2FormData = {
 export type Paso3FormData = {
     area: 'Administrativa' | 'Operativa' | '';
     cargo: string;
+    perfil: string;
     guardar_historial_cargo?: 'si' | 'no' | '';
     cargo_fecha_inicio: string;
 

@@ -17,10 +17,21 @@ class ContratoVigenciaService
     {
         $contratos = $colaborador->contratos()->reorder();
 
+        // 1. Contrato activo más reciente (independiente de si tipo_contrato está o no lleno)
+        $contratoActivo = (clone $contratos)
+            ->where('estado', 'activo')
+            ->orderByDesc('fecha_inicio')
+            ->orderByDesc('id')
+            ->first();
+
+        if ($contratoActivo) {
+            return $contratoActivo;
+        }
+
+        // 2. Por fecha de inicio correspondiente a la vinculación actual
         if ($colaborador->fecha_ingreso_empresa) {
             $contrato = (clone $contratos)
                 ->whereDate('fecha_inicio', $colaborador->fecha_ingreso_empresa)
-                ->when($colaborador->tipo_contrato, fn (Builder $query) => $query->where('tipo_contrato', $colaborador->tipo_contrato))
                 ->orderByDesc('id')
                 ->first();
 
@@ -40,7 +51,8 @@ class ContratoVigenciaService
             }
         }
 
-        return (clone $contratos)->orderByDesc('id')->first();
+        // 3. El contrato más reciente registrado
+        return (clone $contratos)->orderByDesc('fecha_inicio')->orderByDesc('id')->first();
     }
 
     public function cantidadProrrogas(Colaborador $colaborador, ?ColaboradorContrato $contrato = null): int

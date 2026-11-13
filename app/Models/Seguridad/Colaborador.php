@@ -6,6 +6,7 @@ use App\Models\Flota\CombustibleVoucher;
 use App\Models\Gente\ColaboradorContrato;
 use App\Models\Gente\ColaboradorPadrinoCriterio;
 use App\Models\Gente\ContratoProrroga;
+use App\Models\Gente\Preaviso;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -190,6 +191,11 @@ class Colaborador extends Model
     public function contratos(): HasMany
     {
         return $this->hasMany(ColaboradorContrato::class)->orderBy('fecha_inicio');
+    }
+
+    public function preavisos(): HasMany
+    {
+        return $this->hasMany(Preaviso::class)->orderBy('fecha');
     }
 
     public function scopeSinFinalizacionConfirmada(Builder $query): Builder

@@ -1,14 +1,15 @@
-import HeadingSmall from '@/components/heading-small';
+import { SafeImage } from '@/components/safe-image';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
-import { Briefcase, FolderOpen, IdCard, ListChecks } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Briefcase, FolderOpen, IdCard, ListChecks, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { type WizardCatalogos } from './catalogos';
 import { Paso1DatosPersonales } from './paso-1-datos-personales';
 import { Paso2RequisitosCargo } from './paso-2-requisitos-cargo';
 import { Paso3InformacionPuesto } from './paso-3-informacion-puesto';
 import { Paso4Archivos } from './paso-4-archivos';
+import PhotoOverlay from './components/PhotoOverlay';
 import { type StepDefinition, Stepper } from './stepper';
 import { type ColaboradorRecord, type UsuarioVinculable } from './types';
 
@@ -77,14 +78,53 @@ export default function ColaboradorWizard({
         { title: nombre, href: '#' },
     ];
 
+    // State and ref for photo handling are now managed by PhotoOverlay component
+    const [fotoLocal, setFotoLocal] = useState<string | null>(null);
+    const [fotoEliminada, setFotoEliminada] = useState(false);
+
+
+    // Cuando cambia el colaborador (tras guardar paso 1), resetear estados locales
+    useEffect(() => {
+        setFotoLocal(null);
+        setFotoEliminada(false);
+    }, [colaborador?.id, colaborador?.imagen]);
+
+    const fotoSrc = fotoLocal
+        ?? (!fotoEliminada && colaborador?.imagen
+            ? (String(colaborador.imagen).startsWith('/') ? String(colaborador.imagen) : `/storage/${colaborador.imagen}`)
+            : null);
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={colaborador ? `Editar ${nombre}` : 'Nuevo colaborador'} />
             <div className="flex h-full flex-1 flex-col gap-6 rounded-xl p-4">
-                <HeadingSmall
-                    title={colaborador ? nombre : 'Nuevo colaborador'}
-                    description="Completa cada paso y guarda tu avance — puedes salir y retomarlo más tarde desde la lista de colaboradores."
-                />
+                <div className="flex items-center gap-4">
+                    {/* Photo overlay component */}
+                    <PhotoOverlay
+                        colaboradorId={colaborador?.id}
+                        fotoSrc={fotoSrc}
+                        fotoAlt={nombre}
+                        onChange={(file) => {
+                            setFotoLocal(URL.createObjectURL(file));
+                            setFotoEliminada(false);
+                            const inputPaso1 = document.getElementById('wizard-foto-input') as HTMLInputElement | null;
+                            if (inputPaso1) {
+                                const dt = new DataTransfer();
+                                dt.items.add(file);
+                                inputPaso1.files = dt.files;
+                                inputPaso1.dispatchEvent(new Event('change', { bubbles: true }));
+                            }
+                        }}
+                        onDelete={() => {
+                            setFotoEliminada(true);
+                            setFotoLocal(null);
+                        }}
+                    />
+                    <div>
+                        <h2 className="text-lg font-semibold">{colaborador ? nombre : 'Nuevo colaborador'}</h2>
+                        <p className="text-muted-foreground text-sm">Completa cada paso y guarda tu avance — puedes salir y retomarlo más tarde desde la lista de colaboradores.</p>
+                    </div>
+                </div>
 
                 <Stepper
                     steps={STEPS}

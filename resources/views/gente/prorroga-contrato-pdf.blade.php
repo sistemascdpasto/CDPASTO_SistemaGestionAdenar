@@ -4,61 +4,62 @@
     <meta charset="utf-8">
     <title>Preaviso — {{ $colaborador->nombre_completo }}</title>
     <style>
-        @page { margin: 0; }
+        @page { margin: 2.54cm; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: DejaVu Sans, sans-serif; font-size: 9.5px; color: #000; line-height: 1.45; padding: 40px 60px 45px 60px; }
+        body { font-family: Arial, sans-serif; font-size: 11pt; color: #000; line-height: 1.15; text-align: justify; padding: 2.54cm; }
 
-        p { margin-bottom: 14px; text-align: justify; }
+        p { margin-bottom: 11pt; }
 
-        /* Logo */
-        .logo-wrap { text-align: right; height: 70px; }
-        .logo-wrap img { height: 62px; }
-
-        /* Fecha y destinatario */
-        .fecha { margin-top: 10px; margin-bottom: 14px; }
-        .destinatario { margin-bottom: 18px; }
+        /* Logo + Fecha en la misma línea */
+        .cabecera { width: 100%; border-collapse: collapse; margin-bottom: 8pt; }
+        .cabecera td { vertical-align: middle; padding: 0; }
+        .cabecera .col-fecha { text-align: left; }
+        .cabecera .col-logo { text-align: right; width: 160pt; }
+        .cabecera .col-logo img { height: 60pt; }
+        .destinatario { margin-bottom: 8pt; text-align: left; }
 
         /* Referente */
-        .referente { text-align: right; margin-bottom: 18px; padding-right: 0; }
-        .referente span { display: inline-block; width: 78%; text-align: left; }
+        .referente-box { margin-top: 20pt; margin-bottom: 11pt; text-align: center; font-weight: bold; }
 
         /* Bloque inferior: firma + recibido */
-        .tabla-pie { width: 100%; border-collapse: collapse; margin-top: 6px; }
+        .tabla-pie { width: 100%; border-collapse: collapse; margin-top: 6pt; }
         .tabla-pie td { vertical-align: top; }
         .col-izq { width: 52%; }
         .col-der { width: 48%; }
 
-        .firma-nombre { font-weight: bold; margin-top: 22px; }
+        .firma-nombre { font-weight: bold; margin-top: 22pt; }
 
         /* Cuadro RECIBIDO */
         .recibido { width: 100%; border-collapse: collapse; }
         .recibido td { border: 1px solid #000; padding: 3px 5px; }
-        .recibido .titulo { text-align: center; font-size: 9px; }
+        .recibido .titulo { text-align: center; font-size: 9pt; }
         .recibido .espacio { height: 48px; }
-        .recibido .nombre { text-align: center; font-weight: bold; font-size: 8px; }
-        .recibido .dma { width: 33.33%; font-size: 9px; }
+        .recibido .nombre { text-align: center; font-weight: bold; font-size: 8pt; }
+        .recibido .dma { width: 33.33%; font-size: 9pt; }
 
         /* Dirección al pie */
-        .direccion { margin-top: 55px; text-align: center; font-family: "DejaVu Serif", serif; font-weight: bold; font-size: 9.5px; }
+        .direccion { margin-top: 40pt; text-align: center; font-weight: bold; font-size: 11pt; }
     </style>
 </head>
 <body>
 
-    {{-- Logo --}}
-    <div class="logo-wrap">
-        @php
-            $logoPath = public_path('images/logo-adenar.png');
-            $logo = file_exists($logoPath)
-                ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath))
-                : null;
-        @endphp
-        @if($logo)
-            <img src="{{ $logo }}" alt="ADENAR S.A.S.">
-        @endif
-    </div>
-
-    {{-- Fecha --}}
-    <div class="fecha">San Juan de Pasto, {{ $fechaEmision }}.</div>
+    {{-- Encabezado: Fecha izquierda + Logo derecha a la misma altura --}}
+    @php
+        $logoPath = public_path('images/adenarLogo.jpg');
+        $logo = file_exists($logoPath)
+            ? 'data:image/jpeg;base64,' . base64_encode(file_get_contents($logoPath))
+            : null;
+    @endphp
+    <table class="cabecera">
+        <tr>
+            <td class="col-fecha">San Juan de Pasto, {{ $fechaEmision }}.</td>
+            <td class="col-logo">
+                @if($logo)
+                    <img src="{{ $logo }}" alt="ADENAR S.A.S.">
+                @endif
+            </td>
+        </tr>
+    </table>
 
     {{-- Destinatario --}}
     <div class="destinatario">
@@ -67,10 +68,10 @@
         Trabajador ADENAR S.A.S
     </div>
 
-    {{-- Referente --}}
-    <div style="margin-left: 32%; margin-bottom: 18px;">
-    Referente: Preaviso-Terminación de la relación laboral
-</div>
+    {{-- Referente en cuadro centrado --}}
+    <div class="referente-box">
+        Referente: Preaviso-Terminación de la relación laboral
+    </div>
 
     {{-- Cuerpo --}}
     <p>
@@ -81,7 +82,7 @@
         identificada con NIT No. {{ $empresa['nit'] ?? '900445467-0' }},
         por medio del presente escrito me permito informar la decisión de
         <strong>NO PRORROGAR</strong> el término del contrato de trabajo firmado el
-        {{ $colaborador->fecha_ingreso_empresa?->translatedFormat('j \d\e F \d\e Y') ?? '—' }}; con prórroga {{ isset($fechaProrroga) ? 'del '.$fechaProrroga.' ' : '' }}entre usted y la
+        {{ $colaborador->fecha_ingreso_empresa ? \Illuminate\Support\Carbon::parse($colaborador->fecha_ingreso_empresa)->locale('es')->isoFormat('D [de] MMMM [de] YYYY') : '—' }}; con prórroga {{ isset($fechaProrroga) ? 'del '.$fechaProrroga.' ' : '' }}entre usted y la
         sociedad que represento y cuya fecha de terminación obedece el día
         {{ $nuevaFechaFinalizacion }}.
     </p>
