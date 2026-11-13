@@ -1091,12 +1091,11 @@ class ContratosController extends Controller
 
         // Fecha fin: última prórroga o fecha_fin del último contrato
         $fechaFinRaw = $ultimaProrroga?->fecha_nueva ?? $ultimoContrato?->fecha_fin;
-        $fechaFin = $fechaFinRaw
-            ? Carbon::parse($fechaFinRaw)->locale('es')->isoFormat('D [de] MMMM [de] YYYY')
-            : '—';
 
         // Fecha de hoy (día que se descarga = fecha de firma)
         $hoy = now()->locale('es');
+        $fechaFin = $this->fechaFinalParaDescarga($fechaFinRaw, $hoy)
+            ?->locale('es')->isoFormat('D [de] MMMM [de] YYYY') ?? '—';
         $fechaEmision = $hoy->isoFormat('D [de] MMMM [de] YYYY');
         $diaFirma     = $hoy->day;
         $mesFirma     = $hoy->isoFormat('MMMM');
@@ -1153,12 +1152,11 @@ class ContratosController extends Controller
 
         // Fecha fin: última prórroga o fecha_fin del último contrato
         $fechaFinRaw = $ultimaProrroga?->fecha_nueva ?? $ultimoContrato?->fecha_fin;
-        $fechaFin = $fechaFinRaw
-            ? Carbon::parse($fechaFinRaw)->locale('es')->isoFormat('D [de] MMMM [de] YYYY')
-            : '—';
 
         // Fecha de hoy
         $hoy = now()->locale('es');
+        $fechaFin = $this->fechaFinalParaDescarga($fechaFinRaw, $hoy)
+            ?->locale('es')->isoFormat('D [de] MMMM [de] YYYY') ?? '—';
         $fechaEmision = $hoy->isoFormat('D [de] MMMM [de] YYYY');
         $diaFirma     = $hoy->day;
         $mesFirma     = $hoy->isoFormat('MMMM');
@@ -1175,7 +1173,8 @@ class ContratosController extends Controller
                 'area'         => $c->area,
                 'perfil'       => $c->perfil,
                 'fecha_inicio' => $c->fecha_inicio?->locale('es')->isoFormat('D [de] MMMM [de] YYYY'),
-                'fecha_fin'    => $c->fecha_fin?->locale('es')->isoFormat('D [de] MMMM [de] YYYY'),
+                'fecha_fin'    => $this->fechaFinalParaDescarga($c->fecha_fin, $hoy)
+                    ?->locale('es')->isoFormat('D [de] MMMM [de] YYYY'),
                 'estado'       => $c->estado,
             ]);
 
@@ -1193,6 +1192,20 @@ class ContratosController extends Controller
         $nombreArchivo = 'certificado-laboral-con-funciones-'.str($colaborador->nombre_completo)->slug().'.pdf';
 
         return $pdf->download($nombreArchivo);
+    }
+
+    private function fechaFinalParaDescarga(
+        CarbonInterface|string|null $fechaFinal,
+        Carbon $fechaDescarga,
+    ): ?Carbon {
+        if ($fechaFinal === null) {
+            return null;
+        }
+
+        $fechaFinal = Carbon::parse($fechaFinal)->startOfDay();
+        $fechaDescarga = $fechaDescarga->copy()->startOfDay();
+
+        return $fechaFinal->greaterThan($fechaDescarga) ? $fechaDescarga : $fechaFinal;
     }
 
 

@@ -238,7 +238,6 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
     });
     const [guardandoContratoHistorial, setGuardandoContratoHistorial] = useState(false);
     const [eliminandoContratoHistorial, setEliminandoContratoHistorial] = useState<number | null>(null);
-    const [eliminandoAntecedente, setEliminandoAntecedente] = useState(false);
     const [prorrogaEnEdicion, setProrrogaEnEdicion] = useState<number | null>(null);
     const [eliminandoId, setEliminandoId] = useState<number | null>(null);
     const [subiendoDocProrroga, setSubiendoDocProrroga] = useState<number | null>(null);
@@ -414,22 +413,6 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
         });
     };
 
-    const handleEliminarAntecedente = () => {
-        if (
-            !confirm(
-                '¿Eliminar el registro del contrato anterior? Se borrarán el cargo y la fecha laboral anteriores, sin modificar el contrato actual.',
-            )
-        ) {
-            return;
-        }
-
-        setEliminandoAntecedente(true);
-        router.delete(route('gente.contratos.antecedente.destroy', colaborador.id), {
-            preserveScroll: true,
-            onFinish: () => setEliminandoAntecedente(false),
-        });
-    };
-
     const cancelarEdicionContrato = () => {
         limpiarErroresContrato();
         setContratoEnEdicion(false);
@@ -486,7 +469,6 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
             .map((documento) => [documento.contrato_id, documento]),
     );
     const documentosSinContrato = documentosContrato.filter((documento) => documento.contrato_id == null);
-    const tieneRetiroPrevio = Boolean(colaborador.fecha_ultima_laboral);
     const historialActivaciones = colaborador.historial_activaciones ?? [];
     const prorrogas = colaborador.prorrogas ?? [];
     const historialCargos = colaborador.historial_cargos ?? [];
@@ -878,34 +860,6 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                                         </TableCell>
                                                     </TableRow>
                                                 ))}
-                                                {tieneRetiroPrevio && (
-                                                    <TableRow>
-                                                        <TableCell>—</TableCell>
-                                                        <TableCell>{formatFecha(colaborador.fecha_ultima_laboral)}</TableCell>
-                                                        <TableCell>{colaborador.cargo_anterior || '—'}</TableCell>
-                                                        <TableCell>
-                                                            {colaborador.motivo_retiro ? `Retiro: ${colaborador.motivo_retiro}` : 'Contrato anterior'}
-                                                        </TableCell>
-                                                        <TableCell>Finalizado</TableCell>
-                                                        <TableCell>—</TableCell>
-                                                        <TableCell>
-                                                            <Button
-                                                                type="button"
-                                                                variant="destructive"
-                                                                size="icon"
-                                                                disabled={eliminandoAntecedente}
-                                                                onClick={handleEliminarAntecedente}
-                                                                title="Eliminar"
-                                                            >
-                                                                {eliminandoAntecedente ? (
-                                                                    <LoaderCircle className="size-4 animate-spin" />
-                                                                ) : (
-                                                                    <Trash2 className="size-4" />
-                                                                )}
-                                                            </Button>
-                                                        </TableCell>
-                                                    </TableRow>
-                                                )}
                                             </>
                                         ) : tieneDatosContrato ? (
                                             <>
@@ -1077,34 +1031,6 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                                         </div>
                                                     </TableCell>
                                                 </TableRow>
-                                                {tieneRetiroPrevio && (
-                                                    <TableRow>
-                                                        <TableCell>—</TableCell>
-                                                        <TableCell>{formatFecha(colaborador.fecha_ultima_laboral)}</TableCell>
-                                                        <TableCell>{colaborador.cargo_anterior || '—'}</TableCell>
-                                                        <TableCell>
-                                                            {colaborador.motivo_retiro ? `Retiro: ${colaborador.motivo_retiro}` : 'Contrato anterior'}
-                                                        </TableCell>
-                                                        <TableCell>Finalizado</TableCell>
-                                                        <TableCell>—</TableCell>
-                                                        <TableCell>
-                                                            <Button
-                                                                type="button"
-                                                                variant="destructive"
-                                                                size="icon"
-                                                                disabled={eliminandoAntecedente}
-                                                                onClick={handleEliminarAntecedente}
-                                                                title="Eliminar"
-                                                            >
-                                                                {eliminandoAntecedente ? (
-                                                                    <LoaderCircle className="size-4 animate-spin" />
-                                                                ) : (
-                                                                    <Trash2 className="size-4" />
-                                                                )}
-                                                            </Button>
-                                                        </TableCell>
-                                                    </TableRow>
-                                                )}
                                             </>
                                         ) : (
                                             <TableRow>
