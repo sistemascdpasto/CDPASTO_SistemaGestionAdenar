@@ -45,12 +45,6 @@
             margin-bottom: 6pt;
         }
 
-        .cargo-encabezado .cargo-fechas {
-            font-weight: normal;
-            font-size: 9pt;
-            color: #333;
-        }
-
         .funciones-lista {
             margin-left: 20pt;
             margin-top: 4pt;
@@ -143,16 +137,6 @@
                     array_map('trim', preg_split('/\r\n|\r|\n/', $cargoItem['perfil'])),
                     fn($l) => $l !== ''
                 ));
-
-                // Construir etiqueta de fechas
-                $fechasCargo = '';
-                if (!empty($cargoItem['fecha_inicio']) || !empty($cargoItem['fecha_fin'])) {
-                    $fechasCargo = '(' . ($cargoItem['fecha_inicio'] ?? '—');
-                    if (!empty($cargoItem['fecha_fin'])) {
-                        $fechasCargo .= ' — ' . $cargoItem['fecha_fin'];
-                    }
-                    $fechasCargo .= '.)';
-                }
             @endphp
 
             <div class="cargo-bloque">
@@ -160,9 +144,6 @@
                     {{ mb_strtoupper($cargoItem['cargo']) }}
                     @if(!empty($cargoItem['area']))
                         &mdash; {{ $cargoItem['area'] }}
-                    @endif
-                    @if($fechasCargo)
-                        <span class="cargo-fechas">&nbsp;&nbsp;{{ $fechasCargo }}</span>
                     @endif
                 </div>
 

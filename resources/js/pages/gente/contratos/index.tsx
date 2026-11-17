@@ -65,7 +65,7 @@ function calcularEstadoContrato(
     fechaRetiro: string | null,
     tieneFinalizacion = false,
 ): { label: string; variant: 'default' | 'destructive' | 'secondary' | 'outline' } {
-    if (tieneFinalizacion) return { label: 'Finalizado', variant: 'secondary' };
+    if (tieneFinalizacion) return { label: 'Inactivo', variant: 'secondary' };
     if (!fechaRetiro)      return { label: 'Sin fecha fin', variant: 'secondary' };
     const hoy    = new Date();
     const retiro = new Date(fechaRetiro);

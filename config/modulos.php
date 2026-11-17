@@ -84,7 +84,7 @@ return [
         'sac' => ['label' => 'SAC', 'roles' => ['Gente', 'Seguridad', 'Reparto', 'Flota']],
         'contratos' => ['label' => 'Contratos', 'roles' => ['Gente', 'Contratos']],
         'asistencia-geovictoria' => ['label' => 'Asistencia GeoVictoria', 'roles' => ['Gente', 'Reparto']],
-        'alertas' => 'Alertas',
+        'alertas' => ['label' => 'Alertas', 'roles' => ['Contratos']],
     ],
 
     'flota' => [

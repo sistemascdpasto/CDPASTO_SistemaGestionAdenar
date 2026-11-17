@@ -10,9 +10,10 @@ Artisan::command('inspire', function () {
 
 Schedule::command('seguridad:revisar-calibraciones')->daily();
 // Vencimiento de contratos (Gente / Contratos):
-// 07:00: Notificación general matutina a todos los usuarios con rol Contratos
-// 12:00: Notificación de mediodía únicamente a usuarios con casilla de 3 veces al día marcada
-// 17:00: Notificación de la tarde únicamente a usuarios con casilla de 3 veces al día marcada
+// 07:00: Correo agrupado a Administrador + usuarios con rol Contratos
+// 12:00: Ídem, solo a quienes tienen alertas_contratos_tres_veces_dia = true
+// 17:00: Ídem, solo a quienes tienen alertas_contratos_tres_veces_dia = true
+// Solo se incluyen colaboradores cuya alerta retiro_proximo esté pendiente (atendida = false).
 Schedule::command('seguridad:revisar-vencimiento-contratos')->dailyAt('07:00');
 Schedule::command('seguridad:revisar-vencimiento-contratos --solo-frecuentes')->dailyAt('12:00');
 Schedule::command('seguridad:revisar-vencimiento-contratos --solo-frecuentes')->dailyAt('17:00');

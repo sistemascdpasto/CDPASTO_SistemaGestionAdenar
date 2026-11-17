@@ -27,14 +27,19 @@ use Illuminate\Support\Facades\Route;
 // El grupo con "create" se registra ANTES que el de solo lectura (que trae
 // "show", ruta comodín colaboradores/{colaborador}) para que Laravel no
 // intente resolver GET colaboradores/create como si "create" fuera un id.
-Route::middleware(['auth', 'active', 'role:Administrador|Gente|Contratos', 'submodule.access'])
+Route::middleware(['auth', 'active', 'role:Administrador|Contratos', 'submodule.access'])
     ->prefix('modules/gente')
     ->name('gente.')
     ->group(function () {
         Route::get('alertas', [AlertaController::class, 'index'])->name('alertas.index');
         Route::patch('alertas/{alerta}/atender', [AlertaController::class, 'atender'])->name('alertas.atender');
         Route::delete('alertas/{alerta}', [AlertaController::class, 'destroy'])->name('alertas.destroy');
+    });
 
+Route::middleware(['auth', 'active', 'role:Administrador|Gente|Contratos', 'submodule.access'])
+    ->prefix('modules/gente')
+    ->name('gente.')
+    ->group(function () {
         // Rutas específicas de "colaboradores" antes del resource para que no
         // choquen con la ruta comodín colaboradores/{colaborador}.
         Route::get('colaboradores/referencias/departamentos', [ReferenciaExternaController::class, 'departamentos'])

@@ -2,27 +2,27 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Gente\ContratoProrroga;
 use App\Models\Seguridad\Alerta;
 use App\Models\Seguridad\Colaborador;
-use App\Services\Seguridad\AlertaNotifier;
+use App\Services\Gente\ContratosNotifier;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 class RevisarVencimientoContratos extends Command
 {
-    protected $signature = 'seguridad:revisar-vencimiento-contratos 
-                            {--force : Reenviar notificación a usuarios con rol Contratos aunque la alerta ya exista}
+    protected $signature = 'seguridad:revisar-vencimiento-contratos
                             {--solo-frecuentes : Notificar únicamente a usuarios con la casilla de 3 veces al día marcada}';
 
-    protected $description = 'Genera alertas para colaboradores cuyo contrato (o última prórroga) está próximo a vencer (HU03)';
+    protected $description = 'Envía correo con los contratos próximos a vencer que tengan alerta activa (HU03). Se ejecuta 3 veces al día vía scheduler.';
 
     public function handle(): int
     {
         $diasAnticipacion = (int) config('seguridad.dias_alerta_vencimiento_contrato');
-        $limite = Carbon::now()->addDays($diasAnticipacion);
-        $procesadas = 0;
-        $soloFrecuentes = (bool) $this->option('solo-frecuentes');
+        $limite           = Carbon::now()->addDays($diasAnticipacion);
+        $soloFrecuentes   = (bool) $this->option('solo-frecuentes');
+
+        $contratos = new Collection();
 
         Colaborador::query()
             ->completos()
@@ -30,17 +30,15 @@ class RevisarVencimientoContratos extends Command
             ->whereNotNull('fecha_retiro_empresa')
             ->whereDoesntHave('prorrogas', fn ($q) => $q->where('tipo', 'finalizacion'))
             ->with(['prorrogas' => fn ($q) => $q->where('tipo', 'prorroga')->orderByDesc('created_at')])
-            ->each(function (Colaborador $colaborador) use ($limite, &$procesadas, $soloFrecuentes) {
-                // Usar la fecha_nueva de la última prórroga si existe,
-                // igual que como lo muestra la pantalla de contratos
-                // (fecha_vencimiento_vigente = $ultimaProrroga?->fecha_nueva ?? fecha_retiro_empresa).
-                $ultimaProrroga = $colaborador->prorrogas->first();
+            ->each(function (Colaborador $colaborador) use ($limite, &$contratos) {
+                $ultimaProrroga   = $colaborador->prorrogas->first();
                 $fechaVencimiento = $ultimaProrroga?->fecha_nueva ?? $colaborador->fecha_retiro_empresa;
 
                 if (! $fechaVencimiento || $fechaVencimiento->gt($limite)) {
                     return;
                 }
 
+                // Crear la alerta en BD si no existe una pendiente
                 $alerta = Alerta::query()
                     ->where('colaborador_id', $colaborador->id)
                     ->where('tipo', 'retiro_proximo')
@@ -49,17 +47,27 @@ class RevisarVencimientoContratos extends Command
 
                 if (! $alerta) {
                     $alerta = Alerta::create([
-                        'tipo' => 'retiro_proximo',
+                        'tipo'           => 'retiro_proximo',
                         'colaborador_id' => $colaborador->id,
-                        'mensaje' => "El contrato de {$colaborador->nombre_completo} vence el {$fechaVencimiento->toDateString()}.",
+                        'mensaje'        => "El contrato de {$colaborador->nombre_completo} vence el {$fechaVencimiento->toDateString()}.",
                     ]);
                 }
 
-                AlertaNotifier::notificar($alerta, $soloFrecuentes);
-                $procesadas++;
+                // Solo incluir en el correo si la alerta sigue activa (pendiente)
+                if (! $alerta->atendida) {
+                    $contratos->push([
+                        'nombre_completo'   => $colaborador->nombre_completo,
+                        'fecha_vencimiento' => $fechaVencimiento,
+                    ]);
+                }
             });
 
-        $this->info("Alertas de vencimiento de contrato procesadas/notificadas: {$procesadas}");
+        if ($contratos->isNotEmpty()) {
+            $contratos = $contratos->sortBy('fecha_vencimiento')->values();
+            ContratosNotifier::notificarVencimientos($contratos, $soloFrecuentes);
+        }
+
+        $this->info("Contratos con alerta activa notificados: {$contratos->count()}");
 
         return self::SUCCESS;
     }

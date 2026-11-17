@@ -69,7 +69,21 @@ return Application::configure(basePath: dirname(__DIR__))
             $status = $response->getStatusCode();
 
             if ($status === 403) {
-                return Inertia::render('errors/403')->toResponse($request)->setStatusCode(403);
+                $flash = [
+                    'type'    => 'error',
+                    'message' => 'No tienes permiso para acceder a esta sección.',
+                ];
+
+                // Si viene de Inertia o hay un referer, regresar a la página anterior.
+                // Si no (acceso directo por URL sin historial), ir al dashboard.
+                $previous = url()->previous();
+                $current  = $request->url();
+
+                $destino = ($previous && $previous !== $current)
+                    ? redirect($previous)
+                    : redirect()->route('dashboard');
+
+                return $destino->with('status', $flash);
             }
 
             if ($status === 419) {

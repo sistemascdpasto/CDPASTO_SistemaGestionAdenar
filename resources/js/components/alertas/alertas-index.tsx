@@ -3,9 +3,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ProrrogarContratoDialog } from '@/pages/gente/colaboradores/prorrogar-contrato-dialog';
 import { Link, router } from '@inertiajs/react';
-import { CalendarPlus, Check, FileDown, X } from 'lucide-react';
+import { Check, X } from 'lucide-react';
 
 const PILAR_LABELS: Record<string, string> = {
     seguridad: 'Seguridad',
@@ -117,57 +116,7 @@ export default function AlertasIndex({
                                 <TableCell className="text-right">
                                     <div className="flex justify-end gap-1">
                                         {!alerta.atendida && (
-                                            <>
-                                                {alerta.tipo === 'retiro_proximo' && alerta.colaborador && (
-                                                    <>
-                                                        <ProrrogarContratoDialog
-                                                            colaboradorId={alerta.colaborador.id}
-                                                            nombreCompleto={`${alerta.colaborador.nombres} ${alerta.colaborador.apellidos}`}
-                                                            fechaActual={alerta.colaborador.fecha_retiro_empresa}
-                                                            cantidadProrrogas={alerta.colaborador.cantidad_prorrogas}
-                                                            trigger={
-                                                                <Button
-                                                                    variant="outline"
-                                                                    size="sm"
-                                                                    className="gap-1.5 border-0 bg-amber-600 text-white hover:bg-amber-700"
-                                                                >
-                                                                    <CalendarPlus className="h-3.5 w-3.5" />
-                                                                    Prorrogar
-                                                                </Button>
-                                                            }
-                                                        />
-                                                        <ProrrogarContratoDialog
-                                                            colaboradorId={alerta.colaborador.id}
-                                                            nombreCompleto={`${alerta.colaborador.nombres} ${alerta.colaborador.apellidos}`}
-                                                            fechaActual={alerta.colaborador.fecha_retiro_empresa}
-                                                            cantidadProrrogas={alerta.colaborador.cantidad_prorrogas}
-                                                            trigger={
-                                                                <Button
-                                                                    variant="outline"
-                                                                    size="sm"
-                                                                    className="gap-1.5 border-red-300 text-red-700 hover:bg-red-50 dark:border-red-700 dark:text-red-400"
-                                                                >
-                                                                    Finalizar
-                                                                </Button>
-                                                            }
-                                                        />
-                                                        <Button variant="outline" size="sm" asChild>
-                                                            <Link href={`/modules/gente/contratos/${alerta.colaborador.id}`}>Ver</Link>
-                                                        </Button>
-                                                        <Button variant="outline" size="sm" asChild>
-                                                            <a
-                                                                href={`/modules/gente/contratos/${alerta.colaborador.id}/prorroga-pdf${alerta.colaborador.fecha_retiro_empresa ? `?fecha=${alerta.colaborador.fecha_retiro_empresa}` : ''}`}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                            >
-                                                                <FileDown className="h-3.5 w-3.5" />
-                                                                PDF
-                                                            </a>
-                                                        </Button>
-                                                    </>
-                                                )}
-                                                <IconActionButton icon={Check} label="Marcar como atendida" onClick={() => atender(alerta)} />
-                                            </>
+                                            <IconActionButton icon={Check} label="Marcar como atendida" onClick={() => atender(alerta)} />
                                         )}
                                         <button
                                             type="button"

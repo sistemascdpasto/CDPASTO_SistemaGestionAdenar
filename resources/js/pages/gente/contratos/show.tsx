@@ -174,7 +174,7 @@ function estadoContrato(
     tieneFinalizacion = false,
 ): { label: string; variant: 'default' | 'destructive' | 'secondary' | 'outline' } {
     if (tieneFinalizacion) {
-        return { label: 'Finalizado', variant: 'secondary' };
+        return { label: 'Inactivo', variant: 'secondary' };
     }
     if (!fechaRetiro) return { label: 'Sin fecha fin', variant: 'secondary' };
     const hoy = new Date();
@@ -1200,10 +1200,11 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                                                     size="icon"
                                                                     className="text-destructive hover:bg-destructive/10 size-8"
                                                                     disabled={
+                                                                        tieneFinalizacion ||
                                                                         eliminandoProrroga === p.id || prorrogaEnEdicion !== null || guardandoProrroga
                                                                     }
                                                                     onClick={() => handleEliminarProrroga(p)}
-                                                                    title="Eliminar registro de prórroga"
+                                                                    title={tieneFinalizacion ? 'No se puede eliminar: contrato finalizado' : 'Eliminar registro de prórroga'}
                                                                     aria-label={`Eliminar ${p.tipo === 'finalizacion' ? 'finalización' : 'prórroga'}`}
                                                                 >
                                                                     {eliminandoProrroga === p.id ? (
@@ -1232,9 +1233,9 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                                                         variant="ghost"
                                                                         size="icon"
                                                                         className="size-6 text-red-500 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30"
-                                                                        disabled={eliminandoDocProrroga === p.id}
+                                                                        disabled={tieneFinalizacion || eliminandoDocProrroga === p.id}
                                                                         onClick={() => handleEliminarDocumentoProrroga(p.id)}
-                                                                        title="Eliminar documento de prórroga"
+                                                                        title={tieneFinalizacion ? 'No se puede eliminar: contrato finalizado' : 'Eliminar documento de prórroga'}
                                                                     >
                                                                         {eliminandoDocProrroga === p.id ? (
                                                                             <LoaderCircle className="size-3.5 animate-spin" />
@@ -1246,6 +1247,7 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                                             ) : (
                                                                 <div
                                                                     onDragOver={(e) => {
+                                                                        if (tieneFinalizacion) return;
                                                                         e.preventDefault();
                                                                         e.stopPropagation();
                                                                         setDraggingId(p.id);
@@ -1259,15 +1261,19 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                                                         e.preventDefault();
                                                                         e.stopPropagation();
                                                                         setDraggingId(null);
+                                                                        if (tieneFinalizacion) return;
                                                                         const file = e.dataTransfer.files?.[0];
                                                                         if (file) handleSubirDocumentoProrroga(p.id, file);
                                                                     }}
-                                                                    onClick={() => fileInputRefs.current[p.id]?.click()}
-                                                                    className={`group flex cursor-pointer items-center justify-center gap-1.5 rounded-md border border-dashed px-2.5 py-1.5 transition-all select-none ${
-                                                                        draggingId === p.id
-                                                                            ? 'border-emerald-500 bg-emerald-50 text-emerald-700 ring-2 ring-emerald-400/20 dark:bg-emerald-950/30 dark:text-emerald-300'
-                                                                            : 'border-muted-foreground/30 hover:bg-muted/40 text-muted-foreground hover:text-foreground hover:border-emerald-500/60'
+                                                                    onClick={() => { if (!tieneFinalizacion) fileInputRefs.current[p.id]?.click(); }}
+                                                                    className={`group flex items-center justify-center gap-1.5 rounded-md border border-dashed px-2.5 py-1.5 transition-all select-none ${
+                                                                        tieneFinalizacion
+                                                                            ? 'cursor-not-allowed border-muted-foreground/20 text-muted-foreground/40'
+                                                                            : draggingId === p.id
+                                                                              ? 'cursor-pointer border-emerald-500 bg-emerald-50 text-emerald-700 ring-2 ring-emerald-400/20 dark:bg-emerald-950/30 dark:text-emerald-300'
+                                                                              : 'cursor-pointer border-muted-foreground/30 hover:bg-muted/40 text-muted-foreground hover:text-foreground hover:border-emerald-500/60'
                                                                     }`}
+                                                                    title={tieneFinalizacion ? 'No se pueden subir documentos: contrato finalizado' : undefined}
                                                                 >
                                                                     <input
                                                                         type="file"
@@ -1374,7 +1380,8 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                                                         variant="ghost"
                                                                         size="icon"
                                                                         className="size-7 text-muted-foreground hover:text-foreground"
-                                                                        title="Editar registro"
+                                                                        title={tieneFinalizacion ? 'No se puede editar: contrato finalizado' : 'Editar registro'}
+                                                                        disabled={tieneFinalizacion}
                                                                         onClick={() => {
                                                                             setActivacionAEditar(item);
                                                                             setModalEditarActivacionOpen(true);
@@ -1387,7 +1394,8 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                                                         variant="ghost"
                                                                         size="icon"
                                                                         className="size-7 text-muted-foreground hover:text-destructive"
-                                                                        title="Eliminar registro"
+                                                                        title={tieneFinalizacion ? 'No se puede eliminar: contrato finalizado' : 'Eliminar registro'}
+                                                                        disabled={tieneFinalizacion}
                                                                         onClick={() => {
                                                                             if (!confirm('¿Eliminar este registro del historial de activación?')) return;
                                                                             router.delete(
@@ -1465,7 +1473,8 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                                                 variant="ghost"
                                                                 size="icon"
                                                                 className="size-7 text-muted-foreground hover:text-foreground"
-                                                                title="Editar registro de cargo"
+                                                                title={tieneFinalizacion ? 'No se puede editar: contrato finalizado' : 'Editar registro de cargo'}
+                                                                disabled={tieneFinalizacion}
                                                                 onClick={() => {
                                                                     setCargoAEditar(h);
                                                                     setModalEditarCargoOpen(true);
@@ -1478,7 +1487,8 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                                                 variant="ghost"
                                                                 size="icon"
                                                                 className="size-7 text-muted-foreground hover:text-destructive"
-                                                                title="Eliminar registro"
+                                                                title={tieneFinalizacion ? 'No se puede eliminar: contrato finalizado' : 'Eliminar registro'}
+                                                                disabled={tieneFinalizacion}
                                                                 onClick={() => {
                                                                     if (!confirm(`¿Eliminar el registro de cargo "${h.cargo}"?`)) return;
                                                                     router.delete(route('gente.colaboradores.cargos.destroy', { colaborador: colaborador.id, cargo: h.id }), {
