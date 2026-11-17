@@ -75,7 +75,6 @@ function TablaOpciones({
     campoExtra?: { label: string; name: string; tipo: 'input' | 'textarea' };
 }) {
     const [editando, setEditando] = useState<OpcionItem | null>(null);
-    const [extraEditando, setExtraEditando] = useState('');
 
     const formCrear = useForm<Record<string, string>>({ nombre: '', ...(campoExtra ? { [campoExtra.name]: '' } : {}) });
     const formEditar = useForm<Record<string, string>>({ nombre: '', ...(campoExtra ? { [campoExtra.name]: '' } : {}) });
@@ -206,7 +205,6 @@ function TablaOpciones({
                                                 if (campoExtra) {
                                                     const val = (op as unknown as Record<string, string>)[campoExtra.name] ?? '';
                                                     formEditar.setData(campoExtra.name, val);
-                                                    setExtraEditando(val);
                                                 }
                                             } else {
                                                 setEditando(null);

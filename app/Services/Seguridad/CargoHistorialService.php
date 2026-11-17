@@ -110,6 +110,7 @@ class CargoHistorialService
         ?string $perfil = null,
         bool $registrarCargoInicial = false,
         ?string $perfilNombre = null,
+        bool $forzarNuevoRegistro = false,
     ): ?string
     {
         if ($registrarCargoInicial && ! $colaborador->cargos()->exists()) {
@@ -134,6 +135,13 @@ class CargoHistorialService
             }
 
             $this->asignar($colaborador, $cargo, $fechaInicio, $area, $perfil, false, $perfilNombre);
+
+            return null;
+        }
+
+        // Sin fecha pero con forzar: agrega nuevo registro sin cerrar el anterior
+        if ($forzarNuevoRegistro) {
+            $this->asignar($colaborador, $cargo, now()->toDateString(), $area, $perfil, true, $perfilNombre);
 
             return null;
         }

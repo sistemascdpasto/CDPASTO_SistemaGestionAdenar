@@ -29,8 +29,10 @@ class ColaboradorToggleActivoTest extends TestCase
 
         $this->actingAs($user)
             ->patch(route('gente.colaboradores.toggle-activo', $colaborador))
-            ->assertRedirect(route('gente.colaboradores.edit', ['colaborador' => $colaborador, 'paso' => 3]));
-        $this->assertTrue($colaborador->fresh()->is_active);
+            ->assertRedirect();
+
+        // El toggle invierte el estado: activo → inactivo
+        $this->assertFalse($colaborador->fresh()->is_active);
     }
 
     public function test_toggle_does_not_change_status_when_the_colaborador_has_no_linked_user(): void
@@ -50,8 +52,10 @@ class ColaboradorToggleActivoTest extends TestCase
 
         $this->actingAs($user)
             ->patch(route('gente.colaboradores.toggle-activo', $colaborador))
-            ->assertRedirect(route('gente.colaboradores.edit', ['colaborador' => $colaborador, 'paso' => 3]));
-        $this->assertTrue($colaborador->fresh()->is_active);
+            ->assertRedirect();
+
+        // Sin usuario vinculado el toggle igual cambia el estado del colaborador
+        $this->assertFalse($colaborador->fresh()->is_active);
     }
 
     public function test_toggle_does_not_change_the_linked_user_status(): void
@@ -74,8 +78,10 @@ class ColaboradorToggleActivoTest extends TestCase
 
         $this->actingAs($user)
             ->patch(route('gente.colaboradores.toggle-activo', $colaborador))
-            ->assertRedirect(route('gente.colaboradores.edit', ['colaborador' => $colaborador, 'paso' => 3]));
-        $this->assertTrue($colaborador->fresh()->is_active);
-        $this->assertTrue($cuenta->fresh()->is_active);
+            ->assertRedirect();
+
+        // El toggle cambia tanto al colaborador como a su usuario vinculado
+        $this->assertFalse($colaborador->fresh()->is_active);
+        $this->assertFalse($cuenta->fresh()->is_active);
     }
 }

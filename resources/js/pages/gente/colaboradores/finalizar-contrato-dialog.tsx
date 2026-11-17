@@ -28,12 +28,14 @@ const TIPOS_BASE = [
 
 interface Props {
     colaboradorId: number;
-    /** Fecha de la última prórroga o del contrato actual (YYYY-MM-DD) */
+    /** Fecha de la última prórroga o del contrato actual (YYYY-MM-DD) — se precarga como valor */
     fechaUltima: string | null;
+    /** Fecha de inicio del contrato vigente (YYYY-MM-DD) — define el mínimo permitido */
+    fechaInicio?: string | null;
     trigger?: React.ReactNode;
 }
 
-export function FinalizarContratoDialog({ colaboradorId, fechaUltima, trigger }: Props) {
+export function FinalizarContratoDialog({ colaboradorId, fechaUltima, fechaInicio, trigger }: Props) {
     const [open, setOpen] = useState(false);
     const [processing, setProcessing] = useState(false);
 
@@ -119,6 +121,11 @@ export function FinalizarContratoDialog({ colaboradorId, fechaUltima, trigger }:
                     </DialogTitle>
                     <DialogDescription className="text-xs">
                         Registra la fecha y el tipo de finalización. El colaborador quedará desactivado automáticamente.
+                        {fechaInicio && fechaUltima && (
+                            <span className="mt-1 block font-medium text-foreground">
+                                Rango permitido: {fechaInicio} — {fechaUltima}
+                            </span>
+                        )}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -131,6 +138,8 @@ export function FinalizarContratoDialog({ colaboradorId, fechaUltima, trigger }:
                             id="finalizar_fecha"
                             type="date"
                             value={fechaRetiro}
+                            min={fechaInicio ?? undefined}
+                            max={fechaUltima ?? undefined}
                             onChange={(e) => setFechaRetiro(e.target.value)}
                             disabled={processing}
                         />

@@ -42,6 +42,7 @@ class UpdateColaboradorPaso3Request extends FormRequest
             'perfil' => ['nullable', 'string'],
             'guardar_historial_cargo' => ['nullable', Rule::in(['si', 'no'])],
             'registrar_cargo_inicial' => ['nullable', 'boolean'],
+            'forzar_nuevo_cargo'      => ['nullable', 'boolean'],
             'cargo_fecha_inicio' => [
                 'nullable',
                 Rule::requiredIf(fn () => $this->cambiaEstado() || $this->boolean('registrar_cargo_inicial')),

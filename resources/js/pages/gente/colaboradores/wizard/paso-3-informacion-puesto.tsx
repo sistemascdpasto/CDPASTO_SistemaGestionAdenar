@@ -98,8 +98,6 @@ export function Paso3InformacionPuesto({
     const [nuevoFechaFin, setNuevoFechaFin] = useState('');
     const [nuevoTipoContrato, setNuevoTipoContrato] = useState('');
     const [nuevoTipoContratoOtro, setNuevoTipoContratoOtro] = useState('');
-    const [nuevoPerfilNombre, setNuevoPerfilNombre] = useState('');
-    const [nuevoPerfil, setNuevoPerfil] = useState('');
     const [deseaCambioCargoArea, setDeseaCambioCargoArea] = useState(false);
     const [cargoBaseEditado, setCargoBaseEditado] = useState(false);
     const [contratosEditables, setContratosEditables] = useState<HistorialContrato[]>(historialContratos.slice(1));
@@ -207,7 +205,7 @@ export function Paso3InformacionPuesto({
             redirect_to: redirectTo ?? '',
             es_nuevo_contrato: esNuevoContrato ? '1' : '0',
             registrar_cargo_inicial: registrarCargoInicial ? '1' : '0',
-            perfil_nombre: esNuevoContrato ? nuevoPerfilNombre : (formData.perfil_nombre ?? ''),
+            perfil_nombre: formData.perfil_nombre ?? '',
             nuevo_fecha_inicio: esNuevoContrato ? nuevoFechaInicio : '',
             nuevo_fecha_fin: esNuevoContrato ? nuevoFechaFin : '',
             nuevo_tipo_contrato: esNuevoContrato ? nuevoTipoContrato : '',
@@ -215,6 +213,7 @@ export function Paso3InformacionPuesto({
             nuevo_area: esNuevoContrato ? (formData.area ?? '') : '',
             nuevo_cargo: esNuevoContrato ? (formData.cargo ?? '') : '',
             guardar_historial_cargo: deseaCambioCargoArea || esNuevoContrato || registrarCargoInicial ? 'si' : 'no',
+            forzar_nuevo_cargo: deseaCambioCargoArea ? '1' : '0',
             cargo_fecha_inicio: deseaCambioCargoArea
                 ? !esNuevoContrato
                     ? formData.cargo_fecha_inicio
@@ -224,7 +223,7 @@ export function Paso3InformacionPuesto({
                   : registrarCargoInicial
                     ? formData.cargo_fecha_inicio
                     : '',
-            perfil: esNuevoContrato ? nuevoPerfil : (formData.perfil ?? ''),
+            perfil: formData.perfil ?? '',
             contratos_editados: JSON.stringify(contratosEditables),
             cargos_editados: JSON.stringify(cargosEditables),
         }));
@@ -831,7 +830,10 @@ export function Paso3InformacionPuesto({
 
                             {!esNuevoContrato ? (
                                 <div className="grid gap-2 sm:col-span-2">
-                                    <Label htmlFor="cargo_fecha_inicio">Fecha efectiva del cambio</Label>
+                                    <Label htmlFor="cargo_fecha_inicio">
+                                        Fecha efectiva del cambio{' '}
+                                        <span className="text-muted-foreground font-normal">(opcional)</span>
+                                    </Label>
                                     <Input
                                         id="cargo_fecha_inicio"
                                         type="date"
@@ -841,8 +843,8 @@ export function Paso3InformacionPuesto({
                                     />
                                     <InputError message={errors.cargo_fecha_inicio} />
                                     <p className="text-muted-foreground text-xs">
-                                        La fecha del cambio es independiente de la fecha de inicio del contrato. El cargo anterior se cerrará un día
-                                        antes de esta fecha.
+                                        Si no indicas una fecha, el nuevo cargo se agrega al historial sin cerrar el anterior.
+                                        Si la indicas, el cargo anterior se cerrará un día antes.
                                     </p>
                                 </div>
                             ) : (

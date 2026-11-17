@@ -1521,6 +1521,7 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                 <FinalizarContratoDialog
                                     colaboradorId={colaborador.id}
                                     fechaUltima={colaborador.fecha_vencimiento_vigente ?? colaborador.fecha_retiro_empresa}
+                                    fechaInicio={colaborador.fecha_ingreso_empresa}
                                 />
                             ) : (
                                 <div />

@@ -624,6 +624,7 @@ class ColaboradorController extends Controller
                 $cargoPerfil,
                 $request->boolean('registrar_cargo_inicial'),
                 $cargoPerfilNombre,
+                $request->boolean('forzar_nuevo_cargo'),
             );
 
         if ($cambioEstado) {
@@ -934,19 +935,35 @@ class ColaboradorController extends Controller
             $documentoNombre = $archivo->getClientOriginalName();
         }
 
-        // Registrar en el historial de prórrogas
-        ContratoProrroga::create([
-            'colaborador_id' => $colaborador->id,
-            'contrato_id' => $contratoDestino?->id,
-            'registrado_por' => $request->user()->id,
-            'fecha_anterior' => $fechaAnteriorSecuencia ?? $nuevaFechaRetiro,
-            'fecha_inicio' => $esFinalizacion ? null : ($datos['fecha_inicio_prorroga'] ?? null),
-            'fecha_nueva' => $nuevaFechaRetiro,
-            'tipo' => $tipo,
-            'observaciones' => $datos['observaciones'] ?? null,
-            'documento_path' => $documentoPath,
-            'documento_nombre' => $documentoNombre,
-        ]);
+        // Registrar en el historial de prórrogas (o actualizar si ya existe una finalización)
+        $finalizacionExistente = $esFinalizacion
+            ? $colaborador->prorrogas()
+                ->where('tipo', 'finalizacion')
+                ->orderByDesc('id')
+                ->first()
+            : null;
+
+        if ($finalizacionExistente) {
+            $finalizacionExistente->update([
+                'fecha_nueva'    => $nuevaFechaRetiro,
+                'observaciones'  => $datos['observaciones'] ?? $finalizacionExistente->observaciones,
+                'documento_path' => $documentoPath ?? $finalizacionExistente->documento_path,
+                'documento_nombre' => $documentoNombre ?? $finalizacionExistente->documento_nombre,
+            ]);
+        } else {
+            ContratoProrroga::create([
+                'colaborador_id'   => $colaborador->id,
+                'contrato_id'      => $contratoDestino?->id,
+                'registrado_por'   => $request->user()->id,
+                'fecha_anterior'   => $fechaAnteriorSecuencia ?? $nuevaFechaRetiro,
+                'fecha_inicio'     => $esFinalizacion ? null : ($datos['fecha_inicio_prorroga'] ?? null),
+                'fecha_nueva'      => $nuevaFechaRetiro,
+                'tipo'             => $tipo,
+                'observaciones'    => $datos['observaciones'] ?? null,
+                'documento_path'   => $documentoPath,
+                'documento_nombre' => $documentoNombre,
+            ]);
+        }
 
         // Atender todas las alertas de retiro pendientes de este colaborador
         Alerta::query()

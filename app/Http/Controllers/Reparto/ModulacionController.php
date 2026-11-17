@@ -306,7 +306,7 @@ class ModulacionController extends Controller
                 $tripulacion = is_array($item->tripulacion) ? $item->tripulacion : [];
                 $responsableRuta = collect($tripulacion)->first(
                     fn ($miembro) => is_array($miembro)
-                        && str_contains(mb_strtoupper(trim((string)($miembro['cargo'] ?? ''))), 'RESPONSABLE')
+                        && str_contains(mb_strtoupper(trim((string)($miembro['cargo'] ?? ''))), 'RESPONSABLE DE REPARTO')
                 );
                 $responsable = trim((string)($responsableRuta['nombres'] ?? ''));
 
