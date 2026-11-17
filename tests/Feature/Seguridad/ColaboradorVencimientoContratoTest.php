@@ -68,11 +68,11 @@ class ColaboradorVencimientoContratoTest extends TestCase
         $this->artisan('seguridad:revisar-vencimiento-contratos')->assertSuccessful();
 
         // El correo debe llegar al rol Contratos
-        Mail::assertSentTo($contratos, ContratosPorVencerMail::class);
+        Mail::assertSent(ContratosPorVencerMail::class, fn ($mail) => $mail->hasTo('contratos@ejemplo.com'));
 
         // No debe llegar a Gente ni a Seguridad
-        Mail::assertNotSentTo($gente, ContratosPorVencerMail::class);
-        Mail::assertNotSentTo($seguridad, ContratosPorVencerMail::class);
+        Mail::assertNotSent(ContratosPorVencerMail::class, fn ($mail) => $mail->hasTo('gente@ejemplo.com'));
+        Mail::assertNotSent(ContratosPorVencerMail::class, fn ($mail) => $mail->hasTo('seguridad@ejemplo.com'));
     }
 
     public function test_it_does_not_duplicate_the_alert_on_a_second_run(): void
