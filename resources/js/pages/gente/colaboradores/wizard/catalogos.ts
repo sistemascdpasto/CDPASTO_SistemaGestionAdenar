@@ -11,10 +11,13 @@ export type WizardCatalogos = {
     epsOpciones: string[];
     afpOpciones: string[];
     arlOpciones: string[];
+    areasOpciones: string[];
     cargos: string[];
     perfilesCargos: Record<string, string>;
     centros: string[];
     centrosTrabajo: string[];
+    centrosOpciones: string[];
+    centrosTrabajOpciones: string[];
     tiposContrato: string[];
     motivosRetiro: string[];
     licenciaCategorias: string[];

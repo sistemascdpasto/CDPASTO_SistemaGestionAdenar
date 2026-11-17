@@ -1,4 +1,4 @@
-﻿
+
 import { SafeImage } from '@/components/safe-image';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -330,8 +330,9 @@ export default function ColaboradorShow({
                             </div>
                         )}
                         <div className="px-5 py-3">
+                            <p className="text-[10px] font-semibold tracking-widest text-emerald-600 uppercase dark:text-emerald-400">Estado</p>
                             <p className={`text-sm font-semibold ${colaborador.is_active ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-600'}`}>
-                                {colaborador.tiene_finalizacion ? 'Finalizado' : colaborador.is_active ? 'Activo' : 'Inactivo'}
+                                {colaborador.is_active ? 'Activo' : 'Inactivo'}
                             </p>
                         </div>
                     </div>
@@ -368,7 +369,7 @@ export default function ColaboradorShow({
                     {canManageColaboradores && !colaborador.tiene_finalizacion && (
                         <Button
                             variant={colaborador.is_active ? 'destructive' : 'default'}
-                            onClick={() => router.get(route('gente.colaboradores.edit', colaborador.id), { paso: 3 })}
+                            onClick={() => router.patch(route('gente.colaboradores.toggle-activo', colaborador.id))}
                         >
                             <Power className="mr-2 size-4" />
                             {colaborador.is_active ? 'Desactivar' : 'Activar'}

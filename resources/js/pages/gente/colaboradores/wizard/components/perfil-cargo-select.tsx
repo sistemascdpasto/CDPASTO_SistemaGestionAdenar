@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useForm } from '@inertiajs/react';
-import { Plus } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import { FormEventHandler, useState } from 'react';
 
 interface PerfilCargoSelectProps {
@@ -48,7 +48,7 @@ export function PerfilCargoSelect({ id, value, perfilesCargos, onChange, disable
                     <SelectTrigger id={id} className="min-w-0 flex-1">
                         <SelectValue placeholder="Selecciona un perfil..." />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent position="item-aligned" className="max-h-64 overflow-y-auto">
                         {Object.keys(perfilesCargos).map((nombre) => (
                             <SelectItem key={nombre} value={nombre}>
                                 {nombre}
@@ -56,6 +56,22 @@ export function PerfilCargoSelect({ id, value, perfilesCargos, onChange, disable
                         ))}
                     </SelectContent>
                 </Select>
+
+                {/* X para quitar el perfil seleccionado */}
+                {value && (
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        title="Quitar perfil"
+                        disabled={disabled}
+                        onClick={() => onChange('', '')}
+                        className="shrink-0 text-muted-foreground hover:text-destructive"
+                    >
+                        <X className="size-4" />
+                    </Button>
+                )}
+
                 <Button type="button" variant="outline" size="icon" title="Agregar perfil" disabled={disabled} onClick={() => setOpen(true)}>
                     <Plus className="size-4" />
                 </Button>

@@ -301,12 +301,15 @@ class ColaboradorController extends Controller
             'afpOpciones' => OpcionCatalogo::opcionesDe('afp'),
             'arlOpciones' => OpcionCatalogo::opcionesDe('arl'),
             'estadosCiviles' => OpcionCatalogo::opcionesDe('estado_civil'),
+            'areasOpciones' => OpcionCatalogo::opcionesDe('area'),
             'tiposContrato' => $catalogos->tiposContrato(),
             'cargosAnteriores' => OpcionCatalogo::opcionesDe('cargo_anterior'),
             'cargos' => $catalogos->cargos(),
             'perfilesCargos' => $catalogos->perfilesCargos(),
             'centros' => config('seguridad.colaboradores.centros'),
             'centrosTrabajo' => config('seguridad.colaboradores.centros_trabajo'),
+            'centrosOpciones' => OpcionCatalogo::opcionesDe('centro'),
+            'centrosTrabajOpciones' => OpcionCatalogo::opcionesDe('centro_trabajo'),
             'motivosRetiro' => config('seguridad.colaboradores.motivos_retiro'),
             'licenciaCategorias' => config('seguridad.colaboradores.licencia_conduccion_categorias'),
             'documentoGrupos' => config('seguridad.documentos_colaborador.grupos'),
@@ -439,6 +442,9 @@ class ColaboradorController extends Controller
 
         $data = $this->resolverOtros($data, [
             'tipo_contrato' => ['tipo_contrato', 'tipo_contrato_otro'],
+            'area'          => ['area', 'area_otro'],
+            'centro'        => ['centro', 'centro_otro'],
+            'centro_trabajo' => ['centro_trabajo', 'centro_trabajo_otro'],
         ]);
         $primerContrato = $colaborador->contratos()
             ->reorder()
@@ -968,10 +974,24 @@ class ColaboradorController extends Controller
             'El contrato ya fue finalizado. No se puede cambiar el estado.',
         );
 
-        return to_route('gente.colaboradores.edit', [
-            'colaborador' => $colaborador,
-            'paso' => 3,
-        ]);
+        $nuevoEstado = ! $colaborador->is_active;
+        $colaborador->update(['is_active' => $nuevoEstado]);
+        $colaborador->user?->update(['is_active' => $nuevoEstado]);
+
+        try {
+            $colaborador->activacionHistorial()->create([
+                'is_active' => $nuevoEstado,
+                'tipo' => $nuevoEstado ? 'activacion' : 'desactivacion',
+                'fecha' => now(),
+                'motivo' => $nuevoEstado ? 'Reactivación de colaborador' : 'Desactivación de colaborador',
+                'observaciones' => $nuevoEstado ? 'Colaborador activado.' : 'Colaborador desactivado.',
+                'user_id' => request()->user()?->id,
+            ]);
+        } catch (\Throwable) {
+            // No interrumpe el flujo
+        }
+
+        return back()->with('status', $colaborador->is_active ? 'Colaborador activado.' : 'Colaborador desactivado.');
     }
 
     /**

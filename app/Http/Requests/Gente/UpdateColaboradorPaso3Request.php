@@ -30,7 +30,8 @@ class UpdateColaboradorPaso3Request extends FormRequest
         $colaborador = $this->route('colaborador');
 
         return [
-            'area' => ['nullable', Rule::in(['Administrativa', 'Operativa'])],
+            'area'      => ['nullable', 'string', 'max:100'],
+            'area_otro' => ['nullable', 'string', 'max:100'],
             'cargo' => [
                 'nullable',
                 Rule::requiredIf(fn () => $this->cambiaEstado() || $this->boolean('registrar_cargo_inicial')),
@@ -53,8 +54,10 @@ class UpdateColaboradorPaso3Request extends FormRequest
             'sena_nit' => ['nullable', 'string', 'max:30'],
             'sena_centro_formacion' => ['nullable', 'string', 'max:150'],
 
-            'centro' => ['nullable', Rule::in(config('seguridad.colaboradores.centros'))],
-            'centro_trabajo' => ['nullable', Rule::in(config('seguridad.colaboradores.centros_trabajo'))],
+            'centro'         => ['nullable', 'string', 'max:100'],
+            'centro_otro'    => ['nullable', 'string', 'max:100'],
+            'centro_trabajo'      => ['nullable', 'string', 'max:100'],
+            'centro_trabajo_otro' => ['nullable', 'string', 'max:100'],
             'fecha_ingreso_empresa' => ['nullable', 'date'],
             'fecha_retiro_empresa' => ['nullable', 'date'],
             'motivo_retiro' => ['nullable', Rule::in(config('seguridad.colaboradores.motivos_retiro'))],
@@ -75,7 +78,8 @@ class UpdateColaboradorPaso3Request extends FormRequest
                 'max:100',
             ],
             'nuevo_cargo' => ['nullable', Rule::requiredIf(fn () => $this->cambiaEstado()), 'string', 'max:100'],
-            'nuevo_area' => ['nullable', Rule::in(['Administrativa', 'Operativa'])],
+            'nuevo_area'      => ['nullable', 'string', 'max:100'],
+            'nuevo_area_otro' => ['nullable', 'string', 'max:100'],
             'nuevo_fecha_inicio' => [
                 'nullable',
                 'required_if:es_nuevo_contrato,1',

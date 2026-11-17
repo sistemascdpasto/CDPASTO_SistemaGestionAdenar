@@ -131,6 +131,28 @@ class ModulacionDeletionTest extends TestCase
                 ->where('exportExcel', true));
     }
 
+    public function test_historial_muestra_al_responsable_de_reparto_en_lugar_del_conductor(): void
+    {
+        $modulacion = $this->crearPlaneacion();
+        ModulacionItem::create([
+            'modulacion_id' => $modulacion->id,
+            'placa' => 'ABC123',
+            'nombres' => 'Carlos Conductor',
+            'cargo' => 'CONDUCTOR DE REPARTO',
+            'tripulacion' => [
+                ['nombres' => 'Carlos Conductor', 'cargo' => 'CONDUCTOR DE REPARTO'],
+                ['nombres' => 'Ana Responsable', 'cargo' => 'RESPONSABLE DE REPARTO'],
+            ],
+            'viajes' => [],
+        ]);
+
+        $this->actingAs($this->usuarioReparto())
+            ->get(route('reparto.modulacion.historial'))
+            ->assertInertia(fn ($page) => $page
+                ->component('reparto/modulacion/historial')
+                ->where('planeaciones.data.0.rutas_detalle.0.responsable', 'Ana Responsable'));
+    }
+
     public function test_tripulacion_recibe_colaboradores_con_su_area_incluyendo_responsable_de_reparto(): void
     {
         Colaborador::create([
@@ -286,21 +308,21 @@ class ModulacionDeletionTest extends TestCase
         );
     }
 
-    public function test_historial_no_depende_de_nombres_de_cargos_para_mostrar_el_responsable(): void
+    public function test_historial_deja_vacio_el_responsable_si_no_hay_responsable_de_reparto(): void
     {
         $modulacion = $this->crearPlaneacion();
         $ruta = $this->crearRuta($modulacion, 'CCC333');
         $ruta->update([
             'tripulacion' => [
-                ['nombres' => 'Primer tripulante', 'cargo' => 'CARGO DINAMICO A'],
-                ['nombres' => 'Segundo tripulante', 'cargo' => 'CARGO DINAMICO B'],
+                ['nombres' => 'Responsable de ruta', 'cargo' => 'RESPONSABLE DE RUTA'],
+                ['nombres' => 'Carlos Conductor', 'cargo' => 'CONDUCTOR DE REPARTO'],
             ],
         ]);
 
         $this->actingAs($this->usuarioReparto())
             ->get(route('reparto.modulacion.historial'))
             ->assertInertia(fn ($page) => $page
-                ->where('planeaciones.data.0.rutas_detalle.0.responsable', 'Primer tripulante'));
+                ->where('planeaciones.data.0.rutas_detalle.0.responsable', ''));
     }
 
     public function test_eliminar_una_ruta_con_otras_rutas_conserva_la_planeacion(): void

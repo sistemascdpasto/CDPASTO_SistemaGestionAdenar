@@ -10,7 +10,7 @@ import { useForm } from '@inertiajs/react';
 import { FormEventHandler, useMemo, useState } from 'react';
 import { DepartamentoCiudadSelect } from './components/departamento-ciudad-select';
 import { PhotoUploader } from './components/photo-uploader';
-import { SelectConOtro } from './components/select-con-otro';
+import { SelectConOtro, SelectSimpleConOtro } from './components/select-con-otro';
 import { SimpleFileField } from './components/simple-file-field';
 import { type ColaboradorRecord, type Paso1FormData, type UsuarioVinculable } from './types';
 import { type WizardCatalogos } from './catalogos';
@@ -138,45 +138,19 @@ export function Paso1DatosPersonales({ colaborador, catalogos, usuarios }: Paso1
                         />
                     </div>
                     <div className="flex-1 grid gap-4 sm:grid-cols-3 content-start">
-                    <div className="grid gap-2">
-                        <Label htmlFor="tipo_documento">Tipo de documento <span className="text-red-600">*</span></Label>
-                        <Select
-                            value={data.tipo_documento}
-                            onValueChange={(value) => setData('tipo_documento', value)}
-                            disabled={processing}
-                        >
-                            <SelectTrigger id="tipo_documento">
-                                <SelectValue placeholder="Selecciona el tipo de documento" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {catalogos.tiposDocumento.map((tipo) => (
-                                    <SelectItem key={tipo} value={tipo}>
-                                        {tipo}
-                                    </SelectItem>
-                                ))}
-                                <SelectSeparator />
-                                <SelectItem value="Otro" className="text-sky-600 font-medium">
-                                    <span className="flex items-center gap-1.5">
-                                        <Plus className="size-3.5" />
-                                        Agregar otro…
-                                    </span>
-                                </SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <InputError message={errors.tipo_documento} />
-
-                        {data.tipo_documento === 'Otro' && (
-                            <div className="grid gap-1.5 border-l-2 border-sky-300 pl-3 dark:border-sky-500/30">
-                                <Input
-                                    placeholder="Escribe el tipo de documento"
-                                    value={data.tipo_documento_otro_label}
-                                    onChange={(e) => setData('tipo_documento_otro_label', e.target.value)}
-                                    disabled={processing}
-                                />
-                                <InputError message={errors.tipo_documento_otro_label} />
-                            </div>
-                        )}
-                    </div>
+                    <SelectSimpleConOtro
+                        id="tipo_documento"
+                        label="Tipo de documento"
+                        options={catalogos.tiposDocumento}
+                        value={data.tipo_documento}
+                        otroValue={data.tipo_documento_otro_label}
+                        onValueChange={(value) => setData('tipo_documento', value)}
+                        onOtroChange={(value) => setData('tipo_documento_otro_label', value)}
+                        otroPlaceholder="Escribe el tipo de documento"
+                        error={errors.tipo_documento}
+                        otroError={errors.tipo_documento_otro_label}
+                        disabled={processing}
+                    />
 
                     <div className="grid gap-2">
                         <Label htmlFor="cedula">
@@ -312,40 +286,19 @@ export function Paso1DatosPersonales({ colaborador, catalogos, usuarios }: Paso1
             <SeccionCard icon={User} titulo="Información personal" tono="azul">
                 <div className="grid gap-4">
                     <div className="grid gap-4 sm:grid-cols-3">
-                    <div className="grid gap-2">
-                        <Label htmlFor="estado_civil">Estado civil</Label>
-                        <Select value={data.estado_civil} onValueChange={(value) => setData('estado_civil', value)} disabled={processing}>
-                            <SelectTrigger id="estado_civil">
-                                <SelectValue placeholder="Selecciona el estado civil" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {catalogos.estadosCiviles.map((estado) => (
-                                    <SelectItem key={estado} value={estado}>
-                                        {estado}
-                                    </SelectItem>
-                                ))}
-                                <SelectSeparator />
-                                <SelectItem value="Otro" className="text-sky-600 font-medium">
-                                    <span className="flex items-center gap-1.5">
-                                        <Plus className="size-3.5" />
-                                        Agregar otro…
-                                    </span>
-                                </SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <InputError message={errors.estado_civil} />
-                        {data.estado_civil === 'Otro' && (
-                            <div className="grid gap-1.5 border-l-2 border-sky-300 pl-3 dark:border-sky-500/30">
-                                <Input
-                                    placeholder="Escribe el estado civil"
-                                    value={data.estado_civil_otro}
-                                    onChange={(e) => setData('estado_civil_otro', e.target.value)}
-                                    disabled={processing}
-                                />
-                                <InputError message={errors.estado_civil_otro} />
-                            </div>
-                        )}
-                    </div>
+                    <SelectSimpleConOtro
+                        id="estado_civil"
+                        label="Estado civil"
+                        options={catalogos.estadosCiviles}
+                        value={data.estado_civil}
+                        otroValue={data.estado_civil_otro}
+                        onValueChange={(value) => setData('estado_civil', value)}
+                        onOtroChange={(value) => setData('estado_civil_otro', value)}
+                        otroPlaceholder="Escribe el estado civil"
+                        error={errors.estado_civil}
+                        otroError={errors.estado_civil_otro}
+                        disabled={processing}
+                    />
                     <div className="grid gap-2">
                         <Label htmlFor="nombre_pareja">Nombre del cónyuge o compañero(a) permanente</Label>
                         <Input

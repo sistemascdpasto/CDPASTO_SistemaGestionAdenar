@@ -51,6 +51,34 @@ Route::middleware(['auth', 'active', 'role:Administrador|Gente|Contratos', 'subm
             ->name('tipos-documento.index');
         Route::post('tipos-documento', [TipoDocumentoController::class, 'store'])
             ->name('tipos-documento.store');
+        Route::patch('tipos-documento/{tipoDocumento}', [TipoDocumentoController::class, 'update'])
+            ->name('tipos-documento.update');
+        Route::delete('tipos-documento/{tipoDocumento}', [TipoDocumentoController::class, 'destroy'])
+            ->name('tipos-documento.destroy');
+
+        // Opciones de catálogo (EPS, AFP, ARL, estado civil, tipo contrato, área, centro, etc.)
+        Route::post('opciones-catalogo', [\App\Http\Controllers\Gente\OpcionCatalogoController::class, 'store'])
+            ->name('opciones-catalogo.store');
+        Route::patch('opciones-catalogo/{opcionCatalogo}', [\App\Http\Controllers\Gente\OpcionCatalogoController::class, 'update'])
+            ->name('opciones-catalogo.update');
+        Route::delete('opciones-catalogo/{opcionCatalogo}', [\App\Http\Controllers\Gente\OpcionCatalogoController::class, 'destroy'])
+            ->name('opciones-catalogo.destroy');
+
+        // Cargos del catálogo (sincronizados desde GeoVictoria + manuales)
+        Route::patch('cargos/{cargo}', [\App\Http\Controllers\Gente\CargoController::class, 'update'])
+            ->name('cargos.update');
+        Route::delete('cargos/{cargo}', [\App\Http\Controllers\Gente\CargoController::class, 'destroy'])
+            ->name('cargos.destroy');
+
+        // Perfiles / funciones de cargo
+        Route::patch('perfiles-cargos/{perfilCargo}', [PerfilCargoController::class, 'update'])
+            ->name('perfiles-cargos.update');
+        Route::delete('perfiles-cargos/{perfilCargo}', [PerfilCargoController::class, 'destroy'])
+            ->name('perfiles-cargos.destroy');
+
+        // Configuración del formulario de colaboradores
+        Route::get('configuracion-catalogo', [\App\Http\Controllers\Gente\ConfiguracionCatalogoController::class, 'index'])
+            ->name('configuracion-catalogo.index');
 
         // Carga masiva desde el Excel de nómina ("BASE ACTUALIZADA").
         Route::post('colaboradores/importar', [ColaboradorImportController::class, 'store'])

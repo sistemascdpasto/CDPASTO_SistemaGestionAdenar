@@ -17,7 +17,7 @@ import { CargoCombobox } from '@/pages/gente/colaboradores/wizard/components/car
 import { type WizardCatalogos } from '@/pages/gente/colaboradores/wizard/catalogos';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { ArrowRight, AlertTriangle, Briefcase, Eye, FileWarning, Pencil, Plus, Search, Trash2, Upload, Users, UserCheck, UserX } from 'lucide-react';
+import { ArrowRight, AlertTriangle, Briefcase, Eye, FileWarning, Pencil, Plus, Search, Settings, Trash2, Upload, Users, UserCheck, UserX } from 'lucide-react';
 import { FormEventHandler, useEffect, useRef, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -172,6 +172,12 @@ export default function ColaboradoresIndex({
                                     </Button>
                                 }
                             />
+                            <Button asChild variant="outline">
+                                <Link href={route('gente.configuracion-catalogo.index')}>
+                                    <Settings className="size-4" />
+                                    Configuración
+                                </Link>
+                            </Button>
                             <Button asChild>
                                 <Link href={route('gente.colaboradores.create')}>
                                     <Plus className="size-4" />

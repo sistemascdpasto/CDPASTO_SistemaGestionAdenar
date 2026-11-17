@@ -97,7 +97,8 @@ export type Paso2FormData = {
 
 export type Paso3FormData = {
     is_active: boolean;
-    area: 'Administrativa' | 'Operativa' | '';
+    area: string;
+    area_otro: string;
     cargo: string;
     perfil_nombre: string;
     perfil: string;
@@ -105,7 +106,9 @@ export type Paso3FormData = {
     cargo_fecha_inicio: string;
 
     centro: string;
+    centro_otro: string;
     centro_trabajo: string;
+    centro_trabajo_otro: string;
     fecha_ingreso_empresa: string;
     fecha_retiro_empresa: string;
     motivo_retiro: string;

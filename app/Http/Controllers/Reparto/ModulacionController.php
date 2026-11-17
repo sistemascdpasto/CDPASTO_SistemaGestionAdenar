@@ -304,7 +304,11 @@ class ModulacionController extends Controller
                 $docTras = trim((string)($item->doc_tras ?? ''));
 
                 $tripulacion = is_array($item->tripulacion) ? $item->tripulacion : [];
-                $responsable = trim((string)($item->nombres ?? ($tripulacion[0]['nombres'] ?? '')));
+                $responsableRuta = collect($tripulacion)->first(
+                    fn ($miembro) => is_array($miembro)
+                        && str_contains(mb_strtoupper(trim((string)($miembro['cargo'] ?? ''))), 'RESPONSABLE')
+                );
+                $responsable = trim((string)($responsableRuta['nombres'] ?? ''));
 
                 $destinosList = [];
                 $viajes = is_array($item->viajes) ? $item->viajes : [];
