@@ -16,7 +16,7 @@ class AlertaControllerTest extends TestCase
     {
         parent::setUp();
 
-        foreach (['Administrador', 'Gente', 'Seguridad'] as $rol) {
+        foreach (['Administrador', 'Gente', 'Seguridad', 'Contratos'] as $rol) {
             Role::findOrCreate($rol, 'web');
         }
     }
@@ -29,12 +29,12 @@ class AlertaControllerTest extends TestCase
         return $user;
     }
 
-    public function test_gente_solo_ve_alertas_de_su_propio_pilar(): void
+    public function test_contratos_solo_ve_alertas_de_su_propio_pilar(): void
     {
         Alerta::create(['tipo' => 'retiro_proximo', 'mensaje' => 'Contrato de Juan vence pronto.']);
         Alerta::create(['tipo' => 'calibracion_proxima', 'mensaje' => 'Alcoholímetro A1 por calibrar.']);
 
-        $respuesta = $this->actingAs($this->usuario('Gente'))->get(route('gente.alertas.index'));
+        $respuesta = $this->actingAs($this->usuario('Contratos'))->get(route('gente.alertas.index'));
 
         $respuesta->assertOk()->assertInertia(fn ($page) => $page
             ->component('gente/alertas/index')
@@ -57,11 +57,16 @@ class AlertaControllerTest extends TestCase
         $this->actingAs($this->usuario('Seguridad'))->get(route('gente.alertas.index'))->assertForbidden();
     }
 
-    public function test_gente_puede_marcar_una_alerta_como_atendida(): void
+    public function test_gente_no_puede_entrar_a_las_alertas_de_gente(): void
+    {
+        $this->actingAs($this->usuario('Gente'))->get(route('gente.alertas.index'))->assertForbidden();
+    }
+
+    public function test_contratos_puede_marcar_una_alerta_como_atendida(): void
     {
         $alerta = Alerta::create(['tipo' => 'retiro_proximo', 'mensaje' => 'Contrato de Juan vence pronto.']);
 
-        $this->actingAs($this->usuario('Gente'))
+        $this->actingAs($this->usuario('Contratos'))
             ->patch(route('gente.alertas.atender', $alerta))
             ->assertRedirect();
 
