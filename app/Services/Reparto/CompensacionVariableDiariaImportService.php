@@ -2,10 +2,10 @@
 
 namespace App\Services\Reparto;
 
+use App\Models\Gente\Cargo;
 use App\Models\Reparto\CompensacionVariableDiaria;
 use App\Models\Reparto\EventosTripulacion;
 use App\Models\Seguridad\Colaborador;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -13,21 +13,27 @@ use Illuminate\Support\Facades\Log;
  * la tabla eventos_tripulacion — sin necesidad de subir un Excel.
  *
  * El campo rechazos en eventos_tripulacion es un porcentaje
- * (ej: 2 = 2%) que coincide con las metas de la CVD (meta1 < 2.1%, meta2 < 2.6%).
+ * (ej: 2 = 2%) que se evalúa contra las metas de la CVD.
+ *
+ * El valor mensual por cargo se configura en la tabla `cargos`
+ * (campo valor_cvd) desde Configuración de colaboradores.
  *
  * Reglas de cálculo:
- *   valor_x_dia  = 100,000 / 26                      → $3,846.15
- *   cal_rechazos   = 0.8  si rechazos < 2.6%
- *   cal_rechazos_2 = 0.2  si rechazos <= 2.1%
- *   valor_var    = (cal_rechazos + cal_rechazos_2) × valor_x_dia
+ *   valor_x_dia = cargos.valor_cvd / 26
+ *
+ *   Porcentaje de rechazos        → % ganado
+ *     < 2.0%                      → 100%
+ *     >= 2.0% y < 2.4%            → 80%
+ *     >= 2.4%                     → 0%
+ *
+ *   valor_var     = valor_x_dia × porcentaje_ganado
  *   valor_perdido = valor_x_dia − valor_var
  *   % variable   = (valor_var / valor_x_dia) × 100
  */
 class CompensacionVariableDiariaImportService
 {
-    private const VALOR_DIA  = 3846.15;   // 100 000 / 26
-    private const META_1_PCT = 2.1;       // rechazos <= 2.1% → 80%
-    private const META_2_PCT = 2.6;       // rechazos <  2.6% → 20% adicional
+    private const META_1_PCT = 2.0;   // rechazos < 2.0% → gana el 100%
+    private const META_2_PCT = 2.4;   // rechazos < 2.4% → gana el 80%
 
     private const MESES_ES = [
         1 => 'Enero',    2 => 'Febrero',   3 => 'Marzo',
@@ -58,15 +64,25 @@ class CompensacionVariableDiariaImportService
         $mesNombre  = self::MESES_ES[$mes] ?? "Mes {$mes}";
         $periodo    = "{$mesNombre} {$anio}";
 
-        // ── Lookup colaboradores (una sola query) ──────────────────────────────
+        // ── Lookup colaboradores (una sola query, solo nombre) ────────────────
         $colaboradores = Colaborador::whereNotNull('cedula')
             ->where('cedula', '!=', '')
-            ->get(['cedula', 'nombres', 'apellidos', 'cargo'])
+            ->get(['cedula', 'nombres', 'apellidos'])
             ->mapWithKeys(fn($c) => [
                 trim((string) $c->cedula) => [
                     'nombre' => trim(trim((string)($c->nombres ?? '')) . ' ' . trim((string)($c->apellidos ?? ''))),
-                    'cargo'  => trim((string) ($c->cargo ?? '')),
                 ]
+            ])
+            ->toArray();
+
+        // ── Lookup valor CVD por cargo (una sola query) ───────────────────────
+        // Mapa: CARGO_EN_MAYÚSCULAS → valor_cvd (int|null)
+        // El cargo de eventos_tripulacion viene de la planeación y debe coincidir
+        // (insensible a mayúsculas) con el nombre guardado en la tabla cargos.
+        $valorCvdPorCargo = Cargo::whereNotNull('valor_cvd')
+            ->pluck('valor_cvd', 'nombre')
+            ->mapWithKeys(fn($valor, $nombre) => [
+                mb_strtoupper(trim((string) $nombre), 'UTF-8') => (int) $valor,
             ])
             ->toArray();
 
@@ -85,7 +101,7 @@ class CompensacionVariableDiariaImportService
 
         // ── Procesar en lotes ──────────────────────────────────────────────────
         $query->orderBy('fecha')->chunk(500, function ($eventos) use (
-            $colaboradores, &$totalProcesados, &$registrosCreados, &$registrosActualizados, $now
+            $colaboradores, $valorCvdPorCargo, &$totalProcesados, &$registrosCreados, &$registrosActualizados, $now
         ) {
             $batch = [];
 
@@ -103,15 +119,43 @@ class CompensacionVariableDiariaImportService
                 $mesNum  = (int) date('n', strtotime($fecha));
                 $mesVal  = self::MESES_ES[$mesNum] ?? null;
 
-                // Nombre y cargo desde la BD de colaboradores
+                // Nombre: tabla colaboradores (nombre oficial) > evento
                 $nombreCompleto = $colaboradores[$cedula]['nombre'] ?? $evento->nombre ?? null;
-                $cargo          = $colaboradores[$cedula]['cargo']  ?? $evento->cargo  ?? null;
 
-                // ── Cálculos ──────────────────────────────────────────────────
-                $valorXDia    = self::VALOR_DIA;
-                $calRechazos  = $rechazosPct < self::META_2_PCT ? 0.8 : 0.0;
-                $calRechazos2 = $rechazosPct <= self::META_1_PCT ? 0.2 : 0.0;
-                $valorVar     = round(($calRechazos + $calRechazos2) * $valorXDia, 2);
+                // Cargo: siempre viene de la planeación (guardado en eventos_tripulacion).
+                // El Excel nunca trae cargo y nunca vendrá vacío.
+                $cargo = (string) $evento->cargo;
+
+                // ── Valor diario según cargo ───────────────────────────────────
+                // Se lee de la tabla cargos (campo valor_cvd) configurada en
+                // Configuración de colaboradores. valor_x_dia = valor_cvd / 26.
+                $cargoUpper = mb_strtoupper(trim($cargo), 'UTF-8');
+                $valorMensual = $valorCvdPorCargo[$cargoUpper] ?? null;
+                $valorXDia = $valorMensual !== null && $valorMensual > 0
+                    ? round($valorMensual / 26, 2)
+                    : 0.0;
+
+                if ($valorXDia <= 0) {
+                    Log::warning("CVD: cargo sin valor_cvd configurado", [
+                        'cedula' => $cedula,
+                        'fecha'  => $fecha,
+                        'cargo'  => $cargo,
+                    ]);
+                }
+
+                // ── Cálculo según porcentaje de rechazos ──────────────────────
+                //   < 2.0%  → 100% (porcentaje_ganado = 1.0)
+                //   < 2.4%  →  80% (porcentaje_ganado = 0.8)
+                //   >= 2.4% →   0% (porcentaje_ganado = 0.0)
+                if ($rechazosPct < self::META_1_PCT) {
+                    $porcentajeGanado = 1.0;
+                } elseif ($rechazosPct < self::META_2_PCT) {
+                    $porcentajeGanado = 0.8;
+                } else {
+                    $porcentajeGanado = 0.0;
+                }
+
+                $valorVar     = round($valorXDia * $porcentajeGanado, 2);
                 $valorPerdido = round($valorXDia - $valorVar, 2);
                 $pctVariable  = $valorXDia > 0 ? round(($valorVar / $valorXDia) * 100, 1) . '%' : '0%';
                 $pctNoCum     = $valorXDia > 0 ? round(($valorPerdido / $valorXDia) * 100, 1) . '%' : '0%';
@@ -126,8 +170,8 @@ class CompensacionVariableDiariaImportService
                     'nombre_completo'            => $nombreCompleto,
                     'cargo'                      => $cargo,
                     'rechazos'                   => $rechazosPct,
-                    'cal_rechazos'               => $calRechazos,
-                    'cal_rechazos_2'             => $calRechazos2,
+                    'cal_rechazos'               => $porcentajeGanado,
+                    'cal_rechazos_2'             => 0.0,
                     'valor_x_dia'                => $valorXDia,
                     'valor_var'                  => $valorVar,
                     'valor_perdido'              => $valorPerdido,

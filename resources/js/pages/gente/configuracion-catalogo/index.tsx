@@ -36,6 +36,7 @@ interface CategoriaData {
 interface CargoItem {
     id: number;
     nombre: string;
+    valor_cvd: number | null;
 }
 
 interface PerfilItem {
@@ -288,6 +289,160 @@ function TablaOpciones({
     );
 }
 
+/* ── Tabla especializada para Cargos (incluye valor_cvd numérico) ──────── */
+
+function TablaCargos({ cargos }: { cargos: CargoItem[] }) {
+    const [editando, setEditando] = useState<CargoItem | null>(null);
+
+    const formEditar = useForm<{ nombre: string; valor_cvd: string }>({
+        nombre: '',
+        valor_cvd: '',
+    });
+
+    const handleEditar: FormEventHandler = (e) => {
+        e.preventDefault();
+        if (!editando) return;
+        formEditar.patch(route('gente.cargos.update', editando.id), {
+            preserveScroll: true,
+            onSuccess: () => setEditando(null),
+        });
+    };
+
+    const handleEliminar = (cargo: CargoItem) => {
+        if (!confirm(`¿Eliminar el cargo "${cargo.nombre}"? Los colaboradores que lo usaban quedarán con ese campo vacío.`)) return;
+        router.delete(route('gente.cargos.destroy', cargo.id), { preserveScroll: true });
+    };
+
+    return (
+        <div className="overflow-hidden rounded-xl border border-border">
+            <Table>
+                <TableHeader>
+                    <TableRow className="bg-muted/40">
+                        <TableHead className="font-semibold">Nombre del cargo</TableHead>
+                        <TableHead className="font-semibold w-52">
+                            Valor CVD
+                            <span className="ml-1 text-[10px] font-normal text-muted-foreground">(COP/mes)</span>
+                        </TableHead>
+                        <TableHead className="w-24 text-right font-semibold">Acciones</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {cargos.length === 0 && (
+                        <TableRow>
+                            <TableCell colSpan={3} className="py-6 text-center text-xs text-muted-foreground">
+                                Sin cargos registrados.
+                            </TableCell>
+                        </TableRow>
+                    )}
+                    {cargos.map((cargo) => (
+                        <TableRow key={cargo.id}>
+                            <TableCell className="font-medium text-sm">{cargo.nombre}</TableCell>
+                            <TableCell className="text-sm tabular-nums">
+                                {cargo.valor_cvd != null
+                                    ? new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(cargo.valor_cvd)
+                                    : <span className="text-xs text-muted-foreground">— sin valor CVD</span>
+                                }
+                            </TableCell>
+                            <TableCell className="text-right">
+                                <div className="flex justify-end gap-1">
+                                    {/* Editar */}
+                                    <Dialog
+                                        open={editando?.id === cargo.id}
+                                        onOpenChange={(open) => {
+                                            if (open) {
+                                                setEditando(cargo);
+                                                formEditar.setData({
+                                                    nombre: cargo.nombre,
+                                                    valor_cvd: cargo.valor_cvd != null ? String(cargo.valor_cvd) : '',
+                                                });
+                                            } else {
+                                                setEditando(null);
+                                            }
+                                        }}
+                                    >
+                                        <DialogTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="size-7 text-muted-foreground hover:text-foreground" title="Editar">
+                                                <Pencil className="size-3.5" />
+                                            </Button>
+                                        </DialogTrigger>
+                                        <DialogContent className="sm:max-w-md">
+                                            <DialogHeader>
+                                                <DialogTitle>Editar cargo</DialogTitle>
+                                                <DialogDescription className="text-xs">
+                                                    El valor CVD es el monto mensual (COP) que se divide entre 26 días para calcular la compensación variable diaria.
+                                                </DialogDescription>
+                                            </DialogHeader>
+                                            <form onSubmit={handleEditar} className="space-y-4 pt-2">
+                                                <div className="grid gap-2">
+                                                    <Label>Nombre del cargo</Label>
+                                                    <Input
+                                                        value={formEditar.data.nombre}
+                                                        onChange={(e) => formEditar.setData('nombre', e.target.value)}
+                                                        maxLength={100}
+                                                        disabled={formEditar.processing}
+                                                        autoFocus
+                                                    />
+                                                    <InputError message={formEditar.errors.nombre} />
+                                                </div>
+                                                <div className="grid gap-2">
+                                                    <Label>
+                                                        Valor CVD mensual
+                                                        <span className="ml-1 text-xs font-normal text-muted-foreground">(COP — dejar vacío si no aplica)</span>
+                                                    </Label>
+                                                    <div className="relative">
+                                                        <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted-foreground">$</span>
+                                                        <Input
+                                                            type="number"
+                                                            min={0}
+                                                            step={1000}
+                                                            className="pl-6"
+                                                            placeholder="Ej: 120000"
+                                                            value={formEditar.data.valor_cvd}
+                                                            onChange={(e) => formEditar.setData('valor_cvd', e.target.value)}
+                                                            disabled={formEditar.processing}
+                                                        />
+                                                    </div>
+                                                    <p className="text-[11px] text-muted-foreground">
+                                                        {formEditar.data.valor_cvd && !isNaN(Number(formEditar.data.valor_cvd)) && Number(formEditar.data.valor_cvd) > 0
+                                                            ? <>Valor x día: <strong>${(Number(formEditar.data.valor_cvd) / 26).toLocaleString('es-CO', { maximumFractionDigits: 2 })}</strong></>
+                                                            : 'El cargo no participará en el cálculo de CVD.'
+                                                        }
+                                                    </p>
+                                                    <InputError message={formEditar.errors.valor_cvd} />
+                                                </div>
+                                                <DialogFooter className="gap-2 pt-2">
+                                                    <DialogClose asChild>
+                                                        <Button type="button" variant="outline" size="sm" disabled={formEditar.processing}>Cancelar</Button>
+                                                    </DialogClose>
+                                                    <Button type="submit" size="sm" disabled={formEditar.processing || !formEditar.data.nombre.trim()}>
+                                                        {formEditar.processing && <LoaderCircle className="mr-2 size-4 animate-spin" />}
+                                                        Guardar cambios
+                                                    </Button>
+                                                </DialogFooter>
+                                            </form>
+                                        </DialogContent>
+                                    </Dialog>
+
+                                    {/* Eliminar */}
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="size-7 text-muted-foreground hover:text-destructive"
+                                        title="Eliminar"
+                                        onClick={() => handleEliminar(cargo)}
+                                    >
+                                        <Trash2 className="size-3.5" />
+                                    </Button>
+                                </div>
+                            </TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+        </div>
+    );
+}
+
 /* ── Página principal ──────────────────────────────────────────────────── */
 
 export default function ConfiguracionCatalogo({
@@ -346,15 +501,9 @@ export default function ConfiguracionCatalogo({
                         Cargos
                     </h2>
                     <p className="text-xs text-muted-foreground">
-                        Los cargos se sincronizan automáticamente desde GeoVictoria. Aquí puedes eliminar los que ya no existen.
+                        Los cargos se sincronizan automáticamente desde GeoVictoria. Aquí puedes configurar el valor mensual de compensación variable diaria (CVD) para cada cargo operativo.
                     </p>
-                    <TablaOpciones
-                        titulo="Cargos"
-                        opciones={cargos.map((c) => ({ ...c, es_personalizado: true }))}
-                        rutaStore={route('gente.tipos-documento.store')}
-                        rutaUpdate={(id) => route('gente.cargos.update', id)}
-                        rutaDestroy={(id) => route('gente.cargos.destroy', id)}
-                    />
+                    <TablaCargos cargos={cargos} />
                 </section>
 
                 {/* ── Perfiles / Funciones de cargo ── */}

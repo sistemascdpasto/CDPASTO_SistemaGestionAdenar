@@ -10,6 +10,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/react';
 import {
     AlertCircle,
+    AlertTriangle,
     Calendar,
     CheckCircle2,
     Download,
@@ -35,25 +36,17 @@ interface Evento {
     fecha: string | null;
     placa: string | null;
     doc_transporte: string | null;
-    anio: number | null;
-    mes: number | null;
-    rr: string | null;
-    rr_pasto: string | null;
     documento: string | null;
     nombre: string | null;
     cargo: string | null;
-    total_eventos: number | null;
-    excesos_tiempo_ruta: number | null;
-    alertas_velocidad_curvas: number | null;
-    adherencia_checklist_pre: number | null;
-    adherencia_checklist_post: number | null;
-    rendimiento_combustible: number | null;
-    modulacion: string | null;
-    adherencia_tiempo: number | null;
     entrega_en_rango: number | null;
     rechazos: number | null;
+    alertas_velocidad_curvas: number | null;
+    adherencia_tiempo: number | null;
+    modulacion: number | null;
+    adherencia_checklist_pre: number | null;
+    adherencia_checklist_post: number | null;
     rmd: string | null;
-    // campo calculado del index() existente
     adherencia_checklist: number | null;
     created_at: string | null;
 }
@@ -84,8 +77,10 @@ interface Props {
         doc_transporte: string;
         fecha_desde: string;
         fecha_hasta: string;
+        planeacion_fecha: string;
     };
-    flash?: { success?: string; error?: string };
+    fechas_planeaciones: string[];
+    flash?: { success?: string; error?: string; warning?: string };
     errors?: { archivo?: string; [key: string]: string | undefined };
 }
 
@@ -97,20 +92,16 @@ const COLUMNAS: [ColKey, string, boolean][] = [
     ['fecha',                    'Fecha',                        true],
     ['placa',                    'Placa',                        true],
     ['doc_transporte',           'Doc. Transporte',              false],
-    ['anio',                     'Año',                          false],
-    ['mes',                      'Mes',                          false],
     ['documento',                'Cédula',                       true],
     ['nombre',                   'Nombre',                       false],
     ['cargo',                    'Cargo',                        false],
-    ['excesos_tiempo_ruta',      '# Excesos Tiempo Ruta',        false],
-    ['alertas_velocidad_curvas', '# Alertas Vel. Curvas',        false],
-    ['adherencia_checklist_pre', 'Adherencia CL Pre Op.',        false],
-    ['adherencia_checklist_post','Adherencia CL Post Op.',       false],
-    ['rendimiento_combustible',  'Rend. Combustible',            false],
-    ['modulacion',               'Modulación',                   false],
-    ['adherencia_tiempo',        '% Adherencia al Tiempo',       false],
     ['entrega_en_rango',         'Entrega en Rango',             false],
     ['rechazos',                 'Rechazos',                     false],
+    ['alertas_velocidad_curvas', '# Alertas Vel. Curvas',        false],
+    ['adherencia_tiempo',        '% Adherencia al Tiempo',       false],
+    ['modulacion',               'Modulación',                   false],
+    ['adherencia_checklist_pre', 'Adherencia CL Pre Op.',        false],
+    ['adherencia_checklist_post','Adherencia CL Post Op.',       false],
     ['rmd',                      'RMD',                          false],
 ];
 
@@ -128,23 +119,24 @@ const DEFAULT_COLS: ColKey[] = [
     'documento',
     'nombre',
     'cargo',
-    'excesos_tiempo_ruta',
-    'alertas_velocidad_curvas',
+    'entrega_en_rango',
     'rechazos',
+    'alertas_velocidad_curvas',
+    'adherencia_tiempo',
+    'modulacion',
+    'adherencia_checklist_pre',
+    'adherencia_checklist_post',
 ];
 
 const PCT_FIELDS = new Set<ColKey>([
     'adherencia_checklist_pre',
     'adherencia_checklist_post',
+    'modulacion',
     'adherencia_tiempo',
     'entrega_en_rango',
+    'rechazos',
 ]);
 
-const MESES_NOMBRES: Record<number, string> = {
-    1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
-    5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
-    9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre',
-};
 
 const STORAGE_KEY = 'eventos_tripulacion_cols_visibles';
 
@@ -156,30 +148,10 @@ function formatFecha(fecha: string | null): string {
     return `${d}/${m}/${y}`;
 }
 
-function formatMinutosAHora12(minutos: unknown): string {
-    if (minutos === null || minutos === undefined || minutos === '') return '—';
-    const totalMinutos = Number(minutos);
-    if (isNaN(totalMinutos)) return String(minutos);
-
-    const hor24 = Math.floor(totalMinutos / 60) % 24;
-    const mins = Math.floor(totalMinutos % 60);
-
-    const period = hor24 >= 12 ? 'p. m.' : 'a. m.';
-    const hor12 = hor24 % 12 === 0 ? 12 : hor24 % 12;
-    const horStr = String(hor12).padStart(2, '0');
-    const minsStr = String(mins).padStart(2, '0');
-
-    return `${horStr}:${minsStr}:00 ${period}`;
-}
 
 function formatValor(campo: ColKey, val: unknown): string {
     if (val === null || val === undefined || val === '') return '—';
     if (campo === 'fecha') return formatFecha(val as string);
-    if (campo === 'excesos_tiempo_ruta') return formatMinutosAHora12(val);
-    if (campo === 'mes') {
-        const n = Number(val);
-        return !isNaN(n) && MESES_NOMBRES[n] ? MESES_NOMBRES[n] : String(val);
-    }
     if (PCT_FIELDS.has(campo)) {
         const n = Number(val);
         return isNaN(n) ? String(val) : `${n % 1 === 0 ? n : n.toFixed(2)}%`;
@@ -207,16 +179,6 @@ function CeldaContenido({ campo, val }: { campo: ColKey; val: unknown }) {
             ? <span className="font-mono text-foreground">{String(val)}</span>
             : <span className="text-muted-foreground italic text-xs">—</span>;
     }
-    if (campo === 'total_eventos') {
-        return (val !== null && val !== undefined)
-            ? <span className="text-foreground">{String(val)}</span>
-            : <span className="text-muted-foreground text-xs">—</span>;
-    }
-    if (campo === 'excesos_tiempo_ruta') {
-        return (val !== null && val !== undefined && val !== '')
-            ? <span className="font-mono text-foreground">{formatMinutosAHora12(val)}</span>
-            : <span className="text-muted-foreground text-xs">—</span>;
-    }
     if (PCT_FIELDS.has(campo)) {
         return (val !== null && val !== undefined)
             ? <span className="text-foreground">{formatValor(campo, val)}</span>
@@ -228,6 +190,7 @@ function CeldaContenido({ campo, val }: { campo: ColKey; val: unknown }) {
 type Filters = {
     placa: string; cedula: string; nombre: string;
     doc_transporte: string; fecha_desde: string; fecha_hasta: string;
+    planeacion_fecha: string;
 };
 
 // ─── Modal de importación (nodo raíz siempre en el árbol) ─────────────────────
@@ -236,6 +199,9 @@ interface ImportModalProps {
     selectedFile: File | null;
     isUploading: boolean;
     fileInputRef: React.RefObject<HTMLInputElement | null>;
+    fechasPlaneaciones: string[];
+    fechaPlaneacion: string;
+    onFechaPlaneacionChange: (f: string) => void;
     onClose: () => void;
     onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
     onImport: () => void;
@@ -244,9 +210,12 @@ interface ImportModalProps {
 
 function ImportModal({
     open, selectedFile, isUploading,
-    fileInputRef, onClose, onFileChange, onImport, onDownloadTemplate,
+    fileInputRef, fechasPlaneaciones, fechaPlaneacion, onFechaPlaneacionChange,
+    onClose, onFileChange, onImport, onDownloadTemplate,
 }: ImportModalProps) {
     if (!open) return null;
+
+    const puedeImportar = !!selectedFile && !!fechaPlaneacion && !isUploading;
 
     return (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-2 sm:p-4">
@@ -267,14 +236,42 @@ function ImportModal({
 
                 {/* Cuerpo */}
                 <div className="px-4 sm:px-6 py-4 sm:py-5 space-y-4 sm:space-y-5">
+
+                    {/* Selector de planeación — obligatorio */}
+                    <div className="space-y-1.5">
+                        <Label className="text-xs sm:text-sm font-semibold text-foreground flex items-center gap-1">
+                            <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                            Fecha de planeación <span className="text-destructive">*</span>
+                        </Label>
+                        <select
+                            value={fechaPlaneacion}
+                            onChange={(e) => onFechaPlaneacionChange(e.target.value)}
+                            className="w-full h-9 sm:h-10 rounded-md border border-input bg-background px-2 py-1 text-xs sm:text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                        >
+                            <option value="">— Selecciona una planeación —</option>
+                            {fechasPlaneaciones.map((f) => {
+                                const [y, m, d] = f.split('-');
+                                return (
+                                    <option key={f} value={f}>{d}/{m}/{y}</option>
+                                );
+                            })}
+                        </select>
+                        {!fechaPlaneacion && (
+                            <p className="text-[10px] sm:text-xs text-muted-foreground">
+                                Debes seleccionar la planeación antes de importar.
+                            </p>
+                        )}
+                    </div>
+
                     <div className="rounded-lg border border-sidebar-border/70 bg-muted/50 p-3 sm:p-4 text-xs text-muted-foreground dark:border-sidebar-border space-y-1 sm:space-y-1">
                         <p className="font-semibold">Columnas esperadas:</p>
                         <p className="text-[10px] sm:text-xs leading-relaxed text-muted-foreground break-words">
-                            AÑO · MES · FECHA · PLACA · TRANSPORTE · CEDULA · CARGO ·
-                            # DE EXCESOS · # DE ALERTAS VELOCIDAD ·
-                            ADHERENCIA CL PRE OP. · ADHERENCIA CL POST OP. ·
-                            REND. COMBUSTIBLE · MODULACION · % ADH. TIEMPO ·
-                            ENTREGA EN RANGO · RECHAZOS · RMD
+                            TRANSPORTE · PLACA · ENTREGA EN RANGO · RECHAZOS ·
+                            # ALERTAS VELOCIDAD · % ADH. TIEMPO · MODULACION ·
+                            ADHERENCIA CL PRE OP. · ADHERENCIA CL POST OP. · RMD
+                        </p>
+                        <p className="text-[10px] sm:text-xs text-muted-foreground italic">
+                            La fecha se toma de la planeación seleccionada.
                         </p>
                         <button
                             type="button"
@@ -324,7 +321,7 @@ function ImportModal({
                     </Button>
                     <Button
                         onClick={onImport}
-                        disabled={!selectedFile || isUploading}
+                        disabled={!puedeImportar}
                         className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold min-w-full sm:min-w-[130px] order-1 sm:order-2 h-9 sm:h-10 text-xs sm:text-sm"
                     >
                         {isUploading
@@ -339,19 +336,22 @@ function ImportModal({
 }
 
 // ─── Componente principal ─────────────────────────────────────────────────────
-export default function EventosTripulacionIndex({ eventos, filters, flash, errors }: Props) {
+export default function EventosTripulacionIndex({ eventos, filters, fechas_planeaciones, flash, errors }: Props) {
     const [placa,         setPlaca]         = useState(filters.placa ?? '');
     const [cedula,        setCedula]        = useState(filters.cedula ?? '');
     const [nombre,        setNombre]        = useState(filters.nombre ?? '');
     const [docTransporte, setDocTransporte] = useState(filters.doc_transporte ?? '');
     const [fechaDesde,    setFechaDesde]    = useState(filters.fecha_desde ?? '');
     const [fechaHasta,    setFechaHasta]    = useState(filters.fecha_hasta ?? '');
+    const [planeacionFecha, setPlaneacionFecha] = useState(filters.planeacion_fecha ?? '');
     const [isRefreshing,  setIsRefreshing]  = useState(false);
+    const [showWarning,   setShowWarning]   = useState(true);
 
     // Importación
     const [showImportModal, setShowImportModal] = useState(false);
     const [selectedFile,    setSelectedFile]    = useState<File | null>(null);
     const [isUploading,     setIsUploading]     = useState(false);
+    const [fechaImport,     setFechaImport]     = useState('');
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Selector de columnas
@@ -396,16 +396,22 @@ export default function EventosTripulacionIndex({ eventos, filters, flash, error
 
     const isFirstRender = useRef(true);
 
+    // Abrir el bloque de pendientes automáticamente cada vez que llega un warning nuevo
+    React.useEffect(() => {
+        if (flash?.warning) setShowWarning(true);
+    }, [flash?.warning]);
+
     const applyFilters = (overrides: Partial<Filters> = {}) => {
         router.get(
             route('reparto.eventos-tripulacion.index'),
             {
-                placa:          overrides.placa          ?? debouncedPlaca,
-                cedula:         overrides.cedula         ?? debouncedCedula,
-                nombre:         overrides.nombre         ?? debouncedNombre,
-                doc_transporte: overrides.doc_transporte ?? debouncedDocTransporte,
-                fecha_desde:    overrides.fecha_desde    ?? debouncedFechaDesde,
-                fecha_hasta:    overrides.fecha_hasta    ?? debouncedFechaHasta,
+                placa:            overrides.placa            ?? debouncedPlaca,
+                cedula:           overrides.cedula           ?? debouncedCedula,
+                nombre:           overrides.nombre           ?? debouncedNombre,
+                doc_transporte:   overrides.doc_transporte   ?? debouncedDocTransporte,
+                fecha_desde:      overrides.fecha_desde      ?? debouncedFechaDesde,
+                fecha_hasta:      overrides.fecha_hasta      ?? debouncedFechaHasta,
+                planeacion_fecha: overrides.planeacion_fecha ?? planeacionFecha,
             },
             { preserveState: true, preserveScroll: true, replace: true }
         );
@@ -415,15 +421,16 @@ export default function EventosTripulacionIndex({ eventos, filters, flash, error
         if (isFirstRender.current) { isFirstRender.current = false; return; }
         applyFilters({});
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [debouncedPlaca, debouncedCedula, debouncedNombre, debouncedDocTransporte, debouncedFechaDesde, debouncedFechaHasta]);
+    }, [debouncedPlaca, debouncedCedula, debouncedNombre, debouncedDocTransporte, debouncedFechaDesde, debouncedFechaHasta, planeacionFecha]);
 
     const handleClear = () => {
         setPlaca(''); setCedula(''); setNombre('');
         setDocTransporte(''); setFechaDesde(''); setFechaHasta('');
+        setPlaneacionFecha('');
         router.get(route('reparto.eventos-tripulacion.index'), {}, { preserveState: false });
     };
 
-    const hasActiveFilters = placa || cedula || nombre || docTransporte || fechaDesde || fechaHasta;
+    const hasActiveFilters = placa || cedula || nombre || docTransporte || fechaDesde || fechaHasta || planeacionFecha;
 
     // Actualizar desde alertas existentes
     const handleRefresh = () => {
@@ -440,18 +447,21 @@ export default function EventosTripulacionIndex({ eventos, filters, flash, error
     // Importación — cierra el modal ANTES del POST para que React
     // no tenga el modal montado cuando Inertia hace el swap de DOM
     const handleImport = () => {
-        if (!selectedFile) return;
+        if (!selectedFile || !fechaImport) return;
 
-        const fileToUpload = selectedFile;
+        const fileToUpload  = selectedFile;
+        const fechaToUpload = fechaImport;
 
         // 1. Cerrar el modal y limpiar estado local PRIMERO
         setShowImportModal(false);
         setSelectedFile(null);
+        setFechaImport('');
         setIsUploading(true);
 
-        // 2. Luego enviar el archivo
+        // 2. Luego enviar el archivo junto con la fecha de la planeación
         const fd = new FormData();
         fd.append('archivo', fileToUpload);
+        fd.append('fecha_planeacion', fechaToUpload);
         router.post(route('reparto.eventos-tripulacion.store'), fd as unknown as Record<string, unknown>, {
             forceFormData: true,
             preserveScroll: true,
@@ -484,6 +494,33 @@ export default function EventosTripulacionIndex({ eventos, filters, flash, error
                         <p className="text-xs sm:text-sm font-medium whitespace-pre-line break-words">{flash.success}</p>
                     </div>
                 )}
+
+                {/* Flash warning — pendientes de revisión, colapsable */}
+                {flash?.warning && (
+                    <div className="rounded-lg border border-yellow-300 bg-yellow-50 text-yellow-900">
+                        <button
+                            type="button"
+                            onClick={() => setShowWarning(v => !v)}
+                            className="flex w-full items-center gap-2 px-3 py-2 sm:px-4 sm:py-3 text-left"
+                        >
+                            <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 shrink-0 text-yellow-600" />
+                            <span className="text-xs sm:text-sm font-semibold flex-1">
+                                Filas pendientes de revisión — no se guardaron
+                            </span>
+                            <span className="text-[10px] sm:text-xs text-yellow-700">
+                                {showWarning ? 'Ocultar' : 'Ver detalle'}
+                            </span>
+                        </button>
+                        {showWarning && (
+                            <div className="border-t border-yellow-200 px-3 pb-3 sm:px-4 sm:pb-4 pt-2">
+                                <pre className="text-[10px] sm:text-xs whitespace-pre-wrap break-words font-mono leading-relaxed">
+                                    {flash.warning}
+                                </pre>
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {flash?.error && (
                     <div className="flex items-start gap-2 sm:gap-3 rounded-lg border border-red-200 bg-red-50 p-2 sm:p-3 text-red-800">
                         <XCircle className="h-4 w-4 sm:h-5 sm:w-5 shrink-0 mt-0.5 text-red-500" />
@@ -634,6 +671,24 @@ export default function EventosTripulacionIndex({ eventos, filters, flash, error
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
                                 <div className="grid gap-1">
                                     <Label className="text-[10px] sm:text-xs font-semibold text-muted-foreground">
+                                        <Calendar className="h-2.5 w-2.5 sm:h-3 sm:w-3 inline mr-0.5 sm:mr-1" />Planeación
+                                    </Label>
+                                    <select
+                                        value={planeacionFecha}
+                                        onChange={(e) => setPlaneacionFecha(e.target.value)}
+                                        className="h-9 sm:h-10 rounded-md border border-input bg-background px-2 py-1 text-xs sm:text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                                    >
+                                        <option value="">Todas las fechas</option>
+                                        {fechas_planeaciones.map((f) => {
+                                            const [y, m, d] = f.split('-');
+                                            return (
+                                                <option key={f} value={f}>{d}/{m}/{y}</option>
+                                            );
+                                        })}
+                                    </select>
+                                </div>
+                                <div className="grid gap-1">
+                                    <Label className="text-[10px] sm:text-xs font-semibold text-muted-foreground">
                                         <Calendar className="h-2.5 w-2.5 sm:h-3 sm:w-3 inline mr-0.5 sm:mr-1" />F. Desde
                                     </Label>
                                     <Input type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} className="text-xs sm:text-sm h-9 sm:h-10" />
@@ -713,9 +768,7 @@ export default function EventosTripulacionIndex({ eventos, filters, flash, error
                                                     <TableCell
                                                         key={k}
                                                         className={`px-2 sm:px-3 py-1.5 sm:py-2 text-[10px] sm:text-xs ${
-                                                            k === 'total_eventos' || PCT_FIELDS.has(k)
-                                                                ? 'text-center'
-                                                                : ''
+                                                            PCT_FIELDS.has(k) ? 'text-center' : ''
                                                         }`}
                                                     >
                                                         <CeldaContenido campo={k} val={evento[k]} />
@@ -759,7 +812,10 @@ export default function EventosTripulacionIndex({ eventos, filters, flash, error
                 selectedFile={selectedFile}
                 isUploading={isUploading}
                 fileInputRef={fileInputRef}
-                onClose={() => { setShowImportModal(false); setSelectedFile(null); }}
+                fechasPlaneaciones={fechas_planeaciones}
+                fechaPlaneacion={fechaImport}
+                onFechaPlaneacionChange={setFechaImport}
+                onClose={() => { setShowImportModal(false); setSelectedFile(null); setFechaImport(''); }}
                 onFileChange={handleFileChange}
                 onImport={handleImport}
                 onDownloadTemplate={handleDownloadTemplate}

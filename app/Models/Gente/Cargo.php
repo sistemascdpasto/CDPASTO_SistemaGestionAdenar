@@ -11,5 +11,10 @@ class Cargo extends Model
     protected $fillable = [
         'nombre',
         'perfil',
+        'valor_cvd',
+    ];
+
+    protected $casts = [
+        'valor_cvd' => 'integer',
     ];
 }

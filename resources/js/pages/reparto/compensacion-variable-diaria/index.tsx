@@ -186,15 +186,15 @@ const COLUMNAS: [keyof CompensacionDiariaRow, string, boolean][] = [
     ['nombre_completo', 'Nombre Completo', true],
     ['cargo', 'Cargo', true],
     ['rechazos', 'Rechazos', true],
-    ['cal_rechazos', 'Cal-Rechazos', true],
+    ['cal_rechazos', '% Ganado', true],
     ['cal_rechazos_2', 'Cal-Rechazos 2', false],
     ['valor_x_dia', 'Valor x Día', true],
     ['valor_var', 'Valor Var', true],
     ['valor_perdido', 'Valor Perdido', true],
     ['porcentaje_variable', '% Variable', true],
     ['porcentaje_variable_no_cum', '% Var No Cum', false],
-    ['meta_1', 'Meta ≤ 2,1%', false],
-    ['meta_2', 'Meta < 2,6%', true],
+    ['meta_1', 'Meta < 2,0%', false],
+    ['meta_2', 'Meta < 2,4%', true],
 ];
 
 const MESES_ES: Record<number, string> = {
@@ -329,8 +329,8 @@ function GraficoBarrasMensual({ data }: { data: TotalesMensuales }) {
         labels,
         datasets: [
             { label: 'Valor Var ($)', data: data?.valor_var || [], backgroundColor: `${COLOR_MODULO}b3`, borderColor: COLOR_MODULO, borderWidth: 1 },
-            { label: 'Meta 1 (≤ 2,1%)', data: data?.meta_1 || [], backgroundColor: `${COLOR_SUCCESS}80`, borderColor: COLOR_SUCCESS, borderWidth: 1 },
-            { label: 'Meta 2 (< 2,6%)', data: data?.meta_2 || [], backgroundColor: `${COLOR_PURPLE}80`, borderColor: COLOR_PURPLE, borderWidth: 1 },
+            { label: 'Meta 1 (< 2,0%)', data: data?.meta_1 || [], backgroundColor: `${COLOR_SUCCESS}80`, borderColor: COLOR_SUCCESS, borderWidth: 1 },
+            { label: 'Meta 2 (< 2,4%)', data: data?.meta_2 || [], backgroundColor: `${COLOR_PURPLE}80`, borderColor: COLOR_PURPLE, borderWidth: 1 },
         ],
     };
 
@@ -868,8 +868,10 @@ export default function CompensacionVariableDiariaIndex() {
                                                     {visibleCols.map(([k]) => {
                                                         const val = row[k as keyof CompensacionDiariaRow];
                                                         let display: React.ReactNode = val === null || val === undefined || val === '' ? '-' : String(val);
-                                                        const isMoney = ['cal_rechazos', 'cal_rechazos_2', 'valor_x_dia', 'valor_var', 'valor_perdido'].includes(k as string);
+                                                        const isMoney = ['valor_x_dia', 'valor_var', 'valor_perdido'].includes(k as string);
+                                                        const isPct = ['cal_rechazos'].includes(k as string);
                                                         if (isMoney) display = formatCurrency(Number(val) || 0);
+                                                        if (isPct) display = `${Math.round((Number(val) || 0) * 100)}%`;
                                                         if (k === 'fecha') display = formatDate(val as string | null);
                                                         if (k === 'cedula' || k === 'placa') display = (
                                                             <Badge variant="outline" className="text-[10px] px-1.5 py-0.5"
@@ -880,11 +882,11 @@ export default function CompensacionVariableDiariaIndex() {
                                                         if (k === 'rechazos') {
                                                             const v = Number(val);
                                                             display = val !== null && val !== undefined && val !== ''
-                                                                ? <span className="font-semibold" style={{ color: v > 2.6 ? COLOR_CRITICAL : v > 2.1 ? COLOR_WARNING : COLOR_SUCCESS }}>{v}%</span>
+                                                                ? <span className="font-semibold" style={{ color: v >= 2.4 ? COLOR_CRITICAL : v >= 2.0 ? COLOR_WARNING : COLOR_SUCCESS }}>{v}%</span>
                                                                 : '-';
                                                         }
-                                                        if (k === 'meta_1') display = val !== null && val !== undefined && val !== '' ? `< ${Number(val)}%` : '≤ 2,1%';
-                                                        if (k === 'meta_2') display = val !== null && val !== undefined && val !== '' ? `< ${Number(val)}%` : '< 2,6%';
+                                                        if (k === 'meta_1') display = val !== null && val !== undefined && val !== '' ? `< ${Number(val)}%` : '< 2,0%';
+                                                        if (k === 'meta_2') display = val !== null && val !== undefined && val !== '' ? `< ${Number(val)}%` : '< 2,4%';
                                                         return <TableCell key={k as string} className="px-2 py-2 text-[11px] whitespace-nowrap text-foreground">{display}</TableCell>;
                                                     })}
                                                     <TableCell className="px-2 py-2 w-10" onClick={(e) => { e.stopPropagation(); handleOpenDetail(row); }}>
@@ -917,7 +919,7 @@ export default function CompensacionVariableDiariaIndex() {
                     {/* FOOTER */}
                     <footer className="text-[10px] text-muted-foreground space-y-1 pt-2 border-t border-sidebar-border/70 dark:border-sidebar-border">
                         <div><b className="text-muted-foreground">Fuente</b> · Tabla compensaciones_variables_diarias — generada desde Eventos de Tripulación.</div>
-                        <div><b className="text-muted-foreground">Cálculo</b> · Valor x Día = $3.846,15 · Cal-Rechazos 80% (Meta 2) + 20% (Meta 1) · Valor Perdido = (1 - % Variable) × Valor x Día.</div>
+                        <div><b className="text-muted-foreground">Cálculo</b> · Valor x Día = valor_cvd del cargo ÷ 26 · % ganado: 100% si rechazos {'<'} 2,0% · 80% si {'<'} 2,4% · 0% si ≥ 2,4% · Valor Perdido = Valor x Día − Valor Variable.</div>
                         <div><b className="text-muted-foreground">Alcance</b> · {totalRegistros.toLocaleString()} registros · {colsUnicos} colaboradores · {vehUnicos} vehículos</div>
                         <div className="flex items-center gap-1">
                             <span className="w-1.5 h-1.5 rounded-full inline-block animate-pulse" style={{ background: COLOR_MODULO }} />
@@ -997,11 +999,12 @@ export default function CompensacionVariableDiariaIndex() {
                         <div className="rounded-xl p-3 text-[11px] space-y-1 border"
                             style={{ background: `${COLOR_MODULO}0d`, borderColor: `${COLOR_MODULO}33`, color: COLOR_MODULO }}>
                             <p className="font-semibold">El sistema calculará automáticamente:</p>
-                            <p>· Valor del día ($3.846,15)</p>
-                            <p>· Cal-Rechazos según meta 2 ({'<'} 2,6% → 80%)</p>
-                            <p>· Cal-Rechazos 2 según meta 1 (≤ 2,1% → 20%)</p>
+                            <p>· Valor del día (valor_cvd del cargo ÷ 26)</p>
+                            <p>· 100% del valor si rechazos {'<'} 2,0%</p>
+                            <p>· 80% del valor si rechazos {'<'} 2,4%</p>
+                            <p>· 0% si rechazos ≥ 2,4%</p>
                             <p>· Valor Variable y Valor Perdido</p>
-                            <p>· Nombre y cargo desde la BD de colaboradores</p>
+                            <p>· Cargo desde la planeación (eventos de tripulación)</p>
                         </div>
                     </div>
                     <DialogFooter className="gap-2">
@@ -1045,16 +1048,15 @@ export default function CompensacionVariableDiariaIndex() {
 
                             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
                                 <KpiCard label="Rechazos" value={`${selectedRow.rechazos || 0}%`} icon={AlertTriangle}
-                                    color={Number(selectedRow.rechazos || 0) > 2.6 ? COLOR_CRITICAL : Number(selectedRow.rechazos || 0) > 2.1 ? COLOR_WARNING : COLOR_SUCCESS} />
+                                    color={Number(selectedRow.rechazos || 0) >= 2.4 ? COLOR_CRITICAL : Number(selectedRow.rechazos || 0) >= 2.0 ? COLOR_WARNING : COLOR_SUCCESS} />
                                 <KpiCard label="Valor x Día" value={formatCurrency(Number(selectedRow.valor_x_dia) || 0)} icon={DollarSign} color={COLOR_CYAN} />
                                 <KpiCard label="Valor Variable" value={formatCurrency(Number(selectedRow.valor_var) || 0)} icon={TrendingUp} color={COLOR_SUCCESS} />
                                 <KpiCard label="Valor Perdido" value={formatCurrency(Number(selectedRow.valor_perdido) || 0)} icon={TrendingDown} color={COLOR_CRITICAL} />
                                 <KpiCard label="% Variable" value={selectedRow.porcentaje_variable || '-'} icon={Users} color={COLOR_BLUE} />
                                 <KpiCard label="% No Cum" value={selectedRow.porcentaje_variable_no_cum || '-'} icon={Clock} color={COLOR_PURPLE} />
-                                <KpiCard label="Cal Rechazos" value={formatCurrency(Number(selectedRow.cal_rechazos) || 0)} icon={DollarSign} color={COLOR_WARNING} />
-                                <KpiCard label="Cal Rechazos 2" value={formatCurrency(Number(selectedRow.cal_rechazos_2) || 0)} icon={DollarSign} color={COLOR_PURPLE} />
-                                <KpiCard label="Meta 1" value={selectedRow.meta_1 !== null && selectedRow.meta_1 !== undefined ? `≤ ${selectedRow.meta_1}%` : '≤ 2,1%'} icon={Target} color={COLOR_SUCCESS} />
-                                <KpiCard label="Meta 2" value={selectedRow.meta_2 !== null && selectedRow.meta_2 !== undefined ? `< ${selectedRow.meta_2}%` : '< 2,6%'} icon={Target} color={COLOR_BLUE} />
+                                <KpiCard label="% Ganado" value={formatCurrency(Number(selectedRow.cal_rechazos) || 0)} icon={DollarSign} color={COLOR_WARNING} />
+                                <KpiCard label="Meta 1" value={selectedRow.meta_1 !== null && selectedRow.meta_1 !== undefined ? `< ${selectedRow.meta_1}%` : '< 2,0%'} icon={Target} color={COLOR_SUCCESS} />
+                                <KpiCard label="Meta 2" value={selectedRow.meta_2 !== null && selectedRow.meta_2 !== undefined ? `< ${selectedRow.meta_2}%` : '< 2,4%'} icon={Target} color={COLOR_BLUE} />
                             </div>
 
                             {historialRow.length > 0 && (() => {
@@ -1092,7 +1094,7 @@ export default function CompensacionVariableDiariaIndex() {
                                                             <TableCell className="px-2 py-1.5 text-[11px]">{formatDate(h.fecha)}</TableCell>
                                                             <TableCell className="px-2 py-1.5 text-[11px]">{h.placa || '-'}</TableCell>
                                                             <TableCell className="px-2 py-1.5 text-[11px] font-semibold"
-                                                                style={{ color: Number(h.rechazos || 0) > 2.6 ? COLOR_CRITICAL : Number(h.rechazos || 0) > 2.1 ? COLOR_WARNING : COLOR_SUCCESS }}>
+                                                                style={{ color: Number(h.rechazos || 0) >= 2.4 ? COLOR_CRITICAL : Number(h.rechazos || 0) >= 2.0 ? COLOR_WARNING : COLOR_SUCCESS }}>
                                                                 {h.rechazos !== null && h.rechazos !== undefined ? `${h.rechazos}%` : '-'}
                                                             </TableCell>
                                                             <TableCell className="px-2 py-1.5 text-[11px]">{formatCurrency(Number(h.valor_var) || 0)}</TableCell>
@@ -1107,7 +1109,7 @@ export default function CompensacionVariableDiariaIndex() {
                                                             TOTAL {historialRow.length} días
                                                         </td>
                                                         <td className="px-2 py-2 text-[11px] font-bold"
-                                                            style={{ color: promRech > 2.6 ? COLOR_CRITICAL : promRech > 2.1 ? COLOR_WARNING : COLOR_SUCCESS }}>
+                                                            style={{ color: promRech >= 2.4 ? COLOR_CRITICAL : promRech >= 2.0 ? COLOR_WARNING : COLOR_SUCCESS }}>
                                                             {promRech.toFixed(2)}% prom
                                                         </td>
                                                         <td className="px-2 py-2 text-[11px] font-bold" style={{ color: COLOR_SUCCESS }}>

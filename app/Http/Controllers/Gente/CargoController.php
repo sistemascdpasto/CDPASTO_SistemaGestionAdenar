@@ -13,14 +13,22 @@ class CargoController extends Controller
 {
     public function update(Request $request, Cargo $cargo): RedirectResponse
     {
-        $request->validate(['nombre' => ['required', 'string', 'max:100']]);
+        $request->validate([
+            'nombre'    => ['required', 'string', 'max:100'],
+            'valor_cvd' => ['nullable', 'integer', 'min:0'],
+        ]);
 
         $anterior = $cargo->nombre;
-        $cargo->update(['nombre' => trim($request->nombre)]);
+        $cargo->update([
+            'nombre'    => trim($request->nombre),
+            'valor_cvd' => $request->valor_cvd,
+        ]);
 
         // Propagar el nuevo nombre a colaboradores y su historial de cargos
-        Colaborador::where('cargo', $anterior)->update(['cargo' => $cargo->nombre]);
-        ColaboradorCargo::where('cargo', $anterior)->update(['cargo' => $cargo->nombre]);
+        if ($anterior !== $cargo->nombre) {
+            Colaborador::where('cargo', $anterior)->update(['cargo' => $cargo->nombre]);
+            ColaboradorCargo::where('cargo', $anterior)->update(['cargo' => $cargo->nombre]);
+        }
 
         return back()->with('status', 'Cargo actualizado correctamente.');
     }

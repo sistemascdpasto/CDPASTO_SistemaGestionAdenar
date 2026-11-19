@@ -33,7 +33,7 @@ class ConfiguracionCatalogoController extends Controller
         }
 
         // Cargos (tabla cargos — sincronizados desde GeoVictoria + manuales)
-        $cargos = Cargo::orderBy('nombre')->get(['id', 'nombre']);
+        $cargos = Cargo::orderBy('nombre')->get(['id', 'nombre', 'valor_cvd']);
 
         // Perfiles / funciones de cargo
         $perfilesCargos = PerfilCargo::orderBy('nombre')->get(['id', 'nombre', 'observaciones']);
