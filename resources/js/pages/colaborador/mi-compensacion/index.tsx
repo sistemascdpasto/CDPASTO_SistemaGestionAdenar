@@ -30,6 +30,7 @@ interface RegistroDia {
     rechazos: number;
     rechazos_porcentaje: number;
     valor_x_dia: number;
+    valor_x_dia_por_dia: number;
     valor_var: number;
     valor_perdido: number;
     porcentaje_variable: string;
@@ -328,10 +329,6 @@ function DateRangePicker({
 
     return (
         <div className="grid gap-1" ref={ref}>
-            <label className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
-                <CalendarDays className="size-3 text-green-700" />
-                Período consultado
-            </label>
 
             {/* Botón disparador */}
             <button
@@ -456,8 +453,10 @@ export default function MiCompensacionIndex() {
     }
 
     const rechPct    = registroDia?.rechazos_porcentaje ?? 0;
-    const cumpleMeta2 = registroDia ? rechPct < registroDia.meta_2 : false;
-    const cumpleMeta1 = registroDia ? rechPct <= registroDia.meta_1 : false;
+    // cumpleMeta2: rechazos < 2.0% → gana 100%
+    // cumpleMeta1: rechazos < 2.4% → gana 80%
+    const cumpleMeta2 = registroDia ? rechPct < registroDia.meta_1 : false;
+    const cumpleMeta1 = registroDia ? rechPct < registroDia.meta_2 : false;
     const pctNum      = registroDia ? parseFloat(registroDia.porcentaje_variable) : 0;
     const cumpleTotal = pctNum >= 100;
     const esUnDia     = registroDia ? registroDia.fecha_desde === registroDia.fecha_hasta : false;
@@ -476,9 +475,9 @@ export default function MiCompensacionIndex() {
     const tt = registroDia ? {
         valorDia: {
             titulo: esUnDia ? '1. Valor del día' : '1. Valor total del período',
-            formula: esUnDia ? 'Es fijo. El mismo valor cada día que trabajas.' : 'Suma del valor base de cada día del rango.',
-            explicacion: <p>{esUnDia ? 'Cada día laborado vale' : 'El total de los días del rango vale'} <strong>{formatCOP(registroDia.valor_x_dia)}</strong>.</p>,
-            resultado: formatCOP(registroDia.valor_x_dia),
+            formula: esUnDia ? 'Se calcula dividiendo el salario variable del cargo entre 26 días.' : 'Suma del valor base de cada día del rango.',
+            explicacion: <p>Tu cargo tiene un valor de <strong>{formatCOP(registroDia.valor_x_dia_por_dia)}</strong> por día ({esUnDia ? '1 día' : `${registroDia.dias_en_rango} días`} en el rango = <strong>{formatCOP(registroDia.valor_x_dia)}</strong>).</p>,
+            resultado: formatCOP(registroDia.valor_x_dia_por_dia),
         },
         meta1: {
             titulo: esUnDia ? '2. Meta principal (80%)' : '2. Meta principal — acumulado',
@@ -490,30 +489,30 @@ export default function MiCompensacionIndex() {
                     <li className="font-medium text-green-600">{esUnDia ? 'Hoy' : 'En el período'} promedio: {rechPct.toFixed(2)}% rechazos</li>
                 </ul>
             ),
-            resultado: `${formatCOP(registroDia.cal_rechazos_2)}`,
+            resultado: cumpleMeta1 ? `${formatCOP(registroDia.valor_x_dia_por_dia * 0.8)} / día` : 'No aplica',
             resultColor: cumpleMeta1 ? 'text-green-700' : 'text-muted-foreground',
         },
         meta2: {
-            titulo: esUnDia ? '3. Meta adicional (20%)' : '3. Meta adicional — acumulado',
-            formula: `Si tus rechazos son ${registroDia.meta_1}% o menos, ganas el 20% extra.`,
+            titulo: esUnDia ? '3. Meta adicional (20% extra)' : '3. Meta adicional — acumulado',
+            formula: `Si tus rechazos son menores al ${registroDia.meta_1}%, ganas el 100% completo.`,
             explicacion: (
                 <ul className="space-y-0.5">
-                    <li className="flex items-start gap-1"><CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-emerald-600" /> Rechazos <strong>{registroDia.meta_1}% o menos</strong> → ganas el <strong>20% extra</strong></li>
-                    <li className="flex items-start gap-1"><XCircle className="mt-0.5 size-3.5 shrink-0 text-rose-600" /> Rechazos <strong>mayores a {registroDia.meta_1}%</strong> → no aplica el extra</li>
-                    <li className="font-medium text-green-600">{esUnDia ? 'Hoy' : 'Promedio período'}: {rechPct.toFixed(2)}% rechazos</li>
+                    <li className="flex items-start gap-1"><CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-emerald-600" /> Rechazos <strong>menores a {registroDia.meta_1}%</strong> → ganas el <strong>100%</strong> completo</li>
+                    <li className="flex items-start gap-1"><XCircle className="mt-0.5 size-3.5 shrink-0 text-rose-600" /> Entre {registroDia.meta_1}% y {registroDia.meta_2}% → solo el <strong>80%</strong></li>
+                    <li className="font-medium text-green-600">{esUnDia ? 'Promedio hoy' : 'Promedio período'}: {rechPct.toFixed(2)}% rechazos</li>
                 </ul>
             ),
-            resultado: `${formatCOP(registroDia.cal_rechazos)}`,
+            resultado: cumpleMeta2 ? `${formatCOP(registroDia.valor_x_dia_por_dia)} / día (100%)` : cumpleMeta1 ? `${formatCOP(registroDia.valor_x_dia_por_dia * 0.8)} / día (80%)` : '$0 / día (0%)',
             resultColor: cumpleMeta2 ? 'text-green-700' : 'text-muted-foreground',
         },
         valorGanas: {
             titulo: esUnDia ? '4. Lo que ganaste hoy' : '4. Lo que ganaste en el período',
-            formula: 'Es la suma de las dos metas que cumpliste.',
+            formula: 'Depende del porcentaje de rechazos del día.',
             explicacion: (
                 <ul className="space-y-0.5">
-                    <li>· Meta principal cumplida → <strong>80%</strong> del día</li>
-                    <li>· Meta adicional cumplida → <strong>20%</strong> más</li>
-                    <li>· Ambas cumplidas → <strong className="text-green-700">100%</strong> del día</li>
+                    <li>· Rechazos {'<'} {registroDia.meta_1}% → <strong className="text-green-700">100%</strong> ({formatCOP(registroDia.valor_x_dia_por_dia)})</li>
+                    <li>· Rechazos {'<'} {registroDia.meta_2}% → <strong className="text-amber-600">80%</strong> ({formatCOP(registroDia.valor_x_dia_por_dia * 0.8)})</li>
+                    <li>· Rechazos ≥ {registroDia.meta_2}% → <strong className="text-red-600">0%</strong> ($0)</li>
                 </ul>
             ),
             resultado: formatCOP(registroDia.valor_var),
@@ -549,34 +548,27 @@ export default function MiCompensacionIndex() {
             <Head title="Mi Compensación Diaria" />
             <div className="flex flex-col gap-4 px-4 pb-10 sm:px-6">
 
-                {/* Título */}
-                <div>
-                    <h1 className="text-2xl font-bold text-foreground sm:text-3xl">Mi Compensación Diaria</h1>
-                    <p className="mt-0.5 text-sm text-muted-foreground">Selecciona un rango de fechas para ver tu compensación acumulada.</p>
-                </div>
-
                 {/* ══ CARD 1 — HERO ══ */}
                 <Card>
                     <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:justify-between">
 
-                        {/* Avatar + nombre + selector — todo junto, sin caja propia */}
+                        {/* Avatar grande + título + nombre + selector */}
                         <div className="flex flex-col gap-3 sm:shrink-0">
-                            <div className="flex items-center gap-2.5">
-                                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-green-700">
-                                    <User className="size-4 text-white" />
+                            <div className="flex items-center gap-3">
+                                <div
+                                    className="flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl shadow-sm shrink-0"
+                                    style={{ background: 'linear-gradient(135deg, #064e3b 0%, #047857 60%, #059669 100%)' }}
+                                >
+                                    <CircleDollarSign className="h-7 w-7 text-white" />
                                 </div>
                                 <div className="min-w-0">
-                                    <p className="truncate text-sm font-bold leading-tight text-foreground">{colaborador.nombre_completo}</p>
-                                    <p className="mt-0.5 text-[10px] font-semibold text-green-700 dark:text-green-400">
-                                        CC {colaborador.cedula} · {colaborador.cargo}
+                                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Mi Compensación Diaria</h1>
+                                    <p className="truncate text-sm font-semibold text-green-700 dark:text-green-400 mt-0.5">
+                                        {colaborador.nombre_completo} · CC {colaborador.cedula}
                                     </p>
+                                    <p className="text-xs text-muted-foreground">{colaborador.cargo}</p>
                                 </div>
                             </div>
-                            <DateRangePicker
-                                    desde={fechaDesde}
-                                    hasta={fechaHasta}
-                                    onChange={handleRangeChange}
-                                />
                         </div>
 
                         {/* Centro decorativo — sin borde ni fondo propio */}
@@ -616,6 +608,21 @@ export default function MiCompensacionIndex() {
                     </div>
                 </Card>
 
+                {/* ══ CARD FILTRO PERÍODO ══ */}
+                <Card className="p-4">
+                    <div className="flex items-center gap-3">
+                        <CalendarDays className="size-4 shrink-0 text-green-700" />
+                        <span className="text-sm font-semibold text-foreground">Filtros de período</span>
+                    </div>
+                    <div className="mt-3">
+                        <DateRangePicker
+                            desde={fechaDesde}
+                            hasta={fechaHasta}
+                            onChange={handleRangeChange}
+                        />
+                    </div>
+                </Card>
+
                 {/* ══ Sin datos del día ══ */}
                 {!registroDia ? (
                     <Card className="flex flex-col items-center gap-2 p-8 text-center">
@@ -648,7 +655,7 @@ export default function MiCompensacionIndex() {
 
                         {/* ══ CARD 2 — ECUACIÓN VISUAL ══ */}
                         <Card className="p-4">
-                            <SectionHeader icon={CircleDollarSign} title="¿Cómo se calculó mi pago?" subtitle={labelPeriodo} />
+                            <SectionHeader icon={CircleDollarSign} title="¿Cómo se calculó mi pago?" />
                             <p className="mt-2 flex items-center gap-1.5 text-[10px] text-muted-foreground">
                                 <Lightbulb className="size-3 shrink-0" />
                                 Toca cada card para entender qué significa ese valor.
@@ -657,34 +664,57 @@ export default function MiCompensacionIndex() {
                             {/* Ecuación horizontal — scroll en móvil */}
                             <div className="mt-3 overflow-x-auto pb-1">
                                 <div className="flex min-w-max items-stretch gap-1.5 sm:gap-2">
-                                    <EcuacionCard numero="Valor del día" label="Base fija" value={formatCOP(registroDia.valor_x_dia)} icon={CalendarDays} neutral tooltip={tt!.valorDia} />
+                                    <EcuacionCard numero="Valor del día" label={registroDia.cargo ?? 'Base fija'} value={formatCOP(registroDia.valor_x_dia_por_dia)} subvalue={registroDia.dias_en_rango > 1 ? `× ${registroDia.dias_en_rango} días = ${formatCOP(registroDia.valor_x_dia)}` : undefined} icon={CalendarDays} neutral tooltip={tt!.valorDia} />
                                     <Op>×</Op>
-                                    <EcuacionCard numero="Meta principal" label="80% del día" value="80%" subvalue={formatCOP(registroDia.valor_x_dia * 0.8)} icon={cumpleMeta1 ? CheckCircle2 : XCircle} met={cumpleMeta1} tooltip={tt!.meta1} />
-                                    <Op>+</Op>
-                                    <EcuacionCard numero="Meta adicional" label="20% extra" value="20%" subvalue={formatCOP(registroDia.valor_x_dia * 0.2)} icon={cumpleMeta2 ? CheckCircle2 : XCircle} met={cumpleMeta2} tooltip={tt!.meta2} />
+                                    {/* ── Metas: lógica de visibilidad ──────────────────────────────
+                                        100%: solo si cumpleMeta2 (rechazos < 2.0%)
+                                        80%:  solo si cumpleMeta1 y NO cumpleMeta2 (2.0% ≤ rechazos < 2.4%)
+                                        Ambas incumplidas: si no cumple ninguna (rechazos ≥ 2.4%)
+                                    ─────────────────────────────────────────────────────────── */}
+                                    {cumpleMeta2 ? (
+                                        // Gana 100% — solo esta card
+                                        <EcuacionCard
+                                            numero="100% del día"
+                                            label={formatCOP(registroDia.valor_x_dia_por_dia)}
+                                            value="100%"
+                                            icon={CheckCircle2}
+                                            highlight="green"
+                                            tooltip={tt!.meta2}
+                                        />
+                                    ) : cumpleMeta1 ? (
+                                        // Gana 80% — solo esta card
+                                        <EcuacionCard
+                                            numero="80% del día"
+                                            label={formatCOP(registroDia.valor_x_dia_por_dia * 0.8)}
+                                            value="80%"
+                                            icon={CheckCircle2}
+                                            met={true}
+                                            tooltip={tt!.meta1}
+                                        />
+                                    ) : (
+                                        // No gana nada — ambas cards como incumplidas
+                                        <>
+                                            <EcuacionCard
+                                                numero="100% del día"
+                                                label={formatCOP(registroDia.valor_x_dia_por_dia)}
+                                                value="100%"
+                                                icon={XCircle}
+                                                met={false}
+                                                tooltip={tt!.meta2}
+                                            />
+                                            <Op>y</Op>
+                                            <EcuacionCard
+                                                numero="80% del día"
+                                                label={formatCOP(registroDia.valor_x_dia_por_dia * 0.8)}
+                                                value="80%"
+                                                icon={XCircle}
+                                                met={false}
+                                                tooltip={tt!.meta1}
+                                            />
+                                        </>
+                                    )}
                                     <Op>=</Op>
-                                    <EcuacionCard numero="Lo que ganaste" label="Hoy" value={formatCOP(registroDia.valor_var)} icon={TrendingUp} highlight="green" tooltip={tt!.valorGanas} />
-                                    <Op>−</Op>
-                                    <EcuacionCard numero="Lo que no ganaste" label={registroDia.valor_perdido > 0 ? 'Por rechazos' : 'Sin pérdida'} value={formatCOP(registroDia.valor_perdido)} icon={TrendingDown} highlight={registroDia.valor_perdido > 0 ? 'red' : undefined} neutral={registroDia.valor_perdido === 0} tooltip={tt!.valorPerdido} />
-                                </div>
-                            </div>
-
-                            {/* Fila % variable + mensaje */}
-                            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                                <EcuacionCard numero="% Ganado" label="Del día" value={registroDia.porcentaje_variable} icon={TrendingUp} highlight="green" tooltip={tt!.pctVar} />
-                                <EcuacionCard numero="% No ganado" label="Del día" value={registroDia.porcentaje_variable_no_cum} icon={TrendingDown} highlight={parseFloat(registroDia.porcentaje_variable_no_cum) > 0 ? 'red' : undefined} neutral={parseFloat(registroDia.porcentaje_variable_no_cum) === 0} tooltip={tt!.pctNoCum} />
-                                <div className={`col-span-2 flex items-center gap-2.5 rounded-xl border px-3 py-2.5 ${cumpleTotal ? 'border-green-200 bg-green-50 dark:border-green-700/40 dark:bg-green-900/10' : 'border-amber-200 bg-amber-50 dark:border-amber-700/40 dark:bg-amber-900/10'}`}>
-                                    <Trophy className={`size-5 shrink-0 ${cumpleTotal ? 'text-green-700' : 'text-amber-500'}`} />
-                                    <div>
-                                        <p className={`text-xs font-bold ${cumpleTotal ? 'text-green-700' : 'text-amber-700'}`}>
-                                            {cumpleTotal ? '¡Felicitaciones!' : pctNum >= 80 ? '¡Buen trabajo!' : 'Sigue mejorando'}
-                                        </p>
-                                        <p className="text-[10px] text-muted-foreground">
-                                            {cumpleTotal ? 'Cumpliste las dos metas y ganaste el 100% de tu compensación.'
-                                                : pctNum >= 80 ? 'Cumpliste la meta principal. Baja los rechazos para el 100%.'
-                                                : `Rechazos (${rechPct.toFixed(2)}%) superan las metas.`}
-                                        </p>
-                                    </div>
+                                    <EcuacionCard numero="Perdido en el mes" label={estadisticasMes.total_perdido > 0 ? 'Por rechazos' : 'Sin pérdida'} value={formatCOP(estadisticasMes.total_perdido)} icon={TrendingDown} highlight={estadisticasMes.total_perdido > 0 ? 'red' : undefined} neutral={estadisticasMes.total_perdido === 0} tooltip={tt!.valorPerdido} />
                                 </div>
                             </div>
                         </Card>

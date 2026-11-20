@@ -35,7 +35,7 @@ class CompensacionColaboradorController extends Controller
         $hoy          = date('Y-m-d');
         $primerDiaMes = date('Y-m-01');
 
-        $fechaDesde = $request->input('fecha_desde', $primerDiaMes);
+        $fechaDesde = $request->input('fecha_desde', $hoy);
         $fechaHasta = $request->input('fecha_hasta', $hoy);
 
         // Sanitizar: desde no puede ser mayor que hasta
@@ -72,8 +72,8 @@ class CompensacionColaboradorController extends Controller
                 SUM(valor_var) as total_ganado,
                 SUM(valor_perdido) as total_perdido,
                 AVG(rechazos) as promedio_rechazos,
-                SUM(CASE WHEN rechazos <= 0.021 THEN 1 ELSE 0 END) as dias_meta_1,
-                SUM(CASE WHEN rechazos <= 0.026 THEN 1 ELSE 0 END) as dias_meta_2
+                SUM(CASE WHEN rechazos < 2.0 THEN 1 ELSE 0 END) as dias_meta_1,
+                SUM(CASE WHEN rechazos < 2.4 THEN 1 ELSE 0 END) as dias_meta_2
             ')
             ->first();
 
@@ -90,7 +90,8 @@ class CompensacionColaboradorController extends Controller
             $totalValorPerd   = (float) $registrosRango->sum('valor_perdido');
             $totalValorXDia   = (float) $registrosRango->sum('valor_x_dia');
             $promRechazosRaw  = (float) $registrosRango->avg('rechazos');
-            $rechazosPct      = $promRechazosRaw > 1 ? $promRechazosRaw : round($promRechazosRaw * 100, 2);
+            // rechazos en BD es porcentaje directo (ej: 1.92 = 1.92%) — sin conversión
+            $rechazosPct      = round($promRechazosRaw, 4);
             $diasCount        = $registrosRango->count();
             $pctVar           = $totalValorXDia > 0 ? round(($totalValorVar / $totalValorXDia) * 100, 1) : 0;
             $pctNoCum         = max(0, round(100 - $pctVar, 1));
@@ -106,14 +107,15 @@ class CompensacionColaboradorController extends Controller
                 'rechazos'                  => round($promRechazosRaw, 4),
                 'rechazos_porcentaje'       => $rechazosPct,
                 'valor_x_dia'               => round($totalValorXDia, 2),
+                'valor_x_dia_por_dia'       => $diasCount > 0 ? round($totalValorXDia / $diasCount, 2) : 0,
                 'valor_var'                 => round($totalValorVar, 2),
                 'valor_perdido'             => round($totalValorPerd, 2),
                 'porcentaje_variable'       => $pctVar . '%',
                 'porcentaje_variable_no_cum'=> $pctNoCum . '%',
                 'cal_rechazos'              => round((float) $registrosRango->sum('cal_rechazos'), 2),
                 'cal_rechazos_2'            => round((float) $registrosRango->sum('cal_rechazos_2'), 2),
-                'meta_1'                    => (float) ($ultimo->meta_1 ?? 2.1),
-                'meta_2'                    => (float) ($ultimo->meta_2 ?? 2.6),
+                'meta_1'                    => (float) ($ultimo->meta_1 ?? 2.0),
+                'meta_2'                    => (float) ($ultimo->meta_2 ?? 2.4),
                 'placa'                     => $ultimo->placa,
                 'transporte'                => $ultimo->transporte,
                 'nombre_completo'           => $ultimo->nombre_completo,
@@ -156,8 +158,8 @@ class CompensacionColaboradorController extends Controller
                 SUM(valor_var) as total_ganado,
                 SUM(valor_perdido) as total_perdido,
                 AVG(rechazos) as promedio_rechazos,
-                SUM(CASE WHEN rechazos <= 0.021 THEN 1 ELSE 0 END) as dias_meta_1,
-                SUM(CASE WHEN rechazos <= 0.026 THEN 1 ELSE 0 END) as dias_meta_2
+                SUM(CASE WHEN rechazos < 2.0 THEN 1 ELSE 0 END) as dias_meta_1,
+                SUM(CASE WHEN rechazos < 2.4 THEN 1 ELSE 0 END) as dias_meta_2
             ")
             ->groupBy('mes_num')
             ->orderBy('mes_num')

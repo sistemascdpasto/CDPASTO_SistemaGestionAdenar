@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Reparto;
 
+use App\Models\GeovictoriaAsistencia;
 use App\Models\Reparto\AlertaVelocidadCurva;
 use App\Models\Reparto\ChecklistVehiculo;
 use App\Models\Reparto\EventosTripulacion;
@@ -100,8 +101,6 @@ class EventosTripulacionController
     /** filtro del request → [columna, modo de comparación] */
     private const FILTERS = [
         'placa'            => ['placa', 'prefix_upper'],
-        'cedula'           => ['documento', 'prefix'],
-        'nombre'           => ['nombre', 'contains'],
         'doc_transporte'   => ['doc_transporte', 'contains'],
         'fecha_desde'      => ['fecha', '>='],
         'fecha_hasta'      => ['fecha', '<='],
@@ -121,18 +120,28 @@ class EventosTripulacionController
         $query = EventosTripulacion::query()->orderByDesc('fecha');
         $this->applyFilters($query, $request);
 
-        $paginator    = $query->paginate(50)->withQueryString();
+        $perPage = (int) $request->input('per_page', 25);
+        if (!in_array($perPage, [10, 25, 50, 100, 200], true)) {
+            $perPage = 25;
+        }
+
+        $paginator    = $query->paginate($perPage)->withQueryString();
         $checklistMap = $this->loadChecklistMap($paginator->getCollection());
+        $horasMap     = $this->loadHorasMap($paginator->getCollection());
 
         // Arrays planos: Inertia serializa de forma predecible
         $paginator->setCollection(
-            $paginator->getCollection()->map(fn ($e) => $this->serializeEvento($e, $checklistMap))
+            $paginator->getCollection()->map(fn ($e) => $this->serializeEvento($e, $checklistMap, $horasMap))
         );
 
         return Inertia::render('reparto/eventos-tripulacion/index', [
             'eventos' => $paginator,
             'filters' => collect(self::FILTERS)
-                ->mapWithKeys(fn ($_, $key) => [$key => $request->input($key, '')]),
+                ->mapWithKeys(fn ($_, $key) => [$key => $request->input($key, '')])
+                ->merge([
+                    'buscar'   => $request->input('buscar', ''),
+                    'per_page' => $perPage,
+                ]),
             'fechas_planeaciones' => Modulacion::query()
                 ->orderByDesc('fecha')
                 ->pluck('fecha')
@@ -145,6 +154,15 @@ class EventosTripulacionController
 
     private function applyFilters($query, Request $request): void
     {
+        // Filtro unificado: busca por cédula (documento) o por nombre
+        if ($request->filled('buscar')) {
+            $buscar = trim((string) $request->input('buscar'));
+            $query->where(function ($q) use ($buscar) {
+                $q->where('documento', 'LIKE', $buscar . '%')
+                  ->orWhere('nombre', 'LIKE', '%' . $buscar . '%');
+            });
+        }
+
         foreach (self::FILTERS as $key => [$column, $mode]) {
             if (!$request->filled($key)) {
                 continue;
@@ -185,10 +203,31 @@ class EventosTripulacionController
             ->keyBy(fn ($r) => $r->placa_vehiculo . '|' . $r->dia);
     }
 
-    private function serializeEvento($evento, Collection $checklistMap): array
+    /** Mapa "cedula|Y-m-d" → horas_trabajadas desde geovictoria_asistencias. */
+    private function loadHorasMap(Collection $rows): Collection
+    {
+        $cedulas = $rows->pluck('documento')->filter()->unique()->values()->all();
+        $fechas = $rows->pluck('fecha')
+            ->filter()
+            ->map(fn ($f) => Carbon::parse($f)->format('Y-m-d'))
+            ->unique()->values()->all();
+
+        if (!$cedulas || !$fechas) {
+            return collect();
+        }
+
+        return GeovictoriaAsistencia::query()
+            ->whereIn('identificador', $cedulas)
+            ->whereIn('fecha', $fechas)
+            ->get(['identificador', 'fecha', 'horas_trabajadas'])
+            ->keyBy(fn ($r) => $r->identificador . '|' . $r->fecha->format('Y-m-d'));
+    }
+
+    private function serializeEvento($evento, Collection $checklistMap, Collection $horasMap): array
     {
         $dia = $evento->fecha ? Carbon::parse($evento->fecha)->format('Y-m-d') : null;
         $cl  = ($evento->placa && $dia) ? $checklistMap->get($evento->placa . '|' . $dia) : null;
+        $ht  = ($evento->documento && $dia) ? $horasMap->get($evento->documento . '|' . $dia) : null;
 
         $float = fn ($v) => $v === null ? null : (float) $v;
 
@@ -209,6 +248,7 @@ class EventosTripulacionController
             'alertas_velocidad_curvas'  => $evento->alertas_velocidad_curvas,
             'rmd'                       => $evento->rmd,
             'adherencia_checklist'      => $cl ? round((float) $cl->max_cumpl, 2) : null,
+            'horas_trabajadas'           => $ht?->horas_trabajadas,
             'created_at'                => $evento->created_at?->toDateTimeString(),
         ];
     }
