@@ -584,12 +584,12 @@ export default function CompensacionVariableDiariaIndex() {
     const totalRegistros   = Number(indicadores?.total_registros   ?? 0) || 0;
     const totalValorVar    = Number(indicadores?.total_valor_var    ?? 0) || 0;
     const totalValorPerd   = Number(indicadores?.total_valor_perdido?? 0) || 0;
-    const totalRechazos    = Number(indicadores?.total_rechazos     ?? 0) || 0;
-    const promRechazos     = Number(indicadores?.prom_rechazos      ?? 0) || 0;
+    const _totalRechazos    = Number(indicadores?.total_rechazos     ?? 0) || 0;
+    const _promRechazos     = Number(indicadores?.prom_rechazos      ?? 0) || 0;
     const colsUnicos       = Number(indicadores?.colaboradores_unicos?? 0) || 0;
     const vehUnicos        = Number(indicadores?.vehiculos_unicos   ?? 0) || 0;
     const visibleCols = COLUMNAS.filter(([k]) => !hiddenCols.has(k));
-    const sparklineValorVar = totales_por_dia.valor_var || [];
+    const _sparklineValorVar = totales_por_dia.valor_var || [];
 
     const hasFilters = (formFilters.fecha_desde || formFilters.fecha_hasta || (formFilters.cargo as string[])?.length > 0 ||
         (formFilters.cedula as string[])?.length > 0 || (formFilters.nombre_completo as string[])?.length > 0 ||
@@ -871,7 +871,7 @@ export default function CompensacionVariableDiariaIndex() {
                                                         const pct100 = calRechazos >= 1.0;
                                                         const pct80  = calRechazos >= 0.8 && calRechazos < 1.0;
                                                         const pct0   = calRechazos === 0;
-                                                        const labelPct = pct100 ? '100%' : pct80 ? '80%' : '0%';
+                                                        const _labelPct = pct100 ? '100%' : pct80 ? '80%' : '0%';
                                                         const colorRechazos = pct0 ? COLOR_CRITICAL : pct80 ? COLOR_WARNING : COLOR_SUCCESS;
                                                         const isMoney = ['valor_x_dia', 'valor_var'].includes(k as string);
                                                         if (isMoney) display = formatCurrency(Number(val) || 0);
