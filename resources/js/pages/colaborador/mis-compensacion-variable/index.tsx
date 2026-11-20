@@ -12,7 +12,6 @@ import {
     Info,
     TrendingDown,
     Trophy,
-    User,
     XCircle,
 } from 'lucide-react';
 import React, { useState } from 'react';
@@ -21,7 +20,7 @@ import React, { useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Portal', href: '/portal' },
-    { title: 'Mi Compensación Variable', href: '/portal/mi-compensacion-variable' },
+    { title: 'Mi Compensación Mensual', href: '/portal/mi-compensacion-variable' },
 ];
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -76,13 +75,13 @@ function formatCOP(amount: number): string {
 
 function pctColor(pct: number): string {
     if (pct >= 90) return 'text-green-700 dark:text-green-400';
-    if (pct >= 70) return 'text-amber-600 dark:text-amber-400';
+    if (pct >= 70) return 'text-amber-800 dark:text-amber-600';
     return 'text-red-600 dark:text-red-400';
 }
 
 function barColor(pct: number): string {
     if (pct >= 90) return 'bg-green-500';
-    if (pct >= 70) return 'bg-amber-400';
+    if (pct >= 70) return 'bg-amber-600';
     return 'bg-red-500';
 }
 
@@ -180,10 +179,10 @@ function FilaMes({ registro, maxPago }: { registro: RegistroMes; maxPago: number
                 {/* Barra de pago */}
                 <div className="flex flex-1 flex-col gap-1">
                     <div className="flex items-center justify-between">
-                        <span className={`text-sm font-extrabold tabular-nums ${pctColor(pctObtenido)}`}>
+                        <span className="text-sm font-extrabold tabular-nums text-foreground">
                             {formatCOP(registro.pago_variable_dt)}
                         </span>
-                        <span className={`text-[10px] font-semibold ${pctColor(pctObtenido)}`}>
+                        <span className="text-[10px] font-semibold text-foreground">
                             {pctObtenido}%
                         </span>
                     </div>
@@ -195,11 +194,6 @@ function FilaMes({ registro, maxPago }: { registro: RegistroMes; maxPago: number
                     </div>
                 </div>
 
-                {/* Habilitador */}
-                <div className="hidden shrink-0 sm:block">
-                    <Chip ok={registro.habilitadores >= 1} label={registro.habilitadores >= 1 ? 'Habilitado' : 'No habilitado'} />
-                </div>
-
                 {/* Chevron */}
                 <div className="shrink-0 text-muted-foreground">
                     {open ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
@@ -208,34 +202,19 @@ function FilaMes({ registro, maxPago }: { registro: RegistroMes; maxPago: number
 
             {/* Detalle expandible */}
             {open && (
-                <div className="border-t border-sidebar-border/70 bg-muted px-4 py-4 dark:border-sidebar-border dark:bg-muted/30">
+                <div className="border-t border-green-200 px-4 py-4" style={{ background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)' }}>
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
                         <Kpi label="Salario variable" value={formatCOP(registro.salario_variable)} />
-                        <Kpi label="Pago variable DT" value={formatCOP(registro.pago_variable_dt)} green />
-                        <Kpi label="Total pago" value={formatCOP(registro.total_pago)} green />
+                        <Kpi label="Pago variable DT" value={formatCOP(registro.pago_variable_dt)} />
+                        <Kpi label="Total pago" value={formatCOP(registro.total_pago)} />
                         <Kpi label="Días trabajados" value={registro.dias_trabajados} />
-                        <Kpi
-                            label="% Rechazos"
-                            value={`${registro.porcentaje_rechazos}%`}
-                            green={registro.porcentaje_rechazos < 2.1}
-                            red={registro.porcentaje_rechazos >= 2.6}
-                        />
-                        <Kpi label="Habilitadores" value={registro.habilitadores} green={registro.habilitadores >= 1} red={registro.habilitadores < 1} />
-                        <Kpi
-                            label="Aus. justificada"
-                            value={registro.ausencia_justificada}
-                            green={registro.ausencia_justificada === 0}
-                            red={registro.ausencia_justificada > 0}
-                        />
-                        <Kpi
-                            label="Aus. injustificada"
-                            value={registro.ausencia_injustificada}
-                            green={registro.ausencia_injustificada === 0}
-                            red={registro.ausencia_injustificada > 0}
-                        />
+                        <Kpi label="% Rechazos" value={`${registro.porcentaje_rechazos}%`} />
+                        <Kpi label="Habilitadores" value={registro.habilitadores} />
+                        <Kpi label="Aus. justificada" value={registro.ausencia_justificada} />
+                        <Kpi label="Aus. injustificada" value={registro.ausencia_injustificada} />
                         <Kpi label="Adherencia GP" value={registro.adherencia_gp ?? '—'} />
                         <Kpi label="Market refusals" value={registro.market_refusals ?? '—'} />
-                        <Kpi label="Fatalidades TRI" value={registro.tri_fatalidades} green={registro.tri_fatalidades === 0} red={registro.tri_fatalidades > 0} />
+                        <Kpi label="Fatalidades TRI" value={registro.tri_fatalidades} />
                         <Kpi label="Variable" value={registro.variable ?? '—'} />
                     </div>
                 </div>
@@ -275,9 +254,9 @@ export default function MisCompensacionVariableIndex() {
     if (error || !colaborador) {
         return (
             <AppLayout breadcrumbs={breadcrumbs}>
-                <Head title="Mi Compensación Variable" />
+                <Head title="Mi Compensación Mensual" />
                 <div className="flex flex-col gap-5 px-4 pb-10 sm:px-6">
-                    <h1 className="text-2xl font-bold text-foreground">Mi Compensación Variable</h1>
+                    <h1 className="text-2xl font-bold text-foreground">Mi Compensación Mensual</h1>
                     <Card className="p-5">
                         <p className="text-sm text-red-600">{error || 'No se pudo cargar la información.'}</p>
                     </Card>
@@ -288,60 +267,29 @@ export default function MisCompensacionVariableIndex() {
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Mi Compensación Variable" />
-            <div className="flex flex-col gap-4 px-4 pb-10 sm:px-6">
+            <Head title="Mi Compensación Mensual" />
+            <div className="flex flex-col gap-4 px-4 pb-10 pt-6 sm:px-6">
 
                 {/* ── Título ── */}
-                <div>
-                    <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
-                        Mi Compensación Variable
-                    </h1>
-                    <p className="mt-0.5 text-sm text-muted-foreground">
-                        Historial mensual de tu compensación variable por año.
-                    </p>
-                </div>
 
                 {/* ── CARD HERO ── */}
                 <Card>
-                    <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-3 p-3 sm:flex-row sm:items-center sm:justify-between">
 
-                        {/* Perfil + selector año */}
-                        <div className="flex flex-col gap-3 sm:shrink-0">
-                            <div className="flex items-center gap-2.5">
-                                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-green-700">
-                                    <User className="size-4 text-white" />
-                                </div>
-                                <div className="min-w-0">
-                                    <p className="truncate text-sm font-bold leading-tight text-foreground">
-                                        {colaborador.nombre_completo}
-                                    </p>
-                                    <p className="mt-0.5 text-[10px] font-semibold text-green-700 dark:text-green-400">
-                                        CC {colaborador.cedula} · {colaborador.cargo ?? 'Sin cargo'}
-                                    </p>
-                                </div>
+                        {/* Avatar + título + nombre */}
+                        <div className="flex items-center gap-2.5 sm:shrink-0">
+                            <div
+                                className="flex h-12 w-12 items-center justify-center rounded-xl shadow-sm shrink-0"
+                                style={{ background: 'linear-gradient(135deg, #064e3b 0%, #047857 60%, #059669 100%)' }}
+                            >
+                                <CircleDollarSign className="h-6 w-6 text-white" />
                             </div>
-
-                            {/* Selector de año */}
-                            <div className="grid gap-1">
-                                <label className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
-                                    <CalendarDays className="size-3 text-green-700" /> Año
-                                </label>
-                                <div className="flex gap-1.5">
-                                    {(aniosDisponibles.length > 0 ? aniosDisponibles : [anio]).map((a) => (
-                                        <button
-                                            key={a}
-                                            type="button"
-                                            onClick={() => handleAnioChange(a)}
-                                            className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${
-                                                a === anio
-                                                    ? 'border-green-600 bg-green-700 text-white'
-                                                    : 'border-sidebar-border/70 bg-card text-muted-foreground hover:bg-muted/60 dark:border-sidebar-border dark:text-muted-foreground'
-                                            }`}
-                                        >
-                                            {a}
-                                        </button>
-                                    ))}
-                                </div>
+                            <div className="min-w-0">
+                                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground leading-tight">Mi Compensación Mensual</h1>
+                                <p className="truncate text-xs font-semibold text-green-700 dark:text-green-400">
+                                    {colaborador.nombre_completo} · CC {colaborador.cedula}
+                                </p>
+                                <p className="text-[11px] text-muted-foreground">{colaborador.cargo ?? 'Sin cargo'}</p>
                             </div>
                         </div>
 
@@ -349,19 +297,19 @@ export default function MisCompensacionVariableIndex() {
                         <div
                             className="mx-4 hidden flex-1 items-center justify-center sm:flex"
                             style={{
-                                minHeight: '100px',
+                                minHeight: '80px',
                                 background: 'radial-gradient(circle at 50% 60%, #bbf7d0 0%, #f0fdf4 55%, transparent 90%)',
                                 borderRadius: '0.75rem',
                             }}
                         >
-                            <BarChart3 className="size-16 text-green-200 dark:text-green-900" />
+                            <BarChart3 className="size-12 text-green-200 dark:text-green-900" />
                         </div>
 
                         {/* Círculo % anual */}
                         {resumen ? (
-                            <div className="flex items-center gap-3 sm:shrink-0">
+                            <div className="flex items-center gap-2 sm:shrink-0">
                                 <div className="relative shrink-0">
-                                    <svg width="76" height="76" viewBox="0 0 100 100">
+                                    <svg width="56" height="56" viewBox="0 0 100 100">
                                         <circle cx="50" cy="50" r="44" fill="none" stroke="#bbf7d0" strokeWidth="9" />
                                         <circle
                                             cx="50" cy="50" r="44" fill="none"
@@ -372,17 +320,17 @@ export default function MisCompensacionVariableIndex() {
                                         />
                                     </svg>
                                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                        <span className="text-lg font-extrabold leading-none text-green-700 dark:text-green-400">
+                                        <span className="text-sm font-extrabold leading-none text-green-700 dark:text-green-400">
                                             {pctAnual}%
                                         </span>
-                                        <span className="text-[9px] font-medium text-muted-foreground">del año</span>
+                                        <span className="text-[8px] font-medium text-muted-foreground">del año</span>
                                     </div>
                                 </div>
                                 <div>
                                     <p className="text-xs font-bold text-foreground">
                                         {pctAnual >= 90 ? '¡Excelente año!' : pctAnual >= 70 ? '¡Buen año!' : 'Hay oportunidad'}
                                     </p>
-                                    <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+                                    <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground">
                                         {resumen.meses_con_datos} {resumen.meses_con_datos === 1 ? 'mes' : 'meses'} con datos
                                     </p>
                                 </div>
@@ -390,6 +338,31 @@ export default function MisCompensacionVariableIndex() {
                         ) : (
                             <p className="text-xs text-muted-foreground sm:shrink-0">Sin datos para {anio}</p>
                         )}
+                    </div>
+                </Card>
+
+                {/* ── CARD SELECTOR AÑO ── */}
+                <Card className="p-4">
+                    <div className="flex items-center gap-3 mb-3">
+                        <CalendarDays className="size-4 shrink-0 text-green-700" />
+                        <span className="text-sm font-semibold text-foreground">Año</span>
+                    </div>
+                    <div className="flex gap-1.5 flex-wrap">
+                        {(aniosDisponibles.length > 0 ? aniosDisponibles : [anio]).map((a) => (
+                            <button
+                                key={a}
+                                type="button"
+                                onClick={() => handleAnioChange(a)}
+                                className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                                    a === anio
+                                        ? 'text-white border-transparent'
+                                        : 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100 dark:border-green-700/40 dark:bg-green-900/10'
+                                }`}
+                                style={a === anio ? { background: 'linear-gradient(135deg, #064e3b 0%, #047857 60%, #059669 100%)' } : {}}
+                            >
+                                {a}
+                            </button>
+                        ))}
                     </div>
                 </Card>
 
@@ -410,48 +383,47 @@ export default function MisCompensacionVariableIndex() {
                 {resumen && resumen.meses_con_datos > 0 && (
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                         {/* Total ganado */}
-                        <Card className="p-4">
+                        <div className="rounded-xl border border-green-200 p-4" style={{ background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)' }}>
                             <div className="flex items-center gap-2 mb-2">
-                                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-100 dark:bg-green-900/40">
-                                    <CircleDollarSign className="size-4 text-green-700 dark:text-green-400" />
+                                <div className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: 'linear-gradient(135deg, #064e3b 0%, #047857 60%, #059669 100%)' }}>
+                                    <CircleDollarSign className="size-4 text-white" />
                                 </div>
-                                <span className="text-[10px] font-semibold text-muted-foreground">
-                                    Total ganado
-                                </span>
+                                <span className="text-[10px] font-semibold text-muted-foreground">Total ganado</span>
                             </div>
-                            <p className="text-xl font-extrabold text-green-700 dark:text-green-400 tabular-nums">
+                            <p className="text-xl font-extrabold tabular-nums" style={{ color: '#047857' }}>
                                 {formatCOP(resumen.total_pago_variable)}
                             </p>
                             <p className="mt-1 text-[10px] text-muted-foreground">pago variable DT acumulado</p>
-                        </Card>
+                        </div>
 
                         {/* Promedio rechazos */}
-                        <Card className="p-4">
+                        <div className={`rounded-xl border p-4 ${resumen.promedio_rechazos < 2.1 ? 'border-green-200' : 'border-red-100 bg-red-50 dark:border-red-800/40 dark:bg-red-900/10'}`}
+                            style={resumen.promedio_rechazos < 2.1 ? { background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)' } : {}}>
                             <div className="flex items-center gap-2 mb-2">
-                                <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${resumen.promedio_rechazos < 2.1 ? 'bg-green-100 dark:bg-green-900/40' : 'bg-red-100 dark:bg-red-900/40'}`}>
-                                    <AlertTriangle className={`size-4 ${resumen.promedio_rechazos < 2.1 ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`} />
+                                <div
+                                    className={`flex h-8 w-8 items-center justify-center rounded-lg ${resumen.promedio_rechazos >= 2.1 ? 'bg-red-100 dark:bg-red-900/40' : ''}`}
+                                    style={resumen.promedio_rechazos < 2.1 ? { background: 'linear-gradient(135deg, #064e3b 0%, #047857 60%, #059669 100%)' } : {}}
+                                >
+                                    <AlertTriangle className={`size-4 ${resumen.promedio_rechazos < 2.1 ? 'text-white' : 'text-red-600 dark:text-red-400'}`} />
                                 </div>
-                                <span className="text-[10px] font-semibold text-muted-foreground">
-                                    Prom. rechazos
-                                </span>
+                                <span className="text-[10px] font-semibold text-muted-foreground">Prom. rechazos</span>
                             </div>
-                            <p className={`text-xl font-extrabold tabular-nums ${resumen.promedio_rechazos < 2.1 ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                            <p className={`text-xl font-extrabold tabular-nums ${resumen.promedio_rechazos < 2.1 ? '' : 'text-red-600 dark:text-red-400'}`}
+                                style={resumen.promedio_rechazos < 2.1 ? { color: '#047857' } : {}}>
                                 {resumen.promedio_rechazos}%
                             </p>
                             <p className="mt-1 text-[10px] text-muted-foreground">promedio anual · meta &lt;2.1%</p>
-                        </Card>
+                        </div>
 
                         {/* Mejor mes */}
                         <Card className="p-4">
                             <div className="flex items-center gap-2 mb-2">
-                                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/40">
-                                    <Trophy className="size-4 text-amber-600 dark:text-amber-400" />
+                                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-200 dark:bg-amber-900/40">
+                                    <Trophy className="size-4 text-amber-800 dark:text-amber-600" />
                                 </div>
-                                <span className="text-[10px] font-semibold text-muted-foreground">
-                                    Mejor mes
-                                </span>
+                                <span className="text-[10px] font-semibold text-muted-foreground">Mejor mes</span>
                             </div>
-                            <p className="text-xl font-extrabold text-amber-600 dark:text-amber-400">
+                            <p className="text-xl font-extrabold text-amber-800 dark:text-amber-600">
                                 {resumen.mejor_mes?.mes ?? '—'}
                             </p>
                             <p className="mt-1 text-[10px] text-muted-foreground">
@@ -465,9 +437,7 @@ export default function MisCompensacionVariableIndex() {
                                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-100 dark:bg-rose-900/40">
                                     <TrendingDown className="size-4 text-rose-600 dark:text-rose-400" />
                                 </div>
-                                <span className="text-[10px] font-semibold text-muted-foreground">
-                                    Mes más bajo
-                                </span>
+                                <span className="text-[10px] font-semibold text-muted-foreground">Mes más bajo</span>
                             </div>
                             <p className="text-xl font-extrabold text-rose-600 dark:text-rose-400">
                                 {resumen.peor_mes?.mes ?? '—'}
@@ -503,7 +473,7 @@ export default function MisCompensacionVariableIndex() {
                                     <Info className="size-3 shrink-0" />
                                     Toca cada fila para ver el detalle del mes.
                                 </p>
-                                {registros.map((registro) => (
+                                {registros.filter((r) => !r.es_futuro).map((registro) => (
                                     <FilaMes key={registro.id ?? registro.mes} registro={registro} maxPago={maxPago} />
                                 ))}
                             </div>
@@ -517,7 +487,7 @@ export default function MisCompensacionVariableIndex() {
                         <span className="inline-block h-2 w-4 rounded-full bg-green-500" /> ≥ 90% del salario variable
                     </span>
                     <span className="flex items-center gap-1">
-                        <span className="inline-block h-2 w-4 rounded-full bg-amber-400" /> 70–89%
+                        <span className="inline-block h-2 w-4 rounded-full bg-amber-600" /> 70–89%
                     </span>
                     <span className="flex items-center gap-1">
                         <span className="inline-block h-2 w-4 rounded-full bg-red-500" /> &lt; 70%

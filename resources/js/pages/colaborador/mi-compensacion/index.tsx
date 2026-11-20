@@ -334,16 +334,16 @@ function DateRangePicker({
             <button
                 type="button"
                 onClick={() => setOpen(v => !v)}
-                className="flex items-center gap-2 rounded-lg border border-sidebar-border/70 bg-muted px-2.5 py-1.5 text-left text-sm text-foreground transition hover:border-green-400 focus:outline-none dark:border-sidebar-border dark:bg-muted"
+                className="flex items-center gap-2 rounded-lg border border-green-300 bg-green-50 px-2.5 py-1.5 text-left text-sm text-foreground transition hover:border-green-500 hover:bg-green-100 focus:outline-none dark:border-green-700/40 dark:bg-green-900/10"
             >
-                <CalendarDays className="size-3.5 shrink-0 text-muted-foreground" />
+                <CalendarDays className="size-3.5 shrink-0 text-green-700" />
                 <span className="flex-1 truncate">
                     {labelAtajo
-                        ? <><span className="font-semibold text-green-700">{labelAtajo}</span> <span className="text-[11px] text-muted-foreground">({labelRango})</span></>
-                        : labelRango
+                        ? <><span className="font-semibold" style={{ color: '#047857' }}>{labelAtajo}</span> <span className="text-[11px] text-muted-foreground">({labelRango})</span></>
+                        : <span className="text-sm text-foreground">{labelRango}</span>
                     }
                 </span>
-                <ChevronRight className={`size-3.5 shrink-0 text-muted-foreground transition-transform ${open ? 'rotate-90' : ''}`} />
+                <ChevronRight className={`size-3.5 shrink-0 text-green-700 transition-transform ${open ? 'rotate-90' : ''}`} />
             </button>
 
             {/* Panel desplegable */}
@@ -360,9 +360,10 @@ function DateRangePicker({
                                     onClick={() => aplicar(a.desde, a.hasta)}
                                     className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-colors border ${
                                         activo
-                                            ? 'bg-green-700 text-white border-green-700'
+                                            ? 'text-white border-transparent'
                                             : 'bg-muted text-muted-foreground border-sidebar-border/70 hover:border-green-400 hover:text-green-700 dark:border-sidebar-border'
                                     }`}
+                                    style={activo ? { background: 'linear-gradient(135deg, #064e3b 0%, #047857 60%, #059669 100%)', borderColor: 'transparent' } : {}}
                                 >
                                     {a.label}
                                 </button>
@@ -399,7 +400,8 @@ function DateRangePicker({
                         <button
                             type="button"
                             onClick={() => setOpen(false)}
-                            className="rounded-lg border border-sidebar-border/70 bg-muted px-3 py-1 text-xs font-medium text-muted-foreground hover:bg-muted/80 dark:border-sidebar-border"
+                            className="rounded-lg px-3 py-1 text-xs font-semibold text-white transition hover:brightness-110"
+                            style={{ background: 'linear-gradient(135deg, #064e3b 0%, #047857 60%, #059669 100%)' }}
                         >
                             Cerrar
                         </button>
@@ -537,61 +539,62 @@ export default function MiCompensacionIndex() {
     const mesActualIdx = new Date().getMonth(); // 0-based
 
     return (
-        <AppLayout>
+        <AppLayout breadcrumbs={[
+            { title: 'Portal', href: '/portal' },
+            { title: 'Mi Compensación', href: '/portal/mi-compensacion' },
+        ]}>
             <Head title="Mi Compensación Diaria" />
-            <div className="flex flex-col gap-4 px-4 pb-10 sm:px-6">
+            <div className="flex flex-col gap-4 px-4 pb-10 pt-6 sm:px-6">
 
                 {/* ══ CARD 1 — HERO ══ */}
                 <Card>
-                    <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-3 p-3 sm:flex-row sm:items-center sm:justify-between">
 
-                        {/* Avatar grande + título + nombre + selector */}
-                        <div className="flex flex-col gap-3 sm:shrink-0">
-                            <div className="flex items-center gap-3">
-                                <div
-                                    className="flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl shadow-sm shrink-0"
-                                    style={{ background: 'linear-gradient(135deg, #064e3b 0%, #047857 60%, #059669 100%)' }}
-                                >
-                                    <CircleDollarSign className="h-7 w-7 text-white" />
-                                </div>
-                                <div className="min-w-0">
-                                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Mi Compensación Diaria</h1>
-                                    <p className="truncate text-sm font-semibold text-green-700 dark:text-green-400 mt-0.5">
-                                        {colaborador.nombre_completo} · CC {colaborador.cedula}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">{colaborador.cargo}</p>
-                                </div>
+                        {/* Avatar + título + nombre */}
+                        <div className="flex items-center gap-2.5 sm:shrink-0">
+                            <div
+                                className="flex h-12 w-12 items-center justify-center rounded-xl shadow-sm shrink-0"
+                                style={{ background: 'linear-gradient(135deg, #064e3b 0%, #047857 60%, #059669 100%)' }}
+                            >
+                                <CircleDollarSign className="h-6 w-6 text-white" />
+                            </div>
+                            <div className="min-w-0">
+                                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground leading-tight">Mi Compensación Diaria</h1>
+                                <p className="truncate text-xs font-semibold text-green-700 dark:text-green-400">
+                                    {colaborador.nombre_completo} · CC {colaborador.cedula}
+                                </p>
+                                <p className="text-[11px] text-muted-foreground">{colaborador.cargo}</p>
                             </div>
                         </div>
 
-                        {/* Centro decorativo — sin borde ni fondo propio */}
+                        {/* Centro decorativo */}
                         <div className="mx-4 hidden flex-1 items-center justify-center sm:flex"
-                            style={{ minHeight: '100px', background: 'radial-gradient(circle at 50% 60%, #bbf7d0 0%, #f0fdf4 55%, transparent 90%)', borderRadius: '0.75rem' }}>
-                            <TrendingUp className="size-16 text-green-200 dark:text-green-900" />
+                            style={{ minHeight: '80px', background: 'radial-gradient(circle at 50% 60%, #bbf7d0 0%, #f0fdf4 55%, transparent 90%)', borderRadius: '0.75rem' }}>
+                            <TrendingUp className="size-12 text-green-200 dark:text-green-900" />
                         </div>
 
-                        {/* Círculo % — sin caja propia, directo en el flujo */}
+                        {/* Círculo % */}
                         {registroDia ? (
-                            <div className="flex items-center gap-3 sm:shrink-0">
+                            <div className="flex items-center gap-2 sm:shrink-0">
                                 <div className="relative shrink-0">
-                                    <svg width="76" height="76" viewBox="0 0 100 100">
+                                    <svg width="56" height="56" viewBox="0 0 100 100">
                                         <circle cx="50" cy="50" r="44" fill="none" stroke="#bbf7d0" strokeWidth="9" />
                                         <circle cx="50" cy="50" r="44" fill="none" stroke="#15803d" strokeWidth="9"
                                             strokeLinecap="round" strokeDasharray={`${dash} ${CIRCUM}`} transform="rotate(-90 50 50)" />
                                     </svg>
                                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                        <span className="text-lg font-extrabold leading-none text-green-700 dark:text-green-400">{pctNum}%</span>
-                                        <span className="text-[9px] font-medium text-muted-foreground">variable</span>
+                                        <span className="text-sm font-extrabold leading-none text-green-700 dark:text-green-400">{pctNum}%</span>
+                                        <span className="text-[8px] font-medium text-muted-foreground">variable</span>
                                     </div>
                                 </div>
                                 <div>
                                     <p className="text-xs font-bold text-foreground">
                                         {cumpleTotal ? '¡Excelente!' : pctNum >= 80 ? '¡Bien!' : 'Mejora aquí'}
                                     </p>
-                                    <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
-                                        {cumpleTotal ? 'Cumpliste el 100% de tu compensación del día.'
-                                            : pctNum >= 80 ? 'Cumpliste la meta principal.'
-                                            : 'Reduce tus rechazos para ganar más.'}
+                                    <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground">
+                                        {cumpleTotal ? 'Cumpliste el 100%.'
+                                            : pctNum >= 80 ? 'Meta principal cumplida.'
+                                            : 'Reduce tus rechazos.'}
                                     </p>
                                 </div>
                             </div>
