@@ -464,13 +464,6 @@ export default function MiCompensacionIndex() {
     const CIRCUM = 276.46;
     const dash   = Math.min((pctNum / 100) * CIRCUM, CIRCUM);
 
-    // Etiqueta del período para los tooltips y subtítulos
-    const labelPeriodo = registroDia
-        ? (esUnDia
-            ? formatDateLong(registroDia.fecha_desde)
-            : `${formatDateShort(registroDia.fecha_desde)} — ${formatDateShort(registroDia.fecha_hasta)} (${registroDia.dias_en_rango} día${registroDia.dias_en_rango !== 1 ? 's' : ''})`)
-        : '';
-
     // Tooltips con datos reales
     const tt = registroDia ? {
         valorDia: {

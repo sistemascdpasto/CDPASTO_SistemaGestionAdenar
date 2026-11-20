@@ -222,7 +222,7 @@ interface ImportModalProps {
 function ImportModal({
     open, selectedFile, isUploading,
     fileInputRef, fechasPlaneaciones, fechaPlaneacion, onFechaPlaneacionChange,
-    onClose, onFileChange, onImport, onDownloadTemplate,
+    onClose, onFileChange, onImport, onDownloadTemplate: _onDownloadTemplate,
 }: ImportModalProps) {
     if (!open) return null;
 
