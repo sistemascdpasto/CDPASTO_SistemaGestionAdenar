@@ -5,14 +5,12 @@ import {
     AlertTriangle,
     BarChart3,
     CalendarDays,
-    CheckCircle2,
     ChevronDown,
     ChevronUp,
     CircleDollarSign,
     Info,
     TrendingDown,
     Trophy,
-    XCircle,
 } from 'lucide-react';
 import React, { useState } from 'react';
 
@@ -73,12 +71,6 @@ function formatCOP(amount: number): string {
     }).format(amount || 0);
 }
 
-function pctColor(pct: number): string {
-    if (pct >= 90) return 'text-green-700 dark:text-green-400';
-    if (pct >= 70) return 'text-amber-800 dark:text-amber-600';
-    return 'text-red-600 dark:text-red-400';
-}
-
 function barColor(pct: number): string {
     if (pct >= 90) return 'bg-green-500';
     if (pct >= 70) return 'bg-amber-600';
@@ -127,20 +119,6 @@ function Kpi({ label, value, green, red, muted }: {
             <p className="mb-0.5 text-[10px] text-muted-foreground">{label}</p>
             <p className={`text-base font-bold tabular-nums leading-tight ${color}`}>{value}</p>
         </div>
-    );
-}
-
-// ─── Chip ────────────────────────────────────────────────────────────────────
-
-function Chip({ ok, label }: { ok: boolean; label: string }) {
-    const base = ok
-        ? 'bg-green-700 text-white'
-        : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
-    return (
-        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${base}`}>
-            {ok ? <CheckCircle2 className="size-2.5" /> : <XCircle className="size-2.5" />}
-            {label}
-        </span>
     );
 }
 

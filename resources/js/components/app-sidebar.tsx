@@ -63,7 +63,8 @@ function buildSubNavItems(
                     shared: sub.shared,
                 },
             ];
-        });
+        })
+        .sort((a, b) => a.title.localeCompare(b.title, 'es'));
 }
 
 export function AppSidebar() {
@@ -101,50 +102,55 @@ export function AppSidebar() {
         inyectarSubmodulos,
     );
 
+    const moduleNavItems = visibleModules
+        .map((mod) => ({
+            title: mod.title,
+            url: `/modules/${mod.slug}`,
+            icon: mod.icon,
+            color: mod.accent,
+            items: buildSubNavItems(
+                mod.submodules,
+                mod.slug,
+                mod.accent,
+                auth.isAdmin ? ['Administrador'] : auth.roles,
+                auth.isAdmin,
+                auth.accessibleSubmodules,
+            ),
+        }))
+        // Un pilar sin ningún submódulo propio otorgado (solo quedaría Capacitaciones,
+        // que es transversal) no se muestra: el usuario no tiene nada que hacer ahí.
+        .filter((item) => auth.isAdmin || item.items.some((sub) => !sub.shared))
+        .sort((a, b) => a.title.localeCompare(b.title, 'es'));
+
+    const colaboradorNavItems: NavItem[] = auth.isColaborador
+        ? [
+              { title: '5 Por Qué', url: '/cinco-porques', icon: ListChecks, color: '#D4102A' },
+              { title: 'Alertas', url: '/portal/alertas', icon: BellRing, color: '#3F7A22' },
+              { title: 'Condición de Salud', url: '/portal/condicion-salud', icon: HeartPulse, color: '#3F7A22' },
+              { title: 'Encuesta de Morbilidad', url: '/portal/encuesta-morbilidad', icon: Stethoscope, color: '#3F7A22' },
+              { title: 'Medición de Tiempos en Inventario', url: '/modules/reparto/medicion-tiempos-inventario/create', icon: Clock, color: '#D4102A' },
+              { title: 'Mi Compensación Diaria', url: '/portal/mi-compensacion', icon: Calendar, color: '#0891B2' },
+              { title: 'Mi Compensación Variable', url: '/portal/mi-compensacion-variable', icon: DollarSign, color: '#15803d' },
+              { title: 'Mi Perfil', url: '/portal/perfil', icon: User, color: '#3F7A22' },
+              { title: 'Mi Plan Padrinos', url: '/modules/gente/plan-padrinos/parejas', icon: UserCheck, color: '#7C3AED' },
+              { title: 'Mi Plan Premiación', url: '/portal/mi-plan-premiacion', icon: Trophy, color: '#D97706' },
+              { title: 'Mis Capacitaciones', url: '/portal/capacitaciones', icon: GraduationCap, color: '#0D9488' },
+              { title: 'Mis Estrellas del Camión', url: '/portal/mis-indicadores-reparto', icon: Star, color: '#D4102A' },
+              { title: 'Mis Incidencias GeoVictoria', url: '/portal/mis-incidencias-geovictoria', icon: AlertTriangle, color: '#D4102A' },
+              { title: 'Mis Planeaciones de Ruta', url: '/portal/mis-rutas-reparto', icon: Route, color: '#D4102A' },
+              { title: 'Mis Pruebas', url: '/portal/pruebas', icon: TestTube, color: '#3F7A22' },
+              { title: 'Mis Tanqueadas', url: '/portal/mis-tanqueadas', icon: Fuel, color: '#2B6CB0' },
+          ]
+        : [];
+
     const mainNavItems: NavItem[] = [
         {
             title: 'Dashboard',
             url: '/dashboard',
             icon: LayoutGrid,
         },
-        ...visibleModules
-            .map((mod) => ({
-                title: mod.title,
-                url: `/modules/${mod.slug}`,
-                icon: mod.icon,
-                color: mod.accent,
-                items: buildSubNavItems(
-                    mod.submodules,
-                    mod.slug,
-                    mod.accent,
-                    auth.isAdmin ? ['Administrador'] : auth.roles,
-                    auth.isAdmin,
-                    auth.accessibleSubmodules,
-                ),
-            }))
-            // Un pilar sin ningún submódulo propio otorgado (solo quedaría Capacitaciones,
-            // que es transversal) no se muestra: el usuario no tiene nada que hacer ahí.
-            .filter((item) => auth.isAdmin || item.items.some((sub) => !sub.shared)),
-        ...(auth.isColaborador
-            ? [
-                  { title: 'Mi Perfil', url: '/portal/perfil', icon: User, color: '#3F7A22' },
-                  { title: '5 Por Qué', url: '/cinco-porques', icon: ListChecks, color: '#D4102A' },
-                  { title: 'Mis Pruebas', url: '/portal/pruebas', icon: TestTube, color: '#3F7A22' },
-                  { title: 'Mis Planeaciones de Ruta', url: '/portal/mis-rutas-reparto', icon: Route, color: '#D4102A' },
-                  { title: 'Mis Estrellas del Camión', url: '/portal/mis-indicadores-reparto', icon: Star, color: '#D4102A' },
-                  { title: 'Mi Plan Premiación', url: '/portal/mi-plan-premiacion', icon: Trophy, color: '#D97706' },
-                  { title: 'Mi Plan Padrinos', url: '/modules/gente/plan-padrinos/parejas', icon: UserCheck, color: '#7C3AED' },
-                  { title: 'Mi Compensación Diaria', url: '/portal/mi-compensacion', icon: Calendar, color: '#0891B2' },
-                  { title: 'Mi Compensación Variable', url: '/portal/mi-compensacion-variable', icon: DollarSign, color: '#15803d' },
-                  { title: 'Medición de Tiempos en Inventario', url: '/modules/reparto/medicion-tiempos-inventario/create', icon: Clock, color: '#D4102A' },
-                  { title: 'Condición de Salud', url: '/portal/condicion-salud', icon: HeartPulse, color: '#3F7A22' },
-                  { title: 'Encuesta de Morbilidad', url: '/portal/encuesta-morbilidad', icon: Stethoscope, color: '#3F7A22' },
-                  { title: 'Mis Capacitaciones', url: '/portal/capacitaciones', icon: GraduationCap, color: '#0D9488' },
-                  { title: 'Mis Incidencias GeoVictoria', url: '/portal/mis-incidencias-geovictoria', icon: AlertTriangle, color: '#D4102A' },
-                  { title: 'Mis Tanqueadas', url: '/portal/mis-tanqueadas', icon: Fuel, color: '#2B6CB0' },
-                  { title: 'Alertas', url: '/portal/alertas', icon: BellRing, color: '#3F7A22' },
-              ]
-            : []),
+        ...moduleNavItems,
+        ...colaboradorNavItems,
         ...(auth.isAdmin
             ? [
                   {

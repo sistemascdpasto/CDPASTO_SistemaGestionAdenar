@@ -174,7 +174,6 @@ export const modules: ModuleDef[] = [
         submodules: [
             { title: 'Planeación de ruta', slug: 'modulacion', icon: BarChart3 },
             { title: 'Historial de Planeaciones', slug: 'modulacion-historial', icon: FileStack },
-            { title: 'Eventos de Tripulación', slug: 'eventos-tripulacion', icon: Users },
             { title: 'Indicadores de Velocidad', slug: 'indicadores', icon: Map },
             { title: 'Indicadores de Adherencia', slug: 'indicadores-adherencia', icon: ClipboardCheck },
             { title: 'Adherencia al Tiempo', slug: 'indicadores-tiempo', icon: Clock },
@@ -185,8 +184,12 @@ export const modules: ModuleDef[] = [
                 slug: 'compensacion-variable',
                 icon: DollarSign,
                 allowedRoles: ['Administrador', 'Colaborador', 'Reparto'],
+                submodules: [
+                    { title: 'Eventos Diarios', slug: 'eventos-tripulacion', moduleSlugOverride: 'reparto', icon: Users },
+                    { title: 'Compensación Variable Diaria', slug: 'compensacion-variable-diaria', moduleSlugOverride: 'reparto', icon: CalendarDays },
+                    { title: 'Compensación Variable', slug: 'compensacion-variable', moduleSlugOverride: 'reparto', icon: DollarSign },
+                ],
             },
-            { title: 'Compensación Variable Diaria', slug: 'compensacion-variable-diaria', icon: CalendarDays },
             {
                 title: 'Medición de Tiempos en Inventario',
                 slug: 'medicion-tiempos-inventario',

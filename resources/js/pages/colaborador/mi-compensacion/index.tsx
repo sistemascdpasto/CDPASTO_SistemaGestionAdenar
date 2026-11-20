@@ -89,15 +89,6 @@ function formatCOP(amount: number): string {
     }).format(amount || 0);
 }
 
-function formatDateLong(d: string | null): string {
-    if (!d) return '—';
-    // Parsear como fecha local (evita el desfase de timezone al usar new Date('YYYY-MM-DD'))
-    const [y, m, day] = d.split('-').map(Number);
-    const dt = new Date(y, m - 1, day);
-    if (isNaN(dt.getTime())) return d;
-    return dt.toLocaleDateString('es-CO', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
-}
-
 function formatDateShort(d: string | null): string {
     if (!d) return '—';
     const [y, m, day] = d.split('-').map(Number);

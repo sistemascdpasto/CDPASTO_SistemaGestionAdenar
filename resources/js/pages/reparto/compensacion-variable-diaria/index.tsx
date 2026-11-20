@@ -1,4 +1,4 @@
-import { Badge } from '@/components/ui/badge';
+﻿import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -21,6 +21,7 @@ import {
 } from 'chart.js';
 import {
     AlertTriangle,
+    AlertCircle,
     CalendarDays,
     Calendar,
     Check,
@@ -30,8 +31,10 @@ import {
     Fingerprint,
     Download,
     Eye,
+    FileSpreadsheet,
     Filter,
     LoaderCircle,
+    MapPin,
     RefreshCw,
     TrendingDown,
     TrendingUp,
@@ -179,22 +182,17 @@ function Spark({ data, color = COLOR_SUCCESS, h = 32, w = 100 }: { data: number[
 const COLUMNAS: [keyof CompensacionDiariaRow, string, boolean][] = [
     ['fecha', 'Fecha', true],
     ['anio', 'Año', false],
-    ['mes', 'Mes', false],
     ['placa', 'Placa', true],
     ['transporte', 'Transporte', false],
     ['cedula', 'Cédula', true],
     ['nombre_completo', 'Nombre Completo', true],
     ['cargo', 'Cargo', true],
     ['rechazos', 'Rechazos', true],
-    ['cal_rechazos', '% Ganado', true],
-    ['cal_rechazos_2', 'Cal-Rechazos 2', false],
     ['valor_x_dia', 'Valor x Día', true],
-    ['valor_var', 'Valor Var', true],
     ['valor_perdido', 'Valor Perdido', true],
-    ['porcentaje_variable', '% Variable', true],
-    ['porcentaje_variable_no_cum', '% Var No Cum', false],
-    ['meta_1', 'Meta < 2,0%', false],
-    ['meta_2', 'Meta < 2,4%', true],
+    ['meta_1', 'Meta 100% (< 2,0%)', false],
+    ['meta_2', 'Meta 80% (< 2,4%)', true],
+    ['valor_var', 'Valor Ganado', true],
 ];
 
 const MESES_ES: Record<number, string> = {
@@ -509,9 +507,13 @@ export default function CompensacionVariableDiariaIndex() {
         return val.split(',').map((s) => s.trim()).filter(Boolean);
     };
 
+    const hoyDate = new Date();
+    const primerDiaMes = `${hoyDate.getFullYear()}-${String(hoyDate.getMonth() + 1).padStart(2, '0')}-01`;
+    const ultimoDiaMes = new Date(hoyDate.getFullYear(), hoyDate.getMonth() + 1, 0).toISOString().split('T')[0];
+
     const [formFilters, setFormFilters] = useState<FiltrosReales & { anio?: number | string; mes?: string | string[]; cedula?: string | string[]; nombre_completo?: string | string[]; cargo?: string | string[]; placa?: string | string[]; transporte?: string | string[]; }>({
-        fecha_desde: (filters.fecha_desde as string) || '',
-        fecha_hasta: (filters.fecha_hasta as string) || '',
+        fecha_desde: (filters.fecha_desde as string) || primerDiaMes,
+        fecha_hasta: (filters.fecha_hasta as string) || ultimoDiaMes,
         cargo: parseFilterArray(filters.cargo),
         cedula: parseFilterArray(filters.cedula),
         nombre_completo: parseFilterArray(filters.nombre_completo),
@@ -522,8 +524,8 @@ export default function CompensacionVariableDiariaIndex() {
     useEffect(() => {
         setFormFilters(prev => ({
             ...prev,
-            fecha_desde: (filters.fecha_desde as string) || '',
-            fecha_hasta: (filters.fecha_hasta as string) || '',
+            fecha_desde: (filters.fecha_desde as string) || primerDiaMes,
+            fecha_hasta: (filters.fecha_hasta as string) || ultimoDiaMes,
             cargo: parseFilterArray(filters.cargo),
             cedula: parseFilterArray(filters.cedula),
             nombre_completo: parseFilterArray(filters.nombre_completo),
@@ -601,87 +603,82 @@ export default function CompensacionVariableDiariaIndex() {
             <div className="min-h-screen bg-muted/40 w-full overflow-x-hidden">
                 <div className="p-3 sm:p-4 md:p-5 lg:p-6 max-w-full 2xl:max-w-[1600px] mx-auto space-y-4 w-full box-border min-w-0">
 
-                    {/* HERO / TÍTULO + métricas principales */}
-                    <div className="rounded-xl border border-sidebar-border/70 bg-card px-5 py-4 shadow-sm dark:border-sidebar-border">
+                    {/* HERO / TÍTULO */}
+                    <div className="rounded-2xl border border-border/70 bg-card shadow-sm px-8 py-6">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
 
-                        {/* Fila superior: título + sparkline + mini stats a la derecha */}
-                        <div className="flex flex-wrap items-start justify-between gap-4">
-
-                            {/* Izquierda: título + sparkline */}
-                            <div className="flex items-center gap-4 flex-wrap">
-                                <h1 className="text-xl font-semibold leading-tight tracking-tight text-foreground">
-                                    Compensación variable diaria
-                                </h1>
-                                <div>
-                                    <p className="text-[9px] font-semibold text-muted-foreground mb-0.5">Tendencia</p>
-                                    <Spark data={sparklineValorVar.slice(-14)} color="#15803d" h={28} w={120} />
+                            {/* Icono + título + stats */}
+                            <div className="flex items-center gap-3">
+                                <div
+                                    className="flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl shadow-sm shrink-0"
+                                    style={{ background: 'linear-gradient(135deg, #064e3b 0%, #047857 60%, #059669 100%)' }}
+                                >
+                                    <CalendarDays className="h-7 w-7 text-white" />
+                                </div>
+                                <div className="min-w-0">
+                                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+                                        Compensación Variable Diaria
+                                    </h1>
+                                    {/* Stats debajo del título */}
+                                    <div className="flex items-center gap-4 mt-1">
+                                        <div className="text-left">
+                                            <p className="text-[9px] font-semibold text-muted-foreground">Total ganado</p>
+                                            <p className="text-base font-extrabold tabular-nums leading-tight" style={{ color: '#15803d' }}>
+                                                {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(totalValorVar)}
+                                            </p>
+                                            <p className="text-[9px] text-muted-foreground">valor variable</p>
+                                        </div>
+                                        <div className="w-px h-8 bg-border" />
+                                        <div className="text-left">
+                                            <p className="text-[9px] font-semibold text-muted-foreground">Valor perdido</p>
+                                            <p className="text-base font-extrabold tabular-nums leading-tight"
+                                                style={{ color: totalValorPerd > 0 ? '#dc2626' : '#15803d' }}>
+                                                {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(totalValorPerd)}
+                                            </p>
+                                            <p className="text-[9px] text-muted-foreground">{totalValorPerd > 0 ? 'por incumplimiento' : 'sin pérdidas'}</p>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
-                            {/* Derecha: rechazos + personas — pequeños */}
-                            <div className="flex items-center gap-4 shrink-0">
-                                <div className="text-right">
-                                    <p className="text-[9px] font-semibold text-muted-foreground">Suma rechazos</p>
-                                    <p className="text-base font-extrabold tabular-nums leading-tight"
-                                        style={{ color: totalRechazos > 10 ? '#dc2626' : totalRechazos > 5 ? '#d97706' : '#15803d' }}>
-                                        {totalRechazos.toLocaleString('es-CO')}%
-                                    </p>
-                                    <p className="text-[9px] text-muted-foreground">prom. {promRechazos}%/día</p>
-                                </div>
-                                <div className="w-px h-8 bg-border" />
-                                <div className="text-right">
-                                    <p className="text-[9px] font-semibold text-muted-foreground">Valor perdido</p>
-                                    <p className="text-base font-extrabold tabular-nums leading-tight"
-                                        style={{ color: totalValorPerd > 0 ? '#dc2626' : '#15803d' }}>
-                                        {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(totalValorPerd)}
-                                    </p>
-                                    <p className="text-[9px] text-muted-foreground">{totalValorPerd > 0 ? 'por incumplimiento' : 'sin pérdidas'}</p>
-                                </div>
-                                <div className="w-px h-8 bg-border" />
-                                <div className="text-right">
-                                    <p className="text-[9px] font-semibold text-muted-foreground">Total personas</p>
-                                    <p className="text-base font-extrabold tabular-nums leading-tight" style={{ color: '#15803d' }}>
-                                        {colsUnicos.toLocaleString()}
-                                    </p>
-                                    <p className="text-[9px] text-muted-foreground">{vehUnicos} vehículos</p>
-                                </div>
-                                <div className="w-px h-8 bg-border" />
-                                <p className="text-[9px] text-muted-foreground text-right">
-                                    {totalRegistros.toLocaleString()}<br />registros
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Fila inferior: valor ganado (a la mitad del título) + valor perdido */}
-                        <div className="mt-3 flex flex-wrap items-end gap-6">
-                            <div>
-                                <p className="text-[10px] font-semibold text-muted-foreground mb-0.5">Total ganado</p>
-                                <div className="flex items-baseline gap-1">
-                                    <span className="text-3xl font-extrabold tabular-nums leading-none" style={{ color: '#15803d' }}>
-                                        {new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(totalValorVar)}
-                                    </span>
-                                    <span className="text-base font-bold text-muted-foreground">$</span>
-                                </div>
-                                <p className="text-[10px] text-muted-foreground mt-0.5">Valor variable acumulado</p>
-                            </div>
-
-                            <div className="hidden sm:block w-px h-10 bg-border" />
-
-                            <div>
-                                <p className="text-[10px] font-semibold text-muted-foreground mb-0.5">Total perdido</p>
-                                <div className="flex items-baseline gap-1">
-                                    <span className="text-3xl font-extrabold tabular-nums leading-none"
-                                        style={{ color: totalValorPerd > 0 ? '#dc2626' : '#15803d' }}>
-                                        {new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(totalValorPerd)}
-                                    </span>
-                                    <span className="text-base font-bold text-muted-foreground">$</span>
-                                </div>
-                                <p className="text-[10px] mt-0.5" style={{ color: totalValorPerd > 0 ? '#dc2626' : '#6b7280' }}>
-                                    {totalValorPerd > 0 ? 'Por incumplimiento de metas' : 'Sin pérdidas en el período'}
-                                </p>
+                            {/* Botones de acción */}
+                            <div className="flex gap-2 flex-wrap items-center">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 text-xs text-green-700 border-green-300 hover:bg-green-50"
+                                    onClick={(e) => { e.stopPropagation(); setColsModalOpen(true); }}
+                                >
+                                    <Eye className="h-3.5 w-3.5 mr-1 sm:mr-1.5" />
+                                    <span className="hidden sm:inline">Columnas</span>
+                                    <span className="sm:hidden">Col.</span>
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 text-xs border-green-300 text-green-700 hover:bg-green-50"
+                                    asChild
+                                >
+                                    <a href={route('reparto.compensacion-variable-diaria.exportar', formFilters as Record<string, unknown>)}>
+                                        <Download className="h-3.5 w-3.5 mr-1 sm:mr-1.5" />
+                                        <span className="hidden sm:inline">Exportar</span>
+                                        <span className="sm:hidden">Exp.</span>
+                                    </a>
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    className="h-8 text-xs font-semibold text-white hover:brightness-110 border border-white/30"
+                                    style={{ background: 'linear-gradient(135deg, #064e3b 0%, #047857 60%, #059669 100%)' }}
+                                    onClick={(e) => { e.stopPropagation(); setCalcularModalOpen(true); }}
+                                >
+                                    <RefreshCw className="h-3.5 w-3.5 mr-1 sm:mr-1.5" />
+                                    <span className="hidden sm:inline">Calcular</span>
+                                    <span className="sm:hidden">Cal.</span>
+                                </Button>
                             </div>
                         </div>
                     </div>
+
 
 
                     {statusAlert && (
@@ -709,116 +706,54 @@ export default function CompensacionVariableDiariaIndex() {
                     )}
 
                     {/* FILTROS */}
-                    <div className="bg-card rounded-xl border border-sidebar-border/70 dark:border-sidebar-border shadow-sm px-4 sm:px-5 py-4 w-full box-border relative z-30">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 items-end min-w-0">
-                            <div className="grid gap-1 min-w-0">
-                                <Label className="text-[10px] font-bold text-muted-foreground flex items-center gap-1">
-                                    <Calendar className="h-3 w-3 inline mr-1 shrink-0" style={{ color: COLOR_MODULO }} />
-                                    Fecha desde
+                    <div className="rounded-2xl border border-border/70 bg-card shadow-sm px-6 py-5 w-full box-border relative z-30">
+                        <div className="flex items-center justify-between mb-3">
+                            <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                                <Filter className="h-3.5 w-3.5 text-green-700 dark:text-green-400" />
+                                Filtros de búsqueda
+                            </span>
+                            {hasFilters && (
+                                <button type="button" onClick={limpiarFiltros}
+                                    className="inline-flex items-center gap-1 text-xs font-medium text-red-600 hover:text-red-700 hover:underline">
+                                    <X className="h-3.5 w-3.5" />Limpiar
+                                </button>
+                            )}
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3">
+                            <div className="grid gap-1">
+                                <Label className="text-[11px] font-medium text-muted-foreground flex items-center">
+                                    <Calendar className="h-3 w-3 inline mr-1 text-muted-foreground/70" />F. Desde
                                 </Label>
-                                <Input type="date" value={formFilters.fecha_desde || ''} className="h-8 text-xs rounded-lg w-full max-w-full"
+                                <Input type="date" value={formFilters.fecha_desde || ''} className="h-8 text-xs rounded-lg"
                                     onChange={e => handleDateInputChange('fecha_desde')(e.target.value)} />
                             </div>
-                            <div className="grid gap-1 min-w-0">
-                                <Label className="text-[10px] font-bold text-muted-foreground flex items-center gap-1">
-                                    <Calendar className="h-3 w-3 inline mr-1 shrink-0" style={{ color: COLOR_MODULO }} />
-                                    Fecha hasta
+                            <div className="grid gap-1">
+                                <Label className="text-[11px] font-medium text-muted-foreground flex items-center">
+                                    <Calendar className="h-3 w-3 inline mr-1 text-muted-foreground/70" />F. Hasta
                                 </Label>
-                                <Input type="date" value={formFilters.fecha_hasta || ''} className="h-8 text-xs rounded-lg w-full max-w-full"
+                                <Input type="date" value={formFilters.fecha_hasta || ''} className="h-8 text-xs rounded-lg"
                                     onChange={e => handleDateInputChange('fecha_hasta')(e.target.value)} />
                             </div>
-                            <div className="min-w-0"><MultiSelectSearchable label="Cargo" placeholder="Todos los cargos" selectedValues={formFilters.cargo} options={catalogos.cargos} onChange={handleMultiSelectChange('cargo')} /></div>
-                            <div className="min-w-0"><MultiSelectSearchable label="Identificación" placeholder="Todas las identificaciones" selectedValues={formFilters.cedula} options={catalogos.cedulas} onChange={handleMultiSelectChange('cedula')} /></div>
-                            <div className="min-w-0"><MultiSelectSearchable label="Nombre" placeholder="Todos los nombres" selectedValues={formFilters.nombre_completo} options={catalogos.nombres} onChange={handleMultiSelectChange('nombre_completo')} /></div>
-                            <div className="min-w-0"><MultiSelectSearchable label="Placa" placeholder="Todas las placas" selectedValues={formFilters.placa} options={catalogos.placas} onChange={handleMultiSelectChange('placa')} /></div>
-                            <div className="min-w-0 sm:col-span-2 md:col-span-3 lg:col-span-1"><MultiSelectSearchable label="Transporte" placeholder="Todos los transportes" selectedValues={formFilters.transporte} options={catalogos.transportes} onChange={handleMultiSelectChange('transporte')} /></div>
-                        </div>
-
-                        {/* ── Chips de filtros activos ── */}
-                        {hasFilters && (
-                            <div className="mt-3 flex flex-wrap gap-1.5">
-                                {formFilters.fecha_desde && (
-                                    <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-medium"
-                                        style={{ background: `${COLOR_MODULO}12`, borderColor: `${COLOR_MODULO}40`, color: COLOR_MODULO }}>
-                                        Desde: {formFilters.fecha_desde}
-                                        <button type="button" onClick={() => handleDateInputChange('fecha_desde')('')} className="ml-0.5 hover:opacity-70"><X className="size-2.5" /></button>
-                                    </span>
-                                )}
-                                {formFilters.fecha_hasta && (
-                                    <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-medium"
-                                        style={{ background: `${COLOR_MODULO}12`, borderColor: `${COLOR_MODULO}40`, color: COLOR_MODULO }}>
-                                        Hasta: {formFilters.fecha_hasta}
-                                        <button type="button" onClick={() => handleDateInputChange('fecha_hasta')('')} className="ml-0.5 hover:opacity-70"><X className="size-2.5" /></button>
-                                    </span>
-                                )}
-                                {(formFilters.cargo as string[])?.map((v: string) => (
-                                    <span key={v} className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-medium"
-                                        style={{ background: `${COLOR_MODULO}12`, borderColor: `${COLOR_MODULO}40`, color: COLOR_MODULO }}>
-                                        Cargo: {v}
-                                        <button type="button" onClick={() => handleMultiSelectChange('cargo')((formFilters.cargo as string[]).filter((x: string) => x !== v))} className="ml-0.5 hover:opacity-70"><X className="size-2.5" /></button>
-                                    </span>
-                                ))}
-                                {(formFilters.cedula as string[])?.map((v: string) => (
-                                    <span key={v} className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-medium"
-                                        style={{ background: `${COLOR_MODULO}12`, borderColor: `${COLOR_MODULO}40`, color: COLOR_MODULO }}>
-                                        ID: {v}
-                                        <button type="button" onClick={() => handleMultiSelectChange('cedula')((formFilters.cedula as string[]).filter((x: string) => x !== v))} className="ml-0.5 hover:opacity-70"><X className="size-2.5" /></button>
-                                    </span>
-                                ))}
-                                {(formFilters.nombre_completo as string[])?.map((v: string) => (
-                                    <span key={v} className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-medium"
-                                        style={{ background: `${COLOR_MODULO}12`, borderColor: `${COLOR_MODULO}40`, color: COLOR_MODULO }}>
-                                        {v}
-                                        <button type="button" onClick={() => handleMultiSelectChange('nombre_completo')((formFilters.nombre_completo as string[]).filter((x: string) => x !== v))} className="ml-0.5 hover:opacity-70"><X className="size-2.5" /></button>
-                                    </span>
-                                ))}
-                                {(formFilters.placa as string[])?.map((v: string) => (
-                                    <span key={v} className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-medium"
-                                        style={{ background: `${COLOR_BLUE}12`, borderColor: `${COLOR_BLUE}40`, color: COLOR_BLUE }}>
-                                        Placa: {v}
-                                        <button type="button" onClick={() => handleMultiSelectChange('placa')((formFilters.placa as string[]).filter((x: string) => x !== v))} className="ml-0.5 hover:opacity-70"><X className="size-2.5" /></button>
-                                    </span>
-                                ))}
-                                {(formFilters.transporte as string[])?.map((v: string) => (
-                                    <span key={v} className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-medium"
-                                        style={{ background: `${COLOR_BLUE}12`, borderColor: `${COLOR_BLUE}40`, color: COLOR_BLUE }}>
-                                        Transp: {v}
-                                        <button type="button" onClick={() => handleMultiSelectChange('transporte')((formFilters.transporte as string[]).filter((x: string) => x !== v))} className="ml-0.5 hover:opacity-70"><X className="size-2.5" /></button>
-                                    </span>
-                                ))}
+                            <div className="grid gap-1">
+                                <Label className="text-[11px] font-medium text-muted-foreground flex items-center">
+                                    <Users className="h-3 w-3 inline mr-1 text-muted-foreground/70" />Colaborador
+                                </Label>
+                                <MultiSelectSearchable label="" placeholder="Cédula o nombre..." selectedValues={formFilters.cedula} options={catalogos.cedulas} onChange={handleMultiSelectChange('cedula')} />
                             </div>
-                        )}
-
-                        <div className="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                            <div className="text-[10px] text-muted-foreground break-words min-w-0">
-                                Viendo <b>{totalRegistros.toLocaleString()} registros</b>
-                                {(formFilters.cargo as string[])?.length > 0 && <> · cargo: <b>{(formFilters.cargo as string[]).length}</b></>}
-                                {(formFilters.cedula as string[])?.length > 0 && <> · <b>{(formFilters.cedula as string[]).length} identificación{(formFilters.cedula as string[]).length !== 1 ? 'es' : ''}</b></>}
-                                {(formFilters.placa as string[])?.length > 0 && <> · <b>{(formFilters.placa as string[]).length} placa{(formFilters.placa as string[]).length !== 1 ? 's' : ''}</b></>}
-                                · <b>{colsUnicos} personas</b> · <b>{vehUnicos} vehículos</b>
+                            <div className="grid gap-1">
+                                <Label className="text-[11px] font-medium text-muted-foreground flex items-center">
+                                    <MapPin className="h-3 w-3 inline mr-1 text-muted-foreground/70" />Placa
+                                </Label>
+                                <MultiSelectSearchable label="" placeholder="Todas las placas" selectedValues={formFilters.placa} options={catalogos.placas} onChange={handleMultiSelectChange('placa')} />
                             </div>
-                            <div className="flex flex-wrap gap-1.5 items-center shrink-0 relative z-20 pointer-events-auto">
-                                <Button type="button" variant="outline" size="sm" className="h-7 text-[10px] pointer-events-auto relative" asChild
-                                    style={{ borderColor: 'rgba(21, 128, 61, 0.3)', color: '#064e3b' }}>
-                                    <a href={route('reparto.compensacion-variable-diaria.exportar', formFilters as Record<string, unknown>)} onClick={(e) => e.stopPropagation()}>
-                                        <Download className="size-3 mr-0.5" /> Exportar
-                                    </a>
-                                </Button>
-                                <Button type="button" size="sm" className="h-7 text-[10px] text-white pointer-events-auto relative"
-                                    style={{ backgroundColor: '#15803d' }}
-                                    onClick={(e) => { e.stopPropagation(); setCalcularModalOpen(true); }}>
-                                    <RefreshCw className="size-3 mr-0.5" /> Calcular
-                                </Button>
-                                <Button type="button" variant="ghost" size="sm" className="h-7 text-[11px] pointer-events-auto relative" onClick={(e) => { e.stopPropagation(); setColsModalOpen(true); }}>
-                                    <Eye className="size-3 mr-1" /> Columnas
-                                </Button>
-                                {hasFilters && (
-                                    <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); limpiarFiltros(); }} className="h-7 text-xs text-muted-foreground pointer-events-auto relative">
-                                        <X className="h-3 w-3 mr-1" /> Limpiar todo
-                                    </Button>
-                                )}
+                            <div className="grid gap-1">
+                                <Label className="text-[11px] font-medium text-muted-foreground flex items-center">
+                                    <FileSpreadsheet className="h-3 w-3 inline mr-1 text-muted-foreground/70" />Cargo
+                                </Label>
+                                <MultiSelectSearchable label="" placeholder="Todos los cargos" selectedValues={formFilters.cargo} options={catalogos.cargos} onChange={handleMultiSelectChange('cargo')} />
                             </div>
                         </div>
+
                     </div>
 
                     {/* ══ LAYOUT PRINCIPAL: 3 gráficas en fila + tabla ══ */}
@@ -839,39 +774,113 @@ export default function CompensacionVariableDiariaIndex() {
 
                         {/* Tabla paginada */}
                         <section>
-                            <div className="flex items-center gap-2 mb-3">
-                                <span className="text-[10px] font-bold text-white px-2 py-0.5 rounded-full" style={{ background: COLOR_BLUE }}>01</span>
-                                <h2 className="text-sm font-bold text-foreground">Detalle de jornadas (paginado)</h2>
-                            </div>
-                            <div className="bg-card rounded-xl border border-sidebar-border/70 dark:border-sidebar-border shadow-sm overflow-hidden">
+                            <div className="bg-card rounded-xl border border-emerald-200/80 dark:border-emerald-800/80 shadow-sm overflow-hidden">
+                                {/* Header de la tabla */}
+                                <div
+                                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 py-3 border-b border-emerald-200/80 dark:border-emerald-800/80"
+                                    style={{
+                                        background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(5, 150, 105, 0.18) 100%)',
+                                        backdropFilter: 'blur(8px)',
+                                    }}
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <AlertCircle className="h-8 w-10 text-emerald-800 dark:text-emerald-300 shrink-0" />
+                                        <span className="text-sm font-extrabold text-emerald-950 dark:text-white tracking-wide">
+                                            Detalle variable diaria
+                                        </span>
+                                        {(data?.total ?? 0) > 0 && (
+                                            <Badge className="ml-2 text-[10px] sm:text-xs whitespace-nowrap bg-emerald-500/20 text-emerald-900 dark:text-emerald-100 border border-emerald-400/40">
+                                                {((data?.current_page ?? 1) - 1) * (data?.per_page ?? 15) + 1}–{Math.min((data?.current_page ?? 1) * (data?.per_page ?? 15), data?.total ?? 0)} / {data?.total ?? 0}
+                                            </Badge>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center gap-2 self-end sm:self-auto text-xs text-emerald-900 dark:text-emerald-200">
+                                        <span className="text-[11px] font-medium text-emerald-800 dark:text-emerald-300">Mostrar:</span>
+                                        <select
+                                            defaultValue={data?.per_page ?? 15}
+                                            onChange={(e) => router.get(route('reparto.compensacion-variable-diaria.index'), { ...formFilters, per_page: e.target.value }, { preserveState: true, preserveScroll: true, replace: true })}
+                                            className="h-7 rounded-lg border border-emerald-300/80 dark:border-emerald-700 bg-white/90 dark:bg-card px-2 text-xs font-semibold text-emerald-950 dark:text-emerald-100 shadow-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                                        >
+                                            <option value="10">10 registros</option>
+                                            <option value="25">25 registros</option>
+                                            <option value="50">50 registros</option>
+                                            <option value="100">100 registros</option>
+                                            <option value="200">200 registros</option>
+                                        </select>
+                                    </div>
+                                </div>
                                 <div className="overflow-x-auto">
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow className="bg-muted/50 hover:bg-muted/60">
+                                    <Table className="text-[10px] sm:text-xs whitespace-nowrap w-full">
+                                        <TableHeader className="sticky top-0 z-10">
+                                            <TableRow
+                                                style={{
+                                                    background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.16) 0%, rgba(5, 150, 105, 0.24) 100%)',
+                                                    backdropFilter: 'blur(8px)',
+                                                }}
+                                                className="border-b border-emerald-200/80 dark:border-emerald-800/80 hover:bg-transparent"
+                                            >
+                                                <TableHead className="font-bold px-2 sm:px-3 py-2 text-[10px] sm:text-xs text-emerald-950 dark:text-emerald-100 border-r border-emerald-300/40 dark:border-emerald-800/60 whitespace-nowrap text-center w-10">#</TableHead>
                                                 {visibleCols.map(([k, label]) => (
-                                                    <TableHead key={k as string} className="px-2 py-2.5 text-[10px] font-bold text-muted-foreground whitespace-nowrap">{label}</TableHead>
+                                                    <TableHead key={k as string} className="font-bold px-2.5 sm:px-3 py-2 text-[10px] sm:text-xs text-emerald-950 dark:text-emerald-100 border-r border-emerald-300/40 dark:border-emerald-800/60 last:border-r-0 whitespace-nowrap">{label}</TableHead>
                                                 ))}
-                                                <TableHead className="px-2 py-2.5 w-10"><Eye className="size-3.5 text-muted-foreground" /></TableHead>
+                                                <TableHead className="font-bold px-2.5 sm:px-3 py-2 text-[10px] sm:text-xs text-emerald-950 dark:text-emerald-100 w-10 text-center">
+                                                    <Eye className="size-3.5 inline" />
+                                                </TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
-                                            {(data?.data || []).length === 0 && (
-                                                <TableRow>
-                                                    <TableCell colSpan={visibleCols.length + 1} className="text-center py-12 text-xs text-muted-foreground">
-                                                        No hay registros. Usa el botón <strong>"Calcular desde Eventos"</strong> para generar la compensación variable diaria.
-                                                    </TableCell>
-                                                </TableRow>
-                                            )}
-                                            {(data?.data || []).map((row) => (
-                                                <TableRow key={row.id} className="hover:bg-muted/60 cursor-pointer"
+                                            {(data?.data || []).length === 0 && (() => {
+                                                // Precarga: generar filas para cada día del mes actual (o filtrado)
+                                                const hoy = new Date();
+                                                let year = hoy.getFullYear();
+                                                let month = hoy.getMonth(); // 0-indexed
+                                                if (formFilters.fecha_desde) {
+                                                    const d = new Date(formFilters.fecha_desde + 'T00:00:00');
+                                                    year = d.getFullYear(); month = d.getMonth();
+                                                }
+                                                const diasEnMes = new Date(year, month + 1, 0).getDate();
+                                                const dias: string[] = [];
+                                                for (let d = 1; d <= diasEnMes; d++) {
+                                                    dias.push(`${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
+                                                }
+                                                return dias.map((fecha, idx) => (
+                                                    <TableRow key={fecha} className="border-b border-emerald-100/60 dark:border-emerald-900/30 opacity-60">
+                                                        <TableCell className="px-2 sm:px-3 py-1.5 text-[10px] text-center text-muted-foreground border-r border-emerald-100/60 w-10">{idx + 1}</TableCell>
+                                                        {visibleCols.map(([k]) => (
+                                                            <TableCell key={k as string} className="px-2 sm:px-3 py-1.5 text-[10px] whitespace-nowrap text-muted-foreground">
+                                                                {k === 'fecha' ? formatDate(fecha) : '—'}
+                                                            </TableCell>
+                                                        ))}
+                                                        <TableCell className="px-2 py-1.5 w-10" />
+                                                    </TableRow>
+                                                ));
+                                            })()}
+                                            {(data?.data || []).map((row, idx) => (
+                                                <TableRow key={row.id}
+                                                    className="hover:bg-emerald-50/70 dark:hover:bg-emerald-950/40 transition-colors border-b border-emerald-100/80 dark:border-emerald-900/40 cursor-pointer"
                                                     onClick={() => handleOpenDetail(row)}>
+                                                    <TableCell className="px-2 sm:px-3 py-1.5 sm:py-2 text-[10px] sm:text-xs text-center font-semibold text-emerald-700 dark:text-emerald-400 border-r border-emerald-100/80 dark:border-emerald-900/40 w-10 select-none">
+                                                        {(( (data?.current_page ?? 1) - 1) * (data?.per_page ?? 15)) + idx + 1}
+                                                    </TableCell>
                                                     {visibleCols.map(([k]) => {
                                                         const val = row[k as keyof CompensacionDiariaRow];
                                                         let display: React.ReactNode = val === null || val === undefined || val === '' ? '-' : String(val);
-                                                        const isMoney = ['valor_x_dia', 'valor_var', 'valor_perdido'].includes(k as string);
-                                                        const isPct = ['cal_rechazos'].includes(k as string);
+                                                        // Lee cal_rechazos del backend: 1.0 = ganó 100% | 0.8 = ganó 80% | 0.0 = ganó 0%
+                                                        // Misma lógica que CompensacionVariableDiariaImportService.php
+                                                        const calRechazos = Number(row.cal_rechazos) || 0;
+                                                        const pct100 = calRechazos >= 1.0;
+                                                        const pct80  = calRechazos >= 0.8 && calRechazos < 1.0;
+                                                        const pct0   = calRechazos === 0;
+                                                        const labelPct = pct100 ? '100%' : pct80 ? '80%' : '0%';
+                                                        const colorRechazos = pct0 ? COLOR_CRITICAL : pct80 ? COLOR_WARNING : COLOR_SUCCESS;
+                                                        const isMoney = ['valor_x_dia', 'valor_var'].includes(k as string);
                                                         if (isMoney) display = formatCurrency(Number(val) || 0);
-                                                        if (isPct) display = `${Math.round((Number(val) || 0) * 100)}%`;
+                                                        if (k === 'valor_perdido') {
+                                                            // valor_perdido viene calculado del backend: valor_x_dia − valor_var
+                                                            const perdido = Number(val) || 0;
+                                                            const colorPerdido = pct100 ? COLOR_SUCCESS : pct80 ? COLOR_WARNING : COLOR_CRITICAL;
+                                                            display = <span className="font-semibold text-[10px]" style={{ color: colorPerdido }}>{formatCurrency(perdido)}</span>;
+                                                        }
                                                         if (k === 'fecha') display = formatDate(val as string | null);
                                                         if (k === 'cedula' || k === 'placa') display = (
                                                             <Badge variant="outline" className="text-[10px] px-1.5 py-0.5"
@@ -882,24 +891,55 @@ export default function CompensacionVariableDiariaIndex() {
                                                         if (k === 'rechazos') {
                                                             const v = Number(val);
                                                             display = val !== null && val !== undefined && val !== ''
-                                                                ? <span className="font-semibold" style={{ color: v >= 2.4 ? COLOR_CRITICAL : v >= 2.0 ? COLOR_WARNING : COLOR_SUCCESS }}>{v}%</span>
+                                                                ? <span className="font-semibold" style={{ color: colorRechazos }}>{v}%</span>
                                                                 : '-';
                                                         }
-                                                        if (k === 'meta_1') display = val !== null && val !== undefined && val !== '' ? `< ${Number(val)}%` : '< 2,0%';
-                                                        if (k === 'meta_2') display = val !== null && val !== undefined && val !== '' ? `< ${Number(val)}%` : '< 2,4%';
-                                                        return <TableCell key={k as string} className="px-2 py-2 text-[11px] whitespace-nowrap text-foreground">{display}</TableCell>;
+                                                        if (k === 'meta_1') {
+                                                            // Meta 100%: cal_rechazos = 1.0 (backend: rechazos < 2.0%)
+                                                            display = pct100
+                                                                ? <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold text-white" style={{ background: COLOR_SUCCESS }}>100%</span>
+                                                                : <span className="text-muted-foreground/40 text-[10px]">—</span>;
+                                                        }
+                                                        if (k === 'meta_2') {
+                                                            // Meta 80%: cal_rechazos = 0.8 (backend: rechazos 2.0–2.39%)
+                                                            // valor_var ya viene calculado del backend: valor_x_dia × 0.8
+                                                            display = pct80
+                                                                ? <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold text-white" style={{ background: COLOR_WARNING }}>{formatCurrency(Number(row.valor_var) || 0)}</span>
+                                                                : <span className="text-muted-foreground/40 text-[10px]">—</span>;
+                                                        }
+                                                        return <TableCell key={k as string} className="px-2 sm:px-3 py-1.5 sm:py-2 text-[10px] sm:text-xs whitespace-nowrap text-foreground">{display}</TableCell>;
                                                     })}
-                                                    <TableCell className="px-2 py-2 w-10" onClick={(e) => { e.stopPropagation(); handleOpenDetail(row); }}>
-                                                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 hover:bg-muted" style={{ color: COLOR_MODULO }}>
+                                                    <TableCell className="px-2 py-1.5 w-10" onClick={(e) => { e.stopPropagation(); handleOpenDetail(row); }}>
+                                                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 hover:bg-emerald-100 dark:hover:bg-emerald-900" style={{ color: COLOR_MODULO }}>
                                                             <Eye className="size-3.5" />
                                                         </Button>
                                                     </TableCell>
                                                 </TableRow>
                                             ))}
+                                             {/* Total fila */}
+                                             {(data?.data || []).length > 0 && (() => {
+                                                 const rows = data?.data || [];
+                                                 const totalGanado = rows.reduce((s, r) => s + (Number(r.valor_var) || 0), 0);
+                                                 return (
+                                                     <TableRow className="border-t-2 border-emerald-400/60 dark:border-emerald-600/60 bg-emerald-50/80 dark:bg-emerald-950/40 font-bold">
+                                                         <TableCell className="px-2 sm:px-3 py-2 text-[10px] sm:text-xs text-center border-r border-emerald-200/80 dark:border-emerald-800/80 text-emerald-700 dark:text-emerald-300 w-10">Σ</TableCell>
+                                                         {visibleCols.map(([k]) => (
+                                                             <TableCell key={k as string} className="px-2 sm:px-3 py-2 text-[10px] sm:text-xs whitespace-nowrap">
+                                                                 {k === 'valor_var'
+                                                                     ? <span className="font-extrabold text-[11px]" style={{ color: COLOR_SUCCESS }}>{formatCurrency(totalGanado)}</span>
+                                                                     : k === 'nombre_completo'
+                                                                     ? <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">{rows.length} registros</span>
+                                                                     : null}
+                                                             </TableCell>
+                                                         ))}
+                                                         <TableCell className="px-2 py-2 w-10" />
+                                                     </TableRow>
+                                                 );
+                                             })()}
                                         </TableBody>
                                     </Table>
                                 </div>
-                                <div className="flex items-center justify-between px-4 py-2.5 border-t border-sidebar-border/70 dark:border-sidebar-border text-[11px] text-muted-foreground">
+                                <div className="flex items-center justify-between px-4 py-2.5 border-t border-emerald-200/80 dark:border-emerald-800/80 text-[11px] text-muted-foreground">
                                     <div>Pág {data?.current_page} · Total {data?.total} registros</div>
                                     <div className="flex flex-wrap gap-1">
                                         {(data?.links || []).slice(1, -1).map((l, i) => (

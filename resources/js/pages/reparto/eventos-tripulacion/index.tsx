@@ -26,7 +26,7 @@ import React, { useEffect, useRef, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Reparto', href: '/modules/reparto/modulacion' },
-    { title: 'Eventos de Tripulación', href: '/modules/reparto/eventos-tripulacion' },
+    { title: 'Eventos Diarios', href: '/modules/reparto/eventos-tripulacion' },
 ];
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -501,7 +501,7 @@ export default function EventosTripulacionIndex({ eventos, filters, fechas_plane
     // ─── Render ────────────────────────────────────────────────────────────────
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Eventos de Tripulación" />
+            <Head title="Eventos Diarios" />
 
             <div className="w-full max-w-[1900px] mx-auto px-2 sm:px-3 lg:px-4 py-4 sm:py-5 flex flex-1 flex-col gap-4 sm:gap-5 min-w-0 box-border">
 
@@ -564,7 +564,7 @@ export default function EventosTripulacionIndex({ eventos, filters, fechas_plane
                             </div>
                             <div>
                                 <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-                                    Eventos de Tripulación
+                                    Eventos Diarios
                                 </h1>
                                 <p className="text-sm sm:text-base text-muted-foreground mt-0.5">
                                     {eventos.total} registro{eventos.total !== 1 ? 's' : ''} de tripulación
