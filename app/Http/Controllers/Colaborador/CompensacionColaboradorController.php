@@ -112,7 +112,7 @@ class CompensacionColaboradorController extends Controller
                 'valor_perdido'             => round($totalValorPerd, 2),
                 'porcentaje_variable'       => $pctVar . '%',
                 'porcentaje_variable_no_cum'=> $pctNoCum . '%',
-                'cal_rechazos'              => round((float) $registrosRango->sum('cal_rechazos'), 2),
+                'cal_rechazos'              => $totalValorXDia > 0 ? round($totalValorVar / $totalValorXDia, 4) : 0.0,
                 'cal_rechazos_2'            => round((float) $registrosRango->sum('cal_rechazos_2'), 2),
                 'meta_1'                    => (float) ($ultimo->meta_1 ?? 2.0),
                 'meta_2'                    => (float) ($ultimo->meta_2 ?? 2.4),

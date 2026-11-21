@@ -451,12 +451,16 @@ function descargarCardNativa(
     const srcCanvas = wrapper.querySelector('canvas');
     if (!srcCanvas) return;
 
-    const ESCALA   = 4;
-    const PAD      = 20 * ESCALA;
-    const H_HEADER = 72 * ESCALA;   // zona de encabezado sobre la gráfica
+    const ESCALA    = 4;
+    const PAD_H     = 40 * ESCALA;   // padding horizontal a cada lado
+    const PAD_BOT   = 20 * ESCALA;   // padding inferior
+    const H_HEADER  = 80 * ESCALA;   // zona de encabezado
 
-    const W = srcCanvas.width  * ESCALA;
-    const H = srcCanvas.height * ESCALA + H_HEADER + PAD;
+    // Ancho del offscreen: gráfica + padding a ambos lados
+    const CHART_W   = srcCanvas.width  * ESCALA;
+    const CHART_H   = srcCanvas.height * ESCALA;
+    const W         = CHART_W + PAD_H * 2;
+    const H         = CHART_H + H_HEADER + PAD_BOT;
 
     const off = document.createElement('canvas');
     off.width  = W;
@@ -465,11 +469,11 @@ function descargarCardNativa(
     const ctx = off.getContext('2d');
     if (!ctx) return;
 
-    // ── Fondo blanco ──
+    // ── Fondo blanco completo ──
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, W, H);
 
-    // ── Franja de color sutil en el encabezado ──
+    // ── Franja sutil en encabezado ──
     ctx.fillStyle = `${color}18`;
     ctx.fillRect(0, 0, W, H_HEADER);
 
@@ -477,31 +481,32 @@ function descargarCardNativa(
     ctx.fillStyle = color;
     ctx.fillRect(0, 0, 6 * ESCALA, H_HEADER);
 
-    // ── Título ──
-    ctx.fillStyle = '#111827';
+    // ── Título (negro, negrita) ──
+    ctx.fillStyle = '#000000';
     ctx.font = `bold ${13 * ESCALA}px Inter, system-ui, sans-serif`;
-    ctx.fillText(titulo, PAD + 8 * ESCALA, 26 * ESCALA);
+    ctx.textAlign = 'left';
+    ctx.fillText(titulo, PAD_H + 8 * ESCALA, 28 * ESCALA);
 
-    // ── Subtítulo ──
-    ctx.fillStyle = '#6b7280';
+    // ── Subtítulo (gris oscuro) ──
+    ctx.fillStyle = '#374151';
     ctx.font = `${10 * ESCALA}px Inter, system-ui, sans-serif`;
-    ctx.fillText(subtitulo, PAD + 8 * ESCALA, 42 * ESCALA);
+    ctx.fillText(subtitulo, PAD_H + 8 * ESCALA, 46 * ESCALA);
 
-    // ── Total ──
+    // ── Total (color del rol) ──
     ctx.fillStyle = color;
     ctx.font = `bold ${11 * ESCALA}px Inter, system-ui, sans-serif`;
-    ctx.fillText(total, PAD + 8 * ESCALA, 60 * ESCALA);
+    ctx.fillText(total, PAD_H + 8 * ESCALA, 66 * ESCALA);
 
-    // ── Gráfica ──
-    ctx.drawImage(srcCanvas, 0, H_HEADER, W, srcCanvas.height * ESCALA);
+    // ── Gráfica centrada (con padding lateral) ──
+    ctx.drawImage(srcCanvas, PAD_H, H_HEADER, CHART_W, CHART_H);
 
-    // ── Borde gris claro alrededor de toda la card ──
+    // ── Borde gris claro ──
     ctx.strokeStyle = '#e5e7eb';
     ctx.lineWidth   = 2 * ESCALA;
-    ctx.strokeRect(0, 0, W, H);
+    ctx.strokeRect(1, 1, W - 2, H - 2);
 
-    const url   = off.toDataURL('image/png', 1.0);
-    const link  = document.createElement('a');
+    const url  = off.toDataURL('image/png', 1.0);
+    const link = document.createElement('a');
     link.href     = url;
     link.download = `${nombre}.png`;
     link.click();
@@ -635,7 +640,7 @@ function GraficoBarrasHorizontalesPorRol({
                                 anchor: 'end',
                                 align: 'end',
                                 clip: false,
-                                color: '#6b7280',
+                                color: '#000000',
                                 font: { size: 9, weight: 'bold' as const },
                                 formatter: (value: number) =>
                                     new Intl.NumberFormat('es-CO', {
@@ -654,7 +659,7 @@ function GraficoBarrasHorizontalesPorRol({
                             },
                             y: {
                                 ticks: {
-                                    color: '#6b7280',
+                                    color: '#000000',
                                     font: { size: 9 },
                                     crossAlign: 'far' as const,
                                 },
@@ -1210,16 +1215,17 @@ export default function CompensacionVariableDiariaIndex() {
                                                                 : '-';
                                                         }
                                                         if (k === 'meta_1') {
-                                                            // Meta 100%: cal_rechazos = 1.0 (backend: rechazos < 2.0%)
-                                                            display = pct100
-                                                                ? <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold text-white" style={{ background: COLOR_SUCCESS }}>100%</span>
+                                                            // Meta 1 = valor_x_dia × 1.0 (lo que ganaría al 100%)
+                                                            const m1 = Number(val) || 0;
+                                                            display = m1 > 0
+                                                                ? <span className="font-semibold text-[10px]" style={{ color: COLOR_SUCCESS }}>{formatCurrency(m1)}</span>
                                                                 : <span className="text-muted-foreground/40 text-[10px]">—</span>;
                                                         }
                                                         if (k === 'meta_2') {
-                                                            // Meta 80%: cal_rechazos = 0.8 (backend: rechazos 2.0–2.39%)
-                                                            // valor_var ya viene calculado del backend: valor_x_dia × 0.8
-                                                            display = pct80
-                                                                ? <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold text-white" style={{ background: COLOR_WARNING }}>{formatCurrency(Number(row.valor_var) || 0)}</span>
+                                                            // Meta 2 = valor_x_dia × 0.8 (lo que ganaría al 80%)
+                                                            const m2 = Number(val) || 0;
+                                                            display = m2 > 0
+                                                                ? <span className="font-semibold text-[10px]" style={{ color: COLOR_WARNING }}>{formatCurrency(m2)}</span>
                                                                 : <span className="text-muted-foreground/40 text-[10px]">—</span>;
                                                         }
                                                         return <TableCell key={k as string} className="px-2 sm:px-3 py-1.5 sm:py-2 text-[10px] sm:text-xs whitespace-nowrap text-foreground">{display}</TableCell>;
@@ -1410,8 +1416,8 @@ export default function CompensacionVariableDiariaIndex() {
                                 <KpiCard label="% Variable" value={selectedRow.porcentaje_variable || '-'} icon={Users} color={COLOR_BLUE} />
                                 <KpiCard label="% No Cum" value={selectedRow.porcentaje_variable_no_cum || '-'} icon={Clock} color={COLOR_PURPLE} />
                                 <KpiCard label="% Ganado" value={formatCurrency(Number(selectedRow.cal_rechazos) || 0)} icon={DollarSign} color={COLOR_WARNING} />
-                                <KpiCard label="Meta 1" value={selectedRow.meta_1 !== null && selectedRow.meta_1 !== undefined ? `< ${selectedRow.meta_1}%` : '< 2,0%'} icon={Target} color={COLOR_SUCCESS} />
-                                <KpiCard label="Meta 2" value={selectedRow.meta_2 !== null && selectedRow.meta_2 !== undefined ? `< ${selectedRow.meta_2}%` : '< 2,4%'} icon={Target} color={COLOR_BLUE} />
+                                <KpiCard label="Meta 1 (100%)" value={formatCurrency(Number(selectedRow.meta_1) || 0)} icon={Target} color={COLOR_SUCCESS} sub="Si rechazos < 2,0%" />
+                                <KpiCard label="Meta 2 (80%)" value={formatCurrency(Number(selectedRow.meta_2) || 0)} icon={Target} color={COLOR_BLUE} sub="Si rechazos < 2,4%" />
                             </div>
 
                             {historialRow.length > 0 && (() => {

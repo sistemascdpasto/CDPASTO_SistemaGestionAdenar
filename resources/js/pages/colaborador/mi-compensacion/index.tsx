@@ -7,7 +7,6 @@ import {
     ChevronUp,
     CircleDollarSign,
     Info,
-    Lightbulb,
     Star,
     TrendingDown,
     TrendingUp,
@@ -21,6 +20,19 @@ import React, { useRef, useState } from 'react';
 const META_MENSUAL = 800; // COP — hardcoded por diseño del negocio
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+interface RegistroDiaSimple {
+    id: number | null;
+    fecha: string;
+    rechazos: number;
+    valor_x_dia: number;
+    valor_var: number;
+    valor_perdido: number;
+    porcentaje_variable: string;
+    cal_rechazos: number;
+    meta_1: number;
+    meta_2: number;
+}
 
 interface RegistroDia {
     id: number | null;
@@ -131,78 +143,6 @@ function SectionHeader({ icon: Icon, title, subtitle }: { icon: React.ElementTyp
                 <p className="text-sm font-semibold text-foreground">{title}</p>
                 {subtitle && <p className="text-xs capitalize text-muted-foreground">{subtitle}</p>}
             </div>
-        </div>
-    );
-}
-
-interface TooltipData {
-    titulo: string;
-    formula?: string;
-    explicacion: React.ReactNode;
-    resultado: string;
-    resultColor?: string;
-}
-
-/** Símbolo de operación (×, +, =, −) entre dos EcuacionCard, centrado con la fila. */
-function Op({ children }: { children: React.ReactNode }) {
-    return (
-        <span className="flex shrink-0 items-center justify-center self-center px-0.5 text-lg font-bold text-muted-foreground">
-            {children}
-        </span>
-    );
-}
-
-function EcuacionCard({
-    numero, label, value, subvalue, icon: Icon,
-    highlight, met, tooltip,
-}: {
-    numero?: string; label: string; value: string; subvalue?: string;
-    icon: React.ElementType; highlight?: 'green' | 'red'; met?: boolean;
-    /** Aceptado por los llamadores para marcar explícitamente una card sin highlight ni met — hoy coincide con el estilo por defecto. */
-    neutral?: boolean;
-    tooltip: TooltipData;
-}) {
-    const [open, setOpen] = useState(false);
-
-    const border = highlight === 'green' ? 'border-green-200 dark:border-green-700/40' : highlight === 'red' ? 'border-red-200 dark:border-red-700/40' : 'border-sidebar-border/70 dark:border-sidebar-border';
-    const bg    = highlight === 'green' ? 'bg-green-50 dark:bg-green-900/10' : highlight === 'red' ? 'bg-red-50 dark:bg-red-900/10' : 'bg-card';
-    const valColor = highlight === 'green' ? 'text-green-700 dark:text-green-400' : highlight === 'red' ? 'text-red-600 dark:text-red-400' : met === true ? 'text-green-700 dark:text-green-400' : met === false ? 'text-muted-foreground' : 'text-foreground';
-    const iconBg   = highlight === 'green' ? 'bg-green-100 dark:bg-green-900/30' : highlight === 'red' ? 'bg-red-100 dark:bg-red-900/30' : met === true ? 'bg-green-100 dark:bg-green-900/30' : 'bg-muted';
-    const iconCol  = highlight === 'green' ? 'text-green-700 dark:text-green-400' : highlight === 'red' ? 'text-red-600 dark:text-red-400' : met === true ? 'text-green-700 dark:text-green-400' : 'text-muted-foreground';
-
-    return (
-        // El tooltip es un sibling que aparece en el flujo normal (no absolute),
-        // así nunca queda tapado ni sale del contenedor.
-        <div className="flex flex-1 flex-col">
-            {/* Card visible */}
-            <div
-                className={`flex min-w-[100px] flex-1 cursor-default flex-col items-center gap-1.5 rounded-xl border px-2.5 py-3 text-center shadow-sm transition-shadow hover:shadow-md ${border} ${bg}`}
-                onMouseEnter={() => setOpen(true)}
-                onMouseLeave={() => setOpen(false)}
-                onFocus={() => setOpen(true)}
-                onBlur={() => setOpen(false)}
-                tabIndex={0}
-            >
-                {numero && <span className="text-[9px] font-semibold text-muted-foreground">{numero}</span>}
-                <p className="text-[11px] font-semibold text-foreground">{label}</p>
-                <div className={`flex size-8 items-center justify-center rounded-full ${iconBg}`}>
-                    <Icon className={`size-4 ${iconCol}`} />
-                </div>
-                <p className={`text-sm font-extrabold tabular-nums ${valColor}`}>{value}</p>
-                {subvalue && <p className="text-[10px] font-semibold tabular-nums text-muted-foreground">{subvalue}</p>}
-                {met !== undefined && <Chip ok={met} label={met ? 'Cumplida' : 'No cumplida'} />}
-            </div>
-
-            {/* Tooltip en flujo — aparece debajo con animación, desplaza el layout */}
-            {open && (
-                <div className="z-10 mt-1.5 w-60 rounded-xl border border-sidebar-border/70 bg-popover p-3 text-left shadow-md dark:border-sidebar-border">
-                    <p className="mb-2 text-[10px] font-bold text-foreground">{tooltip.titulo}</p>
-                    <div className="text-[10px] leading-relaxed text-muted-foreground">{tooltip.explicacion}</div>
-                    <p className={`mt-1.5 text-xs font-extrabold tabular-nums ${tooltip.resultColor ?? 'text-green-700 dark:text-green-400'}`}>
-                        = {tooltip.resultado}
-                    </p>
-                </div>
-            )}
         </div>
     );
 }
@@ -403,6 +343,117 @@ function DateRangePicker({
     );
 }
 
+// ─── Tabla día por día ───────────────────────────────────────────────────────
+
+function TablaDiaria({ registros }: { registros: RegistroDiaSimple[] }) {
+    if (registros.length === 0) {
+        return (
+            <div className="rounded-xl border border-sidebar-border/70 bg-card p-4 text-sm text-muted-foreground dark:border-sidebar-border">
+                Sin registros para el período seleccionado.
+            </div>
+        );
+    }
+
+    return (
+        <div className="rounded-xl border border-sidebar-border/70 bg-card shadow-sm dark:border-sidebar-border overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center gap-2.5 border-b border-sidebar-border/70 bg-muted/40 px-4 py-3 dark:border-sidebar-border">
+                <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-green-700">
+                    <CalendarDays className="size-3.5 text-white" />
+                </div>
+                <p className="text-sm font-semibold text-foreground">Detalle por día</p>
+                <span className="ml-auto rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                    {registros.length} {registros.length === 1 ? 'día' : 'días'}
+                </span>
+            </div>
+
+            {/* Tabla */}
+            <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                    <thead>
+                        <tr className="border-b border-sidebar-border/70 bg-muted/30 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground dark:border-sidebar-border">
+                            <th className="px-4 py-2">Fecha</th>
+                            <th className="px-4 py-2 text-right">Rechazos</th>
+                            <th className="px-4 py-2 text-right">Valor del día</th>
+                            <th className="px-4 py-2 text-right">Ganado</th>
+                            <th className="px-4 py-2 text-right">Perdido</th>
+                            <th className="px-4 py-2 text-center">Resultado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {registros.map((r, idx) => {
+                            const cal = Number(r.cal_rechazos ?? 0);
+                            const es100 = cal >= 1.0;
+                            const es80  = cal >= 0.8 && cal < 1.0;
+
+                            const resultadoLabel = es100 ? '100%' : es80 ? '80%' : '0%';
+                            const resultadoBg    = es100
+                                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                : es80
+                                ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                                : 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400';
+
+                            const rechColor = Number(r.rechazos) >= 2.4
+                                ? 'text-red-600 dark:text-red-400'
+                                : Number(r.rechazos) >= 2.0
+                                ? 'text-amber-600 dark:text-amber-400'
+                                : 'text-green-700 dark:text-green-400';
+
+                            const [y, m, d] = r.fecha.split('-').map(Number);
+                            const fechaLabel = new Date(y, m - 1, d)
+                                .toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
+
+                            return (
+                                <tr
+                                    key={r.id ?? idx}
+                                    className="border-b border-sidebar-border/40 transition-colors hover:bg-muted/30 dark:border-sidebar-border/30"
+                                >
+                                    <td className="px-4 py-2.5 font-medium text-foreground">{fechaLabel}</td>
+                                    <td className={`px-4 py-2.5 text-right font-semibold tabular-nums ${rechColor}`}>
+                                        {Number(r.rechazos).toFixed(2)}%
+                                    </td>
+                                    <td className="px-4 py-2.5 text-right tabular-nums text-foreground">
+                                        {formatCOP(r.valor_x_dia)}
+                                    </td>
+                                    <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-green-700 dark:text-green-400">
+                                        {formatCOP(r.valor_var)}
+                                    </td>
+                                    <td className={`px-4 py-2.5 text-right tabular-nums ${Number(r.valor_perdido) > 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
+                                        {formatCOP(r.valor_perdido)}
+                                    </td>
+                                    <td className="px-4 py-2.5 text-center">
+                                        <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold ${resultadoBg}`}>
+                                            {resultadoLabel}
+                                        </span>
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                    {/* Totales */}
+                    <tfoot>
+                        <tr className="border-t-2 border-sidebar-border/70 bg-muted/40 font-semibold dark:border-sidebar-border">
+                            <td className="px-4 py-2.5 text-[11px] text-muted-foreground" colSpan={2}>
+                                Total {registros.length} días
+                            </td>
+                            <td className="px-4 py-2.5 text-right tabular-nums text-foreground">
+                                {formatCOP(registros.reduce((s, r) => s + Number(r.valor_x_dia), 0))}
+                            </td>
+                            <td className="px-4 py-2.5 text-right font-bold tabular-nums text-green-700 dark:text-green-400">
+                                {formatCOP(registros.reduce((s, r) => s + Number(r.valor_var), 0))}
+                            </td>
+                            <td className="px-4 py-2.5 text-right tabular-nums text-red-500">
+                                {formatCOP(registros.reduce((s, r) => s + Number(r.valor_perdido), 0))}
+                            </td>
+                            <td />
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function MiCompensacionIndex() {
@@ -411,6 +462,7 @@ export default function MiCompensacionIndex() {
     const fechaDesdeProps: string              = (pageProps.fecha_desde as string) ?? new Date().toISOString().slice(0, 7) + '-01';
     const fechaHastaProps: string              = (pageProps.fecha_hasta as string) ?? new Date().toISOString().split('T')[0];
     const registroDia: RegistroDia | null       = pageProps.registro_dia as RegistroDia | null;
+    const registros: RegistroDiaSimple[]        = (pageProps.registros as RegistroDiaSimple[]) ?? [];
     const ausencias: Ausencias                  = (pageProps.ausencias as Ausencias) ?? { justificada: 0, injustificada: 0 };
     const historialAnual: MesHistorial[]        = (pageProps.historial_anual as MesHistorial[]) ?? [];
     const estadisticasMes: EstadisticasMes      = (pageProps.estadisticas_mes as EstadisticasMes) ?? {
@@ -448,84 +500,11 @@ export default function MiCompensacionIndex() {
     const rechPct    = registroDia?.rechazos_porcentaje ?? 0;
     // cumpleMeta2: rechazos < 2.0% → gana 100%
     // cumpleMeta1: rechazos < 2.4% → gana 80%
-    const cumpleMeta2 = registroDia ? rechPct < registroDia.meta_1 : false;
-    const cumpleMeta1 = registroDia ? rechPct < registroDia.meta_2 : false;
     const pctNum      = registroDia ? parseFloat(registroDia.porcentaje_variable) : 0;
     const cumpleTotal = pctNum >= 100;
-    const esUnDia     = registroDia ? registroDia.fecha_desde === registroDia.fecha_hasta : false;
 
     const CIRCUM = 276.46;
     const dash   = Math.min((pctNum / 100) * CIRCUM, CIRCUM);
-
-    // Tooltips con datos reales
-    const tt = registroDia ? {
-        valorDia: {
-            titulo: esUnDia ? '1. Valor del día' : '1. Valor total del período',
-            formula: esUnDia ? 'Se calcula dividiendo el salario variable del cargo entre 26 días.' : 'Suma del valor base de cada día del rango.',
-            explicacion: <p>Tu cargo tiene un valor de <strong>{formatCOP(registroDia.valor_x_dia_por_dia)}</strong> por día ({esUnDia ? '1 día' : `${registroDia.dias_en_rango} días`} en el rango = <strong>{formatCOP(registroDia.valor_x_dia)}</strong>).</p>,
-            resultado: formatCOP(registroDia.valor_x_dia_por_dia),
-        },
-        meta1: {
-            titulo: esUnDia ? '2. Meta principal (80%)' : '2. Meta principal — acumulado',
-            formula: `Si tus rechazos son menores al ${registroDia.meta_2}%, ganas el 80% del día.`,
-            explicacion: (
-                <ul className="space-y-0.5">
-                    <li className="flex items-start gap-1"><CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-emerald-600" /> Rechazos <strong>menores a {registroDia.meta_2}%</strong> → ganas el <strong>80%</strong></li>
-                    <li className="flex items-start gap-1"><XCircle className="mt-0.5 size-3.5 shrink-0 text-rose-600" /> Rechazos <strong>{registroDia.meta_2}% o más</strong> → no ganas este porcentaje</li>
-                    <li className="font-medium text-green-600">{esUnDia ? 'Hoy' : 'En el período'} promedio: {rechPct.toFixed(2)}% rechazos</li>
-                </ul>
-            ),
-            resultado: cumpleMeta1 ? `${formatCOP(registroDia.valor_x_dia_por_dia * 0.8)} / día` : 'No aplica',
-            resultColor: cumpleMeta1 ? 'text-green-700' : 'text-muted-foreground',
-        },
-        meta2: {
-            titulo: esUnDia ? '3. Meta adicional (20% extra)' : '3. Meta adicional — acumulado',
-            formula: `Si tus rechazos son menores al ${registroDia.meta_1}%, ganas el 100% completo.`,
-            explicacion: (
-                <ul className="space-y-0.5">
-                    <li className="flex items-start gap-1"><CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-emerald-600" /> Rechazos <strong>menores a {registroDia.meta_1}%</strong> → ganas el <strong>100%</strong> completo</li>
-                    <li className="flex items-start gap-1"><XCircle className="mt-0.5 size-3.5 shrink-0 text-rose-600" /> Entre {registroDia.meta_1}% y {registroDia.meta_2}% → solo el <strong>80%</strong></li>
-                    <li className="font-medium text-green-600">{esUnDia ? 'Promedio hoy' : 'Promedio período'}: {rechPct.toFixed(2)}% rechazos</li>
-                </ul>
-            ),
-            resultado: cumpleMeta2 ? `${formatCOP(registroDia.valor_x_dia_por_dia)} / día (100%)` : cumpleMeta1 ? `${formatCOP(registroDia.valor_x_dia_por_dia * 0.8)} / día (80%)` : '$0 / día (0%)',
-            resultColor: cumpleMeta2 ? 'text-green-700' : 'text-muted-foreground',
-        },
-        valorGanas: {
-            titulo: esUnDia ? '4. Lo que ganaste hoy' : '4. Lo que ganaste en el período',
-            formula: 'Depende del porcentaje de rechazos del día.',
-            explicacion: (
-                <ul className="space-y-0.5">
-                    <li>· Rechazos {'<'} {registroDia.meta_1}% → <strong className="text-green-700">100%</strong> ({formatCOP(registroDia.valor_x_dia_por_dia)})</li>
-                    <li>· Rechazos {'<'} {registroDia.meta_2}% → <strong className="text-amber-600">80%</strong> ({formatCOP(registroDia.valor_x_dia_por_dia * 0.8)})</li>
-                    <li>· Rechazos ≥ {registroDia.meta_2}% → <strong className="text-red-600">0%</strong> ($0)</li>
-                </ul>
-            ),
-            resultado: formatCOP(registroDia.valor_var),
-            resultColor: 'text-green-700',
-        },
-        valorPerdido: {
-            titulo: esUnDia ? '5. Lo que dejaste de ganar' : '5. Total perdido en el período',
-            formula: 'Es la diferencia entre el valor del día y lo que ganaste.',
-            explicacion: <p>Si cumpliste todas las metas, este valor es <strong>$0</strong>. Si no, aquí ves cuánto dejaste de recibir por los rechazos.</p>,
-            resultado: formatCOP(registroDia.valor_perdido),
-            resultColor: registroDia.valor_perdido > 0 ? 'text-red-600' : 'text-muted-foreground',
-        },
-        pctVar: {
-            titulo: esUnDia ? '6. % que ganaste' : '6. % promedio ganado',
-            formula: 'Qué parte del período ganaste según tus rechazos.',
-            explicacion: <p>100% significa que cumpliste todo y ganaste el valor completo. Menos del 100% indica que hubo rechazos por encima de las metas.</p>,
-            resultado: registroDia.porcentaje_variable,
-            resultColor: 'text-green-700',
-        },
-        pctNoCum: {
-            titulo: esUnDia ? '7. % que no ganaste' : '7. % promedio no ganado',
-            formula: 'Lo que faltó para llegar al 100%.',
-            explicacion: <p>Si este valor es 0%, ¡lo lograste todo! Si es mayor, muestra el porcentaje del período que no pudiste ganar.</p>,
-            resultado: registroDia.porcentaje_variable_no_cum,
-            resultColor: parseFloat(registroDia.porcentaje_variable_no_cum) > 0 ? 'text-red-600' : 'text-muted-foreground',
-        },
-    } : null;
 
     const mesActualIdx = new Date().getMonth(); // 0-based
 
@@ -621,6 +600,85 @@ export default function MiCompensacionIndex() {
                     </Card>
                 ) : (
                     <>
+                        {/* ══ CARD CARGO + VALOR DEL DÍA  +  CARD RESULTADO ══ */}
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+
+                            {/* Card valor del día */}
+                            <Card className="p-4">
+                                <div className="flex flex-col gap-1">
+                                    <p className="text-[11px] text-muted-foreground">
+                                        Tu valor del día es:
+                                    </p>
+                                    <p className="text-4xl font-extrabold tabular-nums text-green-700 dark:text-green-400">
+                                        {formatCOP(registroDia.valor_x_dia_por_dia)}
+                                    </p>
+                                </div>
+                            </Card>
+
+                            {/* Card resultado: usa cal_rechazos = valor_var / valor_x_dia del rango */}
+                            {(() => {
+                                const cal = Number(registroDia.cal_rechazos ?? 0);
+                                if (cal >= 1.0) {
+                                    return (
+                                        <div className="flex flex-col gap-2 rounded-xl border border-green-200 bg-green-50 p-4 shadow-sm dark:border-green-700/40 dark:bg-green-900/10">
+                                            <div className="flex items-center gap-2">
+                                                <CheckCircle2 className="size-5 shrink-0 text-green-600" />
+                                                <p className="text-sm font-bold text-green-700 dark:text-green-400">
+                                                    ¡Felicitaciones, ganaste el 100%!
+                                                </p>
+                                            </div>
+                                            <p className="text-4xl font-extrabold tabular-nums text-green-700 dark:text-green-400">
+                                                {formatCOP(registroDia.valor_var)}
+                                            </p>
+                                        </div>
+                                    );
+                                } else if (cal >= 0.8) {
+                                    return (
+                                        <div className="flex flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm dark:border-amber-700/40 dark:bg-amber-900/10">
+                                            <div className="flex items-center gap-2">
+                                                <Star className="size-5 shrink-0 text-amber-500" />
+                                                <p className="text-sm font-bold text-amber-700 dark:text-amber-400">
+                                                    Ganaste el 80%
+                                                </p>
+                                            </div>
+                                            <p className="text-4xl font-extrabold tabular-nums text-amber-700 dark:text-amber-400">
+                                                {formatCOP(registroDia.valor_var)}
+                                            </p>
+                                            <p className="text-[11px] text-muted-foreground">
+                                                Dejaste de ganar:{' '}
+                                                <span className="font-semibold text-red-500">
+                                                    {formatCOP(registroDia.valor_perdido)}
+                                                </span>
+                                            </p>
+                                        </div>
+                                    );
+                                } else {
+                                    return (
+                                        <div className="flex flex-col gap-2 rounded-xl border border-red-200 bg-red-50 p-4 shadow-sm dark:border-red-700/40 dark:bg-red-900/10">
+                                            <div className="flex items-center gap-2">
+                                                <XCircle className="size-5 shrink-0 text-red-500" />
+                                                <p className="text-sm font-bold text-red-600 dark:text-red-400">
+                                                    Hoy aprendemos, mañana alcanzamos nuevos logros.
+                                                </p>
+                                            </div>
+                                            <p className="text-4xl font-extrabold tabular-nums text-red-600 dark:text-red-400">
+                                                {formatCOP(0)}
+                                            </p>
+                                            <p className="text-[11px] text-muted-foreground">
+                                                Valor perdido:{' '}
+                                                <span className="font-semibold text-red-500">
+                                                    {formatCOP(registroDia.valor_perdido)}
+                                                </span>
+                                            </p>
+                                        </div>
+                                    );
+                                }
+                            })()}
+                        </div>
+
+                        {/* ══ TABLA DÍA POR DÍA ══ */}
+                        <TablaDiaria registros={registros} />
+
                         {/* ══ CARDS DE AUSENCIAS + META MENSUAL ══ */}
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                             <AusenciaCard
@@ -639,72 +697,6 @@ export default function MiCompensacionIndex() {
                             />
                             <MetaMensualCard ganado={estadisticasMes.total_ganado} meta={META_MENSUAL} />
                         </div>
-
-                        {/* ══ CARD 2 — ECUACIÓN VISUAL ══ */}
-                        <Card className="p-4">
-                            <SectionHeader icon={CircleDollarSign} title="¿Cómo se calculó mi pago?" />
-                            <p className="mt-2 flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                                <Lightbulb className="size-3 shrink-0" />
-                                Toca cada card para entender qué significa ese valor.
-                            </p>
-
-                            {/* Ecuación horizontal — scroll en móvil */}
-                            <div className="mt-3 overflow-x-auto pb-1">
-                                <div className="flex min-w-max items-stretch gap-1.5 sm:gap-2">
-                                    <EcuacionCard numero="Valor del día" label={registroDia.cargo ?? 'Base fija'} value={formatCOP(registroDia.valor_x_dia_por_dia)} subvalue={registroDia.dias_en_rango > 1 ? `× ${registroDia.dias_en_rango} días = ${formatCOP(registroDia.valor_x_dia)}` : undefined} icon={CalendarDays} neutral tooltip={tt!.valorDia} />
-                                    <Op>×</Op>
-                                    {/* ── Metas: lógica de visibilidad ──────────────────────────────
-                                        100%: solo si cumpleMeta2 (rechazos < 2.0%)
-                                        80%:  solo si cumpleMeta1 y NO cumpleMeta2 (2.0% ≤ rechazos < 2.4%)
-                                        Ambas incumplidas: si no cumple ninguna (rechazos ≥ 2.4%)
-                                    ─────────────────────────────────────────────────────────── */}
-                                    {cumpleMeta2 ? (
-                                        // Gana 100% — solo esta card
-                                        <EcuacionCard
-                                            numero="100% del día"
-                                            label={formatCOP(registroDia.valor_x_dia_por_dia)}
-                                            value="100%"
-                                            icon={CheckCircle2}
-                                            highlight="green"
-                                            tooltip={tt!.meta2}
-                                        />
-                                    ) : cumpleMeta1 ? (
-                                        // Gana 80% — solo esta card
-                                        <EcuacionCard
-                                            numero="80% del día"
-                                            label={formatCOP(registroDia.valor_x_dia_por_dia * 0.8)}
-                                            value="80%"
-                                            icon={CheckCircle2}
-                                            met={true}
-                                            tooltip={tt!.meta1}
-                                        />
-                                    ) : (
-                                        // No gana nada — ambas cards como incumplidas
-                                        <>
-                                            <EcuacionCard
-                                                numero="100% del día"
-                                                label={formatCOP(registroDia.valor_x_dia_por_dia)}
-                                                value="100%"
-                                                icon={XCircle}
-                                                met={false}
-                                                tooltip={tt!.meta2}
-                                            />
-                                            <Op>y</Op>
-                                            <EcuacionCard
-                                                numero="80% del día"
-                                                label={formatCOP(registroDia.valor_x_dia_por_dia * 0.8)}
-                                                value="80%"
-                                                icon={XCircle}
-                                                met={false}
-                                                tooltip={tt!.meta1}
-                                            />
-                                        </>
-                                    )}
-                                    <Op>=</Op>
-                                    <EcuacionCard numero="Perdido en el mes" label={estadisticasMes.total_perdido > 0 ? 'Por rechazos' : 'Sin pérdida'} value={formatCOP(estadisticasMes.total_perdido)} icon={TrendingDown} highlight={estadisticasMes.total_perdido > 0 ? 'red' : undefined} neutral={estadisticasMes.total_perdido === 0} tooltip={tt!.valorPerdido} />
-                                </div>
-                            </div>
-                        </Card>
 
                         {/* ══ CARD 3 — RESUMEN DEL MES + HISTORIAL DESPLEGABLE ══ */}
                         <Card className="p-4">

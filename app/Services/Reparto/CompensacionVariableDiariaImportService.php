@@ -160,6 +160,11 @@ class CompensacionVariableDiariaImportService
                 $pctVariable  = $valorXDia > 0 ? round(($valorVar / $valorXDia) * 100, 1) . '%' : '0%';
                 $pctNoCum     = $valorXDia > 0 ? round(($valorPerdido / $valorXDia) * 100, 1) . '%' : '0%';
 
+                // meta_1 = valor que ganaría si rechazos < 2.0% (100% del valor diario)
+                // meta_2 = valor que ganaría si rechazos < 2.4% (80% del valor diario)
+                $meta1Valor = round($valorXDia * 1.0, 2);
+                $meta2Valor = round($valorXDia * 0.8, 2);
+
                 $batch[] = [
                     'cedula'                     => $cedula,
                     'fecha'                      => $fecha,
@@ -177,8 +182,8 @@ class CompensacionVariableDiariaImportService
                     'valor_perdido'              => $valorPerdido,
                     'porcentaje_variable'        => $pctVariable,
                     'porcentaje_variable_no_cum' => $pctNoCum,
-                    'meta_1'                     => self::META_1_PCT,
-                    'meta_2'                     => self::META_2_PCT,
+                    'meta_1'                     => $meta1Valor,
+                    'meta_2'                     => $meta2Valor,
                     'created_at'                 => $now,
                     'updated_at'                 => $now,
                 ];
