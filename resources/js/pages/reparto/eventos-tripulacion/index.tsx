@@ -224,19 +224,16 @@ function ImportModal({
     fileInputRef, fechasPlaneaciones, fechaPlaneacion, onFechaPlaneacionChange,
     onClose, onFileChange, onImport, onDownloadTemplate: _onDownloadTemplate,
 }: ImportModalProps) {
-    if (!open) return null;
-
-    const puedeImportar = !!selectedFile && !!fechaPlaneacion && !isUploading;
-
     // ── Helpers de formato ────────────────────────────────────────────────────
     const DIAS_ES  = ['DOMINGO','LUNES','MARTES','MIÉRCOLES','JUEVES','VIERNES','SÁBADO'];
     const MESES_ES = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
 
-    const toSpanish = (iso: string): string => {
+    const toSpanish = React.useCallback((iso: string): string => {
         const dt = new Date(iso + 'T00:00:00');
         if (isNaN(dt.getTime())) return iso;
         return `${DIAS_ES[dt.getDay()]} ${dt.getDate()} ${MESES_ES[dt.getMonth()]} ${dt.getFullYear()}`;
-    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // Estado del combobox
     const [inputText,  setInputText]  = useState('');
@@ -250,7 +247,7 @@ function ImportModal({
         } else if (/^\d{4}-\d{2}-\d{2}$/.test(fechaPlaneacion)) {
             setInputText(toSpanish(fechaPlaneacion));
         }
-    }, [fechaPlaneacion]);
+    }, [fechaPlaneacion, toSpanish]);
 
     // Cerrar lista al hacer clic fuera
     React.useEffect(() => {
@@ -282,17 +279,14 @@ function ImportModal({
         if (!q) return fechasPlaneaciones;
         const iso = dmy2iso(inputText);
         return fechasPlaneaciones.filter((f) => {
-            // coincide con la fecha ISO directa (si escribió dd/mm/yyyy)
             if (iso && f.startsWith(iso)) return true;
-            // coincide con la representación en español
             return normalize(toSpanish(f)).includes(q);
         });
-    }, [inputText, fechasPlaneaciones]);
+    }, [inputText, fechasPlaneaciones, toSpanish]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setInputText(e.target.value);
         setShowList(true);
-        // Si el texto no coincide con ninguna opción, limpiar el valor seleccionado
         const iso = dmy2iso(e.target.value);
         const exactMatch = fechasPlaneaciones.find(
             (f) => normalize(toSpanish(f)) === normalize(e.target.value) || (iso && f === iso)
@@ -305,6 +299,11 @@ function ImportModal({
         onFechaPlaneacionChange(iso);
         setShowList(false);
     };
+
+    // Guard: todos los hooks ya están declarados arriba
+    if (!open) return null;
+
+    const puedeImportar = !!selectedFile && !!fechaPlaneacion && !isUploading;
 
     return (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-2 sm:p-4">
