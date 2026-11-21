@@ -44,10 +44,11 @@ import {
     Target,
     Truck,
 } from 'lucide-react';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Bar, Line } from 'react-chartjs-2';
+import ChartDataLabels from 'chartjs-plugin-datalabels';
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, Filler, Tooltip, Legend);
+ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, Filler, Tooltip, Legend, ChartDataLabels);
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
@@ -174,7 +175,7 @@ function Spark({ data, color = COLOR_SUCCESS, h = 32, w = 100 }: { data: number[
     ).join(' ');
     return (
         <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="overflow-visible">
-            <polyline points={pts} fill="none" stroke={color} strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
+            {/* polyline */}<polyline points={pts} fill="none" stroke={color} strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
         </svg>
     );
 }
@@ -260,7 +261,7 @@ function GraficoBarrasValorDiario({ data }: { data: TotalesPorDia }) {
             <div style={{ height: 160 }}>
                 <Bar data={chartData} options={{
                     responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
+                    plugins: { legend: { display: false }, datalabels: { display: false } },
                     scales: {
                         x: { ticks: { color: '#9ca3af', font: { size: 8 } }, grid: { display: false } },
                         y: { beginAtZero: true, ticks: { color: '#9ca3af', font: { size: 8 }, callback: (v: string | number) => '$' + Number(v).toLocaleString('es-CO', { maximumFractionDigits: 0, notation: 'compact' }), maxTicksLimit: 5 }, grid: { color: 'rgba(0,0,0,.04)' } }
@@ -310,7 +311,7 @@ function GraficoLineaRechazos({ data }: { data: TotalesPorDia }) {
             <div style={{ height: 160 }}>
                 <Line data={chartData} options={{
                     responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
+                    plugins: { legend: { display: false }, datalabels: { display: false } },
                     scales: {
                         x: { ticks: { color: '#9ca3af', font: { size: 8 } }, grid: { display: false } },
                         y: { beginAtZero: true, ticks: { color: '#9ca3af', font: { size: 8 }, callback: (v: string | number) => `${v}%`, maxTicksLimit: 5 }, grid: { color: 'rgba(0,0,0,.04)' } }
@@ -357,7 +358,7 @@ function GraficoBarrasMensual({ data }: { data: TotalesMensuales }) {
             <div style={{ height: 160 }}>
                 <Bar data={chartData} options={{
                     responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
+                    plugins: { legend: { display: false }, datalabels: { display: false } },
                     scales: {
                         x: { ticks: { color: '#6b7280', font: { size: 8 } }, grid: { display: false } },
                         y: { beginAtZero: true, ticks: { color: '#9ca3af', font: { size: 8 }, callback: (v: string | number) => '$' + Number(v).toLocaleString('es-CO', { maximumFractionDigits: 0, notation: 'compact' }), maxTicksLimit: 5 }, grid: { color: 'rgba(0,0,0,.04)' } }
@@ -431,6 +432,166 @@ function MultiSelectSearchable({ label, placeholder, selectedValues, options, on
     );
 }
 
+// ─── Gráficas de barras horizontales por rol ─────────────────────────────────
+interface BarEntry { nombre: string; valor: number; }
+
+// ─── Descarga de gráfica como PNG de alta resolución (3×, fondo blanco) ──────
+function descargarGraficaHR(canvasRef: React.RefObject<HTMLDivElement | null>, nombre: string) {
+    const wrapper = canvasRef.current;
+    if (!wrapper) return;
+    const srcCanvas = wrapper.querySelector('canvas');
+    if (!srcCanvas) return;
+
+    const escala = 3;
+    const offscreen = document.createElement('canvas');
+    offscreen.width  = srcCanvas.width  * escala;
+    offscreen.height = srcCanvas.height * escala;
+
+    const ctx = offscreen.getContext('2d');
+    if (!ctx) return;
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, offscreen.width, offscreen.height);
+    ctx.scale(escala, escala);
+    ctx.drawImage(srcCanvas, 0, 0);
+
+    const url = offscreen.toDataURL('image/png', 1.0);
+    const enlace = document.createElement('a');
+    enlace.href = url;
+    enlace.download = `${nombre}.png`;
+    enlace.click();
+}
+
+function GraficoBarrasHorizontalesPorRol({
+    titulo,
+    subtitulo,
+    entries,
+    color,
+    icon: Icon,
+    nombreArchivo,
+}: {
+    titulo: string;
+    subtitulo: string;
+    entries: BarEntry[];
+    color: string;
+    icon: React.ElementType;
+    nombreArchivo: string;
+}) {
+    const chartRef = useRef<HTMLDivElement | null>(null);
+
+    if (entries.length === 0) {
+        return (
+            <div className="bg-card rounded-xl border border-sidebar-border/70 dark:border-sidebar-border shadow-sm p-4">
+                <h3 className="text-[11px] font-bold text-muted-foreground mb-0.5 flex items-center gap-1.5">
+                    <Icon className="h-3.5 w-3.5 shrink-0" style={{ color }} />
+                    {titulo}
+                </h3>
+                <p className="text-[9px] text-muted-foreground mb-2">{subtitulo}</p>
+                <div className="h-36 flex items-center justify-center text-muted-foreground text-xs">Sin datos</div>
+            </div>
+        );
+    }
+
+    const sorted = [...entries].sort((a, b) => b.valor - a.valor).slice(0, 15);
+    const max = sorted[0]?.valor || 1;
+
+    const chartData = {
+        labels: sorted.map(e => {
+            const parts = e.nombre.trim().split(' ');
+            if (parts.length >= 2) return `${parts[0]} ${parts[1]}`;
+            return e.nombre;
+        }),
+        datasets: [{
+            label: 'Valor Ganado ($)',
+            data: sorted.map(e => e.valor),
+            backgroundColor: color,
+            borderColor: color,
+            borderWidth: 0,
+            borderRadius: 4,
+        }],
+    };
+
+    const chartHeight = Math.max(180, sorted.length * 30);
+
+    return (
+        <div className="bg-card rounded-xl border border-sidebar-border/70 dark:border-sidebar-border shadow-sm p-4">
+            {/* Header: título + controles */}
+            <div className="flex items-start justify-between mb-0.5">
+                <h3 className="text-[11px] font-bold text-muted-foreground flex items-center gap-1.5">
+                    <Icon className="h-3.5 w-3.5 shrink-0" style={{ color }} />
+                    {titulo}
+                </h3>
+                <div className="flex items-center gap-1.5">
+                    <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: `${color}25`, color }}>
+                        {sorted.length} personas
+                    </span>
+                    <button
+                        type="button"
+                        title="Descargar PNG"
+                        onClick={() => descargarGraficaHR(chartRef, nombreArchivo)}
+                        className="flex items-center justify-center h-5 w-5 rounded hover:bg-muted/70 transition-colors"
+                        style={{ color: '#9ca3af' }}
+                        onMouseEnter={e => (e.currentTarget.style.color = color)}
+                        onMouseLeave={e => (e.currentTarget.style.color = '#9ca3af')}
+                    >
+                        <Download className="h-3.5 w-3.5" />
+                    </button>
+                </div>
+            </div>
+            <p className="text-[9px] text-muted-foreground mb-1">{subtitulo}</p>
+            <p className="text-xs font-extrabold mb-3" style={{ color }}>
+                Total: {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(entries.reduce((s, e) => s + e.valor, 0))}
+            </p>
+            <div ref={chartRef} style={{ height: chartHeight }}>
+                <Bar
+                    data={chartData}
+                    plugins={[ChartDataLabels]}
+                    options={{
+                        indexAxis: 'y' as const,
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        layout: { padding: { right: 8 } },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: { enabled: false },
+                            datalabels: {
+                                anchor: 'end',
+                                align: 'end',
+                                clip: false,
+                                color: '#6b7280',
+                                font: { size: 9, weight: 'bold' as const },
+                                formatter: (value: number) =>
+                                    new Intl.NumberFormat('es-CO', {
+                                        style: 'currency',
+                                        currency: 'COP',
+                                        maximumFractionDigits: 0,
+                                        notation: 'compact',
+                                    } as Intl.NumberFormatOptions).format(value),
+                            },
+                        },
+                        scales: {
+                            x: {
+                                beginAtZero: true,
+                                max: max * 1.45,
+                                display: false,
+                                grid: { display: false },
+                            },
+                            y: {
+                                ticks: {
+                                    color: '#6b7280',
+                                    font: { size: 9 },
+                                    crossAlign: 'far' as const,
+                                },
+                                grid: { display: false },
+                            },
+                        },
+                    }}
+                />
+            </div>
+        </div>
+    );
+}
+
 // Guards defensivos fuera del componente (constantes)
 const DEFAULT_PAGINATOR: Paginator = { data: [], links: [], total: 0, current_page: 1, per_page: 25 };
 const DEFAULT_INDICADORES: IndicadoresGlobales = { total_registros: 0, total_rechazos: 0, total_cal_rechazos: 0, total_cal_rechazos_2: 0, total_valor_x_dia: 0, total_valor_var: 0, total_valor_perdido: 0, total_meta_1: 0, total_meta_2: 0, prom_rechazos: 0, colaboradores_unicos: 0, vehiculos_unicos: 0 };
@@ -443,10 +604,10 @@ export default function CompensacionVariableDiariaIndex() {
 
     console.log('CompensacionVariableDiariaIndex pageProps:', pageProps);
 
-    const data: Paginator = pageProps.data || DEFAULT_PAGINATOR;
-    const indicadores: IndicadoresGlobales = pageProps.indicadores || DEFAULT_INDICADORES;
-    const totales_por_dia: TotalesPorDia = pageProps.totales_por_dia || DEFAULT_TOTALES_DIA;
-    const totales_mensuales: TotalesMensuales = pageProps.totales_mensuales || DEFAULT_TOTALES_MES;
+    const data: Paginator = (pageProps.data as Paginator) ?? DEFAULT_PAGINATOR;
+    const indicadores: IndicadoresGlobales = (pageProps.indicadores as IndicadoresGlobales) ?? DEFAULT_INDICADORES;
+    const totales_por_dia: TotalesPorDia = (pageProps.totales_por_dia as TotalesPorDia) ?? DEFAULT_TOTALES_DIA;
+    const totales_mensuales: TotalesMensuales = (pageProps.totales_mensuales as TotalesMensuales) ?? DEFAULT_TOTALES_MES;
     const filters: FiltrosReales = pageProps.filters || {};
     const catalogos: Catalogos = (pageProps.catalogos as Catalogos) || DEFAULT_CATALOGOS;
     // El controlador usa ->with('status', [...]) que el middleware comparte como pageProps.status
@@ -590,6 +751,39 @@ export default function CompensacionVariableDiariaIndex() {
     const vehUnicos        = Number(indicadores?.vehiculos_unicos   ?? 0) || 0;
     const visibleCols = COLUMNAS.filter(([k]) => !hiddenCols.has(k));
     const _sparklineValorVar = totales_por_dia.valor_var || [];
+
+    // ─── Datos agrupados por rol para gráficas de barras horizontales ────────
+    const { conductoresData, responsablesData, auxiliaresData } = useMemo(() => {
+        const rows = data?.data || [];
+
+        const agruparPorNombre = (filteredRows: CompensacionDiariaRow[]): BarEntry[] => {
+            const map: Record<string, number> = {};
+            filteredRows.forEach(r => {
+                const nombre = (r.nombre_completo || '(Sin nombre)').trim();
+                map[nombre] = (map[nombre] || 0) + (Number(r.valor_var) || 0);
+            });
+            return Object.entries(map).map(([nombre, valor]) => ({ nombre, valor }));
+        };
+
+        const conductores = rows.filter(r => {
+            const c = (r.cargo || '').toLowerCase();
+            return c.includes('conductor') || c.includes('chofer') || c.includes('chófer');
+        });
+        const responsables = rows.filter(r => {
+            const c = (r.cargo || '').toLowerCase();
+            return c.includes('responsable') || c.includes('resp.') || c.includes('jefe de reparto') || c.includes('supervisor');
+        });
+        const auxiliares = rows.filter(r => {
+            const c = (r.cargo || '').toLowerCase();
+            return c.includes('auxiliar') || c.includes('asistente') || c.includes('ayudante');
+        });
+
+        return {
+            conductoresData: agruparPorNombre(conductores),
+            responsablesData: agruparPorNombre(responsables),
+            auxiliaresData: agruparPorNombre(auxiliares),
+        };
+    }, [data?.data]);
 
     const hasFilters = (formFilters.fecha_desde || formFilters.fecha_hasta || (formFilters.cargo as string[])?.length > 0 ||
         (formFilters.cedula as string[])?.length > 0 || (formFilters.nombre_completo as string[])?.length > 0 ||
@@ -769,6 +963,40 @@ export default function CompensacionVariableDiariaIndex() {
                             </div>
                             <div className="min-w-0 w-full box-border">
                                 <GraficoBarrasMensual data={totales_mensuales} />
+                            </div>
+                        </div>
+
+                        {/* GRÁFICAS POR ROL · barras horizontales */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 w-full min-w-0">
+                            <div className="min-w-0 w-full box-border">
+                                <GraficoBarrasHorizontalesPorRol
+                                    titulo="Conductores"
+                                    subtitulo="Valor variable ganado por conductor"
+                                    entries={conductoresData}
+                                    color="#3b82f6"
+                                    icon={Truck}
+                                    nombreArchivo="compensacion-conductores"
+                                />
+                            </div>
+                            <div className="min-w-0 w-full box-border">
+                                <GraficoBarrasHorizontalesPorRol
+                                    titulo="Responsables de Reparto"
+                                    subtitulo="Valor variable ganado por responsable"
+                                    entries={responsablesData}
+                                    color="#f59e0b"
+                                    icon={Users}
+                                    nombreArchivo="compensacion-responsables"
+                                />
+                            </div>
+                            <div className="min-w-0 w-full box-border">
+                                <GraficoBarrasHorizontalesPorRol
+                                    titulo="Auxiliares"
+                                    subtitulo="Valor variable ganado por auxiliar"
+                                    entries={auxiliaresData}
+                                    color="#9ca3af"
+                                    icon={Users}
+                                    nombreArchivo="compensacion-auxiliares"
+                                />
                             </div>
                         </div>
 

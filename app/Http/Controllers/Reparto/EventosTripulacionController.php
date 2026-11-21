@@ -710,6 +710,65 @@ class EventosTripulacionController
     }
 
     // =========================================================================
+    // EXPORTAR
+    // =========================================================================
+
+    /** Exporta todos los registros (con filtros activos) a CSV. */
+    public function exportar(Request $request): StreamedResponse
+    {
+        $query = EventosTripulacion::query()->orderByDesc('fecha')->orderBy('placa');
+        $this->applyFilters($query, $request);
+
+        $filename = 'eventos_tripulacion_' . date('Y-m-d_H-i') . '.csv';
+
+        $callback = function () use ($query) {
+            $file = fopen('php://output', 'w');
+            // BOM para que Excel abra el CSV con tildes correctamente
+            fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+            fputcsv($file, [
+                'FECHA', 'PLACA', 'DOC. TRANSPORTE', 'CÉDULA', 'NOMBRE', 'CARGO',
+                'ENTREGA EN RANGO (%)', 'RECHAZOS (%)', '# ALERTAS VEL. CURVAS',
+                '% ADHERENCIA AL TIEMPO', 'MODULACIÓN (%)', 'ADHERENCIA CL PRE (%)',
+                'ADHERENCIA CL POST (%)', 'RMD', 'HORAS TRABAJADAS',
+            ]);
+
+            $query->chunk(300, function ($rows) use ($file) {
+                foreach ($rows as $r) {
+                    $fecha = $r->fecha
+                        ? Carbon::parse($r->fecha)->format('d/m/Y')
+                        : '';
+
+                    fputcsv($file, [
+                        $fecha,
+                        $r->placa,
+                        $r->doc_transporte,
+                        $r->documento,
+                        $r->nombre,
+                        $r->cargo,
+                        $r->entrega_en_rango,
+                        $r->rechazos,
+                        $r->alertas_velocidad_curvas,
+                        $r->adherencia_tiempo,
+                        $r->modulacion,
+                        $r->adherencia_checklist_pre,
+                        $r->adherencia_checklist_post,
+                        $r->rmd,
+                        $r->horas_trabajadas,
+                    ]);
+                }
+            });
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, [
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ]);
+    }
+
+    // =========================================================================
     // PLANTILLA
     // =========================================================================
 

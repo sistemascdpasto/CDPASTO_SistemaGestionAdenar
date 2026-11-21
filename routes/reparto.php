@@ -129,6 +129,8 @@ Route::middleware(['auth', 'active', 'submodule.access'])
             ->name('eventos-tripulacion.store');
         Route::get('/eventos-tripulacion/descargar-plantilla', [EventosTripulacionController::class, 'downloadTemplate'])
             ->name('eventos-tripulacion.template');
+        Route::get('/eventos-tripulacion/exportar', [EventosTripulacionController::class, 'exportar'])
+            ->name('eventos-tripulacion.exportar');
 
         // Indicadores de Velocidad
         Route::get('/indicadores', [IndicadoresController::class, 'index'])

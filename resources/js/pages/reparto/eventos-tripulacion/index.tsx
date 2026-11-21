@@ -718,6 +718,27 @@ export default function EventosTripulacionIndex({ eventos, filters, fechas_plane
                                 <span className="sm:hidden">Plant.</span>
                             </Button>
 
+                            <a
+                                href={route('reparto.eventos-tripulacion.exportar', {
+                                    placa:            placa            || undefined,
+                                    buscar:           buscar           || undefined,
+                                    doc_transporte:   docTransporte    || undefined,
+                                    fecha_desde:      fechaDesde       || undefined,
+                                    fecha_hasta:      fechaHasta       || undefined,
+                                    planeacion_fecha: planeacionFecha  || undefined,
+                                } as Record<string, string>)}
+                            >
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 text-xs border-green-300 text-green-700 hover:bg-green-50"
+                                >
+                                    <Download className="h-3.5 w-3.5 mr-1 sm:mr-1.5" />
+                                    <span className="hidden sm:inline">Exportar</span>
+                                    <span className="sm:hidden">Exp.</span>
+                                </Button>
+                            </a>
+
                             <Button
                                 size="sm"
                                 onClick={() => setShowImportModal(true)}
