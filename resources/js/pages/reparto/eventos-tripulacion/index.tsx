@@ -238,17 +238,73 @@ function ImportModal({
         return `${DIAS_ES[dt.getDay()]} ${dt.getDate()} ${MESES_ES[dt.getMonth()]} ${dt.getFullYear()}`;
     };
 
-    // Cuando el usuario escoge del datalist, el value es YYYY-MM-DD; al escribir libre también puede serlo
-    const handleDateInput = (raw: string) => {
-        // Si coincide con alguna fecha del listado (como texto español), convierte de vuelta a ISO
-        const match = fechasPlaneaciones.find((f) => toSpanish(f) === raw.trim().toUpperCase());
-        onFechaPlaneacionChange(match ?? raw);
+    // Estado del combobox
+    const [inputText,  setInputText]  = useState('');
+    const [showList,   setShowList]   = useState(false);
+    const comboRef = useRef<HTMLDivElement>(null);
+
+    // Sincronizar inputText cuando el valor externo cambia (ej: limpiar modal)
+    React.useEffect(() => {
+        if (!fechaPlaneacion) {
+            setInputText('');
+        } else if (/^\d{4}-\d{2}-\d{2}$/.test(fechaPlaneacion)) {
+            setInputText(toSpanish(fechaPlaneacion));
+        }
+    }, [fechaPlaneacion]);
+
+    // Cerrar lista al hacer clic fuera
+    React.useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (comboRef.current && !comboRef.current.contains(e.target as Node)) {
+                setShowList(false);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    /** Normaliza un string para comparación: minúsculas, sin tildes, sin espacios extra */
+    const normalize = (s: string) =>
+        s.toLowerCase()
+         .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+         .replace(/\s+/g, ' ').trim();
+
+    /** Convierte dd/mm/yyyy → yyyy-mm-dd para buscar en el array ISO */
+    const dmy2iso = (s: string): string | null => {
+        const m = s.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$/);
+        if (!m) return null;
+        return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
     };
 
-    // Texto a mostrar en el input: si el valor guardado es ISO, mostrarlo en español
-    const displayValue = /^\d{4}-\d{2}-\d{2}$/.test(fechaPlaneacion)
-        ? toSpanish(fechaPlaneacion)
-        : fechaPlaneacion;
+    /** Filtra las opciones según lo que el usuario escribió */
+    const opcionesFiltradas = React.useMemo(() => {
+        const q = normalize(inputText);
+        if (!q) return fechasPlaneaciones;
+        const iso = dmy2iso(inputText);
+        return fechasPlaneaciones.filter((f) => {
+            // coincide con la fecha ISO directa (si escribió dd/mm/yyyy)
+            if (iso && f.startsWith(iso)) return true;
+            // coincide con la representación en español
+            return normalize(toSpanish(f)).includes(q);
+        });
+    }, [inputText, fechasPlaneaciones]);
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setInputText(e.target.value);
+        setShowList(true);
+        // Si el texto no coincide con ninguna opción, limpiar el valor seleccionado
+        const iso = dmy2iso(e.target.value);
+        const exactMatch = fechasPlaneaciones.find(
+            (f) => normalize(toSpanish(f)) === normalize(e.target.value) || (iso && f === iso)
+        );
+        onFechaPlaneacionChange(exactMatch ?? '');
+    };
+
+    const handleSelectOption = (iso: string) => {
+        setInputText(toSpanish(iso));
+        onFechaPlaneacionChange(iso);
+        setShowList(false);
+    };
 
     return (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-2 sm:p-4">
@@ -276,19 +332,44 @@ function ImportModal({
                             <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                             Fecha de planeación <span className="text-destructive">*</span>
                         </Label>
-                        <input
-                            type="text"
-                            value={displayValue}
-                            onChange={(e) => handleDateInput(e.target.value)}
-                            list="lista-planeaciones"
-                            placeholder="Escribe o selecciona una fecha..."
-                            className="w-full h-9 sm:h-10 rounded-md border border-input bg-background px-3 py-1 text-xs sm:text-sm font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                        />
-                        <datalist id="lista-planeaciones">
-                            {fechasPlaneaciones.map((f) => (
-                                <option key={f} value={toSpanish(f)} />
-                            ))}
-                        </datalist>
+                        <div ref={comboRef} className="relative">
+                            <input
+                                type="text"
+                                value={inputText}
+                                onChange={handleInputChange}
+                                onFocus={() => setShowList(true)}
+                                placeholder="Escribe fecha (ej: 02/11/2026) o día..."
+                                className="w-full h-9 sm:h-10 rounded-md border border-input bg-background px-3 py-1 text-xs sm:text-sm font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                                autoComplete="off"
+                            />
+                            {showList && opcionesFiltradas.length > 0 && (
+                                <ul className="absolute z-50 mt-1 w-full max-h-52 overflow-y-auto rounded-md border border-input bg-background shadow-lg">
+                                    {opcionesFiltradas.map((f) => {
+                                        const label = toSpanish(f);
+                                        // Formato secundario dd/mm/yyyy
+                                        const [y, m, d] = f.split('-');
+                                        const dmy = `${d}/${m}/${y}`;
+                                        return (
+                                            <li
+                                                key={f}
+                                                onMouseDown={() => handleSelectOption(f)}
+                                                className={`flex items-center justify-between px-3 py-2 text-xs cursor-pointer hover:bg-muted ${
+                                                    fechaPlaneacion === f ? 'bg-muted font-semibold text-foreground' : 'text-foreground'
+                                                }`}
+                                            >
+                                                <span>{label}</span>
+                                                <span className="text-muted-foreground font-mono text-[10px]">{dmy}</span>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            )}
+                            {showList && opcionesFiltradas.length === 0 && inputText && (
+                                <div className="absolute z-50 mt-1 w-full rounded-md border border-input bg-background shadow-lg px-3 py-2 text-xs text-muted-foreground">
+                                    Sin resultados para "{inputText}"
+                                </div>
+                            )}
+                        </div>
                         {!fechaPlaneacion && (
                             <p className="text-[10px] sm:text-xs text-muted-foreground">
                                 Debes seleccionar la planeación antes de importar.
@@ -495,7 +576,23 @@ export default function EventosTripulacionIndex({ eventos, filters, fechas_plane
     };
 
     const handleDownloadTemplate = () => {
-        window.location.href = route('reparto.eventos-tripulacion.template');
+        // Prioridad para determinar la fecha de la plantilla:
+        // 1. Fecha seleccionada en el modal de importación
+        // 2. Filtro de planeación exacta (planeacion_fecha en el estado)
+        // 3. Filtro fecha_desde (si está activo y es una fecha exacta)
+        // 4. Si no hay nada, el servidor usa today() por defecto
+        const iso = /^\d{4}-\d{2}-\d{2}$/;
+        const fechaEfectiva =
+            (fechaImport      && iso.test(fechaImport))      ? fechaImport      :
+            (planeacionFecha  && iso.test(planeacionFecha))  ? planeacionFecha  :
+            (fechaDesde       && iso.test(fechaDesde))       ? fechaDesde       :
+            null;
+
+        const url = new URL(route('reparto.eventos-tripulacion.template'), window.location.origin);
+        if (fechaEfectiva) {
+            url.searchParams.set('fecha', fechaEfectiva);
+        }
+        window.location.href = url.toString();
     };
 
     // ─── Render ────────────────────────────────────────────────────────────────

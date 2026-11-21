@@ -713,20 +713,46 @@ class EventosTripulacionController
     // PLANTILLA
     // =========================================================================
 
-    /** Descarga una plantilla Excel con los 10 encabezados del formato actual. */
-    public function downloadTemplate(): HttpResponse|StreamedResponse
+    /**
+     * Descarga una plantilla Excel con los encabezados del formato actual.
+     * Si existe una planeación para la fecha indicada (por defecto hoy),
+     * pre-pobla una fila por cada par placa/doc_transporte único.
+     */
+    public function downloadTemplate(Request $request): HttpResponse|StreamedResponse
     {
+        // Fecha: parámetro ?fecha=YYYY-MM-DD, si no se pasa usa hoy
+        $fecha = $request->query('fecha');
+        if (!$fecha || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) {
+            $fecha = Carbon::today()->toDateString();
+        }
+
+        // Obtener pares únicos placa / doc_transporte de la planeación del día
+        $filas = collect();
+        $modulacion = Modulacion::with('items')
+            ->whereDate('fecha', $fecha)
+            ->first();
+
+        if ($modulacion) {
+            $filas = $modulacion->items
+                ->map(fn ($item) => [
+                    strtoupper(trim((string) ($item->doc_tras ?? ''))),
+                    strtoupper(trim((string) ($item->placa   ?? ''))),
+                ])
+                ->filter(fn ($r) => $r[0] !== '' && $r[1] !== '')
+                ->unique(fn ($r) => "{$r[0]}|{$r[1]}")
+                ->values();
+        }
+
         $spreadsheet = new Spreadsheet();
         $sheet       = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Eventos Tripulación');
 
         $headers = [
             'TRANSPORTE', 'PLACA', 'ENTREGA EN RANGO', 'RECHAZOS', '# ALERTAS VEL. CURVAS',
-            '% ADH. TIEMPO', 'MODULACION', 'CHECK-LIST PRE OPERACIONAL',
+            '% Adherencia al Tiempo', 'MODULACION', 'CHECK-LIST PRE OPERACIONAL',
             'CHECK-LIST POST OPERACIONAL', 'RMD',
         ];
-        $example = ['8008417416', 'COLJV386', '85.00', '3.50', '5', '90.00', '95.00', '88.50', '92.00', 'ACTIVO'];
-        $widths  = [13, 15, 18, 11, 23, 15, 16, 21, 22, 13];
+        $widths = [13, 15, 18, 11, 23, 15, 16, 21, 22, 13];
 
         $lastCol = Coordinate::stringFromColumnIndex(count($headers));
         $center  = [
@@ -735,7 +761,6 @@ class EventosTripulacionController
         ];
 
         $sheet->fromArray($headers, null, 'A1');
-        $sheet->fromArray($example, null, 'A2');
 
         // Encabezados: fondo azul, texto blanco en negrita, borde blanco
         $sheet->getStyle("A1:{$lastCol}1")->applyFromArray([
@@ -745,25 +770,43 @@ class EventosTripulacionController
             'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'FFFFFF']]],
         ]);
 
-        // Fila de ejemplo: fondo gris claro
-        $sheet->getStyle("A2:{$lastCol}2")->applyFromArray([
-            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'F1F5F9']],
-            'font'      => ['size' => 10],
-            'alignment' => $center,
-            'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'CBD5E1']]],
-        ]);
+        $sheet->getRowDimension(1)->setRowHeight(30);
+
+        // Filas de datos pre-pobladas desde la planeación
+        if ($filas->isNotEmpty()) {
+            foreach ($filas as $i => $fila) {
+                $rowNum = $i + 2;
+                // Columna A: doc_transporte, Columna B: placa
+                $sheet->setCellValue("A{$rowNum}", $fila[0]);
+                $sheet->setCellValue("B{$rowNum}", $fila[1]);
+
+                $sheet->getStyle("A{$rowNum}:B{$rowNum}")->applyFromArray([
+                    'font'      => ['bold' => true, 'size' => 10],
+                    'alignment' => $center,
+                    'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'CBD5E1']]],
+                ]);
+
+                // Columnas C–J dejan el borde para guiar al usuario
+                $sheet->getStyle("C{$rowNum}:{$lastCol}{$rowNum}")->applyFromArray([
+                    'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'F8FAFC']],
+                    'alignment' => $center,
+                    'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'CBD5E1']]],
+                ]);
+
+                $sheet->getRowDimension($rowNum)->setRowHeight(16);
+            }
+        }
 
         foreach ($widths as $i => $width) {
             $sheet->getColumnDimension(Coordinate::stringFromColumnIndex($i + 1))->setWidth($width);
         }
-        $sheet->getRowDimension(1)->setRowHeight(30);
-        $sheet->getRowDimension(2)->setRowHeight(18);
 
-        $writer = new Xlsx($spreadsheet);
+        $writer   = new Xlsx($spreadsheet);
+        $filename = "plantilla_eventos_{$fecha}.xlsx";
 
         return response()->streamDownload(
             fn () => $writer->save('php://output'),
-            'plantilla_eventos_tripulacion.xlsx',
+            $filename,
             ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']
         );
     }
