@@ -435,28 +435,76 @@ function MultiSelectSearchable({ label, placeholder, selectedValues, options, on
 // ─── Gráficas de barras horizontales por rol ─────────────────────────────────
 interface BarEntry { nombre: string; valor: number; }
 
-// ─── Descarga de la card completa como PNG de alta resolución con html2canvas ─
-async function descargarCardHR(cardRef: React.RefObject<HTMLDivElement | null>, nombre: string) {
-    const card = cardRef.current;
-    if (!card) return;
+// ─── Descarga: canvas nativo puro (sin html2canvas) ──────────────────────────
+// Dibuja encabezado (título, subtítulo, total) + copia el canvas de Chart.js
+// en un offscreen a 4× con fondo blanco → sin dependencia de colores CSS modernos.
+function descargarCardNativa(
+    chartCanvasRef: React.RefObject<HTMLDivElement | null>,
+    titulo: string,
+    subtitulo: string,
+    total: string,
+    color: string,
+    nombre: string,
+) {
+    const wrapper = chartCanvasRef.current;
+    if (!wrapper) return;
+    const srcCanvas = wrapper.querySelector('canvas');
+    if (!srcCanvas) return;
 
-    // Importación dinámica para no aumentar el bundle inicial
-    const html2canvas = (await import('html2canvas')).default;
+    const ESCALA   = 4;
+    const PAD      = 20 * ESCALA;
+    const H_HEADER = 72 * ESCALA;   // zona de encabezado sobre la gráfica
 
-    const canvas = await html2canvas(card, {
-        scale: 4,                // 4× → nitidez muy alta
-        backgroundColor: '#ffffff',
-        useCORS: true,
-        logging: false,
-        // Excluir el botón de descarga de la imagen
-        ignoreElements: (el) => el.hasAttribute('data-html2canvas-ignore'),
-    });
+    const W = srcCanvas.width  * ESCALA;
+    const H = srcCanvas.height * ESCALA + H_HEADER + PAD;
 
-    const url = canvas.toDataURL('image/png', 1.0);
-    const enlace = document.createElement('a');
-    enlace.href = url;
-    enlace.download = `${nombre}.png`;
-    enlace.click();
+    const off = document.createElement('canvas');
+    off.width  = W;
+    off.height = H;
+
+    const ctx = off.getContext('2d');
+    if (!ctx) return;
+
+    // ── Fondo blanco ──
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, W, H);
+
+    // ── Franja de color sutil en el encabezado ──
+    ctx.fillStyle = `${color}18`;
+    ctx.fillRect(0, 0, W, H_HEADER);
+
+    // ── Acento lateral ──
+    ctx.fillStyle = color;
+    ctx.fillRect(0, 0, 6 * ESCALA, H_HEADER);
+
+    // ── Título ──
+    ctx.fillStyle = '#111827';
+    ctx.font = `bold ${13 * ESCALA}px Inter, system-ui, sans-serif`;
+    ctx.fillText(titulo, PAD + 8 * ESCALA, 26 * ESCALA);
+
+    // ── Subtítulo ──
+    ctx.fillStyle = '#6b7280';
+    ctx.font = `${10 * ESCALA}px Inter, system-ui, sans-serif`;
+    ctx.fillText(subtitulo, PAD + 8 * ESCALA, 42 * ESCALA);
+
+    // ── Total ──
+    ctx.fillStyle = color;
+    ctx.font = `bold ${11 * ESCALA}px Inter, system-ui, sans-serif`;
+    ctx.fillText(total, PAD + 8 * ESCALA, 60 * ESCALA);
+
+    // ── Gráfica ──
+    ctx.drawImage(srcCanvas, 0, H_HEADER, W, srcCanvas.height * ESCALA);
+
+    // ── Borde gris claro alrededor de toda la card ──
+    ctx.strokeStyle = '#e5e7eb';
+    ctx.lineWidth   = 2 * ESCALA;
+    ctx.strokeRect(0, 0, W, H);
+
+    const url   = off.toDataURL('image/png', 1.0);
+    const link  = document.createElement('a');
+    link.href     = url;
+    link.download = `${nombre}.png`;
+    link.click();
 }
 
 function GraficoBarrasHorizontalesPorRol({
@@ -476,17 +524,31 @@ function GraficoBarrasHorizontalesPorRol({
     nombreArchivo: string;
     fixedChartHeight?: number;
 }) {
-    // ref sobre la card completa (título + total + gráfica)
-    const cardRef = useRef<HTMLDivElement | null>(null);
+    // ref sobre el div que envuelve el <Bar> (solo el canvas de Chart.js)
+    const chartWrapperRef = useRef<HTMLDivElement | null>(null);
     const [descargando, setDescargando] = useState(false);
 
-    const handleDescargar = async () => {
+    const totalFormateado = new Intl.NumberFormat('es-CO', {
+        style: 'currency', currency: 'COP', maximumFractionDigits: 0,
+    }).format(entries.reduce((s, e) => s + e.valor, 0));
+
+    const handleDescargar = () => {
         setDescargando(true);
-        try {
-            await descargarCardHR(cardRef, nombreArchivo);
-        } finally {
-            setDescargando(false);
-        }
+        // Pequeño timeout para que el spinner se pinte antes de bloquear el hilo
+        setTimeout(() => {
+            try {
+                descargarCardNativa(
+                    chartWrapperRef,
+                    titulo,
+                    subtitulo,
+                    `Total: ${totalFormateado}`,
+                    color,
+                    nombreArchivo,
+                );
+            } finally {
+                setDescargando(false);
+            }
+        }, 50);
     };
 
     if (entries.length === 0) {
@@ -524,10 +586,7 @@ function GraficoBarrasHorizontalesPorRol({
     const chartHeight = fixedChartHeight ?? Math.max(180, sorted.length * 30);
 
     return (
-        <div
-            ref={cardRef}
-            className="bg-card rounded-xl border border-sidebar-border/70 dark:border-sidebar-border shadow-sm p-4"
-        >
+        <div className="bg-card rounded-xl border border-sidebar-border/70 dark:border-sidebar-border shadow-sm p-4">
             {/* Header: título + controles */}
             <div className="flex items-start justify-between mb-0.5">
                 <h3 className="text-[11px] font-bold text-muted-foreground flex items-center gap-1.5">
@@ -538,9 +597,7 @@ function GraficoBarrasHorizontalesPorRol({
                     <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: `${color}25`, color }}>
                         {sorted.length} personas
                     </span>
-                    {/* data-html2canvas-ignore → este botón NO aparece en la imagen descargada */}
                     <button
-                        data-html2canvas-ignore
                         type="button"
                         title="Descargar imagen de esta gráfica"
                         onClick={handleDescargar}
@@ -559,9 +616,10 @@ function GraficoBarrasHorizontalesPorRol({
             </div>
             <p className="text-[9px] text-muted-foreground mb-1">{subtitulo}</p>
             <p className="text-xs font-extrabold mb-3" style={{ color }}>
-                Total: {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(entries.reduce((s, e) => s + e.valor, 0))}
+                Total: {totalFormateado}
             </p>
-            <div style={{ height: chartHeight }}>
+            {/* ref solo sobre el wrapper del canvas de Chart.js */}
+            <div ref={chartWrapperRef} style={{ height: chartHeight }}>
                 <Bar
                     data={chartData}
                     plugins={[ChartDataLabels]}
