@@ -435,27 +435,24 @@ function MultiSelectSearchable({ label, placeholder, selectedValues, options, on
 // ─── Gráficas de barras horizontales por rol ─────────────────────────────────
 interface BarEntry { nombre: string; valor: number; }
 
-// ─── Descarga de gráfica como PNG de alta resolución (3×, fondo blanco) ──────
-function descargarGraficaHR(canvasRef: React.RefObject<HTMLDivElement | null>, nombre: string) {
-    const wrapper = canvasRef.current;
-    if (!wrapper) return;
-    const srcCanvas = wrapper.querySelector('canvas');
-    if (!srcCanvas) return;
+// ─── Descarga de la card completa como PNG de alta resolución con html2canvas ─
+async function descargarCardHR(cardRef: React.RefObject<HTMLDivElement | null>, nombre: string) {
+    const card = cardRef.current;
+    if (!card) return;
 
-    const escala = 3;
-    const offscreen = document.createElement('canvas');
-    offscreen.width  = srcCanvas.width  * escala;
-    offscreen.height = srcCanvas.height * escala;
+    // Importación dinámica para no aumentar el bundle inicial
+    const html2canvas = (await import('html2canvas')).default;
 
-    const ctx = offscreen.getContext('2d');
-    if (!ctx) return;
+    const canvas = await html2canvas(card, {
+        scale: 4,                // 4× → nitidez muy alta
+        backgroundColor: '#ffffff',
+        useCORS: true,
+        logging: false,
+        // Excluir el botón de descarga de la imagen
+        ignoreElements: (el) => el.hasAttribute('data-html2canvas-ignore'),
+    });
 
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, offscreen.width, offscreen.height);
-    ctx.scale(escala, escala);
-    ctx.drawImage(srcCanvas, 0, 0);
-
-    const url = offscreen.toDataURL('image/png', 1.0);
+    const url = canvas.toDataURL('image/png', 1.0);
     const enlace = document.createElement('a');
     enlace.href = url;
     enlace.download = `${nombre}.png`;
@@ -469,6 +466,7 @@ function GraficoBarrasHorizontalesPorRol({
     color,
     icon: Icon,
     nombreArchivo,
+    fixedChartHeight,
 }: {
     titulo: string;
     subtitulo: string;
@@ -476,8 +474,20 @@ function GraficoBarrasHorizontalesPorRol({
     color: string;
     icon: React.ElementType;
     nombreArchivo: string;
+    fixedChartHeight?: number;
 }) {
-    const chartRef = useRef<HTMLDivElement | null>(null);
+    // ref sobre la card completa (título + total + gráfica)
+    const cardRef = useRef<HTMLDivElement | null>(null);
+    const [descargando, setDescargando] = useState(false);
+
+    const handleDescargar = async () => {
+        setDescargando(true);
+        try {
+            await descargarCardHR(cardRef, nombreArchivo);
+        } finally {
+            setDescargando(false);
+        }
+    };
 
     if (entries.length === 0) {
         return (
@@ -511,10 +521,13 @@ function GraficoBarrasHorizontalesPorRol({
         }],
     };
 
-    const chartHeight = Math.max(180, sorted.length * 30);
+    const chartHeight = fixedChartHeight ?? Math.max(180, sorted.length * 30);
 
     return (
-        <div className="bg-card rounded-xl border border-sidebar-border/70 dark:border-sidebar-border shadow-sm p-4">
+        <div
+            ref={cardRef}
+            className="bg-card rounded-xl border border-sidebar-border/70 dark:border-sidebar-border shadow-sm p-4"
+        >
             {/* Header: título + controles */}
             <div className="flex items-start justify-between mb-0.5">
                 <h3 className="text-[11px] font-bold text-muted-foreground flex items-center gap-1.5">
@@ -525,16 +538,22 @@ function GraficoBarrasHorizontalesPorRol({
                     <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: `${color}25`, color }}>
                         {sorted.length} personas
                     </span>
+                    {/* data-html2canvas-ignore → este botón NO aparece en la imagen descargada */}
                     <button
+                        data-html2canvas-ignore
                         type="button"
-                        title="Descargar PNG"
-                        onClick={() => descargarGraficaHR(chartRef, nombreArchivo)}
-                        className="flex items-center justify-center h-5 w-5 rounded hover:bg-muted/70 transition-colors"
+                        title="Descargar imagen de esta gráfica"
+                        onClick={handleDescargar}
+                        disabled={descargando}
+                        className="flex items-center justify-center h-5 w-5 rounded hover:bg-muted/70 transition-colors disabled:opacity-50"
                         style={{ color: '#9ca3af' }}
-                        onMouseEnter={e => (e.currentTarget.style.color = color)}
+                        onMouseEnter={e => { if (!descargando) e.currentTarget.style.color = color; }}
                         onMouseLeave={e => (e.currentTarget.style.color = '#9ca3af')}
                     >
-                        <Download className="h-3.5 w-3.5" />
+                        {descargando
+                            ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+                            : <Download className="h-3.5 w-3.5" />
+                        }
                     </button>
                 </div>
             </div>
@@ -542,7 +561,7 @@ function GraficoBarrasHorizontalesPorRol({
             <p className="text-xs font-extrabold mb-3" style={{ color }}>
                 Total: {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(entries.reduce((s, e) => s + e.valor, 0))}
             </p>
-            <div ref={chartRef} style={{ height: chartHeight }}>
+            <div style={{ height: chartHeight }}>
                 <Bar
                     data={chartData}
                     plugins={[ChartDataLabels]}
@@ -550,7 +569,7 @@ function GraficoBarrasHorizontalesPorRol({
                         indexAxis: 'y' as const,
                         responsive: true,
                         maintainAspectRatio: false,
-                        layout: { padding: { right: 8 } },
+                        layout: { padding: { right: 72 } },
                         plugins: {
                             legend: { display: false },
                             tooltip: { enabled: false },
@@ -565,14 +584,13 @@ function GraficoBarrasHorizontalesPorRol({
                                         style: 'currency',
                                         currency: 'COP',
                                         maximumFractionDigits: 0,
-                                        notation: 'compact',
-                                    } as Intl.NumberFormatOptions).format(value),
+                                    }).format(value),
                             },
                         },
                         scales: {
                             x: {
                                 beginAtZero: true,
-                                max: max * 1.45,
+                                max: max * 1.75,
                                 display: false,
                                 grid: { display: false },
                             },
@@ -785,6 +803,14 @@ export default function CompensacionVariableDiariaIndex() {
         };
     }, [data?.data]);
 
+    // Altura compartida: todas las cards de gráficas de rol usan la misma
+    const alturaPorRol = useMemo(() => {
+        const alturas = [conductoresData, responsablesData, auxiliaresData].map(
+            arr => Math.max(180, Math.min(arr.length, 15) * 30)
+        );
+        return Math.max(...alturas);
+    }, [conductoresData, responsablesData, auxiliaresData]);
+
     const hasFilters = (formFilters.fecha_desde || formFilters.fecha_hasta || (formFilters.cargo as string[])?.length > 0 ||
         (formFilters.cedula as string[])?.length > 0 || (formFilters.nombre_completo as string[])?.length > 0 ||
         (formFilters.placa as string[])?.length > 0 || (formFilters.transporte as string[])?.length > 0);
@@ -976,6 +1002,7 @@ export default function CompensacionVariableDiariaIndex() {
                                     color="#3b82f6"
                                     icon={Truck}
                                     nombreArchivo="compensacion-conductores"
+                                    fixedChartHeight={alturaPorRol}
                                 />
                             </div>
                             <div className="min-w-0 w-full box-border">
@@ -986,6 +1013,7 @@ export default function CompensacionVariableDiariaIndex() {
                                     color="#f59e0b"
                                     icon={Users}
                                     nombreArchivo="compensacion-responsables"
+                                    fixedChartHeight={alturaPorRol}
                                 />
                             </div>
                             <div className="min-w-0 w-full box-border">
@@ -996,6 +1024,7 @@ export default function CompensacionVariableDiariaIndex() {
                                     color="#9ca3af"
                                     icon={Users}
                                     nombreArchivo="compensacion-auxiliares"
+                                    fixedChartHeight={alturaPorRol}
                                 />
                             </div>
                         </div>
