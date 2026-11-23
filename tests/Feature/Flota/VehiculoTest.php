@@ -39,6 +39,7 @@ class VehiculoTest extends TestCase
 
         $response = $this->actingAs($user)->post(route('flota.vehiculos.store'), [
             'placa' => 'ABC123',
+            'centro' => 'UC',
             'truck_type' => 'Tractocamión',
             'modelo' => '2022',
             'capacidad_pallets' => 20,
@@ -62,6 +63,7 @@ class VehiculoTest extends TestCase
 
         $vehiculo = Vehiculo::create([
             'placa' => 'XYZ999',
+            'centro' => 'UC',
             'truck_type' => 'Sencillo',
             'modelo' => '2020',
             'capacidad_pallets' => 10,
@@ -73,6 +75,7 @@ class VehiculoTest extends TestCase
 
         $this->actingAs($user)->put(route('flota.vehiculos.update', $vehiculo), [
             'placa' => 'XYZ999',
+            'centro' => 'UC',
             'truck_type' => 'Doble troque',
             'modelo' => '2021',
             'capacidad_pallets' => 12,
@@ -89,6 +92,7 @@ class VehiculoTest extends TestCase
 
         $this->actingAs($user)->post(route('flota.vehiculos.store'), [
             'placa' => 'IMG123',
+            'centro' => 'UC',
             'is_active' => true,
             'imagen' => UploadedFile::fake()->image('camion.jpg'),
         ])->assertRedirect(route('flota.vehiculos.index'));
@@ -104,6 +108,7 @@ class VehiculoTest extends TestCase
         // "no mandar el campo".
         $this->actingAs($user)->put(route('flota.vehiculos.update', $vehiculo), [
             'placa' => 'IMG123',
+            'centro' => 'UC',
             'is_active' => true,
             'capacidad_carga_kg' => 5000,
             'imagen' => null,
@@ -120,7 +125,7 @@ class VehiculoTest extends TestCase
         $flota = $this->actingAsFlota();
         $admin = $this->actingAsAdministrador();
 
-        $vehiculo = Vehiculo::create(['placa' => 'DEL123', 'is_active' => true]);
+        $vehiculo = Vehiculo::create(['placa' => 'DEL123', 'centro' => 'UC', 'is_active' => true]);
 
         $this->actingAs($flota)->delete(route('flota.vehiculos.destroy', $vehiculo))
             ->assertForbidden();
@@ -138,6 +143,7 @@ class VehiculoTest extends TestCase
 
         $this->actingAs($user)->post(route('flota.vehiculos.store'), [
             'placa' => 'EXP123',
+            'centro' => 'UC',
             'is_active' => true,
             'fecha_vencimiento_soat' => '2026-12-31',
             'fecha_vencimiento_tecnomecanica' => '2027-03-15',
@@ -149,6 +155,7 @@ class VehiculoTest extends TestCase
 
         $this->actingAs($user)->put(route('flota.vehiculos.update', $vehiculo), [
             'placa' => 'EXP123',
+            'centro' => 'UC',
             'is_active' => true,
             'fecha_vencimiento_soat' => '2028-01-10',
             'fecha_vencimiento_tecnomecanica' => '',
