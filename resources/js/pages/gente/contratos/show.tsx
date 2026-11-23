@@ -1341,8 +1341,6 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                             historialActivaciones.map((item, index) => {
                                                 const esFinalizacion = item.tipo === 'finalizacion_contrato';
                                                 const esActivacion = item.is_active;
-                                                // Solo los registros reales (id numérico) son editables/eliminables
-                                                const esReal = typeof item.id === 'number' || /^\d+$/.test(String(item.id));
 
                                                 const badgeClasses = esFinalizacion
                                                     ? 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400'
@@ -1373,8 +1371,7 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                                         <TableCell className="text-muted-foreground text-xs">{item.observaciones || '—'}</TableCell>
                                                         <TableCell className="text-muted-foreground text-xs">{item.usuario || '—'}</TableCell>
                                                         <TableCell className="text-right">
-                                                            {esReal && (
-                                                                <div className="flex items-center justify-end gap-1">
+                                                            <div className="flex items-center justify-end gap-1">
                                                                     <Button
                                                                         type="button"
                                                                         variant="ghost"
@@ -1410,7 +1407,6 @@ export default function ContratoShow({ colaborador, documentos, catalogos, fecha
                                                                         <Trash2 className="size-3.5" />
                                                                     </Button>
                                                                 </div>
-                                                            )}
                                                         </TableCell>
                                                     </TableRow>
                                                 );

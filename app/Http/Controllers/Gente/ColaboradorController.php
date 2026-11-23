@@ -611,6 +611,43 @@ class ColaboradorController extends Controller
             }
         }
 
+        // Garantía: si el colaborador tiene fecha_ingreso_empresa pero no tiene
+        // ningún contrato en colaborador_contratos, se crea automáticamente.
+        // Esto cubre el caso en que el usuario guarda solo la fecha sin marcar
+        // "nuevo contrato" ni tipo de contrato.
+        // Si ya existe el contrato activo y la fecha cambió, se sincroniza.
+        $colaboradorFresh = $colaborador->fresh();
+        if ($colaboradorFresh->fecha_ingreso_empresa) {
+            $contratoActualSync = $contratoVigencia->contratoActual($colaboradorFresh);
+
+            if (! $contratoActualSync && $colaboradorFresh->contratos()->doesntExist()) {
+                // No existe ningún contrato: crear el primero
+                $colaboradorFresh->contratos()->create([
+                    'tipo_contrato' => $colaboradorFresh->tipo_contrato,
+                    'cargo'         => $colaboradorFresh->cargo,
+                    'area'          => $colaboradorFresh->area,
+                    'fecha_inicio'  => $colaboradorFresh->fecha_ingreso_empresa->toDateString(),
+                    'fecha_fin'     => $colaboradorFresh->fecha_retiro_empresa?->toDateString(),
+                    'estado'        => 'activo',
+                    'registrado_por' => $request->user()?->id,
+                ]);
+            } elseif ($contratoActualSync && $fechaInicioContratoPrincipal) {
+                // Ya existe: sincronizar si la fecha de inicio cambió y no fue
+                // editada explícitamente por otro flujo en esta misma request.
+                $editaronContratoActualEnEstaRequest = collect($contratosEditados)
+                    ->contains(fn (array $cd) => (int) ($cd['id'] ?? 0) === $contratoActualSync->id);
+
+                if (! $editaronContratoActualEnEstaRequest
+                    && $contratoActualSync->fecha_inicio?->toDateString() !== $fechaInicioContratoPrincipal
+                ) {
+                    $contratoVigencia->actualizarContrato($colaboradorFresh, $contratoActualSync, [
+                        'fecha_inicio' => $fechaInicioContratoPrincipal,
+                        'fecha_fin'    => $fechaFinContratoPrincipal ?? $contratoActualSync->fecha_fin,
+                    ]);
+                }
+            }
+        }
+
         // Reglas del historial de cargos (3 escenarios). Devuelve un mensaje
         // informativo cuando el cargo no cambió (Escenario B); el resto del
         // guardado del paso ya se hizo arriba.

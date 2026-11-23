@@ -259,44 +259,7 @@ class ContratosController extends Controller
             $activacionesDB = [];
         }
 
-        $eventosSinteticos = [];
-        if ($colaborador->ha_trabajado_antes === 'si' || $colaborador->fecha_ultima_laboral) {
-            $eventosSinteticos[] = [
-                'id' => 'prev-desactivacion',
-                'is_active' => false,
-                'tipo' => 'desactivacion',
-                'fecha' => $formatFecha($colaborador->fecha_ultima_laboral) ?? 'Periodo anterior',
-                'motivo' => $colaborador->motivo_retiro ?: 'Finalización de contrato previo (Salida)',
-                'observaciones' => $colaborador->motivo_retiro_observaciones ?: ($colaborador->cargo_anterior ? "Cargo previo: {$colaborador->cargo_anterior}" : null),
-                'usuario' => 'Retiro / Desactivación previa',
-            ];
-
-            $eventosSinteticos[] = [
-                'id' => 'reingreso-activacion',
-                'is_active' => true,
-                'tipo' => 'activacion',
-                'fecha' => $formatFecha($colaborador->fecha_ingreso_empresa) ?? $formatFecha($colaborador->created_at),
-                'motivo' => 'Reactivación para reingreso a la empresa (Entrada)',
-                'observaciones' => 'Reactivado en el sistema para nueva vinculación laboral. Cargo: '.($colaborador->cargo ?: 'Asignado').($colaborador->tipo_contrato ? " ({$colaborador->tipo_contrato})" : ''),
-                'usuario' => 'Reingreso registrado',
-            ];
-        }
-
-        if (! $colaborador->is_active && empty($activacionesDB) && empty($eventosSinteticos)) {
-            $eventosSinteticos[] = [
-                'id' => 'actual-desactivado',
-                'is_active' => false,
-                'tipo' => 'desactivacion',
-                'fecha' => $formatFecha($colaborador->fecha_retiro_empresa) ?? $formatFecha($colaborador->updated_at),
-                'motivo' => $colaborador->motivo_retiro ?: 'Desactivación de contrato',
-                'observaciones' => $colaborador->motivo_retiro_observaciones,
-                'usuario' => 'Sistema',
-            ];
-        }
-
-        $historialActivaciones = ! empty($activacionesDB)
-            ? $activacionesDB
-            : array_reverse($eventosSinteticos);
+        $historialActivaciones = $activacionesDB;
 
         $contratoActual = $contratoVigencia->contratoActual($colaborador);
 
