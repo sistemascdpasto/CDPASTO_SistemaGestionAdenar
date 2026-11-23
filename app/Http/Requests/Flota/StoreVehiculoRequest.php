@@ -18,7 +18,7 @@ class StoreVehiculoRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'centro' => ['nullable', 'string', 'in:UC,UD'],
+            'centro' => ['required', 'string', 'in:UC,UD'],
             'placa' => ['required', 'string', 'max:20', Rule::unique('vehiculos', 'placa')],
             'truck_type' => ['nullable', 'string', 'max:100'],
             'modelo' => ['nullable', 'string', 'max:100'],

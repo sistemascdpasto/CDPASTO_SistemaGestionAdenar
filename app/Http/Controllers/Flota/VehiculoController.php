@@ -40,14 +40,7 @@ class VehiculoController extends Controller
                 });
             })
             ->where(function ($query) use ($centro) {
-                if ($centro === 'UD') {
-                    // UD: centro = 'UD' o sin valor asignado (null / '')
-                    $query->where('centro', 'UD')
-                          ->orWhereNull('centro')
-                          ->orWhere('centro', '');
-                } else {
-                    $query->where('centro', 'UC');
-                }
+                $query->where('centro', $centro);
             })
             ->orderBy('placa')
             ->paginate(15)
