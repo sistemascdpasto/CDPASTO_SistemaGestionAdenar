@@ -16,6 +16,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 export default function CreateVehiculo() {
     const { data, setData, post, processing, errors } = useForm<VehiculoFormData>({
+        centro: '',
         placa: '',
         truck_type: '',
         modelo: '',

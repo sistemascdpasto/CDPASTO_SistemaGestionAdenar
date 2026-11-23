@@ -8,16 +8,14 @@ import {
     CircleDollarSign,
     Info,
     Star,
-    TrendingDown,
     TrendingUp,
     Trophy,
-    User,
     XCircle,
     ChevronRight,
 } from 'lucide-react';
 import React, { useRef, useState } from 'react';
 
-const META_MENSUAL = 800; // COP — hardcoded por diseño del negocio
+// (no hay constantes globales aquí)
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -72,24 +70,6 @@ interface EstadisticasMes {
     dias_meta_2: number;
 }
 
-interface Ausencias {
-    justificada: number;
-    injustificada: number;
-}
-
-interface MesHistorial {
-    mes_num: number;
-    mes_nombre: string;
-    es_futuro: boolean;
-    dias_trabajados: number | null;
-    total_ganado: number | null;
-    total_perdido: number | null;
-    promedio_rechazos: number | null;
-    dias_meta_1: number | null;
-    dias_meta_2: number | null;
-    aus_justificada: number | null;
-    aus_injustificada: number | null;
-}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -109,96 +89,12 @@ function formatDateShort(d: string | null): string {
     return dt.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-// ─── Chip ────────────────────────────────────────────────────────────────────
-
-function Chip({ ok, label, color }: { ok?: boolean; label: string; color?: string }) {
-    const base = color ?? (ok ? 'bg-green-700 text-white' : 'bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground');
-    return (
-        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${base}`}>
-            {ok !== undefined && (ok ? <CheckCircle2 className="size-2.5" /> : <XCircle className="size-2.5" />)}
-            {label}
-        </span>
-    );
-}
-
 // ─── Card base ───────────────────────────────────────────────────────────────
 
 function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
     return (
         <div className={`rounded-xl border border-sidebar-border/70 bg-card shadow-sm dark:border-sidebar-border ${className}`}>
             {children}
-        </div>
-    );
-}
-
-// ─── Section header ──────────────────────────────────────────────────────────
-
-function SectionHeader({ icon: Icon, title, subtitle }: { icon: React.ElementType; title: string; subtitle?: string }) {
-    return (
-        <div className="flex items-center gap-2.5">
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-green-700">
-                <Icon className="size-4 text-white" />
-            </div>
-            <div>
-                <p className="text-sm font-semibold text-foreground">{title}</p>
-                {subtitle && <p className="text-xs capitalize text-muted-foreground">{subtitle}</p>}
-            </div>
-        </div>
-    );
-}
-
-// ─── AusenciaCard ────────────────────────────────────────────────────────────
-
-function AusenciaCard({ titulo, dias, meta, mensaje, ok }: { titulo: string; dias: number; meta?: string; mensaje: string; ok: boolean }) {
-    return (
-        <div className={`flex flex-col gap-2 rounded-xl border p-3 ${ok ? 'border-green-100 bg-green-50 dark:border-green-800/40 dark:bg-green-900/10' : 'border-orange-100 bg-orange-50 dark:border-orange-800/40 dark:bg-orange-900/10'}`}>
-            <div className="flex items-center justify-between gap-2">
-                <p className="text-xs font-semibold text-foreground">{titulo}</p>
-                <Chip ok={ok} label={ok ? mensaje : mensaje} />
-            </div>
-            <p className="text-2xl font-extrabold tabular-nums text-foreground">
-                {dias} {dias === 1 ? 'día' : 'días'}
-            </p>
-            {meta && <p className="text-[10px] text-muted-foreground">{meta}</p>}
-        </div>
-    );
-}
-
-// ─── MetaMensualCard ─────────────────────────────────────────────────────────
-
-function MetaMensualCard({ ganado, meta }: { ganado: number; meta: number }) {
-    const pct = Math.min(Math.round((ganado / meta) * 100), 100);
-    const alcanza = ganado >= meta;
-    return (
-        <div className="flex flex-col gap-2 rounded-xl border border-sidebar-border/70 bg-card p-3 shadow-sm dark:border-sidebar-border">
-            <div className="flex items-center justify-between gap-2">
-                <p className="text-xs font-semibold text-foreground">Tu meta mensual</p>
-                <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${alcanza ? 'bg-green-700 text-white' : 'bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground'}`}>
-                    <CircleDollarSign className="size-2.5" />
-                    {alcanza ? '¡Alcanzada!' : 'Por mejorar'}
-                </span>
-            </div>
-            {/* Barra de progreso */}
-            <div className="h-2 w-full rounded-full bg-muted">
-                <div
-                    className={`h-2 rounded-full transition-all ${alcanza ? 'bg-green-600' : 'bg-amber-400'}`}
-                    style={{ width: `${pct}%` }}
-                />
-            </div>
-            <div className="grid grid-cols-3 gap-2 text-center">
-                <div>
-                    <p className="text-[9px] text-muted-foreground">Has ganado</p>
-                    <p className="text-sm font-bold text-green-700 dark:text-green-400">{formatCOP(ganado)}</p>
-                </div>
-                <div>
-                    <p className="text-[9px] text-muted-foreground">de tu meta</p>
-                    <p className="text-sm font-bold text-foreground">{pct}%</p>
-                </div>
-                <div>
-                    <p className="text-[9px] text-muted-foreground">Meta total</p>
-                    <p className="text-sm font-bold text-muted-foreground">{formatCOP(meta)}</p>
-                </div>
-            </div>
         </div>
     );
 }
@@ -346,6 +242,8 @@ function DateRangePicker({
 // ─── Tabla día por día ───────────────────────────────────────────────────────
 
 function TablaDiaria({ registros }: { registros: RegistroDiaSimple[] }) {
+    const [open, setOpen] = useState(false);
+
     if (registros.length === 0) {
         return (
             <div className="rounded-xl border border-sidebar-border/70 bg-card p-4 text-sm text-muted-foreground dark:border-sidebar-border">
@@ -356,19 +254,27 @@ function TablaDiaria({ registros }: { registros: RegistroDiaSimple[] }) {
 
     return (
         <div className="rounded-xl border border-sidebar-border/70 bg-card shadow-sm dark:border-sidebar-border overflow-hidden">
-            {/* Header */}
+            {/* Header con botón toggle */}
             <div className="flex items-center gap-2.5 border-b border-sidebar-border/70 bg-muted/40 px-4 py-3 dark:border-sidebar-border">
                 <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-green-700">
                     <CalendarDays className="size-3.5 text-white" />
                 </div>
                 <p className="text-sm font-semibold text-foreground">Detalle por día</p>
-                <span className="ml-auto rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-400">
                     {registros.length} {registros.length === 1 ? 'día' : 'días'}
                 </span>
+                <button
+                    type="button"
+                    onClick={() => setOpen(v => !v)}
+                    className="ml-auto flex items-center gap-1 rounded-lg border border-sidebar-border/70 bg-card px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition hover:bg-muted dark:border-sidebar-border"
+                >
+                    {open ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+                    {open ? 'Ocultar' : 'Ver detalle'}
+                </button>
             </div>
 
-            {/* Tabla */}
-            <div className="overflow-x-auto">
+            {/* Tabla — solo cuando está abierta */}
+            {open && <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                     <thead>
                         <tr className="border-b border-sidebar-border/70 bg-muted/30 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground dark:border-sidebar-border">
@@ -450,6 +356,7 @@ function TablaDiaria({ registros }: { registros: RegistroDiaSimple[] }) {
                     </tfoot>
                 </table>
             </div>
+            }
         </div>
     );
 }
@@ -463,17 +370,10 @@ export default function MiCompensacionIndex() {
     const fechaHastaProps: string              = (pageProps.fecha_hasta as string) ?? new Date().toISOString().split('T')[0];
     const registroDia: RegistroDia | null       = pageProps.registro_dia as RegistroDia | null;
     const registros: RegistroDiaSimple[]        = (pageProps.registros as RegistroDiaSimple[]) ?? [];
-    const ausencias: Ausencias                  = (pageProps.ausencias as Ausencias) ?? { justificada: 0, injustificada: 0 };
-    const historialAnual: MesHistorial[]        = (pageProps.historial_anual as MesHistorial[]) ?? [];
-    const estadisticasMes: EstadisticasMes      = (pageProps.estadisticas_mes as EstadisticasMes) ?? {
-        dias_trabajados: 0, total_ganado: 0, total_perdido: 0,
-        promedio_rechazos: 0, dias_meta_1: 0, dias_meta_2: 0,
-    };
     const error: string | null = pageProps.error as string | null;
 
     const [fechaDesde, setFechaDesde] = useState(fechaDesdeProps);
     const [fechaHasta, setFechaHasta] = useState(fechaHastaProps);
-    const [historialOpen, setHistorialOpen] = useState(false);
 
     const handleRangeChange = (desde: string, hasta: string) => {
         setFechaDesde(desde);
@@ -497,7 +397,7 @@ export default function MiCompensacionIndex() {
         );
     }
 
-    const rechPct    = registroDia?.rechazos_porcentaje ?? 0;
+    const _rechPct = registroDia?.rechazos_porcentaje ?? 0;
     // cumpleMeta2: rechazos < 2.0% → gana 100%
     // cumpleMeta1: rechazos < 2.4% → gana 80%
     const pctNum      = registroDia ? parseFloat(registroDia.porcentaje_variable) : 0;
@@ -505,8 +405,6 @@ export default function MiCompensacionIndex() {
 
     const CIRCUM = 276.46;
     const dash   = Math.min((pctNum / 100) * CIRCUM, CIRCUM);
-
-    const mesActualIdx = new Date().getMonth(); // 0-based
 
     return (
         <AppLayout breadcrumbs={[
@@ -678,135 +576,6 @@ export default function MiCompensacionIndex() {
 
                         {/* ══ TABLA DÍA POR DÍA ══ */}
                         <TablaDiaria registros={registros} />
-
-                        {/* ══ CARDS DE AUSENCIAS + META MENSUAL ══ */}
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                            <AusenciaCard
-                                titulo="Ausencias justificadas"
-                                dias={ausencias.justificada}
-                                meta="Esta semana · Objetivo: 0 días"
-                                mensaje={ausencias.justificada === 0 ? '¡Perfecto!' : 'Con ausencias'}
-                                ok={ausencias.justificada === 0}
-                            />
-                            <AusenciaCard
-                                titulo="Ausencias injustificadas"
-                                dias={ausencias.injustificada}
-                                meta="Mientras menos, mejor"
-                                mensaje={ausencias.injustificada === 0 ? '¡Perfecto!' : 'Hay que evitarlas'}
-                                ok={ausencias.injustificada === 0}
-                            />
-                            <MetaMensualCard ganado={estadisticasMes.total_ganado} meta={META_MENSUAL} />
-                        </div>
-
-                        {/* ══ CARD 3 — RESUMEN DEL MES + HISTORIAL DESPLEGABLE ══ */}
-                        <Card className="p-4">
-                            <div className="flex items-center justify-between gap-3">
-                                {/* Nombre del mes filtrado */}
-                            {(() => {
-                                const [y, m] = fechaHasta.split('-').map(Number);
-                                const nombreMes = new Date(y, m - 1, 1).toLocaleDateString('es-CO', { month: 'long', year: 'numeric' });
-                                const tituloResumen = fechaDesde === fechaHasta
-                                    ? nombreMes.charAt(0).toUpperCase() + nombreMes.slice(1)
-                                    : `${formatDateShort(fechaDesde)} — ${formatDateShort(fechaHasta)}`;
-                                return <SectionHeader icon={Trophy} title="Resumen del período" subtitle={tituloResumen} />;
-                            })()}
-                                <button
-                                    onClick={() => setHistorialOpen(v => !v)}
-                                    className="flex items-center gap-1 rounded-lg border border-sidebar-border/70 bg-muted px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground transition hover:bg-muted dark:border-sidebar-border dark:bg-muted dark:text-muted-foreground dark:hover:bg-muted"
-                                >
-                                    {historialOpen ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
-                                    {historialOpen ? 'Ocultar historial' : 'Ver historial anual'}
-                                </button>
-                            </div>
-
-                            {/* KPIs mes filtrado — solo lo relevante */}
-                            <div className="mt-4 flex flex-wrap items-center gap-4">
-                                {/* Días trabajados */}
-                                <div>
-                                    <p className="mb-0.5 text-[10px] text-muted-foreground">Días trabajados</p>
-                                    <p className="text-base font-bold tabular-nums text-foreground">{estadisticasMes.dias_trabajados}</p>
-                                </div>
-
-                                {/* Total ganado */}
-                                <div>
-                                    <p className="mb-0.5 text-[10px] text-muted-foreground">Total ganado</p>
-                                    <p className="text-base font-bold tabular-nums text-green-700 dark:text-green-400">{formatCOP(estadisticasMes.total_ganado)}</p>
-                                </div>
-
-                                {/* Total perdido — solo si > 0 */}
-                                {estadisticasMes.total_perdido > 0 && (
-                                    <div>
-                                        <p className="mb-0.5 text-[10px] text-muted-foreground">Total perdido</p>
-                                        <p className="text-base font-bold tabular-nums text-red-600 dark:text-red-400">{formatCOP(estadisticasMes.total_perdido)}</p>
-                                    </div>
-                                )}
-
-                                {/* Resultado del mes */}
-                                <div className={`flex items-center gap-1.5 rounded-full px-3 py-1 ${
-                                    estadisticasMes.total_perdido === 0 && estadisticasMes.dias_trabajados > 0
-                                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                                        : estadisticasMes.dias_trabajados === 0
-                                          ? 'bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground'
-                                          : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-                                }`}>
-                                    {estadisticasMes.dias_trabajados === 0 ? (
-                                        <span className="text-sm">—</span>
-                                    ) : estadisticasMes.total_perdido === 0 ? (
-                                        <Trophy className="size-3.5" />
-                                    ) : (
-                                        <TrendingUp className="size-3.5" />
-                                    )}
-                                    <span className="text-[11px] font-semibold">
-                                        {estadisticasMes.dias_trabajados === 0
-                                            ? 'Sin registros'
-                                            : estadisticasMes.total_perdido === 0
-                                              ? '¡Excelente mes!'
-                                              : 'Por mejorar'}
-                                    </span>
-                                </div>
-                            </div>
-
-                            {/* ── Historial enero-diciembre — desplegable ── */}
-                            {historialOpen && (
-                                <div className="mt-4 overflow-x-auto rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                                    <table className="w-full text-xs">
-                                        <thead>
-                                            <tr className="border-b border-sidebar-border/70 bg-muted dark:border-sidebar-border dark:bg-muted">
-                                                <th className="px-3 py-2 text-left font-semibold text-green-700 dark:text-green-400">Mes</th>
-                                                <th className="px-3 py-2 text-center font-semibold text-green-700 dark:text-green-400">Días</th>
-                                                <th className="px-3 py-2 text-right font-semibold text-green-700 dark:text-green-400">Ganado</th>
-                                                <th className="px-3 py-2 text-right font-semibold text-green-700 dark:text-green-400">Valor perdido</th>
-                                                <th className="px-3 py-2 text-center font-semibold text-green-700 dark:text-green-400">Aus. Just.</th>
-                                                <th className="px-3 py-2 text-center font-semibold text-green-700 dark:text-green-400">Aus. Injust.</th>
-                                                <th className="px-3 py-2 text-center font-semibold text-green-700 dark:text-green-400">% Rechazos</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-border">
-                                            {historialAnual.map((mes) => {
-                                                const esMesActual = mes.mes_num === mesActualIdx + 1;
-                                                return (
-                                                    <tr
-                                                        key={mes.mes_num}
-                                                        className={`${esMesActual ? 'bg-green-50/60 font-semibold dark:bg-green-900/10' : ''} ${mes.es_futuro ? 'opacity-40' : ''}`}
-                                                    >
-                                                        <td className="px-3 py-2 text-foreground">
-                                                            {mes.mes_nombre}
-                                                            {esMesActual && <span className="ml-1 rounded-full bg-green-700 px-1.5 py-0.5 text-[9px] text-white">Actual</span>}
-                                                        </td>
-                                                        <td className="px-3 py-2 text-center tabular-nums text-muted-foreground">{mes.es_futuro ? '—' : (mes.dias_trabajados ?? 0)}</td>
-                                                        <td className="px-3 py-2 text-right tabular-nums text-green-700 dark:text-green-400">{mes.es_futuro ? '—' : formatCOP(mes.total_ganado ?? 0)}</td>
-                                                        <td className={`px-3 py-2 text-right tabular-nums ${(mes.total_perdido ?? 0) > 0 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'}`}>{mes.es_futuro ? '—' : formatCOP(mes.total_perdido ?? 0)}</td>
-                                                        <td className={`px-3 py-2 text-center tabular-nums ${(mes.aus_justificada ?? 0) > 0 ? 'text-orange-600' : 'text-muted-foreground'}`}>{mes.es_futuro ? '—' : (mes.aus_justificada ?? 0)}</td>
-                                                        <td className={`px-3 py-2 text-center tabular-nums ${(mes.aus_injustificada ?? 0) > 0 ? 'text-red-600' : 'text-muted-foreground'}`}>{mes.es_futuro ? '—' : (mes.aus_injustificada ?? 0)}</td>
-                                                        <td className="px-3 py-2 text-center tabular-nums text-muted-foreground">{mes.es_futuro ? '—' : `${(mes.promedio_rechazos ?? 0).toFixed(2)}%`}</td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            )}
-                        </Card>
 
                         {/* ══ BANNER MOTIVACIONAL ══ */}
                         <Card className="p-3.5">

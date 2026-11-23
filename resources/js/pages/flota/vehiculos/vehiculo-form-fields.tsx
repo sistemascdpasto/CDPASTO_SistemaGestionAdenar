@@ -2,11 +2,13 @@ import InputError from '@/components/input-error';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { type InertiaFormProps } from '@inertiajs/react';
 import { CalendarClock, Download, FileText, IdCard, ImageIcon, Plus, ShieldCheck, Truck, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 
 export interface VehiculoFormData {
+    centro: string;
     placa: string;
     truck_type: string;
     modelo: string;
@@ -214,6 +216,23 @@ export function VehiculoFormFields({ data, setData, errors, processing, readonly
                 <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_220px] lg:gap-8">
                     <div className="order-2 grid gap-4 lg:order-1">
                         <div className="grid gap-4 sm:grid-cols-2">
+                            <div className="grid gap-2">
+                                <Label htmlFor="centro">Centro</Label>
+                                <Select
+                                    value={data.centro}
+                                    onValueChange={(value) => setData('centro', value)}
+                                    disabled={processing}
+                                >
+                                    <SelectTrigger id="centro">
+                                        <SelectValue placeholder="Seleccionar centro" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="UC">UC</SelectItem>
+                                        <SelectItem value="UD">UD</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <InputError message={errors.centro} />
+                            </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="placa">Placa</Label>
                                 {readonlyPlaca ? (

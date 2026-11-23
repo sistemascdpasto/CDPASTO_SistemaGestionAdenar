@@ -9,6 +9,7 @@ import { FormEventHandler } from 'react';
 
 interface EditableVehiculo {
     id: number;
+    centro: string | null;
     placa: string;
     truck_type: string | null;
     modelo: string | null;
@@ -34,6 +35,7 @@ export default function EditVehiculo({ vehiculo }: { vehiculo: EditableVehiculo 
     ];
 
     const { data, setData, post, processing, errors, transform } = useForm<VehiculoFormData>({
+        centro: vehiculo.centro ?? '',
         placa: vehiculo.placa,
         truck_type: vehiculo.truck_type ?? '',
         modelo: vehiculo.modelo ?? '',
