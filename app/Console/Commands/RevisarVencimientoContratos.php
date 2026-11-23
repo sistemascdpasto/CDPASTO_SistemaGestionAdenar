@@ -61,7 +61,7 @@ class RevisarVencimientoContratos extends Command
             ->whereNotNull('fecha_retiro_empresa')
             ->whereDoesntHave('prorrogas', fn ($q) => $q->where('tipo', 'finalizacion'))
             ->with(['prorrogas' => fn ($q) => $q->where('tipo', 'prorroga')->orderByDesc('created_at')])
-            ->each(function (Colaborador $colaborador) use ($umbrales, &$notificados) {
+            ->each(function (Colaborador $colaborador) use ($umbrales, $soloFrecuentes, &$notificados) {
                 $ultimaProrroga   = $colaborador->prorrogas->first();
                 $fechaVencimiento = $ultimaProrroga?->fecha_nueva ?? $colaborador->fecha_retiro_empresa;
 
