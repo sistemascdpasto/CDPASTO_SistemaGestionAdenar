@@ -33,13 +33,16 @@ use Illuminate\Support\Carbon;
 class RevisarVencimientoContratos extends Command
 {
     protected $signature = 'seguridad:revisar-vencimiento-contratos
-                            {--solo-35 : Procesar únicamente el umbral de 35 días (turnos de mediodía y tarde)}';
+                            {--solo-35 : Procesar únicamente el umbral de 35 días (turnos de mediodía y tarde, solo frecuentes)}';
 
     protected $description = 'Envía correos de alerta de vencimiento de contratos en los días exactos 40, 35 y 5.';
 
     public function handle(): int
     {
         $solo35 = (bool) $this->option('solo-35');
+
+        // Turnos 12:00 y 17:00: solo envían a usuarios con alertas_contratos_tres_veces_dia = true
+        $soloFrecuentes = $solo35;
 
         // Umbrales activos en esta ejecución
         $umbrales = $solo35
@@ -91,7 +94,7 @@ class RevisarVencimientoContratos extends Command
                     }
 
                     // Enviar correo en este turno
-                    AlertaNotifier::notificar($alerta);
+                    AlertaNotifier::notificar($alerta, $soloFrecuentes);
 
                     $notificados++;
                 }
