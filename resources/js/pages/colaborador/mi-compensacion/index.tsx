@@ -9,7 +9,6 @@ import {
     Info,
     Star,
     TrendingUp,
-    Trophy,
     XCircle,
     ChevronRight,
 } from 'lucide-react';
@@ -59,15 +58,6 @@ interface Colaborador {
     cedula: string;
     nombre_completo: string;
     cargo: string;
-}
-
-interface EstadisticasMes {
-    dias_trabajados: number;
-    total_ganado: number;
-    total_perdido: number;
-    promedio_rechazos: number;
-    dias_meta_1: number;
-    dias_meta_2: number;
 }
 
 
