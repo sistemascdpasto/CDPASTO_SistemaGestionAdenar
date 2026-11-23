@@ -79,7 +79,7 @@ class ColaboradorCatalogoService
      */
     public function tiposContrato(): array
     {
-        return collect(config('seguridad.colaboradores.tipos_contrato', []))
+        return collect(config('gente.colaboradores.tipos_contrato', []))
             ->merge(OpcionCatalogo::opcionesDe('tipo_contrato'))
             ->merge(
                 Colaborador::query()

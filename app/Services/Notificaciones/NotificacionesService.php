@@ -133,7 +133,7 @@ class NotificacionesService
 
     private function contratosProximosAVencer(): ?array
     {
-        $diasAnticipacion = (int) config('seguridad.dias_alerta_vencimiento_contrato');
+        $diasAnticipacion = (int) config('gente.dias_alerta_vencimiento_contrato');
         $limite = Carbon::today()->addDays($diasAnticipacion);
         $hoy = Carbon::today();
 

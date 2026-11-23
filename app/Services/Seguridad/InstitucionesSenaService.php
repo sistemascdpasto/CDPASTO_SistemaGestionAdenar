@@ -33,7 +33,7 @@ class InstitucionesSenaService
         $datos = $this->consultar();
 
         if ($datos !== []) {
-            Cache::put(self::CACHE_KEY, $datos, config('seguridad.referencias_externas.cache_ttl_segundos'));
+            Cache::put(self::CACHE_KEY, $datos, config('gente.referencias_externas.cache_ttl_segundos'));
         }
 
         return $datos;

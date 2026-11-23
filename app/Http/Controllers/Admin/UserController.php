@@ -76,6 +76,8 @@ class UserController extends Controller
 
     public function edit(User $user): Response
     {
+        $user->loadMissing('colaborador:id,user_id,correo');
+
         return Inertia::render('admin/users/edit', [
             'user' => [
                 'id' => $user->id,
@@ -83,6 +85,7 @@ class UserController extends Controller
                 'last_name' => $user->last_name,
                 'identification_number' => $user->identification_number,
                 'email' => $user->email,
+                'colaborador_correo' => $user->colaborador?->correo,
                 'is_active' => $user->is_active,
                 'roles' => $user->roles->pluck('name'),
                 'modulos_personalizados' => $user->modulos_personalizados,

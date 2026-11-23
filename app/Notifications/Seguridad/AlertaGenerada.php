@@ -42,10 +42,11 @@ class AlertaGenerada extends Notification
     {
         $contexto = $this->alerta->contexto ?? [];
 
-        // Contrato próximo a vencer: va directo a la ficha del contrato, no a
+        // Contrato próximo a vencer (cualquier umbral): va directo a la ficha del contrato, no a
         // una pantalla de Alertas (lo pidió Mary al construir el módulo de
         // Contratos; el rol 'Contratos' no tiene pantalla de Alertas propia).
-        if ($this->alerta->tipo === 'retiro_proximo' && $this->alerta->colaborador_id) {
+        $tiposContrato = ['retiro_proximo', 'retiro_proximo_40', 'retiro_proximo_5'];
+        if (in_array($this->alerta->tipo, $tiposContrato, true) && $this->alerta->colaborador_id) {
             return ['Ver contrato', route('gente.contratos.show', $this->alerta->colaborador_id)];
         }
 

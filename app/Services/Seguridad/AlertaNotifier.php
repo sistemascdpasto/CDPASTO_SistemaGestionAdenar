@@ -16,12 +16,12 @@ class AlertaNotifier
     /**
      * HU041: notifica por correo a los responsables de la alerta.
      *
-     * Los contratos próximos a vencer (tipo 'retiro_proximo') van
-     * exclusivamente al rol 'Contratos' — distinto del resto de pilares,
-     * porque ese rol además admite un envío "solo frecuentes" (los avisos
-     * de mediodía/tarde, ver routes/console.php) filtrado por la casilla
-     * alertas_contratos_tres_veces_dia del usuario. El resto de tipos
-     * (Seguridad, Flota, Reparto) se resuelven por pilar vía AlertaCatalogo.
+     * Los contratos próximos a vencer (tipos 'retiro_proximo', 'retiro_proximo_40'
+     * y 'retiro_proximo_5') van al rol 'Contratos' + 'Administrador'. El correo
+     * se envía automáticamente en el momento en que el comando detecta que el
+     * contrato cruza el umbral por primera vez (igual que vehículos detenidos).
+     * El resto de tipos (Seguridad, Flota, Reparto) se resuelven por pilar
+     * vía AlertaCatalogo.
      *
      * El envío nunca debe tumbar la acción que originó la alerta (registrar una
      * prueba, una condición de salud, etc.) — un fallo de correo (SMTP caído,
@@ -29,8 +29,12 @@ class AlertaNotifier
      */
     public static function notificar(Alerta $alerta, bool $soloFrecuentes = false): void
     {
-        if ($alerta->tipo === 'retiro_proximo') {
-            $query = User::role(Role::Contratos->value)->whereNotNull('email');
+        // Los 3 tipos de alerta de contratos van al rol Contratos + Administrador
+        $tiposContrato = ['retiro_proximo', 'retiro_proximo_40', 'retiro_proximo_5'];
+
+        if (in_array($alerta->tipo, $tiposContrato, true)) {
+            $query = User::role([Role::Contratos->value, Role::Administrador->value])
+                ->whereNotNull('email');
 
             if ($soloFrecuentes) {
                 $query->where('alertas_contratos_tres_veces_dia', true);

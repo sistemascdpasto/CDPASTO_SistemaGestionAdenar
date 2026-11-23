@@ -8,7 +8,7 @@ import { CalendarClock, Download, FileText, IdCard, ImageIcon, Plus, ShieldCheck
 import { useRef, useState } from 'react';
 
 export interface VehiculoFormData {
-    centro: string;
+    centro: 'UC' | 'UD' | '';
     placa: string;
     truck_type: string;
     modelo: string;
@@ -222,6 +222,7 @@ export function VehiculoFormFields({ data, setData, errors, processing, readonly
                                     value={data.centro}
                                     onValueChange={(value) => setData('centro', value)}
                                     disabled={processing}
+                                    required
                                 >
                                     <SelectTrigger id="centro">
                                         <SelectValue placeholder="Seleccionar centro" />

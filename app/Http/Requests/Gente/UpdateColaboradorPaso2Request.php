@@ -31,7 +31,7 @@ class UpdateColaboradorPaso2Request extends FormRequest
             'ha_trabajado_antes' => ['nullable', Rule::in(['si', 'no'])],
             'cargo_anterior' => ['nullable', 'string', 'max:100'],
             'fecha_ultima_laboral' => ['nullable', 'date'],
-            'motivo_retiro' => ['nullable', Rule::in(config('seguridad.colaboradores.motivos_retiro'))],
+            'motivo_retiro' => ['nullable', Rule::in(config('gente.colaboradores.motivos_retiro'))],
             'motivo_retiro_observaciones' => ['nullable', 'string', 'max:2000'],
 
             'tiene_experiencia' => ['nullable', Rule::in(['si', 'no'])],

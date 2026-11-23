@@ -129,8 +129,8 @@ class EvaluacionMedicaController extends Controller
                 'centro' => $centro,
             ],
             'catalogos' => [
-                'cargos' => config('seguridad.colaboradores.cargos'),
-                'centros' => config('seguridad.colaboradores.centros'),
+                'cargos' => config('gente.colaboradores.cargos'),
+                'centros' => config('gente.colaboradores.centros'),
             ],
         ]);
     }
@@ -321,10 +321,10 @@ class EvaluacionMedicaController extends Controller
             'conceptosAptitud' => ConceptoAptitud::where('activo', true)->orderBy('nombre')->get(['id', 'nombre']),
             'examenesCatalogo' => Examen::where('activo', true)->orderBy('nombre')->get(['id', 'nombre']),
             'recomendacionesCatalogo' => Recomendacion::where('activo', true)->orderBy('categoria')->orderBy('nombre')->get(['id', 'nombre', 'categoria']),
-            'categoriasRecomendacion' => config('seguridad.examenes_medicos.recomendaciones.categorias') ?? [],
-            'estadosSeguimiento' => config('seguridad.examenes_medicos.recomendaciones.estados_seguimiento') ?? [],
-            'seguimientoOpciones' => config('seguridad.examenes_medicos.egreso.seguimiento_recomendaciones') ?? [],
-            'empresaDefault' => config('seguridad.examenes_medicos.empresa_default') ?? 'Adenar',
+            'categoriasRecomendacion' => config('gente.examenes_medicos.recomendaciones.categorias') ?? [],
+            'estadosSeguimiento' => config('gente.examenes_medicos.recomendaciones.estados_seguimiento') ?? [],
+            'seguimientoOpciones' => config('gente.examenes_medicos.egreso.seguimiento_recomendaciones') ?? [],
+            'empresaDefault' => config('gente.examenes_medicos.empresa_default') ?? 'Adenar',
         ]);
     }
 
@@ -487,7 +487,7 @@ class EvaluacionMedicaController extends Controller
         $data['concepto_aptitud_id'] = !empty($data['concepto_aptitud_id']) ? (int) $data['concepto_aptitud_id'] : null;
 
         if (empty($data['empresa'])) {
-            $data['empresa'] = config('seguridad.examenes_medicos.empresa_default') ?? 'Adenar';
+            $data['empresa'] = config('gente.examenes_medicos.empresa_default') ?? 'Adenar';
         }
 
         $evaluacion->update($data);
@@ -539,7 +539,7 @@ class EvaluacionMedicaController extends Controller
 
     public function actualizarSeguimientoEgreso(Request $request, EvaluacionMedica $evaluacion): RedirectResponse
     {
-        $opciones = config('seguridad.examenes_medicos.egreso.seguimiento_recomendaciones');
+        $opciones = config('gente.examenes_medicos.egreso.seguimiento_recomendaciones');
         $requiereDetalle = $request->input('seguimiento_recomendaciones') === 'Soporte desestimiento u otro';
 
         $data = $request->validate([

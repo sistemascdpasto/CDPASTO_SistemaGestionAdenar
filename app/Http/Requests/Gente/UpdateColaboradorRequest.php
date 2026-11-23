@@ -113,11 +113,11 @@ class UpdateColaboradorRequest extends FormRequest
             'area' => ['nullable', Rule::in(['Administrativa', 'Operativa'])],
             'cargo' => ['nullable', 'string', 'max:100'],
             'cargo_fecha_inicio' => ['nullable', 'date'],
-            'centro' => ['nullable', Rule::in(config('seguridad.colaboradores.centros'))],
-            'centro_trabajo' => ['nullable', Rule::in(config('seguridad.colaboradores.centros_trabajo'))],
+            'centro' => ['nullable', Rule::in(config('gente.colaboradores.centros'))],
+            'centro_trabajo' => ['nullable', Rule::in(config('gente.colaboradores.centros_trabajo'))],
             'fecha_ingreso_empresa' => ['nullable', 'date'],
             'fecha_retiro_empresa' => ['nullable', 'date'],
-            'motivo_retiro' => ['nullable', Rule::in(config('seguridad.colaboradores.motivos_retiro'))],
+            'motivo_retiro' => ['nullable', Rule::in(config('gente.colaboradores.motivos_retiro'))],
             'motivo_retiro_observaciones' => ['nullable', 'string', 'max:2000'],
             'tipo_contrato' => ['nullable', 'string', 'max:100'],
             'tipo_contrato_otro' => ['nullable', 'string', 'max:100'],
@@ -130,7 +130,7 @@ class UpdateColaboradorRequest extends FormRequest
 
             // Paso 4
             'licencia_conduccion_categorias' => ['nullable', 'array'],
-            'licencia_conduccion_categorias.*' => [Rule::in(config('seguridad.colaboradores.licencia_conduccion_categorias'))],
+            'licencia_conduccion_categorias.*' => [Rule::in(config('gente.colaboradores.licencia_conduccion_categorias'))],
 
             ...$this->documentoRules(ColaboradorDocumentoCampos::todas()),
         ];

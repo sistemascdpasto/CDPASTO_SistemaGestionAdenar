@@ -103,7 +103,7 @@ class ContratosExport implements FromCollection, WithColumnWidths, WithCustomSta
 
             if ($fechaVigente) {
                 $diasRestantes = (int) today()->diffInDays($fechaVigente, false);
-                $diasUmbral = (int) config('seguridad.dias_alerta_vencimiento_contrato', 35);
+                $diasUmbral = (int) config('gente.dias_alerta_vencimiento_contrato', 35);
 
                 if ($diasRestantes <= $diasUmbral) {
                     $this->filasEnAlerta[] = $this->filaActual;

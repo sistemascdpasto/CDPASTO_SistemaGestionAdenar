@@ -12,9 +12,7 @@ import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Plus, Power, Search, Truck } from 'lucide-react';
-import { FormEventHandler, useEffect, useRef, useState } from 'react';
-
-const breadcrumbs: BreadcrumbItem[] = [
+import { FormEventHandler, useEffect, useRef, useState } from 'react';const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
     { title: 'Flota', href: '/modules/flota' },
     { title: 'Documentación', href: '/modules/flota/vehiculos' },
@@ -53,6 +51,7 @@ export default function VehiculosIndex({
     filters: { search: string; centro: Centro };
 }) {
     const { auth } = usePage<SharedData>().props;
+    const { flash } = usePage<{ flash?: { error?: string } }>().props;
     const puedeEliminar = auth.isAdmin;
 
     const [search, setSearch] = useState(filters.search);
@@ -63,6 +62,13 @@ export default function VehiculosIndex({
     const [novedad, setNovedad] = useState('');
     const [novedadError, setNovedadError] = useState<string | null>(null);
     const [enviandoNovedad, setEnviandoNovedad] = useState(false);
+
+    const [errorEliminar, setErrorEliminar] = useState<string | null>(null);
+
+    // Propagar el error flash del backend al estado local del diálogo
+    useEffect(() => {
+        if (flash?.error) setErrorEliminar(flash.error);
+    }, [flash?.error]);
 
     const centro = filters.centro ?? 'UD';
 
@@ -84,7 +90,14 @@ export default function VehiculosIndex({
     };
 
     const destroyVehiculo = (vehiculo: VehiculoRow) => {
-        router.delete(route('flota.vehiculos.destroy', vehiculo.id), { preserveScroll: true });
+        setErrorEliminar(null);
+        router.delete(route('flota.vehiculos.destroy', vehiculo.id), {
+            preserveScroll: true,
+            onError: (errs) => {
+                const msg = (errs as Record<string, string>).error ?? 'No se pudo eliminar el vehículo.';
+                setErrorEliminar(msg);
+            },
+        });
     };
 
     const toggleActivo = (vehiculo: VehiculoRow) => {
@@ -232,7 +245,7 @@ export default function VehiculosIndex({
                                                 <Power className="size-4" />
                                             </Button>
                                             {puedeEliminar && (
-                                                <Dialog>
+                                                <Dialog onOpenChange={() => setErrorEliminar(null)}>
                                                     <DialogTrigger asChild>
                                                         <Button variant="destructive" size="sm">
                                                             Eliminar
@@ -241,8 +254,13 @@ export default function VehiculosIndex({
                                                     <DialogContent>
                                                         <DialogTitle>¿Eliminar el vehículo {vehiculo.placa}?</DialogTitle>
                                                         <DialogDescription>
-                                                            Esta acción elimina el vehículo de forma lógica; sus documentos se conservan en el historial.
+                                                            Esta acción elimina el vehículo permanentemente de la base de datos. Solo es posible si no tiene registros asociados en el sistema.
                                                         </DialogDescription>
+                                                        {errorEliminar && (
+                                                            <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
+                                                                {errorEliminar}
+                                                            </p>
+                                                        )}
                                                         <DialogFooter>
                                                             <DialogClose asChild>
                                                                 <Button variant="secondary">Cancelar</Button>

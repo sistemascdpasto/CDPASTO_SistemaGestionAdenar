@@ -10,13 +10,13 @@ Artisan::command('inspire', function () {
 
 Schedule::command('seguridad:revisar-calibraciones')->daily();
 // Vencimiento de contratos (Gente / Contratos):
-// 07:00: Correo agrupado a Administrador + usuarios con rol Contratos
-// 12:00: Ídem, solo a quienes tienen alertas_contratos_tres_veces_dia = true
-// 17:00: Ídem, solo a quienes tienen alertas_contratos_tres_veces_dia = true
-// Solo se incluyen colaboradores cuya alerta retiro_proximo esté pendiente (atendida = false).
+// 07:00 → revisa días exactos 40, 35 y 5: envía correo automático a rol Contratos + Administrador
+// 12:00 → solo día 35: segundo correo del día
+// 17:00 → solo día 35: tercer correo del día
+// Cualquier otro día no se envía nada. Cada turno crea la alerta en BD si no existe.
 Schedule::command('seguridad:revisar-vencimiento-contratos')->dailyAt('07:00');
-Schedule::command('seguridad:revisar-vencimiento-contratos --solo-frecuentes')->dailyAt('12:00');
-Schedule::command('seguridad:revisar-vencimiento-contratos --solo-frecuentes')->dailyAt('17:00');
+Schedule::command('seguridad:revisar-vencimiento-contratos --solo-35')->dailyAt('12:00');
+Schedule::command('seguridad:revisar-vencimiento-contratos --solo-35')->dailyAt('17:00');
 Schedule::command('flota:revisar-vencimiento-documentos')->dailyAt('07:00');
 Schedule::command('seguridad:recordatorios-pruebas')->hourly();
 Schedule::command('gente:notificar-pruebas-periodo')->dailyAt('07:00');

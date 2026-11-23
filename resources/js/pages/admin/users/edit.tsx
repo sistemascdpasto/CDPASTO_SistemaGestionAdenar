@@ -18,6 +18,7 @@ interface EditableUser {
     last_name: string | null;
     identification_number: string;
     email: string | null;
+    colaborador_correo: string | null;
     is_active: boolean;
     roles: string[];
     modulos_personalizados: boolean;
@@ -89,6 +90,7 @@ export default function EditUser({ user, roles, moduleRegistry }: { user: Editab
                             moduleRegistry={moduleRegistry}
                             showPassword={false}
                             processing={processing}
+                            colaboradorCorreo={user.colaborador_correo ?? null}
                         />
 
                         <Button type="submit" disabled={processing}>

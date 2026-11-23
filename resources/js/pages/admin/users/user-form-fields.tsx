@@ -1,4 +1,5 @@
 import InputError from '@/components/input-error';
+import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,9 +35,11 @@ interface UserFormFieldsProps {
     moduleRegistry: ModuleRegistry;
     showPassword: boolean;
     processing: boolean;
+    /** Correo registrado en el perfil de colaborador vinculado a este usuario. */
+    colaboradorCorreo?: string | null;
 }
 
-export function UserFormFields({ data, setData, errors, availableRoles, moduleRegistry, showPassword, processing }: UserFormFieldsProps) {
+export function UserFormFields({ data, setData, errors, availableRoles, moduleRegistry, showPassword, processing, colaboradorCorreo }: UserFormFieldsProps) {
     const toggleRole = (role: string, checked: boolean) => {
         setData('roles', checked ? [...data.roles, role] : data.roles.filter((r) => r !== role));
     };
@@ -94,6 +97,24 @@ export function UserFormFields({ data, setData, errors, availableRoles, moduleRe
                 <div className="grid gap-2">
                     <Label htmlFor="email">Correo electrónico (opcional)</Label>
                     <Input id="email" type="email" value={data.email} onChange={(e) => setData('email', e.target.value)} disabled={processing} />
+                    {colaboradorCorreo && colaboradorCorreo !== data.email && (
+                        <div className="flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300">
+                            <span className="flex-1">
+                                El colaborador tiene registrado:{' '}
+                                <span className="font-medium">{colaboradorCorreo}</span>
+                            </span>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-6 border-blue-300 px-2 text-xs text-blue-700 hover:bg-blue-100 dark:border-blue-500/40 dark:text-blue-300 dark:hover:bg-blue-500/20"
+                                disabled={processing}
+                                onClick={() => setData('email', colaboradorCorreo)}
+                            >
+                                Usar este correo
+                            </Button>
+                        </div>
+                    )}
                     <InputError message={errors.email} />
                 </div>
             </div>

@@ -30,7 +30,7 @@ class CargoExamenController extends Controller
         }
 
         return Inertia::render('seguridad/examenes-medicos/matriz', [
-            'cargos' => config('seguridad.colaboradores.cargos'),
+            'cargos' => config('gente.colaboradores.cargos'),
             'examenes' => Examen::where('activo', true)->orderBy('nombre')->get(['id', 'nombre', 'categoria']),
             'filtros' => ['cargo' => $cargo, 'tipo_evaluacion' => $tipoEvaluacion],
             'seleccion' => $seleccion,

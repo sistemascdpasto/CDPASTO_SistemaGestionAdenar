@@ -9,7 +9,7 @@ import { FormEventHandler } from 'react';
 
 interface EditableVehiculo {
     id: number;
-    centro: string | null;
+    centro: 'UC' | 'UD' | null;
     placa: string;
     truck_type: string | null;
     modelo: string | null;

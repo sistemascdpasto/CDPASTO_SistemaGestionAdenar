@@ -9,7 +9,7 @@ namespace App\Support\Seguridad;
  * de validación) como ColaboradorController (para guardar/leer archivos),
  * así ambos lados siempre están de acuerdo.
  *
- * Las definiciones viven en config/seguridad/documentos_colaborador.php.
+ * Las definiciones viven en config/gente/documentos_colaborador.php.
  */
 class ColaboradorDocumentoCampos
 {
@@ -20,7 +20,7 @@ class ColaboradorDocumentoCampos
      */
     public static function paso(int $paso): array
     {
-        return collect(config('seguridad.documentos_colaborador.documentos', []))
+        return collect(config('gente.documentos_colaborador.documentos', []))
             ->filter(fn (array $doc) => in_array($paso, $doc['pasos'], true))
             ->pluck('key')
             ->all();
@@ -57,7 +57,7 @@ class ColaboradorDocumentoCampos
      */
     public static function todas(): array
     {
-        return collect(config('seguridad.documentos_colaborador.documentos', []))
+        return collect(config('gente.documentos_colaborador.documentos', []))
             ->pluck('key')
             ->unique()
             ->values()

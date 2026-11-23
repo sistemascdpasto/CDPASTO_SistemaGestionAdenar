@@ -29,7 +29,7 @@ class UpdateColaboradorPaso4Request extends FormRequest
     {
         return [
             'licencia_conduccion_categorias' => ['nullable', 'array'],
-            'licencia_conduccion_categorias.*' => [Rule::in(config('seguridad.colaboradores.licencia_conduccion_categorias'))],
+            'licencia_conduccion_categorias.*' => [Rule::in(config('gente.colaboradores.licencia_conduccion_categorias'))],
 
             'fecha_licencia' => ['nullable', 'date'],
             'fecha_vencimiento_licencia' => ['nullable', 'date'],

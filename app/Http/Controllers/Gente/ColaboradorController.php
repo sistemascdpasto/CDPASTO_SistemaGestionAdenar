@@ -51,7 +51,7 @@ class ColaboradorController extends Controller
 
         // Mismo umbral que la alerta de HU03, para que "próximos a vencer"
         // signifique lo mismo en la alerta y en este filtro.
-        $limiteProximoVencer = now()->addDays((int) config('seguridad.dias_alerta_vencimiento_contrato'));
+        $limiteProximoVencer = now()->addDays((int) config('gente.dias_alerta_vencimiento_contrato'));
 
         $colaboradores = Colaborador::query()
             ->select([
@@ -95,7 +95,7 @@ class ColaboradorController extends Controller
             ->withQueryString();
 
         // Resumen global (siempre sobre todos los registros, sin filtros activos)
-        $limiteProximoVencerResumen = now()->addDays((int) config('seguridad.dias_alerta_vencimiento_contrato'));
+        $limiteProximoVencerResumen = now()->addDays((int) config('gente.dias_alerta_vencimiento_contrato'));
         $totalCompletos = Colaborador::completos()->count();
         $resumen = [
             'total' => $totalCompletos,
@@ -292,7 +292,7 @@ class ColaboradorController extends Controller
     private function catalogos(ColaboradorCatalogoService $catalogos): array
     {
         return [
-            'tiposDocumento' => collect(config('seguridad.colaboradores.tipos_documento', []))
+            'tiposDocumento' => collect(config('gente.colaboradores.tipos_documento', []))
                 ->merge(TipoDocumento::orderBy('es_personalizado')->orderBy('nombre')->pluck('nombre'))
                 ->unique()
                 ->values()
@@ -306,14 +306,14 @@ class ColaboradorController extends Controller
             'cargosAnteriores' => OpcionCatalogo::opcionesDe('cargo_anterior'),
             'cargos' => $catalogos->cargos(),
             'perfilesCargos' => $catalogos->perfilesCargos(),
-            'centros' => config('seguridad.colaboradores.centros'),
-            'centrosTrabajo' => config('seguridad.colaboradores.centros_trabajo'),
+            'centros' => config('gente.colaboradores.centros'),
+            'centrosTrabajo' => config('gente.colaboradores.centros_trabajo'),
             'centrosOpciones' => OpcionCatalogo::opcionesDe('centro'),
             'centrosTrabajOpciones' => OpcionCatalogo::opcionesDe('centro_trabajo'),
-            'motivosRetiro' => config('seguridad.colaboradores.motivos_retiro'),
-            'licenciaCategorias' => config('seguridad.colaboradores.licencia_conduccion_categorias'),
-            'documentoGrupos' => config('seguridad.documentos_colaborador.grupos'),
-            'documentoFields' => config('seguridad.documentos_colaborador.documentos'),
+            'motivosRetiro' => config('gente.colaboradores.motivos_retiro'),
+            'licenciaCategorias' => config('gente.colaboradores.licencia_conduccion_categorias'),
+            'documentoGrupos' => config('gente.documentos_colaborador.grupos'),
+            'documentoFields' => config('gente.documentos_colaborador.documentos'),
         ];
     }
 
@@ -776,8 +776,8 @@ class ColaboradorController extends Controller
         return Inertia::render('gente/colaboradores/show', [
             'colaborador' => $colaboradorData,
             'indiceRiesgo' => $calculator->calcular($colaborador),
-            'documentoGrupos' => config('seguridad.documentos_colaborador.grupos'),
-            'documentoFields' => config('seguridad.documentos_colaborador.documentos'),
+            'documentoGrupos' => config('gente.documentos_colaborador.grupos'),
+            'documentoFields' => config('gente.documentos_colaborador.documentos'),
             'pruebas' => $colaborador->pruebasAlcoholemia()
                 ->with('alcoholimetro:id,codigo')
                 ->latest('fecha_hora')

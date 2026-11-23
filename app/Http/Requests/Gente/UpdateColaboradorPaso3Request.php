@@ -61,7 +61,7 @@ class UpdateColaboradorPaso3Request extends FormRequest
             'centro_trabajo_otro' => ['nullable', 'string', 'max:100'],
             'fecha_ingreso_empresa' => ['nullable', 'date'],
             'fecha_retiro_empresa' => ['nullable', 'date'],
-            'motivo_retiro' => ['nullable', Rule::in(config('seguridad.colaboradores.motivos_retiro'))],
+            'motivo_retiro' => ['nullable', Rule::in(config('gente.colaboradores.motivos_retiro'))],
             'motivo_retiro_observaciones' => ['nullable', 'string', 'max:2000'],
             'tipo_contrato' => ['nullable', 'string', 'max:100'],
             'tipo_contrato_otro' => ['nullable', 'string', 'max:100'],

@@ -116,7 +116,7 @@ class ContratosController extends Controller
         string $fechaFinDesde = '',
         string $fechaFinHasta = '',
     ): Builder {
-        $diasAlerta = (int) config('seguridad.dias_alerta_vencimiento_contrato', 35);
+        $diasAlerta = (int) config('gente.dias_alerta_vencimiento_contrato', 35);
         $hoy        = Carbon::today();
 
         return Colaborador::query()

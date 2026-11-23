@@ -87,7 +87,7 @@
     {{-- Firma centrada --}}
     <div class="firma-wrap">
         <div class="firma-linea"></div>
-        <div class="firma-nombre">Blanca Maribel Botina Ruiz</div>
+        <div class="firma-nombre">&nbsp;</div>
         <div>Recursos Humanos</div>
     </div>
 

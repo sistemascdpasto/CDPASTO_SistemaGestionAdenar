@@ -16,7 +16,7 @@ class RecomendacionCatalogoController extends Controller
     {
         return Inertia::render('seguridad/examenes-medicos/recomendaciones', [
             'recomendaciones' => Recomendacion::orderBy('categoria')->orderBy('nombre')->get(),
-            'categorias' => config('seguridad.examenes_medicos.recomendaciones.categorias'),
+            'categorias' => config('gente.examenes_medicos.recomendaciones.categorias'),
         ]);
     }
 
@@ -24,7 +24,7 @@ class RecomendacionCatalogoController extends Controller
     {
         $data = $request->validate([
             'nombre' => ['required', 'string', 'max:255', 'unique:recomendaciones,nombre'],
-            'categoria' => ['required', Rule::in(array_keys(config('seguridad.examenes_medicos.recomendaciones.categorias')))],
+            'categoria' => ['required', Rule::in(array_keys(config('gente.examenes_medicos.recomendaciones.categorias')))],
         ]);
 
         Recomendacion::create($data);
@@ -36,7 +36,7 @@ class RecomendacionCatalogoController extends Controller
     {
         $data = $request->validate([
             'nombre' => ['required', 'string', 'max:255', Rule::unique('recomendaciones', 'nombre')->ignore($recomendacion->id)],
-            'categoria' => ['required', Rule::in(array_keys(config('seguridad.examenes_medicos.recomendaciones.categorias')))],
+            'categoria' => ['required', Rule::in(array_keys(config('gente.examenes_medicos.recomendaciones.categorias')))],
             'activo' => ['required', 'boolean'],
         ]);
 

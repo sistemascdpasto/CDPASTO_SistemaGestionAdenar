@@ -31,7 +31,7 @@ class StoreColaboradorRequest extends FormRequest
             'imagen' => ['nullable', 'image', 'max:2048'],
 
             'tipo_documento' => ['required', Rule::in([
-                ...config('seguridad.colaboradores.tipos_documento', []),
+                ...config('gente.colaboradores.tipos_documento', []),
                 ...TipoDocumento::pluck('nombre')->all(),
                 'Otro',
             ])],

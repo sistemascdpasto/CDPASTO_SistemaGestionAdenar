@@ -81,14 +81,14 @@ class AciImportService
     private const CAMPOS_BOOLEANOS = ['fue_por_externo', 'sif'];
 
     private const CAMPOS_CATALOGO_EXACTO = [
-        'reporte_de' => 'seguridad.acis.reporte_de',
-        'area' => 'seguridad.acis.areas',
-        'clasificacion' => 'seguridad.acis.clasificaciones',
-        'estatus_asignacion' => 'seguridad.acis.estatus_asignacion',
+        'reporte_de' => 'gente.acis.reporte_de',
+        'area' => 'gente.acis.areas',
+        'clasificacion' => 'gente.acis.clasificaciones',
+        'estatus_asignacion' => 'gente.acis.estatus_asignacion',
     ];
 
     private const CAMPOS_CATALOGO_PARCIAL = [
-        'compania' => 'seguridad.acis.companias',
+        'compania' => 'gente.acis.companias',
     ];
 
     /**

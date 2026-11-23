@@ -16,7 +16,7 @@ class RecomendacionSeguimientoController extends Controller
     {
         $data = $request->validate([
             'fecha_seguimiento' => ['required', 'date'],
-            'estado_seguimiento' => ['required', Rule::in(config('seguridad.examenes_medicos.recomendaciones.estados_seguimiento'))],
+            'estado_seguimiento' => ['required', Rule::in(config('gente.examenes_medicos.recomendaciones.estados_seguimiento'))],
             'observacion' => ['nullable', 'string', 'max:2000'],
             'fecha_proximo_seguimiento' => ['nullable', 'date'],
             'carta_recomendacion_entregada' => ['nullable', 'boolean'],
@@ -63,7 +63,7 @@ class RecomendacionSeguimientoController extends Controller
     {
         $data = $request->validate([
             'fecha_seguimiento' => ['required', 'date'],
-            'estado_seguimiento' => ['required', Rule::in(config('seguridad.examenes_medicos.recomendaciones.estados_seguimiento'))],
+            'estado_seguimiento' => ['required', Rule::in(config('gente.examenes_medicos.recomendaciones.estados_seguimiento'))],
             'observacion' => ['nullable', 'string', 'max:2000'],
             'fecha_proximo_seguimiento' => ['nullable', 'date'],
             'carta_recomendacion_entregada' => ['nullable', 'boolean'],

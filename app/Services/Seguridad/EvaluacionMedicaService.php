@@ -182,7 +182,7 @@ class EvaluacionMedicaService
             $fechaMasReciente = $obligatorios->pluck('fecha_ejecucion')->filter()->max();
 
             if (in_array($evaluacion->tipo_evaluacion, ['ingreso', 'periodico'], true) && $fechaMasReciente) {
-                $meses = (int) config('seguridad.examenes_medicos.periodicidad_meses');
+                $meses = (int) config('gente.examenes_medicos.periodicidad_meses');
                 // Próximo objetivo anual: Fecha REAL de ejecución + 1 año (12 meses)
                 $proximo = Carbon::parse($fechaMasReciente)->addMonths($meses);
                 $datos['proximo_examen_fecha'] = $proximo->toDateString();

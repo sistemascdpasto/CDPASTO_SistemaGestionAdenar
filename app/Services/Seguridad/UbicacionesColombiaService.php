@@ -83,7 +83,7 @@ class UbicacionesColombiaService
 
         if ($datos !== []) {
             try {
-                Cache::put($clave, $datos, config('seguridad.referencias_externas.cache_ttl_segundos'));
+                Cache::put($clave, $datos, config('gente.referencias_externas.cache_ttl_segundos'));
             } catch (Throwable $e) {
                 Log::warning('No se pudo guardar la caché de ubicaciones externas.', [
                     'clave' => $clave,

@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('cargo_examenes', function (Blueprint $table) {
             $table->id();
             // No hay tabla propia de "cargos" en este sistema — vive como
-            // catálogo de texto en config('seguridad.colaboradores.cargos'),
+            // catálogo de texto en config('gente.colaboradores.cargos'),
             // igual que en `colaboradores.cargo`.
             $table->string('cargo');
             $table->foreignId('examen_id')->constrained('examenes')->cascadeOnDelete();

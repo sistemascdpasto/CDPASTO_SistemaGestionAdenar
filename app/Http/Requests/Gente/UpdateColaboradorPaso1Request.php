@@ -43,7 +43,7 @@ class UpdateColaboradorPaso1Request extends FormRequest
             'eliminar_imagen' => ['nullable', 'boolean'],
 
             'tipo_documento' => ['required', Rule::in([
-                ...config('seguridad.colaboradores.tipos_documento', []),
+                ...config('gente.colaboradores.tipos_documento', []),
                 ...TipoDocumento::pluck('nombre')->all(),
                 'Otro',
             ])],

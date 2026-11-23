@@ -4,25 +4,53 @@ namespace App\Console\Commands;
 
 use App\Models\Seguridad\Alerta;
 use App\Models\Seguridad\Colaborador;
-use App\Services\Gente\ContratosNotifier;
+use App\Services\Seguridad\AlertaNotifier;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Collection;
 
+/**
+ * Revisión automática de vencimiento de contratos.
+ *
+ * Se programa en 4 turnos diarios (ver routes/console.php):
+ *   - 07:00  → revisa umbrales de 40, 35 y 5 días
+ *   - 12:00  → revisa solo umbral de 35 días (segundo turno)
+ *   - 17:00  → revisa solo umbral de 35 días (tercer turno)
+ *
+ * Reglas de envío:
+ *   - Día 40 exacto : 1 correo (turno 07:00)
+ *   - Día 35 exacto : 3 correos (07:00, 12:00, 17:00)
+ *   - Día 5  exacto : 1 correo (turno 07:00)
+ *   - Cualquier otro día: no se envía nada
+ *
+ * "Exacto" significa que hoy faltan exactamente N días para el vencimiento.
+ * El correo de cada turno se envía aunque ya exista una alerta atendida o
+ * no atendida del día anterior — cada turno del día 35 es un envío nuevo.
+ * Para los días 40 y 5, solo se envía una vez por día (el turno 07:00).
+ *
+ * Opciones:
+ *   --solo-35 : solo procesa el umbral de 35 días (usado en turnos 12:00 y 17:00)
+ */
 class RevisarVencimientoContratos extends Command
 {
     protected $signature = 'seguridad:revisar-vencimiento-contratos
-                            {--solo-frecuentes : Notificar únicamente a usuarios con la casilla de 3 veces al día marcada}';
+                            {--solo-35 : Procesar únicamente el umbral de 35 días (turnos de mediodía y tarde)}';
 
-    protected $description = 'Envía correo con los contratos próximos a vencer que tengan alerta activa (HU03). Se ejecuta 3 veces al día vía scheduler.';
+    protected $description = 'Envía correos de alerta de vencimiento de contratos en los días exactos 40, 35 y 5.';
 
     public function handle(): int
     {
-        $diasAnticipacion = (int) config('seguridad.dias_alerta_vencimiento_contrato');
-        $limite           = Carbon::now()->addDays($diasAnticipacion);
-        $soloFrecuentes   = (bool) $this->option('solo-frecuentes');
+        $solo35 = (bool) $this->option('solo-35');
 
-        $contratos = new Collection();
+        // Umbrales activos en esta ejecución
+        $umbrales = $solo35
+            ? ['retiro_proximo' => (int) config('gente.dias_alerta_vencimiento_contrato', 35)]
+            : [
+                'retiro_proximo_40' => (int) config('gente.dias_alerta_vencimiento_contrato_40', 40),
+                'retiro_proximo'    => (int) config('gente.dias_alerta_vencimiento_contrato', 35),
+                'retiro_proximo_5'  => (int) config('gente.dias_alerta_vencimiento_contrato_5', 5),
+            ];
+
+        $notificados = 0;
 
         Colaborador::query()
             ->completos()
@@ -30,44 +58,46 @@ class RevisarVencimientoContratos extends Command
             ->whereNotNull('fecha_retiro_empresa')
             ->whereDoesntHave('prorrogas', fn ($q) => $q->where('tipo', 'finalizacion'))
             ->with(['prorrogas' => fn ($q) => $q->where('tipo', 'prorroga')->orderByDesc('created_at')])
-            ->each(function (Colaborador $colaborador) use ($limite, &$contratos) {
+            ->each(function (Colaborador $colaborador) use ($umbrales, &$notificados) {
                 $ultimaProrroga   = $colaborador->prorrogas->first();
                 $fechaVencimiento = $ultimaProrroga?->fecha_nueva ?? $colaborador->fecha_retiro_empresa;
 
-                if (! $fechaVencimiento || $fechaVencimiento->gt($limite)) {
+                if (! $fechaVencimiento) {
                     return;
                 }
 
-                // Crear la alerta en BD si no existe una pendiente
-                $alerta = Alerta::query()
-                    ->where('colaborador_id', $colaborador->id)
-                    ->where('tipo', 'retiro_proximo')
-                    ->where('atendida', false)
-                    ->first();
+                $diasRestantes = (int) Carbon::today()->diffInDays($fechaVencimiento, false);
 
-                if (! $alerta) {
-                    $alerta = Alerta::create([
-                        'tipo'           => 'retiro_proximo',
-                        'colaborador_id' => $colaborador->id,
-                        'mensaje'        => "El contrato de {$colaborador->nombre_completo} vence el {$fechaVencimiento->toDateString()}.",
-                    ]);
-                }
+                foreach ($umbrales as $tipo => $diasUmbral) {
+                    // Solo dispara el día EXACTO del umbral
+                    if ($diasRestantes !== $diasUmbral) {
+                        continue;
+                    }
 
-                // Solo incluir en el correo si la alerta sigue activa (pendiente)
-                if (! $alerta->atendida) {
-                    $contratos->push([
-                        'nombre_completo'   => $colaborador->nombre_completo,
-                        'fecha_vencimiento' => $fechaVencimiento,
-                    ]);
+                    // Crear la alerta en BD si no existe una pendiente del mismo tipo hoy
+                    $alerta = Alerta::query()
+                        ->where('colaborador_id', $colaborador->id)
+                        ->where('tipo', $tipo)
+                        ->where('atendida', false)
+                        ->whereDate('created_at', Carbon::today())
+                        ->first();
+
+                    if (! $alerta) {
+                        $alerta = Alerta::create([
+                            'tipo'           => $tipo,
+                            'colaborador_id' => $colaborador->id,
+                            'mensaje'        => "El contrato de {$colaborador->nombre_completo} vence el {$fechaVencimiento->toDateString()} ({$diasRestantes} días restantes).",
+                        ]);
+                    }
+
+                    // Enviar correo en este turno
+                    AlertaNotifier::notificar($alerta);
+
+                    $notificados++;
                 }
             });
 
-        if ($contratos->isNotEmpty()) {
-            $contratos = $contratos->sortBy('fecha_vencimiento')->values();
-            ContratosNotifier::notificarVencimientos($contratos, $soloFrecuentes);
-        }
-
-        $this->info("Contratos con alerta activa notificados: {$contratos->count()}");
+        $this->info("Contratos notificados en este turno: {$notificados}");
 
         return self::SUCCESS;
     }

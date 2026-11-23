@@ -6,6 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Flota\StoreVehiculoRequest;
 use App\Http\Requests\Flota\UpdateVehiculoRequest;
 use App\Models\Flota\Vehiculo;
+use App\Models\Reparto\CincoPorque;
+use App\Models\Reparto\MedicionTiempoInventario;
+use App\Models\Reparto\RevisionAleatoria;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -40,14 +43,7 @@ class VehiculoController extends Controller
                 });
             })
             ->where(function ($query) use ($centro) {
-                if ($centro === 'UD') {
-                    // UD: centro = 'UD' o sin valor asignado (null / '')
-                    $query->where('centro', 'UD')
-                          ->orWhereNull('centro')
-                          ->orWhere('centro', '');
-                } else {
-                    $query->where('centro', 'UC');
-                }
+                $query->where('centro', $centro);
             })
             ->orderBy('placa')
             ->paginate(15)
@@ -175,13 +171,28 @@ class VehiculoController extends Controller
 
     public function destroy(Vehiculo $vehiculo): RedirectResponse
     {
+        // Verificar si el vehículo tiene registros en tablas de historial
+        // operacional (relaciones externas con nullOnDelete). Si los tiene,
+        // no se puede eliminar para preservar la integridad del historial.
+        $tieneRelaciones =
+            CincoPorque::where('vehiculo_id', $vehiculo->id)->exists() ||
+            RevisionAleatoria::where('vehiculo_id', $vehiculo->id)->exists() ||
+            MedicionTiempoInventario::where('vehiculo_id', $vehiculo->id)->exists();
+
+        if ($tieneRelaciones) {
+            return back()->with('error', "El vehículo {$vehiculo->placa} tiene registros asociados (5 Porqués, revisiones aleatorias o mediciones) y no puede eliminarse.");
+        }
+
+        // Sin relaciones externas: borrar archivos y eliminar físicamente.
+        // Los documentos y el historial de disponibilidad tienen cascadeOnDelete
+        // en BD, por lo que se borran automáticamente.
         foreach ($this->documentPaths($vehiculo) as $paths) {
             foreach ($paths as $path) {
                 Storage::disk('public')->delete($path['path']);
             }
         }
 
-        $vehiculo->delete();
+        $vehiculo->forceDelete();
 
         return to_route('flota.vehiculos.index')->with('status', 'Vehículo eliminado correctamente.');
     }

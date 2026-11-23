@@ -129,7 +129,7 @@ class ColaboradorIndexFiltrosTest extends TestCase
     }
 
     /**
-     * Regresión: catalogos() lee de config('seguridad.colaboradores.*'), un
+     * Regresión: catalogos() lee de config('gente.colaboradores.*'), un
      * archivo de config distinto al namespace Gente del controlador — un
      * reemplazo de texto demasiado amplio al mover ColaboradorController
      * llegó a reescribir esas claves a config('gente.colaboradores.*')
