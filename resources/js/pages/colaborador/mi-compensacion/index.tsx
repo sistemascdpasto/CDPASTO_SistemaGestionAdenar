@@ -2,14 +2,12 @@ import AppLayout from '@/layouts/app-layout';
 import { Head, router, usePage } from '@inertiajs/react';
 import {
     CalendarDays,
-    CheckCircle2,
     ChevronDown,
     ChevronUp,
     CircleDollarSign,
     Info,
     Star,
     TrendingUp,
-    XCircle,
     ChevronRight,
 } from 'lucide-react';
 import React, { useRef, useState } from 'react';
@@ -232,7 +230,7 @@ function DateRangePicker({
 // ─── Tabla día por día ───────────────────────────────────────────────────────
 
 function TablaDiaria({ registros }: { registros: RegistroDiaSimple[] }) {
-    const [open, setOpen] = useState(false);
+    const [open, setOpen] = useState(true);
 
     if (registros.length === 0) {
         return (
@@ -304,17 +302,23 @@ function TablaDiaria({ registros }: { registros: RegistroDiaSimple[] }) {
                                     key={r.id ?? idx}
                                     className="border-b border-sidebar-border/40 transition-colors hover:bg-muted/30 dark:border-sidebar-border/30"
                                 >
-                                    <td className="px-4 py-2.5 font-medium text-foreground">{fechaLabel}</td>
+                                    <td className="px-4 py-2.5 font-medium text-black dark:text-black">{fechaLabel}</td>
                                     <td className={`px-4 py-2.5 text-right font-semibold tabular-nums ${rechColor}`}>
                                         {Number(r.rechazos).toFixed(2)}%
                                     </td>
-                                    <td className="px-4 py-2.5 text-right tabular-nums text-foreground">
+                                    <td className="px-4 py-2.5 text-right tabular-nums text-black dark:text-black">
                                         {formatCOP(r.valor_x_dia)}
                                     </td>
-                                    <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-green-700 dark:text-green-400">
+                                    <td className={`px-4 py-2.5 text-right font-semibold tabular-nums ${
+                                        es100
+                                            ? 'text-green-700 dark:text-green-400'
+                                            : es80
+                                            ? 'text-orange-500 dark:text-orange-400'
+                                            : 'text-black dark:text-black'
+                                    }`}>
                                         {formatCOP(r.valor_var)}
                                     </td>
-                                    <td className={`px-4 py-2.5 text-right tabular-nums ${Number(r.valor_perdido) > 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
+                                    <td className={`px-4 py-2.5 text-right tabular-nums ${Number(r.valor_perdido) > 0 ? 'text-red-500' : 'text-black dark:text-black'}`}>
                                         {formatCOP(r.valor_perdido)}
                                     </td>
                                     <td className="px-4 py-2.5 text-center">
@@ -329,10 +333,10 @@ function TablaDiaria({ registros }: { registros: RegistroDiaSimple[] }) {
                     {/* Totales */}
                     <tfoot>
                         <tr className="border-t-2 border-sidebar-border/70 bg-muted/40 font-semibold dark:border-sidebar-border">
-                            <td className="px-4 py-2.5 text-[11px] text-muted-foreground" colSpan={2}>
+                            <td className="px-4 py-2.5 text-[11px] text-black dark:text-black" colSpan={2}>
                                 Total {registros.length} días
                             </td>
-                            <td className="px-4 py-2.5 text-right tabular-nums text-foreground">
+                            <td className="px-4 py-2.5 text-right tabular-nums text-black dark:text-black">
                                 {formatCOP(registros.reduce((s, r) => s + Number(r.valor_x_dia), 0))}
                             </td>
                             <td className="px-4 py-2.5 text-right font-bold tabular-nums text-green-700 dark:text-green-400">
@@ -506,17 +510,22 @@ export default function MiCompensacionIndex() {
                             {/* Card resultado: usa cal_rechazos = valor_var / valor_x_dia del rango */}
                             {(() => {
                                 const cal = Number(registroDia.cal_rechazos ?? 0);
+                                const rechPct = Number(registroDia.rechazos_porcentaje ?? 0).toFixed(2);
                                 if (cal >= 1.0) {
                                     return (
                                         <div className="flex flex-col gap-2 rounded-xl border border-green-200 bg-green-50 p-4 shadow-sm dark:border-green-700/40 dark:bg-green-900/10">
                                             <div className="flex items-center gap-2">
-                                                <CheckCircle2 className="size-5 shrink-0 text-green-600" />
-                                                <p className="text-sm font-bold text-green-700 dark:text-green-400">
+                                                <CircleDollarSign className="size-5 shrink-0 text-green-600" />
+                                                <p className="text-sm font-bold text-black dark:text-black">
                                                     ¡Felicitaciones, ganaste el 100%!
                                                 </p>
                                             </div>
                                             <p className="text-4xl font-extrabold tabular-nums text-green-700 dark:text-green-400">
                                                 {formatCOP(registroDia.valor_var)}
+                                            </p>
+                                            <p className="text-[11px] text-black dark:text-black">
+                                                Tu rechazo es de{' '}
+                                                <span className="font-semibold">{rechPct}%</span>
                                             </p>
                                         </div>
                                     );
@@ -524,40 +533,52 @@ export default function MiCompensacionIndex() {
                                     return (
                                         <div className="flex flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm dark:border-amber-700/40 dark:bg-amber-900/10">
                                             <div className="flex items-center gap-2">
-                                                <Star className="size-5 shrink-0 text-amber-500" />
-                                                <p className="text-sm font-bold text-amber-700 dark:text-amber-400">
+                                                <CircleDollarSign className="size-5 shrink-0 text-amber-500" />
+                                                <p className="text-sm font-bold text-black dark:text-black">
                                                     Ganaste el 80%
                                                 </p>
                                             </div>
                                             <p className="text-4xl font-extrabold tabular-nums text-amber-700 dark:text-amber-400">
                                                 {formatCOP(registroDia.valor_var)}
                                             </p>
-                                            <p className="text-[11px] text-muted-foreground">
-                                                Dejaste de ganar:{' '}
-                                                <span className="font-semibold text-red-500">
-                                                    {formatCOP(registroDia.valor_perdido)}
-                                                </span>
-                                            </p>
+                                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                                                <p className="text-[11px] text-black dark:text-black">
+                                                    Tu rechazo es de{' '}
+                                                    <span className="font-semibold">{rechPct}%</span>
+                                                </p>
+                                                <p className="text-[11px] text-black dark:text-black">
+                                                    Dejaste de ganar:{' '}
+                                                    <span className="font-semibold text-red-500">
+                                                        {formatCOP(registroDia.valor_perdido)}
+                                                    </span>
+                                                </p>
+                                            </div>
                                         </div>
                                     );
                                 } else {
                                     return (
                                         <div className="flex flex-col gap-2 rounded-xl border border-red-200 bg-red-50 p-4 shadow-sm dark:border-red-700/40 dark:bg-red-900/10">
                                             <div className="flex items-center gap-2">
-                                                <XCircle className="size-5 shrink-0 text-red-500" />
-                                                <p className="text-sm font-bold text-red-600 dark:text-red-400">
+                                                <CircleDollarSign className="size-5 shrink-0 text-red-500" />
+                                                <p className="text-sm font-bold text-black dark:text-black">
                                                     Hoy aprendemos, mañana alcanzamos nuevos logros.
                                                 </p>
                                             </div>
                                             <p className="text-4xl font-extrabold tabular-nums text-red-600 dark:text-red-400">
                                                 {formatCOP(0)}
                                             </p>
-                                            <p className="text-[11px] text-muted-foreground">
-                                                Valor perdido:{' '}
-                                                <span className="font-semibold text-red-500">
-                                                    {formatCOP(registroDia.valor_perdido)}
-                                                </span>
-                                            </p>
+                                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                                                <p className="text-[11px] text-black dark:text-black">
+                                                    Tu rechazo es de{' '}
+                                                    <span className="font-semibold">{rechPct}%</span>
+                                                </p>
+                                                <p className="text-[11px] text-black dark:text-black">
+                                                    Dejaste de ganar:{' '}
+                                                    <span className="font-semibold text-red-500">
+                                                        {formatCOP(registroDia.valor_perdido)}
+                                                    </span>
+                                                </p>
+                                            </div>
                                         </div>
                                     );
                                 }
