@@ -2,8 +2,6 @@ import AppLayout from '@/layouts/app-layout';
 import { Head, router, usePage } from '@inertiajs/react';
 import {
     CalendarDays,
-    ChevronDown,
-    ChevronUp,
     CircleDollarSign,
     Info,
     Star,
@@ -230,7 +228,6 @@ function DateRangePicker({
 // ─── Tabla día por día ───────────────────────────────────────────────────────
 
 function TablaDiaria({ registros }: { registros: RegistroDiaSimple[] }) {
-    const [open, setOpen] = useState(true);
 
     if (registros.length === 0) {
         return (
@@ -251,18 +248,9 @@ function TablaDiaria({ registros }: { registros: RegistroDiaSimple[] }) {
                 <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-400">
                     {registros.length} {registros.length === 1 ? 'día' : 'días'}
                 </span>
-                <button
-                    type="button"
-                    onClick={() => setOpen(v => !v)}
-                    className="ml-auto flex items-center gap-1 rounded-lg border border-sidebar-border/70 bg-card px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition hover:bg-muted dark:border-sidebar-border"
-                >
-                    {open ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
-                    {open ? 'Ocultar' : 'Ver detalle'}
-                </button>
             </div>
 
-            {/* Tabla — solo cuando está abierta */}
-            {open && <div className="overflow-x-auto">
+            <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                     <thead>
                         <tr className="border-b border-sidebar-border/70 bg-muted/30 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground dark:border-sidebar-border">
@@ -350,7 +338,6 @@ function TablaDiaria({ registros }: { registros: RegistroDiaSimple[] }) {
                     </tfoot>
                 </table>
             </div>
-            }
         </div>
     );
 }
@@ -501,7 +488,7 @@ export default function MiCompensacionIndex() {
                                     <p className="text-[11px] text-muted-foreground">
                                         Tu valor del día es:
                                     </p>
-                                    <p className="text-4xl font-extrabold tabular-nums text-green-700 dark:text-green-400">
+                                    <p className="text-4xl font-extrabold tabular-nums text-black dark:text-black">
                                         {formatCOP(registroDia.valor_x_dia_por_dia)}
                                     </p>
                                 </div>
@@ -520,7 +507,7 @@ export default function MiCompensacionIndex() {
                                                     ¡Felicitaciones, ganaste el 100%!
                                                 </p>
                                             </div>
-                                            <p className="text-4xl font-extrabold tabular-nums text-green-700 dark:text-green-400">
+                                            <p className="text-4xl font-extrabold tabular-nums text-black dark:text-black">
                                                 {formatCOP(registroDia.valor_var)}
                                             </p>
                                             <p className="text-[11px] text-black dark:text-black">

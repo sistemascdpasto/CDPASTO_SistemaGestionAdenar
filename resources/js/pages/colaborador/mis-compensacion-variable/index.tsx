@@ -5,9 +5,8 @@ import {
     AlertTriangle,
     BarChart3,
     CalendarDays,
-    ChevronDown,
-    ChevronUp,
     CircleDollarSign,
+    ExternalLink,
     Info,
     TrendingDown,
     Trophy,
@@ -156,13 +155,23 @@ function FilaMes({ registro, maxPago }: { registro: RegistroMes; maxPago: number
 
                 {/* Barra de pago */}
                 <div className="flex flex-1 flex-col gap-1">
-                    <div className="flex items-center justify-between">
-                        <span className="text-sm font-extrabold tabular-nums text-foreground">
-                            {formatCOP(registro.pago_variable_dt)}
-                        </span>
-                        <span className="text-[10px] font-semibold text-foreground">
-                            {pctObtenido}%
-                        </span>
+                    <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm font-extrabold tabular-nums text-foreground">
+                                {formatCOP(registro.pago_variable_dt)}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground">
+                                Tu rechazo fue de <span className="font-semibold text-foreground">{registro.porcentaje_rechazos}%</span>
+                            </span>
+                        </div>
+                        <div className="flex flex-col items-end">
+                            <span className="text-[10px] font-semibold text-foreground">
+                                {pctObtenido}%
+                            </span>
+                            <span className="text-[9px] text-muted-foreground">
+                                Valor: {formatCOP(registro.salario_variable)}
+                            </span>
+                        </div>
                     </div>
                     <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
                         <div
@@ -182,19 +191,36 @@ function FilaMes({ registro, maxPago }: { registro: RegistroMes; maxPago: number
             {open && (
                 <div className="border-t border-green-200 px-4 py-4" style={{ background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)' }}>
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-                        <Kpi label="Salario variable" value={formatCOP(registro.salario_variable)} />
-                        <Kpi label="Pago variable DT" value={formatCOP(registro.pago_variable_dt)} />
-                        <Kpi label="Total pago" value={formatCOP(registro.total_pago)} />
-                        <Kpi label="Días trabajados" value={registro.dias_trabajados} />
-                        <Kpi label="% Rechazos" value={`${registro.porcentaje_rechazos}%`} />
+                        <Kpi label="Ganaste:" value={formatCOP(registro.total_pago)} />
+                        <Kpi label="Tus días trabajados:" value={registro.dias_trabajados} />
+                        <Kpi label="Tu rechazo fue de:" value={`${registro.porcentaje_rechazos}%`} />
                         <Kpi label="Habilitadores" value={registro.habilitadores} />
-                        <Kpi label="Aus. justificada" value={registro.ausencia_justificada} />
+                        <Kpi label="Tus ausencias justificadas:" value={registro.ausencia_justificada} />
                         <Kpi label="Aus. injustificada" value={registro.ausencia_injustificada} />
                         <Kpi label="Adherencia GP" value={registro.adherencia_gp ?? '—'} />
-                        <Kpi label="Market refusals" value={registro.market_refusals ?? '—'} />
                         <Kpi label="Fatalidades TRI" value={registro.tri_fatalidades} />
                         <Kpi label="Variable" value={registro.variable ?? '—'} />
                     </div>
+                    {/* Botón ir al detalle diario del mes */}
+                    {(() => {
+                        const anio = registro.anio;
+                        const mes  = registro.mes_num;
+                        const desde = `${anio}-${String(mes).padStart(2, '0')}-01`;
+                        const ultimoDia = new Date(anio, mes, 0).getDate();
+                        const hasta = `${anio}-${String(mes).padStart(2, '0')}-${String(ultimoDia).padStart(2, '0')}`;
+                        const url = route('portal.mi-compensacion.index', { fecha_desde: desde, fecha_hasta: hasta });
+                        return (
+                            <div className="mt-4 flex justify-end">
+                                <a
+                                    href={url}
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-green-300 bg-white px-3 py-1.5 text-xs font-semibold text-green-800 shadow-sm transition hover:bg-green-50 dark:border-green-700/40 dark:bg-green-900/10 dark:text-green-300 dark:hover:bg-green-900/20"
+                                >
+                                    <ExternalLink className="size-3.5" />
+                                    Ver detalle diario de {registro.mes}
+                                </a>
+                            </div>
+                        );
+                    })()}
                 </div>
             )}
         </div>
@@ -213,7 +239,6 @@ export default function MisCompensacionVariableIndex() {
     const error: string | null             = pageProps.error as string | null;
 
     const [anio, setAnio] = useState(anioSeleccionado);
-    const [historialOpen, setHistorialOpen] = useState(true);
 
     const handleAnioChange = (val: number) => {
         setAnio(val);
@@ -384,13 +409,12 @@ export default function MisCompensacionVariableIndex() {
                                 >
                                     <AlertTriangle className={`size-4 ${resumen.promedio_rechazos < 2.1 ? 'text-white' : 'text-red-600 dark:text-red-400'}`} />
                                 </div>
-                                <span className="text-[10px] font-semibold text-muted-foreground">Prom. rechazos</span>
+                                <span className="text-[10px] font-semibold text-muted-foreground">Promedio de tus rechazos en {anio}</span>
                             </div>
                             <p className={`text-xl font-extrabold tabular-nums ${resumen.promedio_rechazos < 2.1 ? '' : 'text-red-600 dark:text-red-400'}`}
                                 style={resumen.promedio_rechazos < 2.1 ? { color: '#047857' } : {}}>
                                 {resumen.promedio_rechazos}%
                             </p>
-                            <p className="mt-1 text-[10px] text-muted-foreground">promedio anual · meta &lt;2.1%</p>
                         </div>
 
                         {/* Mejor mes */}
@@ -415,7 +439,7 @@ export default function MisCompensacionVariableIndex() {
                                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-100 dark:bg-rose-900/40">
                                     <TrendingDown className="size-4 text-rose-600 dark:text-rose-400" />
                                 </div>
-                                <span className="text-[10px] font-semibold text-muted-foreground">Mes más bajo</span>
+                                <span className="text-[10px] font-semibold text-muted-foreground">Mes con oportunidad</span>
                             </div>
                             <p className="text-xl font-extrabold text-rose-600 dark:text-rose-400">
                                 {resumen.peor_mes?.mes ?? '—'}
@@ -430,23 +454,15 @@ export default function MisCompensacionVariableIndex() {
                 {/* ── Historial por mes ── */}
                 {registros.length > 0 && (
                     <Card>
-                        <button
-                            type="button"
-                            onClick={() => setHistorialOpen((v) => !v)}
-                            className="flex w-full items-center justify-between p-5 text-left"
-                        >
+                        <div className="flex w-full items-center p-5">
                             <SectionHeader
                                 icon={BarChart3}
                                 title={`Detalle mensual ${anio}`}
                                 subtitle={`${registros.filter((r) => !r.es_futuro).length} meses con información`}
                             />
-                            <div className="text-muted-foreground">
-                                {historialOpen ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
-                            </div>
-                        </button>
+                        </div>
 
-                        {historialOpen && (
-                            <div className="flex flex-col gap-2 px-4 pb-5">
+                        <div className="flex flex-col gap-2 px-4 pb-5">
                                 <p className="mb-1 flex items-center gap-1.5 text-[10px] text-muted-foreground">
                                     <Info className="size-3 shrink-0" />
                                     Toca cada fila para ver el detalle del mes.
@@ -455,7 +471,6 @@ export default function MisCompensacionVariableIndex() {
                                     <FilaMes key={registro.id ?? registro.mes} registro={registro} maxPago={maxPago} />
                                 ))}
                             </div>
-                        )}
                     </Card>
                 )}
 
