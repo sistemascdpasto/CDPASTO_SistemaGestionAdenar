@@ -20,6 +20,8 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Documentación', href: '/modules/flota/vehiculos' },
 ];
 
+type Centro = 'UD' | 'UC';
+
 interface VehiculoRow {
     id: number;
     placa: string;
@@ -43,10 +45,14 @@ interface VehiculosPaginator {
     links: PaginationLink[];
 }
 
-export default function VehiculosIndex({ vehiculos, filters }: { vehiculos: VehiculosPaginator; filters: { search: string } }) {
+export default function VehiculosIndex({
+    vehiculos,
+    filters,
+}: {
+    vehiculos: VehiculosPaginator;
+    filters: { search: string; centro: Centro };
+}) {
     const { auth } = usePage<SharedData>().props;
-    // Eliminar vehículos es exclusivo de Administrador; Flota conserva el
-    // resto de acciones (crear, editar, marcar disponibilidad).
     const puedeEliminar = auth.isAdmin;
 
     const [search, setSearch] = useState(filters.search);
@@ -58,17 +64,23 @@ export default function VehiculosIndex({ vehiculos, filters }: { vehiculos: Vehi
     const [novedadError, setNovedadError] = useState<string | null>(null);
     const [enviandoNovedad, setEnviandoNovedad] = useState(false);
 
+    const centro = filters.centro ?? 'UD';
+
+    const switchCentro = (c: Centro) => {
+        router.get(route('flota.vehiculos.index'), { search, centro: c }, { preserveState: true, replace: true });
+    };
+
     useEffect(() => {
         if (isFirstRender.current) {
             isFirstRender.current = false;
             return;
         }
-        router.get(route('flota.vehiculos.index'), { search: debouncedSearch }, { preserveState: true, replace: true });
+        router.get(route('flota.vehiculos.index'), { search: debouncedSearch, centro }, { preserveState: true, replace: true });
     }, [debouncedSearch]);
 
     const submitFilters: FormEventHandler = (e) => {
         e.preventDefault();
-        router.get(route('flota.vehiculos.index'), { search }, { preserveState: true, replace: true });
+        router.get(route('flota.vehiculos.index'), { search, centro }, { preserveState: true, replace: true });
     };
 
     const destroyVehiculo = (vehiculo: VehiculoRow) => {
@@ -77,13 +89,11 @@ export default function VehiculosIndex({ vehiculos, filters }: { vehiculos: Vehi
 
     const toggleActivo = (vehiculo: VehiculoRow) => {
         if (vehiculo.is_active) {
-            // Va a quedar no disponible: primero se digita la novedad.
             setVehiculoNoDisponible(vehiculo);
             setNovedad('');
             setNovedadError(null);
             return;
         }
-
         router.patch(route('flota.vehiculos.toggle-activo', vehiculo.id), {}, { preserveScroll: true });
     };
 
@@ -119,6 +129,24 @@ export default function VehiculosIndex({ vehiculos, filters }: { vehiculos: Vehi
                             Nuevo vehículo
                         </Link>
                     </Button>
+                </div>
+
+                {/* Selector de centro */}
+                <div className="flex items-center gap-1 self-start rounded-lg border border-sidebar-border/70 bg-muted p-1 dark:border-sidebar-border">
+                    {(['UD', 'UC'] as Centro[]).map((c) => (
+                        <button
+                            key={c}
+                            type="button"
+                            onClick={() => switchCentro(c)}
+                            className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+                                centro === c
+                                    ? 'bg-background text-foreground shadow-sm'
+                                    : 'text-muted-foreground hover:text-foreground'
+                            }`}
+                        >
+                            {c}
+                        </button>
+                    ))}
                 </div>
 
                 <form onSubmit={submitFilters} className="flex max-w-sm items-center gap-2">

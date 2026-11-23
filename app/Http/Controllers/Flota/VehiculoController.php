@@ -27,6 +27,9 @@ class VehiculoController extends Controller
     public function index(Request $request): Response
     {
         $search = $request->string('search')->trim()->toString();
+        $centro = in_array($request->input('centro'), ['UD', 'UC'], true)
+            ? $request->input('centro')
+            : 'UD';
 
         $vehiculos = Vehiculo::query()
             ->when($search !== '', function ($query) use ($search) {
@@ -36,13 +39,23 @@ class VehiculoController extends Controller
                         ->orWhere('modelo', 'like', "%{$search}%");
                 });
             })
+            ->where(function ($query) use ($centro) {
+                if ($centro === 'UD') {
+                    // UD: centro = 'UD' o sin valor asignado (null / '')
+                    $query->where('centro', 'UD')
+                          ->orWhereNull('centro')
+                          ->orWhere('centro', '');
+                } else {
+                    $query->where('centro', 'UC');
+                }
+            })
             ->orderBy('placa')
             ->paginate(15)
             ->withQueryString();
 
         return Inertia::render('flota/vehiculos/index', [
             'vehiculos' => $vehiculos,
-            'filters' => ['search' => $search],
+            'filters' => ['search' => $search, 'centro' => $centro],
         ]);
     }
 
