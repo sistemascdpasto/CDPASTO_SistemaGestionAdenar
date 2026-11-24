@@ -129,9 +129,11 @@ export function NotificationsBell() {
         // optimistamente en la sesión actual — no tienen registro en alertas.
     };
 
-    // Clave estable: grupo + url + titulo (no depende del índice del array)
+    // Clave estable: grupo + url + titulo + detalle (no depende del índice del array)
+    // Se incluye detalle para evitar colisiones cuando un mismo colaborador tiene
+    // varias pruebas pendientes (7/30/90 días) con el mismo titulo pero distinto detalle.
     const claveItem = (grupoKey: string, item: NotificacionItem) =>
-        `${grupoKey}::${item.url}::${item.titulo}`;
+        `${grupoKey}::${item.url}::${item.titulo}::${item.detalle}`;
 
     // Filtrar items descartados optimistamente y recalcular totales
     const gruposFiltrados = data.grupos

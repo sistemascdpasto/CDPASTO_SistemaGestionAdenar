@@ -2,6 +2,7 @@
 
 namespace App\Models\Flota;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Storage;
@@ -25,13 +26,13 @@ class ExtintorInspeccionEvidencia extends Model
         return $this->belongsTo(ExtintorInspeccion::class, 'inspeccion_id');
     }
 
-    public function getUrlAttribute(): string
+    protected function url(): Attribute
     {
-        return Storage::disk('public')->url($this->path);
+        return Attribute::get(fn () => Storage::disk('public')->url($this->path));
     }
 
-    public function getEsPdfAttribute(): bool
+    protected function esPdf(): Attribute
     {
-        return str_contains($this->tipo_mime ?? '', 'pdf');
+        return Attribute::get(fn () => str_contains($this->tipo_mime ?? '', 'pdf'));
     }
 }

@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { QrScanner } from '@/components/flota/QrScanner';
+import { QrScanner } from '@/components/ui/QrScanner';
 import { QRCodeSVG } from 'qrcode.react';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
@@ -37,6 +37,20 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Flota', href: '/modules/flota' },
     { title: 'Extintores', href: '/modules/flota/extintores' },
 ];
+
+// ─── QR scanner ───────────────────────────────────────────────────────────────
+
+const RUTA_QR = '/modules/flota/extintores/qr';
+
+function destinoQr(texto: string): string {
+    const token = `${RUTA_QR}/${encodeURIComponent(texto.trim())}`;
+    try {
+        const url = new URL(texto);
+        return url.origin === window.location.origin ? url.pathname + url.search : token;
+    } catch {
+        return token;
+    }
+}
 
 // ─── Mapa de codificación de partes ───────────────────────────────────────────
 
@@ -1089,16 +1103,14 @@ export default function ExtintoresIndex({ extintores, placas, columnas_extra, fi
                 <div className="fixed inset-0 z-50 flex items-center justify-center">
                     <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setScannerOpen(false)} />
                     <div className="relative z-10 w-full max-w-sm mx-4 rounded-2xl border border-sidebar-border/70 bg-card shadow-2xl dark:border-sidebar-border p-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
-                                <ScanLine className="size-5" /> Escanear QR de extintor
-                            </h2>
-                            <button type="button" onClick={() => setScannerOpen(false)}
-                                className="text-muted-foreground hover:text-foreground transition-colors">
-                                <X className="size-5" />
-                            </button>
-                        </div>
-                        <QrScanner onClose={() => setScannerOpen(false)} />
+                        <QrScanner
+                            hint="Apunta la cámara al código QR del extintor"
+                            onClose={() => setScannerOpen(false)}
+                            onResult={(texto) => {
+                                setScannerOpen(false);
+                                router.visit(destinoQr(texto));
+                            }}
+                        />
                     </div>
                 </div>
             )}

@@ -3,19 +3,21 @@
 namespace App\Models\Flota;
 
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 /**
- * Entidad principal: el extintor físico.
- * Se identifica por su número de serie.
- * La placa del vehículo en que está montado NO es un campo del extintor;
- * se consulta a través de la asignación activa (fecha_retiro = NULL).
+ * Modelo principal del módulo de extintores.
+ *
+ * @property-read string|null $placa_actual
+ * @property-read bool        $vencido
+ * @property-read string|null $foto_url
  */
 class Extintor extends Model
 {
@@ -24,36 +26,35 @@ class Extintor extends Model
     protected $table = 'extintores';
 
     protected $fillable = [
+        // Identificación
         'numero_serie',
-        'qr_token',
         'foto_path',
-        'tipo_agente',
-        'capacidad_kg',
         'marca',
+
+        // Características técnicas
+        'tipo_agente',
+        'agente_impulsor',
+        'capacidad_kg',
         'fecha_fabricacion',
         'fecha_vencimiento',
-        'observaciones',
+
+        // Estado e inspección visual
         'condicion',
-        'agente_impulsor',
         'parte_mantenimiento',
         'senalizacion',
         'demarcacion',
         'funcionamiento',
         'acceso',
+        'observaciones',
+
+        // Auditoría
         'user_id',
     ];
 
     protected static function booted(): void
     {
-        static::creating(function (self $extintor) {
-            $extintor->qr_token = $extintor->numero_serie;
-        });
-
-        static::updating(function (self $extintor) {
-            if ($extintor->isDirty('numero_serie')) {
-                $extintor->qr_token = $extintor->numero_serie;
-            }
-        });
+        // El QR siempre refleja el número de serie.
+        static::saving(fn (self $e) => $e->qr_token = $e->numero_serie);
     }
 
     protected function casts(): array
@@ -67,25 +68,21 @@ class Extintor extends Model
 
     // ── Relaciones ────────────────────────────────────────────────────────────
 
-    /** Toda la trayectoria del extintor por los distintos vehículos. */
     public function asignaciones(): HasMany
     {
         return $this->hasMany(ExtintorAsignacion::class)->orderByDesc('fecha_colocacion');
     }
 
-    /** Inspecciones realizadas al extintor (inicio y periódicas). */
     public function inspecciones(): HasMany
     {
         return $this->hasMany(ExtintorInspeccion::class)->orderByDesc('fecha_inspeccion');
     }
 
-    /** La asignación activa (sin fecha de retiro) — puede ser null si está en depósito. */
     public function asignacionActiva(): HasOne
     {
         return $this->hasOne(ExtintorAsignacion::class)->whereNull('fecha_retiro');
     }
 
-    /** Última inspección realizada (por fecha_inspeccion DESC). */
     public function ultimaInspeccion(): HasOne
     {
         return $this->hasOne(ExtintorInspeccion::class)->latestOfMany('fecha_inspeccion');
@@ -96,34 +93,44 @@ class Extintor extends Model
         return $this->belongsTo(User::class, 'user_id');
     }
 
+    // ── Scopes ────────────────────────────────────────────────────────────────
+
+    public function scopeVencidos(Builder $query): Builder
+    {
+        return $query->whereDate('fecha_vencimiento', '<', now());
+    }
+
+    public function scopePorVencer(Builder $query, int $dias = 30): Builder
+    {
+        return $query->whereBetween('fecha_vencimiento', [now(), now()->addDays($dias)]);
+    }
+
+    public function scopeEnDeposito(Builder $query): Builder
+    {
+        return $query->whereDoesntHave('asignacionActiva');
+    }
+
+    public function scopeMontados(Builder $query): Builder
+    {
+        return $query->whereHas('asignacionActiva');
+    }
+
     // ── Accessors ─────────────────────────────────────────────────────────────
 
-    /** Placa en la que está montado actualmente, o null si está en depósito. */
-    public function getPlacaActualAttribute(): ?string
+    protected function placaActual(): Attribute
     {
-        return $this->asignacionActiva?->placa;
+        return Attribute::get(fn () => $this->asignacionActiva?->placa);
     }
 
-    public function getVencidoAttribute(): bool
+    protected function vencido(): Attribute
     {
-        return $this->fecha_vencimiento !== null
-            && $this->fecha_vencimiento->isPast();
+        return Attribute::get(fn () => (bool) $this->fecha_vencimiento?->isPast());
     }
 
-    public function getFotoUrlAttribute(): ?string
+    protected function fotoUrl(): Attribute
     {
-        if ($this->foto_path) {
-            return Storage::disk('public')->url($this->foto_path);
-        }
-
-        // Fallback por archivo en storage/app/public/extintores/{id}/foto.*
-        $matches = glob(storage_path("app/public/extintores/{$this->id}/foto.*"));
-        if (!empty($matches)) {
-            $file = $matches[0];
-            $ext = pathinfo($file, PATHINFO_EXTENSION);
-            return Storage::disk('public')->url("extintores/{$this->id}/foto.{$ext}") . '?v=' . filemtime($file);
-        }
-
-        return null;
+        return Attribute::get(
+            fn () => $this->foto_path ? Storage::disk('public')->url($this->foto_path) : null
+        );
     }
 }

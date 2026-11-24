@@ -3,17 +3,16 @@
 namespace App\Models\Flota;
 
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Registra una estadía del extintor en un vehículo.
- * Una fila = "el extintor X estuvo en la placa Y desde el día A hasta el día B".
- * Si fecha_retiro es NULL el extintor sigue montado en ese vehículo.
+ * Estadía de un extintor en un vehículo (fecha_retiro NULL = sigue montado).
+ * Los checklists se guardan como JSON: { "Presión (bar)": "12", "Sello OK": "Sí" }
  *
- * Los checklists (colocación y retiro) se guardan como JSON con la estructura:
- *   { "Presión (bar)": "12", "Sello OK": "Sí", ... }
- * Las claves son los nombres de ExtintorColumna en el momento del registro.
+ * @property-read bool $activo
  */
 class ExtintorAsignacion extends Model
 {
@@ -37,10 +36,10 @@ class ExtintorAsignacion extends Model
     protected function casts(): array
     {
         return [
-            'fecha_colocacion'    => 'date:Y-m-d',
-            'fecha_retiro'        => 'date:Y-m-d',
+            'fecha_colocacion'     => 'date:Y-m-d',
+            'fecha_retiro'         => 'date:Y-m-d',
             'checklist_colocacion' => 'array',
-            'checklist_retiro'    => 'array',
+            'checklist_retiro'     => 'array',
         ];
     }
 
@@ -61,10 +60,22 @@ class ExtintorAsignacion extends Model
         return $this->belongsTo(User::class, 'user_retiro');
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    // ── Scopes ────────────────────────────────────────────────────────────────
 
-    public function getActivoAttribute(): bool
+    public function scopeActivas(Builder $query): Builder
     {
-        return $this->fecha_retiro === null;
+        return $query->whereNull('fecha_retiro');
+    }
+
+    public function scopeDePlaca(Builder $query, string $placa): Builder
+    {
+        return $query->where('placa', $placa);
+    }
+
+    // ── Accessors ─────────────────────────────────────────────────────────────
+
+    protected function activo(): Attribute
+    {
+        return Attribute::get(fn () => $this->fecha_retiro === null);
     }
 }

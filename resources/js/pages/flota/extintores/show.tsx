@@ -9,6 +9,7 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     AlertTriangle,
     ArrowLeft,
+    ArrowLeftRight,
     CalendarClock,
     Camera,
     CheckCircle2,
@@ -16,15 +17,14 @@ import {
     ClipboardList,
     ClipboardX,
     Download,
+    FileDown,
     FileText,
     FlameKindling,
-    FileDown,
     History,
     Image,
     Loader2,
     LogIn,
     LogOut,
-    Maximize2,
     Pencil,
     Plus,
     QrCode,
@@ -32,16 +32,20 @@ import {
     Upload,
     X,
     XCircle,
-    ZoomIn,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 // ─── Clases y Types ────────────────────────────────────────────────────────────
 
 const SELECT_CLS =
     'h-9 w-full rounded-lg border border-sidebar-border/70 dark:border-sidebar-border bg-card px-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring';
+
+const TEXTAREA_CLS =
+    'rounded-lg border border-sidebar-border/70 dark:border-sidebar-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none';
+
+const hoy = () => new Date().toISOString().slice(0, 10);
 
 interface ExtintorDetalle {
     id: number;
@@ -109,6 +113,7 @@ interface Inspeccion {
     capacidad_kg: string | null;
     marca: string | null;
     parte_mantenimiento: string | null;
+    partes_mantenimiento_lista: string[];
     senalizacion: string | null;
     demarcacion: string | null;
     funcionamiento: string | null;
@@ -123,6 +128,65 @@ interface Inspeccion {
     evidencias: Evidencia[];
 }
 
+interface ParteMantenimiento {
+    codigo: string;
+    nombre: string;
+}
+
+interface FilaHistorial {
+    id: string;
+    fecha: string;
+    tipo: string;
+    numero_serie: string;
+    condicion: string;
+    tipo_agente: string;
+    agente_impulsor: string;
+    ultima_recarga: string;
+    parte_mantenimiento: string;
+    senalizacion: string;
+    demarcacion: string;
+    funcionamiento: string;
+    acceso: string;
+    placa_actual: string;
+    observaciones: string;
+    inspeccion_id: number | null;
+}
+
+interface FormInspeccion {
+    tipo: string;
+    fecha_inspeccion: string;
+    responsable_inicio: string;
+    responsable_periodico: string;
+    condicion: string;
+    tipo_agente: string;
+    agente_impulsor: string;
+    capacidad_kg: string;
+    marca: string;
+    parte_mantenimiento: string[];
+    senalizacion: string;
+    demarcacion: string;
+    funcionamiento: string;
+    acceso: string;
+    observaciones_inspeccion: string;
+    incluye_recarga: boolean;
+    fecha_recarga: string;
+    fecha_proxima_recarga: string;
+    observaciones_recarga: string;
+    registra_vehiculo: boolean;
+    nueva_placa: string;
+    observaciones_vehiculo: string;
+    desasociar_previos_insp: boolean;
+}
+
+type ExtintorEnPlaca = {
+    id: number;
+    numero_serie: string;
+    tipo_agente: string | null;
+    capacidad_kg: string | null;
+    marca: string | null;
+    foto_url: string | null;
+};
+
 interface Props {
     extintor: ExtintorDetalle;
     asignaciones: Asignacion[];
@@ -132,6 +196,12 @@ interface Props {
     colaboradores: { id: number; nombre: string; cargo: string }[];
     tiene_inspeccion_inicio: boolean;
     usuario_nombre: string;
+    // Calculado en el backend
+    tipo_inspeccion: 'inicio' | 'periodica';
+    ultima_recarga: string | null;
+    inspeccion_defaults: FormInspeccion;
+    partes_mantenimiento: ParteMantenimiento[];
+    historial: FilaHistorial[];
 }
 
 // ─── Breadcrumbs ──────────────────────────────────────────────────────────────
@@ -172,6 +242,12 @@ function Modal({ open, onClose, title, wide = false, children }: {
             </div>
         </div>
     );
+}
+
+// ─── Campo de error reutilizable ──────────────────────────────────────────────
+
+function FieldError({ msg }: { msg?: string }) {
+    return msg ? <p className="text-[10px] text-red-500">{msg}</p> : null;
 }
 
 // ─── Checklist dinámico ───────────────────────────────────────────────────────
@@ -340,9 +416,32 @@ function FileSelector({ onChange }: { onChange: (files: File[]) => void }) {
     );
 }
 
+// ─── Confirmación inline de eliminación ───────────────────────────────────────
+
+function ConfirmarEliminar({ texto, onConfirm, onCancel }: {
+    texto: string; onConfirm: () => void; onCancel: () => void;
+}) {
+    return (
+        <span className="flex items-center gap-1">
+            <span className="text-[10px] font-semibold text-red-600 whitespace-nowrap">{texto}</span>
+            <button type="button" onClick={onConfirm}
+                className="rounded px-1.5 py-0.5 text-[10px] font-semibold bg-red-600 text-white hover:bg-red-700">
+                Sí
+            </button>
+            <button type="button" onClick={onCancel} className="text-muted-foreground hover:text-foreground">
+                <X className="size-3.5" />
+            </button>
+        </span>
+    );
+}
+
 // ─── Página de detalle ────────────────────────────────────────────────────────
 
-export default function ExtintorShow({ extintor, asignaciones, inspecciones, columnas_extra, placas, colaboradores, tiene_inspeccion_inicio, usuario_nombre }: Props) {
+export default function ExtintorShow({
+    extintor, asignaciones, inspecciones, columnas_extra, placas, colaboradores,
+    tipo_inspeccion, ultima_recarga: ultimaRecarga, inspeccion_defaults,
+    partes_mantenimiento, historial,
+}: Props) {
     const breadcrumbs = useBreadcrumbs(extintor.numero_serie);
 
     // Flash
@@ -356,22 +455,16 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
     useEffect(() => { if (flashMsg) setSuccessMsg(flashMsg); }, [flashMsg]);
 
-    // ── Tipo de inspección automático ─────────────────────────────────────────
-    const tipoInspeccion = tiene_inspeccion_inicio ? 'periodica' : 'inicio';
-
-    // ── Última recarga para mostrar en el modal ───────────────────────────────
-    const ultimaRecarga = inspecciones
-        .filter(i => i.incluye_recarga && i.fecha_recarga)
-        .sort((a, b) => (b.fecha_recarga ?? '').localeCompare(a.fecha_recarga ?? ''))[0]?.fecha_recarga ?? null;
+    const nombreParte = (codigo: string) =>
+        partes_mantenimiento.find(p => p.codigo === codigo)?.nombre ?? codigo;
 
     // ── Formulario inspección (nuevo / editar) ────────────────────────────────
     const [modalInspeccion, setModalInspeccion] = useState(false);
-    const [editInspeccion,  setEditInspeccion]  = useState<Inspeccion | null>(null);
+    const [editInspeccion, setEditInspeccion] = useState<Inspeccion | null>(null);
     const [savingInspeccion, setSavingInspeccion] = useState(false);
     const [errorsInspeccion, setErrorsInspeccion] = useState<Record<string, string>>({});
     const [archivosInspeccion, setArchivosInspeccion] = useState<File[]>([]);
 
-    // FirmaPad ref + modales de confirmación / dibujo de firma
     const firmaPadRef = useRef<FirmaPadHandle>(null);
     const [firmaGuardadaUrl, setFirmaGuardadaUrl] = useState<string | null>(null);
     const [modalConfirmarFirma, setModalConfirmarFirma] = useState(false);
@@ -379,42 +472,26 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
     const [desplegarChecklist, setDesplegarChecklist] = useState(false);
     const [hayMantenimiento, setHayMantenimiento] = useState(false);
 
-    const formInspeccionVacio = () => ({
-        tipo: tipoInspeccion,
-        fecha_inspeccion: new Date().toISOString().slice(0, 10),
-        responsable_inicio:    tipoInspeccion === 'inicio'    ? usuario_nombre : '',
-        responsable_periodico: tipoInspeccion === 'periodica' ? usuario_nombre : '',
-        condicion: extintor.condicion ?? '',
-        tipo_agente: extintor.tipo_agente ?? '',
-        agente_impulsor: extintor.agente_impulsor ?? '',
-        capacidad_kg: extintor.capacidad_kg ?? '',
-        marca: extintor.marca ?? '',
-        parte_mantenimiento: [] as string[],
-        senalizacion: extintor.senalizacion ?? '',
-        demarcacion: extintor.demarcacion ?? '',
-        funcionamiento: extintor.funcionamiento ?? '',
-        acceso: extintor.acceso ?? '',
-        observaciones_inspeccion: extintor.observaciones ?? '',
-        incluye_recarga: false,
-        fecha_recarga: '',
-        fecha_proxima_recarga: '',
-        observaciones_recarga: '',
-        registra_vehiculo: false,
-        nueva_placa: '',
-        observaciones_vehiculo: '',
-    });
+    // Advertencia de ocupación de placa dentro del formulario de inspección
+    const [extintoresEnPlacaInsp, setExtintoresEnPlacaInsp] = useState<ExtintorEnPlaca[]>([]);
+    const [cargandoPlacaInsp, setCargandoPlacaInsp] = useState(false);
 
-    const formDesdeInspeccion = (ins: Inspeccion) => ({
+    const [formInspeccion, setFormInspeccion] = useState<FormInspeccion>(inspeccion_defaults);
+    const setInsp = (k: keyof FormInspeccion, v: string | boolean | string[]) =>
+        setFormInspeccion(p => ({ ...p, [k]: v }));
+
+    const formDesdeInspeccion = (ins: Inspeccion): FormInspeccion => ({
+        ...inspeccion_defaults,
         tipo: ins.tipo,
         fecha_inspeccion: ins.fecha_inspeccion ?? '',
-        responsable_inicio:    ins.responsable_inicio ?? '',
+        responsable_inicio: ins.responsable_inicio ?? '',
         responsable_periodico: ins.responsable_periodico ?? '',
         condicion: ins.condicion ?? '',
         tipo_agente: ins.tipo_agente ?? '',
         agente_impulsor: ins.agente_impulsor ?? '',
         capacidad_kg: ins.capacidad_kg ?? '',
         marca: ins.marca ?? '',
-        parte_mantenimiento: ins.parte_mantenimiento ? ins.parte_mantenimiento.split(',').map(s => s.trim()).filter(Boolean) : [] as string[],
+        parte_mantenimiento: ins.partes_mantenimiento_lista,
         senalizacion: ins.senalizacion ?? '',
         demarcacion: ins.demarcacion ?? '',
         funcionamiento: ins.funcionamiento ?? '',
@@ -427,45 +504,26 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
         registra_vehiculo: false,
         nueva_placa: '',
         observaciones_vehiculo: '',
+        desasociar_previos_insp: false,
     });
 
-    const [formInspeccion, setFormInspeccion] = useState(formInspeccionVacio);
-    const setInsp = (k: string, v: string | boolean | string[]) => setFormInspeccion(p => ({ ...p, [k]: v }));
+    const cargarFirmaGuardada = () => {
+        fetch(route('flota.extintores.ultima-firma'))
+            .then(r => r.json())
+            .then((json: { firma_url: string | null }) => setFirmaGuardadaUrl(json.firma_url || null))
+            .catch(() => setFirmaGuardadaUrl(null));
+    };
 
     const abrirNuevaInspeccion = () => {
         setEditInspeccion(null);
-        const base = formInspeccionVacio();
-        const ultima = inspecciones[0]; // Última inspección realizada
-        if (ultima) {
-            setFormInspeccion({
-                ...base,
-                condicion: ultima.condicion ?? base.condicion,
-                tipo_agente: ultima.tipo_agente ?? base.tipo_agente,
-                agente_impulsor: ultima.agente_impulsor ?? base.agente_impulsor,
-                parte_mantenimiento: [],
-                senalizacion: ultima.senalizacion ?? base.senalizacion,
-                demarcacion: ultima.demarcacion ?? base.demarcacion,
-                funcionamiento: ultima.funcionamiento ?? base.funcionamiento,
-                acceso: ultima.acceso ?? base.acceso,
-                observaciones_inspeccion: ultima.observaciones_inspeccion ?? base.observaciones_inspeccion,
-            });
-        } else {
-            setFormInspeccion(base);
-        }
+        setFormInspeccion(inspeccion_defaults); // ya viene precargado desde el backend
         setArchivosInspeccion([]);
         setErrorsInspeccion({});
         setDesplegarChecklist(false);
         setHayMantenimiento(false);
+        setExtintoresEnPlacaInsp([]);
         firmaPadRef.current?.clear();
-
-        // Consultar firma previa en segundo plano (no se muestra el modal de aviso todavía)
-        fetch(route('flota.extintores.ultima-firma'))
-            .then(r => r.json())
-            .then((json: { firma_url: string | null }) => {
-                setFirmaGuardadaUrl(json.firma_url || null);
-            })
-            .catch(() => setFirmaGuardadaUrl(null));
-
+        cargarFirmaGuardada();
         setModalConfirmarFirma(false);
         setModalFirmaManual(false);
         setModalInspeccion(true);
@@ -477,7 +535,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
         setArchivosInspeccion([]);
         setErrorsInspeccion({});
         setDesplegarChecklist(false);
-        setHayMantenimiento((ins.parte_mantenimiento ?? '').trim().length > 0);
+        setHayMantenimiento(ins.partes_mantenimiento_lista.length > 0);
         setModalConfirmarFirma(false);
         setModalFirmaManual(false);
         setModalInspeccion(true);
@@ -490,14 +548,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
         if (editInspeccion) {
             router.post(
                 route('flota.extintores.inspecciones.store', extintor.id),
-                {
-                    ...formInspeccion,
-                    parte_mantenimiento: Array.isArray(formInspeccion.parte_mantenimiento)
-                        ? formInspeccion.parte_mantenimiento.join(',')
-                        : formInspeccion.parte_mantenimiento,
-                    _method: 'PUT',
-                    _edit_id: editInspeccion.id,
-                },
+                { ...formInspeccion, _method: 'PUT', _edit_id: editInspeccion.id },
                 {
                     onSuccess: () => {
                         setModalInspeccion(false);
@@ -507,9 +558,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                         setErrorsInspeccion(errs as Record<string, string>);
                         setSavingInspeccion(false);
                     },
-                    onFinish: () => {
-                        setSavingInspeccion(false);
-                    },
+                    onFinish: () => setSavingInspeccion(false),
                 }
             );
             return;
@@ -538,13 +587,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                 setSavingInspeccion(false);
                 setArchivosInspeccion([]);
                 firmaPadRef.current?.clear();
-                setFormInspeccion(formInspeccionVacio());
-                fetch(route('flota.extintores.ultima-firma'))
-                    .then(r => r.json())
-                    .then((json: { firma_url: string | null }) => {
-                        setFirmaGuardadaUrl(json.firma_url || null);
-                    })
-                    .catch(() => {});
+                cargarFirmaGuardada();
             },
             onError: (errs) => {
                 setErrorsInspeccion(errs as Record<string, string>);
@@ -552,39 +595,33 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                 setModalConfirmarFirma(false);
                 setModalFirmaManual(false);
             },
-            onFinish: () => {
-                setSavingInspeccion(false);
-            },
+            onFinish: () => setSavingInspeccion(false),
         });
     };
 
+    // Las validaciones (fechas de recarga, cupo de placa) las hace el backend.
     const handleInspeccion = (e: React.FormEvent) => {
         e.preventDefault();
         setErrorsInspeccion({});
-
-        if (formInspeccion.incluye_recarga) {
-            if (ultimaRecarga && formInspeccion.fecha_recarga && formInspeccion.fecha_recarga < ultimaRecarga) {
-                setErrorsInspeccion({ fecha_recarga: `No puede ser anterior a la última recarga (${ultimaRecarga})` });
-                return;
-            }
-            if (formInspeccion.fecha_recarga && formInspeccion.fecha_proxima_recarga && formInspeccion.fecha_proxima_recarga <= formInspeccion.fecha_recarga) {
-                setErrorsInspeccion({ fecha_proxima_recarga: 'Debe ser posterior a la fecha de recarga realizada' });
-                return;
-            }
-        }
 
         if (editInspeccion) {
             ejecutarGuardadoInspeccion();
             return;
         }
 
-        // Al guardar: si hay firma guardada previamente, mostramos el aviso para confirmar si desea precargarla
-        if (firmaGuardadaUrl) {
-            setModalConfirmarFirma(true);
-        } else {
-            // Si no tiene firma previa, abrimos el pad para firmar después de dar clic en guardar
-            setModalFirmaManual(true);
-        }
+        if (firmaGuardadaUrl) setModalConfirmarFirma(true);
+        else setModalFirmaManual(true);
+    };
+
+    const consultarExtintoresEnPlacaInsp = (placa: string) => {
+        setExtintoresEnPlacaInsp([]);
+        if (!placa) return;
+        setCargandoPlacaInsp(true);
+        fetch(`/modules/flota/extintores/por-placa/${encodeURIComponent(placa)}`)
+            .then(r => r.json())
+            .then(json => setExtintoresEnPlacaInsp((json.extintores ?? []).filter((ext: ExtintorEnPlaca) => ext.id !== extintor.id)))
+            .catch(() => setExtintoresEnPlacaInsp([]))
+            .finally(() => setCargandoPlacaInsp(false));
     };
 
     // ── Eliminar inspección ───────────────────────────────────────────────────
@@ -601,17 +638,22 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
         return obj;
     };
 
-    const [modalAsignar, setModalAsignar] = useState(false);
-    const [editAsignacion, setEditAsignacion] = useState<Asignacion | null>(null);
-    const [savingAsignar, setSavingAsignar] = useState(false);
-    const [errorsAsignar, setErrorsAsignar] = useState<Record<string, string>>({});
-    const [formAsignar, setFormAsignar] = useState({
-        placa: '', fecha_colocacion: new Date().toISOString().slice(0, 10),
+    const formAsignarVacio = () => ({
+        placa: '', fecha_colocacion: hoy(),
         fecha_retiro: '',
         responsable_colocacion: '', observaciones_colocacion: '',
         responsable_retiro: '', observaciones_retiro: '',
         checklist_colocacion: checklistVacio(),
     });
+
+    const [modalAsignar, setModalAsignar] = useState(false);
+    const [editAsignacion, setEditAsignacion] = useState<Asignacion | null>(null);
+    const [savingAsignar, setSavingAsignar] = useState(false);
+    const [errorsAsignar, setErrorsAsignar] = useState<Record<string, string>>({});
+    const [extintoresEnPlaca, setExtintoresEnPlaca] = useState<ExtintorEnPlaca[]>([]);
+    const [cargandoPlaca, setCargandoPlaca] = useState(false);
+    const [desasociarPrevios, setDesasociarPrevios] = useState(false);
+    const [formAsignar, setFormAsignar] = useState(formAsignarVacio);
     const setAsignar = (k: string, v: string) => setFormAsignar(p => ({ ...p, [k]: v }));
     const setChecklistAsignar = (col: string, val: string) =>
         setFormAsignar(p => ({ ...p, checklist_colocacion: { ...p.checklist_colocacion, [col]: val } }));
@@ -629,22 +671,40 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
             checklist_colocacion: { ...checklistVacio(), ...a.checklist_colocacion },
         });
         setErrorsAsignar({});
+        setExtintoresEnPlaca([]);
+        setDesasociarPrevios(false);
         setModalAsignar(true);
     };
 
+    // El backend valida el cupo (máx. 2 por placa); aquí solo se pide confirmación.
     const handleAsignar = (e: React.FormEvent) => {
         e.preventDefault(); setSavingAsignar(true); setErrorsAsignar({});
         if (editAsignacion) {
             router.put(route('flota.extintores.asignaciones.update', { extintor: extintor.id, asignacion: editAsignacion.id }), formAsignar, {
                 onSuccess: () => { setModalAsignar(false); setSavingAsignar(false); },
                 onError: (errs) => { setErrorsAsignar(errs as Record<string, string>); setSavingAsignar(false); },
+                onFinish: () => setSavingAsignar(false),
             });
-        } else {
-            router.post(route('flota.extintores.asignar', extintor.id), formAsignar, {
-                onSuccess: () => { setModalAsignar(false); setSavingAsignar(false); },
-                onError: (errs) => { setErrorsAsignar(errs as Record<string, string>); setSavingAsignar(false); },
-            });
+            return;
         }
+
+        if (extintoresEnPlaca.length > 0) {
+            const msg = desasociarPrevios
+                ? `¿Confirma la asignación del extintor a la placa ${formAsignar.placa}? Los ${extintoresEnPlaca.length} extintor(es) actual(es) serán desasociados.`
+                : `¿Confirma la asignación del extintor a la placa ${formAsignar.placa}? El vehículo ya tiene ${extintoresEnPlaca.length} extintor(es) asociado(s) que se conservarán.`;
+            if (!window.confirm(msg)) {
+                setSavingAsignar(false);
+                return;
+            }
+        }
+        router.post(route('flota.extintores.asignar', extintor.id), {
+            ...formAsignar,
+            desasociar_previos: desasociarPrevios,
+        }, {
+            onSuccess: () => { setModalAsignar(false); setSavingAsignar(false); },
+            onError: (errs) => { setErrorsAsignar(errs as Record<string, string>); setSavingAsignar(false); },
+            onFinish: () => setSavingAsignar(false),
+        });
     };
 
     const [confirmAsig, setConfirmAsig] = useState<number | null>(null);
@@ -654,11 +714,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
     };
 
     // ── Editar / Eliminar Registro Inicial (Extintor) ─────────────────────────
-    const [modalEditarExtintor, setModalEditarExtintor] = useState(false);
-    const [savingExtintor, setSavingExtintor] = useState(false);
-    const [errorsEditarExtintor, setErrorsEditarExtintor] = useState<Record<string, string>>({});
-    const [confirmExtintor, setConfirmExtintor] = useState(false);
-    const [formEditarExtintor, setFormEditarExtintor] = useState({
+    const formExtintorDesdeProps = () => ({
         numero_serie: extintor.numero_serie,
         marca: extintor.marca ?? '',
         tipo_agente: extintor.tipo_agente ?? '',
@@ -675,26 +731,17 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
         observaciones: extintor.observaciones ?? '',
     });
 
+    const [modalEditarExtintor, setModalEditarExtintor] = useState(false);
+    const [savingExtintor, setSavingExtintor] = useState(false);
+    const [errorsEditarExtintor, setErrorsEditarExtintor] = useState<Record<string, string>>({});
+    const [confirmExtintor, setConfirmExtintor] = useState(false);
+    const [formEditarExtintor, setFormEditarExtintor] = useState(formExtintorDesdeProps);
+
     const setExtintorField = (k: string, v: string) =>
         setFormEditarExtintor(p => ({ ...p, [k]: v }));
 
     const abrirEditarRegistroInicial = () => {
-        setFormEditarExtintor({
-            numero_serie: extintor.numero_serie,
-            marca: extintor.marca ?? '',
-            tipo_agente: extintor.tipo_agente ?? '',
-            capacidad_kg: extintor.capacidad_kg ?? '',
-            fecha_fabricacion: extintor.fecha_fabricacion ?? '',
-            fecha_vencimiento: extintor.fecha_vencimiento ?? '',
-            condicion: extintor.condicion ?? '',
-            agente_impulsor: extintor.agente_impulsor ?? '',
-            parte_mantenimiento: extintor.parte_mantenimiento ?? '',
-            senalizacion: extintor.senalizacion ?? '',
-            demarcacion: extintor.demarcacion ?? '',
-            funcionamiento: extintor.funcionamiento ?? '',
-            acceso: extintor.acceso ?? '',
-            observaciones: extintor.observaciones ?? '',
-        });
+        setFormEditarExtintor(formExtintorDesdeProps());
         setErrorsEditarExtintor({});
         setModalEditarExtintor(true);
     };
@@ -705,10 +752,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
         setErrorsEditarExtintor({});
         router.post(
             route('flota.extintores.update', extintor.id),
-            {
-                ...formEditarExtintor,
-                _method: 'put',
-            },
+            { ...formEditarExtintor, _method: 'put' },
             {
                 preserveScroll: true,
                 onSuccess: () => {
@@ -732,7 +776,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
     const [savingRetirar, setSavingRetirar] = useState(false);
     const [errorsRetirar, setErrorsRetirar] = useState<Record<string, string>>({});
     const [formRetirar, setFormRetirar] = useState({
-        fecha_retiro: new Date().toISOString().slice(0, 10),
+        fecha_retiro: hoy(),
         responsable_retiro: '', observaciones_retiro: '',
         checklist_retiro: checklistVacio(),
     });
@@ -803,11 +847,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
 
     // Bloquear scroll del body cuando el lightbox está abierto
     useEffect(() => {
-        if (lightboxOpen) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = '';
-        }
+        document.body.style.overflow = lightboxOpen ? 'hidden' : '';
         return () => { document.body.style.overflow = ''; };
     }, [lightboxOpen]);
 
@@ -826,8 +866,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
             return;
         }
 
-        const preview = URL.createObjectURL(file);
-        setLocalFoto(preview);
+        setLocalFoto(URL.createObjectURL(file));
         setFotoError(false);
         setUploadingFoto(true);
 
@@ -861,73 +900,6 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
 
     const fotoActual = (!fotoError && (localFoto || extintor.foto_url)) || null;
 
-    const historialExtintor = useMemo(() => {
-        const rows: {
-            id: string;
-            fecha: string;
-            tipo: string;
-            foto_url: string | null;
-            numero_serie: string;
-            condicion: string;
-            tipo_agente: string;
-            agente_impulsor: string;
-            ultima_recarga: string;
-            parte_mantenimiento: string;
-            senalizacion: string;
-            demarcacion: string;
-            funcionamiento: string;
-            acceso: string;
-            placa_actual: string;
-            observaciones: string;
-            es_inspeccion: boolean;
-            inspeccionOriginal: Inspeccion | null;
-        }[] = inspecciones.map(ins => ({
-            id: `ins-${ins.id}`,
-            fecha: ins.fecha_inspeccion ?? '—',
-            tipo: ins.tipo_label ?? (ins.tipo === 'inicio' ? 'Inspección de inicio' : 'Inspección periódica'),
-            foto_url: fotoActual,
-            numero_serie: extintor.numero_serie,
-            condicion: ins.condicion || extintor.condicion || '—',
-            tipo_agente: ins.tipo_agente || extintor.tipo_agente || '—',
-            agente_impulsor: ins.agente_impulsor || extintor.agente_impulsor || '—',
-            ultima_recarga: ins.fecha_recarga || (ins.incluye_recarga ? (ins.fecha_inspeccion ?? '—') : (extintor.ultima_recarga ?? '—')),
-            parte_mantenimiento: ins.parte_mantenimiento || '—',
-            senalizacion: ins.senalizacion || '—',
-            demarcacion: ins.demarcacion || '—',
-            funcionamiento: ins.funcionamiento || '—',
-            acceso: ins.acceso || '—',
-            placa_actual: extintor.placa_actual || '—',
-            observaciones: ins.observaciones_inspeccion || ins.observaciones_recarga || '—',
-            es_inspeccion: true,
-            inspeccionOriginal: ins,
-        }));
-
-        // Fila fija de Creación del Extintor (siempre visible en el historial del extintor)
-        const fechaCreacion = extintor.fecha_creacion || extintor.fecha_fabricacion || 'Registro inicial';
-        rows.push({
-            id: 'ext-inicial',
-            fecha: fechaCreacion,
-            tipo: 'Creación del extintor',
-            foto_url: fotoActual,
-            numero_serie: extintor.numero_serie,
-            condicion: extintor.condicion || '—',
-            tipo_agente: extintor.tipo_agente || '—',
-            agente_impulsor: extintor.agente_impulsor || '—',
-            ultima_recarga: extintor.ultima_recarga || '—',
-            parte_mantenimiento: extintor.parte_mantenimiento || '—',
-            senalizacion: extintor.senalizacion || '—',
-            demarcacion: extintor.demarcacion || '—',
-            funcionamiento: extintor.funcionamiento || '—',
-            acceso: extintor.acceso || '—',
-            placa_actual: extintor.placa_actual || '—',
-            observaciones: extintor.observaciones || '—',
-            es_inspeccion: false,
-            inspeccionOriginal: null,
-        });
-
-        return rows;
-    }, [inspecciones, extintor, fotoActual]);
-
     // ─────────────────────────────────────────────────────────────────────────
 
     return (
@@ -946,7 +918,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                     </div>
                 )}
 
-                {/* Encabezado — solo el botón Nueva inspección */}
+                {/* Encabezado */}
                 <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="flex items-start gap-3">
                         <Button variant="ghost" size="sm" className="mt-0.5 h-8 w-8 p-0 shrink-0" asChild>
@@ -980,10 +952,9 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                     </div>
                 </div>
 
-                {/* Ficha con Foto Grande del Extintor */}
+                {/* Ficha con foto */}
                 <div className="rounded-2xl border border-sidebar-border/70 bg-card shadow-sm dark:border-sidebar-border p-5">
                     <div className="flex flex-col md:flex-row items-stretch gap-6">
-                        {/* ── IMAGEN MÁS GRANDE DEL EXTINTOR ── */}
                         <div className="shrink-0 flex flex-col gap-2">
                             <input
                                 ref={fotoInputRef}
@@ -1045,7 +1016,6 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                             </div>
                         </div>
 
-                        {/* ── DATOS TÉCNICOS / FICHA ── */}
                         <div className="flex-1 flex flex-col justify-between">
                             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                 <div className="bg-muted/20 rounded-lg p-3 border border-sidebar-border/40">
@@ -1077,14 +1047,13 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                     </div>
                 </div>
 
-                {/* Modal Lightbox Foto Extintor */}
+                {/* Lightbox */}
                 {lightboxOpen && fotoActual && typeof document !== 'undefined' && createPortal(
                     <div
                         className="fixed inset-0 z-[100] flex flex-col items-center justify-between p-4 sm:p-6 bg-black/90 backdrop-blur-md animate-in fade-in duration-150 select-none"
                         style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh' }}
                         onClick={() => setLightboxOpen(false)}
                     >
-                        {/* Barra superior */}
                         <div className="w-full flex items-center justify-between max-w-5xl z-10 text-white pb-2" onClick={e => e.stopPropagation()}>
                             <div className="flex items-center gap-2">
                                 <span className="font-semibold text-sm sm:text-base">
@@ -1106,7 +1075,6 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                             </button>
                         </div>
 
-                        {/* Imagen perfectamente centrada que aprovecha la pantalla sin scroll */}
                         <div className="flex-1 w-full flex items-center justify-center p-2 min-h-0" onClick={() => setLightboxOpen(false)}>
                             <img
                                 src={fotoActual}
@@ -1116,7 +1084,6 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                             />
                         </div>
 
-                        {/* Pie informativo */}
                         <div className="text-center text-xs text-white/50 pt-2 z-10" onClick={e => e.stopPropagation()}>
                             Presiona <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-[10px] font-mono text-white/80">Esc</kbd> o haz clic afuera para salir
                         </div>
@@ -1124,14 +1091,14 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                     document.body
                 )}
 
-                {/* ── Tabla de extintor · Historial completo ── */}
+                {/* ── Historial completo del extintor (construido en el backend) ── */}
                 <div>
                     <div className="flex items-center justify-between mb-3">
                         <div>
                             <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
                                 <History className="size-4 text-primary" />
                                 Historial del extintor
-                                <span className="text-sm font-normal text-muted-foreground">({historialExtintor.length} {historialExtintor.length === 1 ? 'registro' : 'registros'})</span>
+                                <span className="text-sm font-normal text-muted-foreground">({historial.length} {historial.length === 1 ? 'registro' : 'registros'})</span>
                             </h2>
                             <p className="text-xs text-muted-foreground mt-0.5">
                                 Registro cronológico de todas las condiciones guardadas y renovadas del extintor
@@ -1150,109 +1117,96 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {historialExtintor.map(row => (
-                                        <TableRow key={row.id} className="hover:bg-muted/50 transition-colors">
-                                            <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                                                <div className="flex flex-col">
-                                                    <span className="font-semibold text-foreground">{row.fecha}</span>
-                                                    <span className="text-[10px] text-muted-foreground">{row.tipo}</span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="text-xs font-mono font-semibold text-foreground whitespace-nowrap">
-                                                {row.numero_serie}
-                                            </TableCell>
-                                            <TableCell className="text-xs text-muted-foreground capitalize">{row.condicion}</TableCell>
-                                            <TableCell className="text-xs text-muted-foreground">{row.tipo_agente}</TableCell>
-                                            <TableCell className="text-xs text-muted-foreground capitalize">{row.agente_impulsor}</TableCell>
-                                            <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{row.ultima_recarga}</TableCell>
-                                            <TableCell className="text-xs text-muted-foreground max-w-[130px] truncate" title={row.parte_mantenimiento}>{row.parte_mantenimiento}</TableCell>
-                                            <TableCell className="text-xs text-muted-foreground max-w-[120px] truncate" title={row.senalizacion}>{row.senalizacion}</TableCell>
-                                            <TableCell className="text-xs text-muted-foreground">{row.demarcacion}</TableCell>
-                                            <TableCell className="text-xs text-muted-foreground max-w-[120px] truncate" title={row.funcionamiento}>{row.funcionamiento}</TableCell>
-                                            <TableCell className="text-xs text-muted-foreground max-w-[120px] truncate" title={row.acceso}>{row.acceso}</TableCell>
-                                            <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{row.placa_actual}</TableCell>
-                                            <TableCell className="text-xs text-muted-foreground max-w-[150px] truncate" title={row.observaciones}>{row.observaciones}</TableCell>
-                                            <TableCell className="text-right">
-                                                {row.es_inspeccion && row.inspeccionOriginal ? (
-                                                    <div className="flex items-center justify-end gap-1">
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="h-7 w-7 p-0"
-                                                            title="Editar inspección"
-                                                            onClick={() => abrirEditarInspeccion(row.inspeccionOriginal!)}
-                                                        >
-                                                            <Pencil className="size-3.5 text-muted-foreground hover:text-foreground transition-colors" />
-                                                        </Button>
-                                                        {confirmInsp === row.inspeccionOriginal.id ? (
-                                                            <span className="flex items-center gap-1">
-                                                                <span className="text-[10px] font-semibold text-red-600 whitespace-nowrap">¿Eliminar inspección?</span>
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => handleDeleteInsp(row.inspeccionOriginal!.id)}
-                                                                    className="rounded px-1.5 py-0.5 text-[10px] font-semibold bg-red-600 text-white hover:bg-red-700"
-                                                                >
-                                                                    Sí
-                                                                </button>
-                                                                <button type="button" onClick={() => setConfirmInsp(null)}
-                                                                    className="text-muted-foreground hover:text-foreground">
-                                                                    <X className="size-3.5" />
-                                                                </button>
-                                                            </span>
-                                                        ) : (
+                                    {historial.map(row => {
+                                        const inspeccionOriginal = row.inspeccion_id !== null
+                                            ? inspecciones.find(i => i.id === row.inspeccion_id) ?? null
+                                            : null;
+                                        return (
+                                            <TableRow key={row.id} className="hover:bg-muted/50 transition-colors">
+                                                <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                                                    <div className="flex flex-col">
+                                                        <span className="font-semibold text-foreground">{row.fecha}</span>
+                                                        <span className="text-[10px] text-muted-foreground">{row.tipo}</span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-xs font-mono font-semibold text-foreground whitespace-nowrap">
+                                                    {row.numero_serie}
+                                                </TableCell>
+                                                <TableCell className="text-xs text-muted-foreground capitalize">{row.condicion}</TableCell>
+                                                <TableCell className="text-xs text-muted-foreground">{row.tipo_agente}</TableCell>
+                                                <TableCell className="text-xs text-muted-foreground capitalize">{row.agente_impulsor}</TableCell>
+                                                <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{row.ultima_recarga}</TableCell>
+                                                <TableCell className="text-xs text-muted-foreground max-w-[130px] truncate" title={row.parte_mantenimiento}>{row.parte_mantenimiento}</TableCell>
+                                                <TableCell className="text-xs text-muted-foreground max-w-[120px] truncate" title={row.senalizacion}>{row.senalizacion}</TableCell>
+                                                <TableCell className="text-xs text-muted-foreground">{row.demarcacion}</TableCell>
+                                                <TableCell className="text-xs text-muted-foreground max-w-[120px] truncate" title={row.funcionamiento}>{row.funcionamiento}</TableCell>
+                                                <TableCell className="text-xs text-muted-foreground max-w-[120px] truncate" title={row.acceso}>{row.acceso}</TableCell>
+                                                <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{row.placa_actual}</TableCell>
+                                                <TableCell className="text-xs text-muted-foreground max-w-[150px] truncate" title={row.observaciones}>{row.observaciones}</TableCell>
+                                                <TableCell className="text-right">
+                                                    {inspeccionOriginal ? (
+                                                        <div className="flex items-center justify-end gap-1">
                                                             <Button
                                                                 variant="ghost"
                                                                 size="sm"
                                                                 className="h-7 w-7 p-0"
-                                                                title="Eliminar inspección"
-                                                                onClick={() => setConfirmInsp(row.inspeccionOriginal!.id)}
+                                                                title="Editar inspección"
+                                                                onClick={() => abrirEditarInspeccion(inspeccionOriginal)}
                                                             >
-                                                                <Trash2 className="size-3.5 text-muted-foreground/60 hover:text-red-500 transition-colors" />
+                                                                <Pencil className="size-3.5 text-muted-foreground hover:text-foreground transition-colors" />
                                                             </Button>
-                                                        )}
-                                                    </div>
-                                                ) : (
-                                                    <div className="flex items-center justify-end gap-1">
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="h-7 w-7 p-0"
-                                                            title="Editar registro inicial del extintor"
-                                                            onClick={abrirEditarRegistroInicial}
-                                                        >
-                                                            <Pencil className="size-3.5 text-muted-foreground hover:text-foreground transition-colors" />
-                                                        </Button>
-                                                        {confirmExtintor ? (
-                                                            <span className="flex items-center gap-1">
-                                                                <span className="text-[10px] font-semibold text-red-600 whitespace-nowrap">¿Eliminar extintor?</span>
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={handleDeleteExtintor}
-                                                                    className="rounded px-1.5 py-0.5 text-[10px] font-semibold bg-red-600 text-white hover:bg-red-700"
+                                                            {confirmInsp === inspeccionOriginal.id ? (
+                                                                <ConfirmarEliminar
+                                                                    texto="¿Eliminar inspección?"
+                                                                    onConfirm={() => handleDeleteInsp(inspeccionOriginal.id)}
+                                                                    onCancel={() => setConfirmInsp(null)}
+                                                                />
+                                                            ) : (
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className="h-7 w-7 p-0"
+                                                                    title="Eliminar inspección"
+                                                                    onClick={() => setConfirmInsp(inspeccionOriginal.id)}
                                                                 >
-                                                                    Sí
-                                                                </button>
-                                                                <button type="button" onClick={() => setConfirmExtintor(false)}
-                                                                    className="text-muted-foreground hover:text-foreground">
-                                                                    <X className="size-3.5" />
-                                                                </button>
-                                                            </span>
-                                                        ) : (
+                                                                    <Trash2 className="size-3.5 text-muted-foreground/60 hover:text-red-500 transition-colors" />
+                                                                </Button>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex items-center justify-end gap-1">
                                                             <Button
                                                                 variant="ghost"
                                                                 size="sm"
                                                                 className="h-7 w-7 p-0"
-                                                                title="Eliminar extintor"
-                                                                onClick={() => setConfirmExtintor(true)}
+                                                                title="Editar registro inicial del extintor"
+                                                                onClick={abrirEditarRegistroInicial}
                                                             >
-                                                                <Trash2 className="size-3.5 text-muted-foreground/60 hover:text-red-500 transition-colors" />
+                                                                <Pencil className="size-3.5 text-muted-foreground hover:text-foreground transition-colors" />
                                                             </Button>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
+                                                            {confirmExtintor ? (
+                                                                <ConfirmarEliminar
+                                                                    texto="¿Eliminar extintor?"
+                                                                    onConfirm={handleDeleteExtintor}
+                                                                    onCancel={() => setConfirmExtintor(false)}
+                                                                />
+                                                            ) : (
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className="h-7 w-7 p-0"
+                                                                    title="Eliminar extintor"
+                                                                    onClick={() => setConfirmExtintor(true)}
+                                                                >
+                                                                    <Trash2 className="size-3.5 text-muted-foreground/60 hover:text-red-500 transition-colors" />
+                                                                </Button>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
                                 </TableBody>
                             </Table>
                         </div>
@@ -1287,7 +1241,6 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                                                 <TableRow
                                                     className="hover:bg-muted/50 transition-colors cursor-pointer"
                                                     onClick={() => setExpandedInsp(expandedInsp === ins.id ? null : ins.id)}>
-                                                    {/* Tipo — texto plano, sin badge */}
                                                     <TableCell className="text-xs text-muted-foreground">
                                                         {ins.tipo_label}
                                                     </TableCell>
@@ -1305,30 +1258,21 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                                                     <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                                                         {ins.fecha_proxima_recarga ?? '—'}
                                                     </TableCell>
-                                                    {/* Evidencias — número plano, sin badge */}
                                                     <TableCell className="text-xs text-muted-foreground">
                                                         {ins.evidencias.length > 0 ? ins.evidencias.length : '—'}
                                                     </TableCell>
                                                     <TableCell className="text-right">
                                                         <div className="flex items-center justify-end gap-1" onClick={e => e.stopPropagation()}>
-                                                            {/* Editar */}
                                                             <Button variant="ghost" size="sm" className="h-7 w-7 p-0"
                                                                 onClick={() => abrirEditarInspeccion(ins)}>
                                                                 <Pencil className="size-3.5 text-muted-foreground hover:text-foreground transition-colors" />
                                                             </Button>
-                                                            {/* Eliminar */}
                                                             {confirmInsp === ins.id ? (
-                                                                <span className="flex items-center gap-1">
-                                                                    <span className="text-[10px] font-semibold text-red-600 whitespace-nowrap">¿Eliminar inspección?</span>
-                                                                    <button type="button" onClick={() => handleDeleteInsp(ins.id)}
-                                                                        className="rounded px-1.5 py-0.5 text-[10px] font-semibold bg-red-600 text-white hover:bg-red-700">
-                                                                        Sí
-                                                                    </button>
-                                                                    <button type="button" onClick={() => setConfirmInsp(null)}
-                                                                        className="text-muted-foreground hover:text-foreground">
-                                                                        <X className="size-3.5" />
-                                                                    </button>
-                                                                </span>
+                                                                <ConfirmarEliminar
+                                                                    texto="¿Eliminar inspección?"
+                                                                    onConfirm={() => handleDeleteInsp(ins.id)}
+                                                                    onCancel={() => setConfirmInsp(null)}
+                                                                />
                                                             ) : (
                                                                 <Button variant="ghost" size="sm" className="h-7 w-7 p-0"
                                                                     onClick={() => setConfirmInsp(ins.id)}>
@@ -1342,7 +1286,6 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                                                     </TableCell>
                                                 </TableRow>
 
-                                                {/* Fila expandida */}
                                                 {expandedInsp === ins.id && (
                                                     <TableRow key={`${ins.id}-detail`} className="bg-muted/20 dark:bg-muted/10">
                                                         <TableCell colSpan={7} className="px-5 py-4">
@@ -1375,7 +1318,6 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                                                                 {ins.incluye_recarga && ins.observaciones_recarga && (
                                                                     <p className="text-sm text-muted-foreground"><span className="font-semibold">Recarga:</span> {ins.observaciones_recarga}</p>
                                                                 )}
-                                                                {/* Estado y checklist registrado en esta inspección */}
                                                                 {(ins.condicion || ins.tipo_agente || ins.agente_impulsor || ins.demarcacion || ins.parte_mantenimiento || ins.senalizacion || ins.funcionamiento || ins.acceso) && (
                                                                     <div className="rounded-xl border border-sidebar-border/50 bg-background/50 p-3">
                                                                         <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">
@@ -1575,7 +1517,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                 title={editInspeccion ? 'Editar inspección' : 'Registrar inspección'}>
                 <form onSubmit={handleInspeccion} className="flex flex-col gap-5">
 
-                    {/* Inspección */}
+                    {/* Datos de la inspección */}
                     <div className="flex flex-col gap-4">
                         <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                             Datos de la inspección
@@ -1592,7 +1534,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                                 <Input type="date" value={formInspeccion.fecha_inspeccion}
                                     onChange={e => setInsp('fecha_inspeccion', e.target.value)}
                                     required className="h-9 text-sm" />
-                                {errorsInspeccion.fecha_inspeccion && <p className="text-[10px] text-red-500">{errorsInspeccion.fecha_inspeccion}</p>}
+                                <FieldError msg={errorsInspeccion.fecha_inspeccion} />
                             </div>
                             <div className="grid gap-1">
                                 <Label className="text-[11px] font-semibold text-muted-foreground">
@@ -1610,11 +1552,11 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                             </div>
                         </div>
                         <p className="text-[10px] text-muted-foreground -mt-2">
-                            {tipoInspeccion === 'inicio' ? 'Primera inspección del extintor' : 'Ya existe una inspección de inicio'}
+                            {tipo_inspeccion === 'inicio' ? 'Primera inspección del extintor' : 'Ya existe una inspección de inicio'}
                         </p>
                     </div>
 
-                    {/* ── Checklist de condiciones (desplegable con cuadro) ── */}
+                    {/* Checklist de condiciones */}
                     <div className="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border overflow-hidden">
                         <label className="flex cursor-pointer items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors select-none">
                             <input
@@ -1644,7 +1586,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                                             <option value="buena">Buena</option>
                                             <option value="mala">Mala</option>
                                         </select>
-                                        {errorsInspeccion.condicion && <p className="text-[10px] text-red-500">{errorsInspeccion.condicion}</p>}
+                                        <FieldError msg={errorsInspeccion.condicion} />
                                     </div>
                                     <div className="grid gap-1">
                                         <Label className="text-[11px] font-semibold text-muted-foreground">Agente extintor</Label>
@@ -1656,7 +1598,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                                                 <option value={formInspeccion.tipo_agente}>{formInspeccion.tipo_agente}</option>
                                             )}
                                         </select>
-                                        {errorsInspeccion.tipo_agente && <p className="text-[10px] text-red-500">{errorsInspeccion.tipo_agente}</p>}
+                                        <FieldError msg={errorsInspeccion.tipo_agente} />
                                     </div>
                                     <div className="grid gap-1">
                                         <Label className="text-[11px] font-semibold text-muted-foreground">Agente impulsor</Label>
@@ -1665,7 +1607,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                                             <option value="directa">Directa</option>
                                             <option value="indirecta">Indirecta</option>
                                         </select>
-                                        {errorsInspeccion.agente_impulsor && <p className="text-[10px] text-red-500">{errorsInspeccion.agente_impulsor}</p>}
+                                        <FieldError msg={errorsInspeccion.agente_impulsor} />
                                     </div>
                                     <div className="grid gap-1">
                                         <Label className="text-[11px] font-semibold text-muted-foreground">Demarcación</Label>
@@ -1675,7 +1617,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                                             <option value="mala">Mala</option>
                                             <option value="N/A">N/A</option>
                                         </select>
-                                        {errorsInspeccion.demarcacion && <p className="text-[10px] text-red-500">{errorsInspeccion.demarcacion}</p>}
+                                        <FieldError msg={errorsInspeccion.demarcacion} />
                                     </div>
                                     <div className="grid gap-1">
                                         <Label className="text-[11px] font-semibold text-muted-foreground">Señalización</Label>
@@ -1687,7 +1629,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                                                 <option value={formInspeccion.senalizacion}>{formInspeccion.senalizacion}</option>
                                             )}
                                         </select>
-                                        {errorsInspeccion.senalizacion && <p className="text-[10px] text-red-500">{errorsInspeccion.senalizacion}</p>}
+                                        <FieldError msg={errorsInspeccion.senalizacion} />
                                     </div>
                                     <div className="grid gap-1">
                                         <Label className="text-[11px] font-semibold text-muted-foreground">Funcionamiento del Extintor</Label>
@@ -1699,7 +1641,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                                                 <option value={formInspeccion.funcionamiento}>{formInspeccion.funcionamiento}</option>
                                             )}
                                         </select>
-                                        {errorsInspeccion.funcionamiento && <p className="text-[10px] text-red-500">{errorsInspeccion.funcionamiento}</p>}
+                                        <FieldError msg={errorsInspeccion.funcionamiento} />
                                     </div>
                                     <div className="col-span-2 grid gap-1">
                                         <Label className="text-[11px] font-semibold text-muted-foreground">Acceso al Extintor</Label>
@@ -1711,20 +1653,18 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                                                 <option value={formInspeccion.acceso}>{formInspeccion.acceso}</option>
                                             )}
                                         </select>
-                                        {errorsInspeccion.acceso && <p className="text-[10px] text-red-500">{errorsInspeccion.acceso}</p>}
+                                        <FieldError msg={errorsInspeccion.acceso} />
                                     </div>
 
-                                    {/* ── Partes que requieren mantenimiento ── */}
+                                    {/* Partes que requieren mantenimiento (catálogo desde el backend) */}
                                     <div className="col-span-2 rounded-xl border border-sidebar-border/70 dark:border-sidebar-border p-3 grid gap-3">
-                                        {/* Pregunta con checkbox */}
                                         <label className="flex items-center gap-2 cursor-pointer select-none">
                                             <input
                                                 type="checkbox"
                                                 checked={hayMantenimiento}
                                                 onChange={e => {
                                                     setHayMantenimiento(e.target.checked);
-                                                    if (!e.target.checked)
-                                                        setInsp('parte_mantenimiento', []);
+                                                    if (!e.target.checked) setInsp('parte_mantenimiento', []);
                                                 }}
                                                 className="h-4 w-4 rounded border-sidebar-border/70 accent-primary"
                                             />
@@ -1733,101 +1673,54 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                                             </span>
                                         </label>
 
-                                        {/* Selector de partes — solo visible si el checkbox está marcado */}
                                         {hayMantenimiento && (
-                                        <div className="grid gap-2">
-                                            <select
-                                                className={SELECT_CLS}
-                                                value=""
-                                                onChange={e => {
-                                                    const val = e.target.value;
-                                                    if (!val) return;
-                                                    const current = formInspeccion.parte_mantenimiento as string[];
-                                                    if (!current.includes(val))
-                                                        setInsp('parte_mantenimiento', [...current, val]);
-                                                    e.target.value = '';
-                                                }}
-                                            >
-                                                <option value="">+ Agregar parte con codificación…</option>
-                                                {([
-                                                    ['1',  'Asa Percutora'],
-                                                    ['2',  'Asa de Acarreo'],
-                                                    ['3',  'Manómetro'],
-                                                    ['4',  'Pasador de Seguridad'],
-                                                    ['5',  'Presinto de Seguridad'],
-                                                    ['6',  'Válvula de Seguridad'],
-                                                    ['7',  'Tapa del Cilindro'],
-                                                    ['8',  'Cartucho Impulsor'],
-                                                    ['9',  'Manguera'],
-                                                    ['10', 'Pitón, Boquilla o Tobera'],
-                                                    ['11', 'Válvula de descarga'],
-                                                    ['12', 'Cuello del Cilindro'],
-                                                    ['13', 'Cuerpo del cilindro'],
-                                                    ['14', 'Válvula Reguladora de Presión'],
-                                                    ['15', 'Falda o Base de Sustentación'],
-                                                    ['16', 'Fondo del Cilindro'],
-                                                    ['17', 'Soporte'],
-                                                    ['18', 'Gancho de Sujeción del Extintor'],
-                                                    ['19', 'Hombro del Cilindro'],
-                                                    ['20', 'Mecanismo de Punzado'],
-                                                    ['21', 'Ruedas o Neumáticos'],
-                                                    ['22', 'Empacaduras'],
-                                                    ['23', 'Soporte de la Manguera'],
-                                                    ['24', 'Rotulación'],
-                                                    ['25', 'Asa de Sujeción a la Pared'],
-                                                    ['26', 'Número y/o Siglas del Equipo'],
-                                                    ['27', 'Etiqueta con Fecha de Ultima Recarga'],
-                                                ] as [string, string][]).filter(([n]) => !(formInspeccion.parte_mantenimiento as string[]).includes(n)).map(([n, d]) => (
-                                                    <option key={n} value={n}>{n} — {d}</option>
-                                                ))}
-                                            </select>
+                                            <div className="grid gap-2">
+                                                <select
+                                                    className={SELECT_CLS}
+                                                    value=""
+                                                    onChange={e => {
+                                                        const val = e.target.value;
+                                                        if (!val) return;
+                                                        if (!formInspeccion.parte_mantenimiento.includes(val))
+                                                            setInsp('parte_mantenimiento', [...formInspeccion.parte_mantenimiento, val]);
+                                                        e.target.value = '';
+                                                    }}
+                                                >
+                                                    <option value="">+ Agregar parte con codificación…</option>
+                                                    {partes_mantenimiento
+                                                        .filter(p => !formInspeccion.parte_mantenimiento.includes(p.codigo))
+                                                        .map(p => (
+                                                            <option key={p.codigo} value={p.codigo}>{p.codigo} — {p.nombre}</option>
+                                                        ))}
+                                                </select>
 
-                                            {/* Chips de partes seleccionadas */}
-                                            {(formInspeccion.parte_mantenimiento as string[]).length > 0 && (
-                                                <div className="flex flex-wrap gap-1.5">
-                                                    {(formInspeccion.parte_mantenimiento as string[]).map(n => {
-                                                        const labels: Record<string, string> = {
-                                                            '1':'Asa Percutora','2':'Asa de Acarreo','3':'Manómetro',
-                                                            '4':'Pasador de Seguridad','5':'Presinto de Seguridad',
-                                                            '6':'Válvula de Seguridad','7':'Tapa del Cilindro',
-                                                            '8':'Cartucho Impulsor','9':'Manguera',
-                                                            '10':'Pitón, Boquilla o Tobera','11':'Válvula de descarga',
-                                                            '12':'Cuello del Cilindro','13':'Cuerpo del cilindro',
-                                                            '14':'Válvula Reguladora de Presión','15':'Falda o Base de Sustentación',
-                                                            '16':'Fondo del Cilindro','17':'Soporte',
-                                                            '18':'Gancho de Sujeción del Extintor','19':'Hombro del Cilindro',
-                                                            '20':'Mecanismo de Punzado','21':'Ruedas o Neumáticos',
-                                                            '22':'Empacaduras','23':'Soporte de la Manguera',
-                                                            '24':'Rotulación','25':'Asa de Sujeción a la Pared',
-                                                            '26':'Número y/o Siglas del Equipo',
-                                                            '27':'Etiqueta con Fecha de Ultima Recarga',
-                                                        };
-                                                        return (
+                                                {formInspeccion.parte_mantenimiento.length > 0 && (
+                                                    <div className="flex flex-wrap gap-1.5">
+                                                        {formInspeccion.parte_mantenimiento.map(n => (
                                                             <span key={n} className="inline-flex items-center gap-1 rounded-md border border-sidebar-border/60 dark:border-sidebar-border bg-muted/40 px-2 py-0.5 text-[11px] text-foreground">
                                                                 <span className="font-semibold">{n}</span>
-                                                                <span className="text-muted-foreground">— {labels[n] ?? n}</span>
+                                                                <span className="text-muted-foreground">— {nombreParte(n)}</span>
                                                                 <button
                                                                     type="button"
-                                                                    onClick={() => setInsp('parte_mantenimiento', (formInspeccion.parte_mantenimiento as string[]).filter(x => x !== n))}
+                                                                    onClick={() => setInsp('parte_mantenimiento', formInspeccion.parte_mantenimiento.filter(x => x !== n))}
                                                                     className="ml-0.5 text-muted-foreground hover:text-foreground transition-colors"
                                                                 >
                                                                     <X className="size-3" />
                                                                 </button>
                                                             </span>
-                                                        );
-                                                    })}
-                                                </div>
-                                            )}
-                                        </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
                                         )}
-                                        {errorsInspeccion.parte_mantenimiento && <p className="text-[10px] text-red-500">{errorsInspeccion.parte_mantenimiento}</p>}
+                                        <FieldError msg={errorsInspeccion.parte_mantenimiento} />
                                     </div>
                                     <div className="col-span-2 grid gap-1">
                                         <Label className="text-[11px] font-semibold text-muted-foreground">Observaciones</Label>
                                         <textarea value={formInspeccion.observaciones_inspeccion}
                                             onChange={e => setInsp('observaciones_inspeccion', e.target.value)}
                                             placeholder="Opcional" rows={2}
-                                            className="rounded-lg border border-sidebar-border/70 dark:border-sidebar-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none" />
+                                            className={TEXTAREA_CLS} />
                                     </div>
                                 </div>
                             </div>
@@ -1867,12 +1760,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                                             min={ultimaRecarga ?? undefined}
                                             onChange={e => setInsp('fecha_recarga', e.target.value)}
                                             className="h-9 text-sm" />
-                                        {ultimaRecarga && formInspeccion.fecha_recarga && formInspeccion.fecha_recarga < ultimaRecarga && (
-                                            <p className="text-[10px] text-red-500">
-                                                No puede ser anterior a la última recarga ({ultimaRecarga})
-                                            </p>
-                                        )}
-                                        {errorsInspeccion.fecha_recarga && <p className="text-[10px] text-red-500">{errorsInspeccion.fecha_recarga}</p>}
+                                        <FieldError msg={errorsInspeccion.fecha_recarga} />
                                     </div>
                                     <div className="grid gap-1">
                                         <Label className="text-[11px] font-semibold text-muted-foreground">Próxima recarga programada</Label>
@@ -1882,13 +1770,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                                             min={formInspeccion.fecha_recarga || undefined}
                                             onChange={e => setInsp('fecha_proxima_recarga', e.target.value)}
                                             className="h-9 text-sm" />
-                                        {formInspeccion.fecha_recarga && formInspeccion.fecha_proxima_recarga &&
-                                            formInspeccion.fecha_proxima_recarga <= formInspeccion.fecha_recarga && (
-                                            <p className="text-[10px] text-red-500">
-                                                Debe ser posterior a la fecha de recarga realizada
-                                            </p>
-                                        )}
-                                        {errorsInspeccion.fecha_proxima_recarga && <p className="text-[10px] text-red-500">{errorsInspeccion.fecha_proxima_recarga}</p>}
+                                        <FieldError msg={errorsInspeccion.fecha_proxima_recarga} />
                                     </div>
                                 </div>
                                 <p className="text-[10px] text-muted-foreground -mt-2">Próxima recarga: actualiza la fecha de vencimiento del extintor</p>
@@ -1897,56 +1779,116 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                                     <textarea value={formInspeccion.observaciones_recarga}
                                         onChange={e => setInsp('observaciones_recarga', e.target.value)}
                                         placeholder="Proveedor, tipo de agente, condiciones…" rows={2}
-                                        className="rounded-lg border border-sidebar-border/70 dark:border-sidebar-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none" />
+                                        className={TEXTAREA_CLS} />
                                 </div>
                             </div>
                         )}
                     </div>
 
-                    {/* Vehículo */}
                     {/* Vehículo — solo al crear, no al editar */}
                     {!editInspeccion && (
-                    <div className="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border overflow-hidden">
-                        <label className="flex cursor-pointer items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors select-none">
-                            <input type="checkbox" checked={formInspeccion.registra_vehiculo}
-                                onChange={e => setInsp('registra_vehiculo', e.target.checked)}
-                                className="h-4 w-4 rounded border-sidebar-border/70 focus:ring-ring" />
-                            <div>
-                                <p className="text-sm font-semibold text-foreground">Registrar placa / cambio de vehículo</p>
-                                {extintor.placa_actual ? (
-                                    <p className="text-[11px] text-muted-foreground mt-0.5">
-                                        Placa actual: <span className="font-medium text-foreground">{extintor.placa_actual}</span>
-                                        {extintor.fecha_colocacion_actual && <span> · desde {extintor.fecha_colocacion_actual}</span>}
-                                    </p>
-                                ) : (
-                                    <p className="text-[11px] text-muted-foreground mt-0.5">El extintor está en depósito</p>
-                                )}
-                            </div>
-                        </label>
-                        {formInspeccion.registra_vehiculo && (
-                            <div className="flex flex-col gap-3 border-t border-sidebar-border/70 dark:border-sidebar-border px-4 pb-4 pt-4 bg-muted/20">
-                                <div className="grid gap-1">
-                                    <Label className="text-[11px] font-semibold text-muted-foreground">
-                                        {extintor.placa_actual ? 'Nueva placa (deja vacío para solo retirar)' : 'Placa donde se coloca'}
-                                    </Label>
-                                    <select value={formInspeccion.nueva_placa}
-                                        onChange={e => setInsp('nueva_placa', e.target.value)}
-                                        className="h-9 rounded-lg border border-sidebar-border/70 dark:border-sidebar-border bg-card px-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring">
-                                        <option value="">{extintor.placa_actual ? '— Retirar sin reasignar —' : '— Seleccionar placa —'}</option>
-                                        {placas.filter(p => p !== extintor.placa_actual).map(p => <option key={p} value={p}>{p}</option>)}
-                                    </select>
+                        <div className="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border overflow-hidden">
+                            <label className="flex cursor-pointer items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors select-none">
+                                <input type="checkbox" checked={formInspeccion.registra_vehiculo}
+                                    onChange={e => setInsp('registra_vehiculo', e.target.checked)}
+                                    className="h-4 w-4 rounded border-sidebar-border/70 focus:ring-ring" />
+                                <div>
+                                    <p className="text-sm font-semibold text-foreground">Registrar placa / cambio de vehículo</p>
+                                    {extintor.placa_actual ? (
+                                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                                            Placa actual: <span className="font-medium text-foreground">{extintor.placa_actual}</span>
+                                            {extintor.fecha_colocacion_actual && <span> · desde {extintor.fecha_colocacion_actual}</span>}
+                                        </p>
+                                    ) : (
+                                        <p className="text-[11px] text-muted-foreground mt-0.5">El extintor está en depósito</p>
+                                    )}
                                 </div>
-                                <div className="grid gap-1">
-                                    <Label className="text-[11px] font-semibold text-muted-foreground">Observaciones del cambio</Label>
-                                    <textarea value={formInspeccion.observaciones_vehiculo}
-                                        onChange={e => setInsp('observaciones_vehiculo', e.target.value)}
-                                        placeholder="Motivo del cambio, condiciones…" rows={2}
-                                        className="rounded-lg border border-sidebar-border/70 dark:border-sidebar-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none" />
+                            </label>
+                            {formInspeccion.registra_vehiculo && (
+                                <div className="flex flex-col gap-3 border-t border-sidebar-border/70 dark:border-sidebar-border px-4 pb-4 pt-4 bg-muted/20">
+                                    <div className="grid gap-1">
+                                        <Label className="text-[11px] font-semibold text-muted-foreground">
+                                            {extintor.placa_actual ? 'Nueva placa (deja vacío para solo retirar)' : 'Placa donde se coloca'}
+                                        </Label>
+                                        <select value={formInspeccion.nueva_placa}
+                                            onChange={e => {
+                                                const p = e.target.value;
+                                                setInsp('nueva_placa', p);
+                                                consultarExtintoresEnPlacaInsp(p);
+                                            }}
+                                            className="h-9 rounded-lg border border-sidebar-border/70 dark:border-sidebar-border bg-card px-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring">
+                                            <option value="">{extintor.placa_actual ? '— Retirar sin reasignar —' : '— Seleccionar placa —'}</option>
+                                            {placas.map(p => <option key={p} value={p}>{p}</option>)}
+                                        </select>
+                                        <FieldError msg={errorsInspeccion.nueva_placa} />
+
+                                        {formInspeccion.nueva_placa && (
+                                            <div className="mt-1">
+                                                {cargandoPlacaInsp ? (
+                                                    <div className="flex items-center gap-2 rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                                                        <Loader2 className="size-3.5 animate-spin" /> Consultando extintores asociados…
+                                                    </div>
+                                                ) : extintoresEnPlacaInsp.length > 0 ? (
+                                                    <div className="rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800/40 dark:bg-amber-900/10 p-3">
+                                                        <div className="flex items-center gap-2 mb-2">
+                                                            <AlertTriangle className="size-4 text-amber-600 shrink-0" />
+                                                            <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">
+                                                                Este vehículo ya tiene {extintoresEnPlacaInsp.length} extintor{extintoresEnPlacaInsp.length > 1 ? 'es' : ''} asociado{extintoresEnPlacaInsp.length > 1 ? 's' : ''}
+                                                            </p>
+                                                        </div>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {extintoresEnPlacaInsp.map(ext => (
+                                                                <div key={ext.id} className="flex items-center gap-2 rounded-lg border border-amber-300/60 dark:border-amber-700/40 bg-white dark:bg-card p-1.5 pr-2.5">
+                                                                    <div className="size-10 rounded-lg border border-sidebar-border/50 overflow-hidden bg-muted/20 flex items-center justify-center shrink-0">
+                                                                        {ext.foto_url ? (
+                                                                            <img src={ext.foto_url} alt={ext.numero_serie} className="w-full h-full object-contain" />
+                                                                        ) : (
+                                                                            <FlameKindling className="size-4 text-muted-foreground" />
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="text-xs">
+                                                                        <p className="font-semibold text-foreground">{ext.numero_serie}</p>
+                                                                        <p className="text-muted-foreground">
+                                                                            {[ext.tipo_agente, ext.capacidad_kg ? `${ext.capacidad_kg} kg` : null, ext.marca].filter(Boolean).join(' · ')}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                        <div className="mt-2">
+                                                            <label className="flex cursor-pointer items-center gap-2 text-xs text-amber-800 dark:text-amber-300">
+                                                                <input type="checkbox"
+                                                                    checked={formInspeccion.desasociar_previos_insp}
+                                                                    onChange={e => setInsp('desasociar_previos_insp', e.target.checked)}
+                                                                    className="h-4 w-4 rounded border-amber-400 focus:ring-amber-500" />
+                                                                <span>
+                                                                    <span className="font-semibold">Desasociar los extintores actuales</span> de este vehículo antes de asignar.
+                                                                    {!formInspeccion.desasociar_previos_insp && extintoresEnPlacaInsp.length >= 2 && (
+                                                                        <span className="block text-red-600 dark:text-red-400 mt-0.5">El vehículo ya tiene 2 extintores. Debe marcar esta opción para continuar.</span>
+                                                                    )}
+                                                                </span>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 dark:border-green-800/40 dark:bg-green-900/10 px-3 py-2 text-xs text-green-700 dark:text-green-300">
+                                                        <CheckCircle2 className="size-3.5" /> Sin extintores asociados, se puede asignar directamente.
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="grid gap-1">
+                                        <Label className="text-[11px] font-semibold text-muted-foreground">Observaciones del cambio</Label>
+                                        <textarea value={formInspeccion.observaciones_vehiculo}
+                                            onChange={e => setInsp('observaciones_vehiculo', e.target.value)}
+                                            placeholder="Motivo del cambio, condiciones…" rows={2}
+                                            className={TEXTAREA_CLS} />
+                                    </div>
                                 </div>
-                            </div>
-                        )}
-                    </div>
-                    )} {/* fin !editInspeccion — sección vehículo */}
+                            )}
+                        </div>
+                    )}
 
                     {/* Evidencias — solo para nuevo */}
                     {!editInspeccion && (
@@ -1955,9 +1897,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                                 Evidencias (fotos / PDF)
                             </Label>
                             <FileSelector onChange={setArchivosInspeccion} />
-                            {errorsInspeccion['evidencias'] && (
-                                <p className="text-[10px] text-red-500">{errorsInspeccion['evidencias']}</p>
-                            )}
+                            <FieldError msg={errorsInspeccion['evidencias']} />
                         </div>
                     )}
 
@@ -1979,23 +1919,95 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
             <Modal open={modalAsignar} onClose={() => { setModalAsignar(false); setErrorsAsignar({}); }}
                 title={editAsignacion ? `Editar asignación · ${editAsignacion.placa}` : 'Asignar extintor a vehículo'}>
                 <form onSubmit={handleAsignar} className="flex flex-col gap-4">
+                    {!editAsignacion && extintor.placa_actual && (
+                        <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800/40 dark:bg-amber-900/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
+                            <ArrowLeftRight className="size-3.5 shrink-0" />
+                            Placa actual: <span className="font-semibold">{extintor.placa_actual}</span> — se cerrará la asignación actual al reasignar.
+                        </div>
+                    )}
                     <div className="grid grid-cols-2 gap-3">
-                        <div className="grid gap-1">
+                        <div className="col-span-2 grid gap-1">
                             <Label className="text-[11px] font-semibold text-muted-foreground">Placa *</Label>
-                            <select value={formAsignar.placa} onChange={e => setAsignar('placa', e.target.value)} required
+                            <select value={formAsignar.placa} onChange={e => {
+                                const placa = e.target.value;
+                                setAsignar('placa', placa);
+                                setDesasociarPrevios(false);
+                                if (!placa || editAsignacion) { setExtintoresEnPlaca([]); return; }
+                                setCargandoPlaca(true);
+                                fetch(`/modules/flota/extintores/por-placa/${encodeURIComponent(placa)}`)
+                                    .then(r => r.json())
+                                    .then(json => setExtintoresEnPlaca(json.extintores ?? []))
+                                    .catch(() => setExtintoresEnPlaca([]))
+                                    .finally(() => setCargandoPlaca(false));
+                            }} required
                                 className="h-9 rounded-lg border border-sidebar-border/70 dark:border-sidebar-border bg-card px-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring">
                                 <option value="">Seleccionar…</option>
                                 {placas.map(p => <option key={p} value={p}>{p}</option>)}
                             </select>
-                            {errorsAsignar.placa && <p className="text-[10px] text-red-500">{errorsAsignar.placa}</p>}
+                            <FieldError msg={errorsAsignar.placa} />
                         </div>
-                        <div className="grid gap-1" />
-                        {/* ── Asignación ── */}
+
+                        {!editAsignacion && formAsignar.placa && (
+                            <div className="col-span-2">
+                                {cargandoPlaca ? (
+                                    <div className="flex items-center gap-2 rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
+                                        <Loader2 className="size-3.5 animate-spin" /> Consultando extintores asociados…
+                                    </div>
+                                ) : extintoresEnPlaca.length > 0 ? (
+                                    <div className="rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800/40 dark:bg-amber-900/10 p-4">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <AlertTriangle className="size-4 text-amber-600" />
+                                            <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+                                                Este vehículo ya tiene {extintoresEnPlaca.length} extintor{extintoresEnPlaca.length > 1 ? 'es' : ''} asociado{extintoresEnPlaca.length > 1 ? 's' : ''}
+                                            </p>
+                                        </div>
+                                        <div className="flex flex-wrap gap-3">
+                                            {extintoresEnPlaca.map(ext => (
+                                                <div key={ext.id} className="flex items-center gap-2.5 rounded-lg border border-amber-300/60 dark:border-amber-700/40 bg-white dark:bg-card p-2 pr-3">
+                                                    <div className="size-12 rounded-lg border border-sidebar-border/50 overflow-hidden bg-muted/20 flex items-center justify-center shrink-0">
+                                                        {ext.foto_url ? (
+                                                            <img src={ext.foto_url} alt={ext.numero_serie} className="w-full h-full object-contain" />
+                                                        ) : (
+                                                            <FlameKindling className="size-5 text-muted-foreground" />
+                                                        )}
+                                                    </div>
+                                                    <div className="text-xs">
+                                                        <p className="font-semibold text-foreground">{ext.numero_serie}</p>
+                                                        <p className="text-muted-foreground">
+                                                            {[ext.tipo_agente, ext.capacidad_kg ? `${ext.capacidad_kg} kg` : null, ext.marca].filter(Boolean).join(' · ')}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <div className="mt-3">
+                                            <label className="flex cursor-pointer items-center gap-2 text-xs text-amber-800 dark:text-amber-300">
+                                                <input type="checkbox" checked={desasociarPrevios}
+                                                    onChange={e => setDesasociarPrevios(e.target.checked)}
+                                                    className="h-4 w-4 rounded border-amber-400 focus:ring-amber-500" />
+                                                <span>
+                                                    <span className="font-semibold">Desasociar los extintores actuales</span> de este vehículo para asignar el nuevo.
+                                                    {!desasociarPrevios && extintoresEnPlaca.length >= 2 && (
+                                                        <span className="block text-red-600 dark:text-red-400 mt-0.5">El vehículo ya tiene 2 extintores. Debe marcar esta opción para continuar.</span>
+                                                    )}
+                                                </span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 dark:border-green-800/40 dark:bg-green-900/10 px-4 py-3 text-xs text-green-700 dark:text-green-300">
+                                        <CheckCircle2 className="size-4" /> Este vehículo no tiene extintores asociados. Se puede asignar directamente.
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Asignación */}
                         <div className="grid gap-1">
                             <Label className="text-[11px] font-semibold text-muted-foreground">Fecha asignado *</Label>
                             <Input type="date" value={formAsignar.fecha_colocacion}
                                 onChange={e => setAsignar('fecha_colocacion', e.target.value)} required className="h-9 text-sm" />
-                            {errorsAsignar.fecha_colocacion && <p className="text-[10px] text-red-500">{errorsAsignar.fecha_colocacion}</p>}
+                            <FieldError msg={errorsAsignar.fecha_colocacion} />
                         </div>
                         <div className="grid gap-1">
                             <Label className="text-[11px] font-semibold text-muted-foreground">Nombre (asignación)</Label>
@@ -2012,7 +2024,8 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                                 onChange={e => setAsignar('observaciones_colocacion', e.target.value)}
                                 placeholder="Opcional" className="h-9 text-sm" />
                         </div>
-                        {/* ── Retiro ── */}
+
+                        {/* Retiro */}
                         <div className="grid gap-1">
                             <Label className="text-[11px] font-semibold text-muted-foreground">Fecha de retiro</Label>
                             <Input type="date" value={formAsignar.fecha_retiro}
@@ -2059,7 +2072,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                             <Label className="text-[11px] font-semibold text-muted-foreground">Fecha de retiro *</Label>
                             <Input type="date" value={formRetirar.fecha_retiro}
                                 onChange={e => setRetirar('fecha_retiro', e.target.value)} required className="h-9 text-sm" />
-                            {errorsRetirar.fecha_retiro && <p className="text-[10px] text-red-500">{errorsRetirar.fecha_retiro}</p>}
+                            <FieldError msg={errorsRetirar.fecha_retiro} />
                         </div>
                         <div className="col-span-2 grid gap-1">
                             <Label className="text-[11px] font-semibold text-muted-foreground">Responsable</Label>
@@ -2120,6 +2133,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                     </div>
                 </div>
             </Modal>
+
             {/* ── Modal: ¿Usar firma guardada? ────────────────────────────── */}
             {modalConfirmarFirma && firmaGuardadaUrl && (
                 <div className="fixed inset-0 z-[60] flex items-center justify-center">
@@ -2140,7 +2154,6 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                         <p className="text-sm text-muted-foreground">
                             Tienes una firma registrada anteriormente. ¿Deseas precargarla para esta inspección?
                         </p>
-                        {/* Preview de la firma */}
                         <div className="rounded-lg border border-sidebar-border/50 dark:border-sidebar-border bg-white p-3 flex items-center justify-center min-h-[90px]">
                             <img src={firmaGuardadaUrl} alt="Firma guardada"
                                 className="max-h-24 max-w-full object-contain" />
@@ -2157,9 +2170,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                             </Button>
                             <Button size="sm" className="flex-1 bg-green-700 hover:bg-green-800 text-white gap-1.5"
                                 disabled={savingInspeccion}
-                                onClick={() => {
-                                    ejecutarGuardadoInspeccion({ usarFirmaGuardada: true });
-                                }}>
+                                onClick={() => ejecutarGuardadoInspeccion({ usarFirmaGuardada: true })}>
                                 {savingInspeccion ? <Loader2 className="size-4 animate-spin" /> : null}
                                 Sí, usar esta firma
                             </Button>
@@ -2168,7 +2179,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                 </div>
             )}
 
-                        {/* ── Modal: Dibujar firma después de guardar ──────────────────── */}
+            {/* ── Modal: Dibujar firma después de guardar ──────────────────── */}
             {modalFirmaManual && (
                 <div className="fixed inset-0 z-[60] flex items-center justify-center">
                     <div className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -2239,9 +2250,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                                 required
                                 className="h-9 text-sm"
                             />
-                            {errorsEditarExtintor.numero_serie && (
-                                <p className="text-[10px] text-red-500">{errorsEditarExtintor.numero_serie}</p>
-                            )}
+                            <FieldError msg={errorsEditarExtintor.numero_serie} />
                         </div>
 
                         <div className="grid gap-1">
@@ -2252,9 +2261,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                                 placeholder="Fabricante"
                                 className="h-9 text-sm"
                             />
-                            {errorsEditarExtintor.marca && (
-                                <p className="text-[10px] text-red-500">{errorsEditarExtintor.marca}</p>
-                            )}
+                            <FieldError msg={errorsEditarExtintor.marca} />
                         </div>
 
                         <div className="grid gap-1">
@@ -2271,9 +2278,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                                     <option value={formEditarExtintor.tipo_agente}>{formEditarExtintor.tipo_agente}</option>
                                 )}
                             </select>
-                            {errorsEditarExtintor.tipo_agente && (
-                                <p className="text-[10px] text-red-500">{errorsEditarExtintor.tipo_agente}</p>
-                            )}
+                            <FieldError msg={errorsEditarExtintor.tipo_agente} />
                         </div>
 
                         <div className="grid gap-1">
@@ -2287,9 +2292,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                                 placeholder="Ej: 5 o 10"
                                 className="h-9 text-sm"
                             />
-                            {errorsEditarExtintor.capacidad_kg && (
-                                <p className="text-[10px] text-red-500">{errorsEditarExtintor.capacidad_kg}</p>
-                            )}
+                            <FieldError msg={errorsEditarExtintor.capacidad_kg} />
                         </div>
 
                         <div className="grid gap-1">
@@ -2300,9 +2303,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                                 onChange={e => setExtintorField('fecha_fabricacion', e.target.value)}
                                 className="h-9 text-sm"
                             />
-                            {errorsEditarExtintor.fecha_fabricacion && (
-                                <p className="text-[10px] text-red-500">{errorsEditarExtintor.fecha_fabricacion}</p>
-                            )}
+                            <FieldError msg={errorsEditarExtintor.fecha_fabricacion} />
                         </div>
 
                         <div className="grid gap-1">
@@ -2313,9 +2314,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                                 onChange={e => setExtintorField('fecha_vencimiento', e.target.value)}
                                 className="h-9 text-sm"
                             />
-                            {errorsEditarExtintor.fecha_vencimiento && (
-                                <p className="text-[10px] text-red-500">{errorsEditarExtintor.fecha_vencimiento}</p>
-                            )}
+                            <FieldError msg={errorsEditarExtintor.fecha_vencimiento} />
                         </div>
 
                         <div className="grid gap-1">
@@ -2329,9 +2328,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                                 <option value="buena">Buena</option>
                                 <option value="mala">Mala</option>
                             </select>
-                            {errorsEditarExtintor.condicion && (
-                                <p className="text-[10px] text-red-500">{errorsEditarExtintor.condicion}</p>
-                            )}
+                            <FieldError msg={errorsEditarExtintor.condicion} />
                         </div>
 
                         <div className="grid gap-1">
@@ -2345,9 +2342,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                                 <option value="directa">Directa</option>
                                 <option value="indirecta">Indirecta</option>
                             </select>
-                            {errorsEditarExtintor.agente_impulsor && (
-                                <p className="text-[10px] text-red-500">{errorsEditarExtintor.agente_impulsor}</p>
-                            )}
+                            <FieldError msg={errorsEditarExtintor.agente_impulsor} />
                         </div>
 
                         <div className="grid gap-1">
@@ -2362,9 +2357,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                                 <option value="mala">Mala</option>
                                 <option value="N/A">N/A</option>
                             </select>
-                            {errorsEditarExtintor.demarcacion && (
-                                <p className="text-[10px] text-red-500">{errorsEditarExtintor.demarcacion}</p>
-                            )}
+                            <FieldError msg={errorsEditarExtintor.demarcacion} />
                         </div>
 
                         <div className="grid gap-1">
@@ -2378,9 +2371,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                                 <option value="buena">Buena</option>
                                 <option value="mala">Mala</option>
                             </select>
-                            {errorsEditarExtintor.senalizacion && (
-                                <p className="text-[10px] text-red-500">{errorsEditarExtintor.senalizacion}</p>
-                            )}
+                            <FieldError msg={errorsEditarExtintor.senalizacion} />
                         </div>
 
                         <div className="grid gap-1">
@@ -2394,9 +2385,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                                 <option value="bueno">Bueno</option>
                                 <option value="malo">Malo</option>
                             </select>
-                            {errorsEditarExtintor.funcionamiento && (
-                                <p className="text-[10px] text-red-500">{errorsEditarExtintor.funcionamiento}</p>
-                            )}
+                            <FieldError msg={errorsEditarExtintor.funcionamiento} />
                         </div>
 
                         <div className="grid gap-1">
@@ -2410,16 +2399,14 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                                 <option value="bueno">Bueno</option>
                                 <option value="malo">Malo</option>
                             </select>
-                            {errorsEditarExtintor.acceso && (
-                                <p className="text-[10px] text-red-500">{errorsEditarExtintor.acceso}</p>
-                            )}
+                            <FieldError msg={errorsEditarExtintor.acceso} />
                         </div>
 
                         <div className="col-span-1 sm:col-span-2 grid gap-1">
                             <Label htmlFor="editar-parte-mantenimiento" className="text-[11px] font-semibold text-muted-foreground">Parte en mantenimiento</Label>
                             <Input
                                 id="editar-parte-mantenimiento"
-                                value={formEditarExtintor.parte_mantenimiento ?? ''}
+                                value={formEditarExtintor.parte_mantenimiento}
                                 onChange={e => setExtintorField('parte_mantenimiento', e.target.value)}
                                 placeholder="Codificación o descripción"
                                 aria-invalid={!!errorsEditarExtintor.parte_mantenimiento}
@@ -2435,13 +2422,13 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                             <Label htmlFor="editar-observaciones" className="text-[11px] font-semibold text-muted-foreground">Observaciones</Label>
                             <textarea
                                 id="editar-observaciones"
-                                value={formEditarExtintor.observaciones ?? ''}
+                                value={formEditarExtintor.observaciones}
                                 onChange={e => setExtintorField('observaciones', e.target.value)}
                                 placeholder="Opcional"
                                 rows={2}
                                 aria-invalid={!!errorsEditarExtintor.observaciones}
                                 aria-describedby={errorsEditarExtintor.observaciones ? 'err-editar-obs' : undefined}
-                                className="rounded-lg border border-sidebar-border/70 dark:border-sidebar-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
+                                className={TEXTAREA_CLS}
                             />
                             {errorsEditarExtintor.observaciones && (
                                 <p id="err-editar-obs" role="alert" className="text-xs text-red-500">{errorsEditarExtintor.observaciones}</p>

@@ -111,6 +111,7 @@ Route::middleware(['auth', 'active', 'role:Administrador|Flota', 'submodule.acce
         Route::get('extintores/ultima-firma-inspeccion', [ExtintorController::class, 'ultimaFirmaInspeccion'])->name('extintores.ultima-firma');
         Route::get('extintores/siguiente-serie', [ExtintorController::class, 'siguienteSerie'])->name('extintores.siguiente-serie');
         Route::get('extintores/qr/{numeroSerie}', [ExtintorController::class, 'redirigirPorSerie'])->name('extintores.qr');
+        Route::get('extintores/por-placa/{placa}', [ExtintorController::class, 'extintoresPorPlaca'])->name('extintores.por-placa')->where('placa', '[^/]+');
 
         Route::get('extintores', [ExtintorController::class, 'index'])->name('extintores.index');
         Route::post('extintores', [ExtintorController::class, 'store'])->name('extintores.store');

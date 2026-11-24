@@ -3,38 +3,45 @@
 namespace App\Models\Flota;
 
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ExtintorInspeccion extends Model
 {
+    public const TIPO_INICIO    = 'inicio';
+    public const TIPO_PERIODICA = 'periodica';
+
     protected $table = 'extintor_inspecciones';
 
-    const TIPO_INICIO    = 'inicio';
-    const TIPO_PERIODICA = 'periodica';
-
     protected $fillable = [
+        // Datos de la inspección
         'extintor_id',
         'tipo',
         'fecha_inspeccion',
         'responsable_inicio',
         'responsable_periodico',
-        'condicion',
+        'observaciones_inspeccion',
+        // Características técnicas
         'tipo_agente',
         'agente_impulsor',
         'capacidad_kg',
         'marca',
+        // Estado e inspección visual
+        'condicion',
         'parte_mantenimiento',
         'senalizacion',
         'demarcacion',
         'funcionamiento',
         'acceso',
-        'observaciones_inspeccion',
+        // Recarga
+        'incluye_recarga',
         'fecha_recarga',
         'fecha_proxima_recarga',
-        'incluye_recarga',
         'observaciones_recarga',
+        // Auditoría
         'firma_path',
         'user_id',
     ];
@@ -50,8 +57,7 @@ class ExtintorInspeccion extends Model
         ];
     }
 
-    // ── Relaciones ────────────────────────────────────────────────────────────
-
+    // ── Relaciones 
     public function extintor(): BelongsTo
     {
         return $this->belongsTo(Extintor::class);
@@ -67,14 +73,24 @@ class ExtintorInspeccion extends Model
         return $this->belongsTo(User::class, 'user_id');
     }
 
-    // ── Accessors ─────────────────────────────────────────────────────────────
-
-    public function getTipoLabelAttribute(): string
+    // ── Scopes 
+    public function scopeDeInicio(Builder $query): Builder
     {
-        return match ($this->tipo) {
+        return $query->where('tipo', self::TIPO_INICIO);
+    }
+
+    public function scopePeriodicas(Builder $query): Builder
+    {
+        return $query->where('tipo', self::TIPO_PERIODICA);
+    }
+
+    // ── Accessors
+    protected function tipoLabel(): Attribute
+    {
+        return Attribute::get(fn () => match ($this->tipo) {
             self::TIPO_INICIO    => 'Inspección de inicio',
             self::TIPO_PERIODICA => 'Inspección periódica',
             default              => $this->tipo,
-        };
+        });
     }
 }
