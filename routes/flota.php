@@ -109,6 +109,8 @@ Route::middleware(['auth', 'active', 'role:Administrador|Flota', 'submodule.acce
         Route::delete('extintores/referencia-imagen', [ExtintorController::class, 'eliminarImagenReferencia'])->name('extintores.referencia-imagen.destroy');
         Route::get('extintores/exportar-tabla', [ExtintorController::class, 'exportarTabla'])->name('extintores.exportar-tabla');
         Route::get('extintores/ultima-firma-inspeccion', [ExtintorController::class, 'ultimaFirmaInspeccion'])->name('extintores.ultima-firma');
+        Route::get('extintores/siguiente-serie', [ExtintorController::class, 'siguienteSerie'])->name('extintores.siguiente-serie');
+        Route::get('extintores/qr/{numeroSerie}', [ExtintorController::class, 'redirigirPorSerie'])->name('extintores.qr');
 
         Route::get('extintores', [ExtintorController::class, 'index'])->name('extintores.index');
         Route::post('extintores', [ExtintorController::class, 'store'])->name('extintores.store');

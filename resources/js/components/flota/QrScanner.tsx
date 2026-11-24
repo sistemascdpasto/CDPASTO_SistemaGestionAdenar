@@ -96,7 +96,7 @@ export function QrScanner({ onResult, onClose }: Props) {
                         }
                     } catch {
                         if (text && text.trim()) {
-                            router.visit(`/modules/flota/extintores?serie=${encodeURIComponent(text.trim())}`);
+                            router.visit(`/modules/flota/extintores/qr/${encodeURIComponent(text.trim())}`);
                             onCloseRef.current();
                         }
                     }

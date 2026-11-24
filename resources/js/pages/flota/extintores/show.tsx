@@ -15,6 +15,7 @@ import {
     ClipboardCheck,
     ClipboardList,
     ClipboardX,
+    Download,
     FileText,
     FlameKindling,
     FileDown,
@@ -34,7 +35,7 @@ import {
     ZoomIn,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 // ─── Clases y Types ────────────────────────────────────────────────────────────
@@ -506,6 +507,9 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                         setErrorsInspeccion(errs as Record<string, string>);
                         setSavingInspeccion(false);
                     },
+                    onFinish: () => {
+                        setSavingInspeccion(false);
+                    },
                 }
             );
             return;
@@ -547,6 +551,9 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                 setSavingInspeccion(false);
                 setModalConfirmarFirma(false);
                 setModalFirmaManual(false);
+            },
+            onFinish: () => {
+                setSavingInspeccion(false);
             },
         });
     };
@@ -762,6 +769,29 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
             <script>window.onload=()=>{window.print();window.close()}</script></body></html>
         `);
         win.document.close();
+    };
+
+    const descargarQr = () => {
+        const svg = qrRef.current?.querySelector('svg');
+        if (!svg) return;
+        const svgData = new XMLSerializer().serializeToString(svg);
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const img = document.createElement('img');
+        img.onload = () => {
+            canvas.width = 400;
+            canvas.height = 400;
+            if (ctx) {
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, 400, 400);
+                ctx.drawImage(img, 0, 0, 400, 400);
+            }
+            const link = document.createElement('a');
+            link.download = `QR_${extintor.numero_serie}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        };
+        img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
     };
 
     // ── Foto del extintor ─────────────────────────────────────────────────────
@@ -1253,8 +1283,8 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                                     </TableHeader>
                                     <TableBody>
                                         {inspecciones.map(ins => (
-                                            <>
-                                                <TableRow key={ins.id}
+                                            <Fragment key={ins.id}>
+                                                <TableRow
                                                     className="hover:bg-muted/50 transition-colors cursor-pointer"
                                                     onClick={() => setExpandedInsp(expandedInsp === ins.id ? null : ins.id)}>
                                                     {/* Tipo — texto plano, sin badge */}
@@ -1420,7 +1450,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                                                         </TableCell>
                                                     </TableRow>
                                                 )}
-                                            </>
+                                            </Fragment>
                                         ))}
                                     </TableBody>
                                 </Table>
@@ -1453,8 +1483,8 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                                     </TableHeader>
                                     <TableBody>
                                         {asignaciones.map(a => (
-                                            <>
-                                                <TableRow key={a.id}
+                                            <Fragment key={a.id}>
+                                                <TableRow
                                                     className="hover:bg-muted/50 transition-colors cursor-pointer"
                                                     onClick={() => setExpandedAsig(expandedAsig === a.id ? null : a.id)}>
                                                     <TableCell className="text-xs font-mono font-semibold text-foreground">{a.placa}</TableCell>
@@ -1529,7 +1559,7 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                                                         </TableCell>
                                                     </TableRow>
                                                 )}
-                                            </>
+                                            </Fragment>
                                         ))}
                                     </TableBody>
                                 </Table>
@@ -2077,10 +2107,13 @@ export default function ExtintorShow({ extintor, asignaciones, inspecciones, col
                     </div>
 
                     <p className="text-xs text-muted-foreground text-center max-w-xs">
-                        Al escanear este QR se abre la ficha completa del extintor sin necesidad de iniciar sesión.
+                        Al escanear este QR se abre la ficha completa del extintor (requiere iniciar sesión).
                     </p>
 
                     <div className="flex gap-2 w-full">
+                        <Button size="sm" variant="outline" className="flex-1 gap-1.5" onClick={descargarQr}>
+                            <Download className="size-4" /> Descargar
+                        </Button>
                         <Button size="sm" className="flex-1 gap-1.5 bg-green-700 hover:bg-green-800 text-white" onClick={imprimirQr}>
                             Imprimir
                         </Button>

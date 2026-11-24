@@ -553,6 +553,38 @@ class ExtintorController extends Controller
         ]);
     }
 
+    // ── siguienteSerie ─────────────────────────────────────────────────────────
+
+    public function siguienteSerie(): \Illuminate\Http\JsonResponse
+    {
+        $year   = now()->year;
+        $prefix = "EXT-{$year}-";
+        $ultimo = Extintor::where('numero_serie', 'like', "{$prefix}%")
+            ->get()
+            ->map(fn ($e) => (int) substr($e->numero_serie, strlen($prefix)))
+            ->max();
+
+        $siguiente = ($ultimo ?? 0) + 1;
+
+        return response()->json([
+            'serie' => $prefix . str_pad((string) $siguiente, 3, '0', STR_PAD_LEFT),
+        ]);
+    }
+
+    // ── redirigirPorSerie (QR) ────────────────────────────────────────────────
+
+    public function redirigirPorSerie(string $numeroSerie): RedirectResponse
+    {
+        $extintor = Extintor::where('numero_serie', $numeroSerie)->first();
+
+        if ($extintor) {
+            return redirect()->route('flota.extintores.show', $extintor->id);
+        }
+
+        return redirect()->route('flota.extintores.index')
+            ->with('status', ['message' => 'No existe el extintor en nuestra base de datos.', 'type' => 'error']);
+    }
+
     // ── destroyInspeccion ─────────────────────────────────────────────────────
 
     public function destroyInspeccion(Extintor $extintor, ExtintorInspeccion $inspeccion): RedirectResponse

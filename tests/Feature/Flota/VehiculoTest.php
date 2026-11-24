@@ -133,7 +133,7 @@ class VehiculoTest extends TestCase
 
         $this->actingAs($admin)->delete(route('flota.vehiculos.destroy', $vehiculo))
             ->assertRedirect(route('flota.vehiculos.index'));
-        $this->assertSoftDeleted($vehiculo);
+        $this->assertModelMissing($vehiculo);
     }
 
     public function test_it_stores_and_updates_the_document_expiry_dates(): void

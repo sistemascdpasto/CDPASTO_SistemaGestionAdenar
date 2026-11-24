@@ -3,6 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { QrScanner } from '@/components/flota/QrScanner';
+import { QRCodeSVG } from 'qrcode.react';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
@@ -19,9 +20,11 @@ import {
     Maximize2,
     Pencil,
     Plus,
+    QrCode,
     ScanLine,
     Trash2,
     Upload,
+    Download,
     X,
     XCircle,
 } from 'lucide-react';
@@ -179,6 +182,50 @@ function FormExtintor({ initial, onSubmit, submitting, errors, onCancel }: {
         setPreviewUrl(URL.createObjectURL(file));
     };
 
+    const [generando, setGenerando] = useState(false);
+    const qrRef = useRef<HTMLDivElement>(null);
+
+    // Auto-generar código al abrir el formulario (solo si el campo está vacío = nuevo extintor)
+    useEffect(() => {
+        if (!initial.numero_serie) {
+            (async () => {
+                setGenerando(true);
+                try {
+                    const res = await fetch(route('flota.extintores.siguiente-serie'));
+                    const json = await res.json();
+                    if (json.serie) set('numero_serie', json.serie);
+                } catch {
+                    /* ignore */
+                } finally {
+                    setGenerando(false);
+                }
+            })();
+        }
+    }, []);
+
+    const descargarQr = () => {
+        const svg = qrRef.current?.querySelector('svg');
+        if (!svg) return;
+        const svgData = new XMLSerializer().serializeToString(svg);
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        img.onload = () => {
+            canvas.width = 300;
+            canvas.height = 300;
+            if (ctx) {
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, 300, 300);
+                ctx.drawImage(img, 0, 0, 300, 300);
+            }
+            const link = document.createElement('a');
+            link.download = `QR_${f.numero_serie || 'extintor'}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        };
+        img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+    };
+
     return (
         <form onSubmit={e => { e.preventDefault(); onSubmit(f); }} className="flex flex-col gap-5">
 
@@ -236,11 +283,28 @@ function FormExtintor({ initial, onSubmit, submitting, errors, onCancel }: {
 
             {/* ── Identificación ── */}
             <div className="grid grid-cols-2 gap-3">
-                <div className="col-span-2 grid gap-1">
-                    <Label className="text-[11px] font-semibold text-muted-foreground">N° de Serie *</Label>
-                    <Input value={f.numero_serie} onChange={e => set('numero_serie', e.target.value)}
-                        placeholder="Ej. EXT-2024-001" required className="h-9 text-sm" />
-                    {errors.numero_serie && <p className="text-[10px] text-red-500">{errors.numero_serie}</p>}
+                <div className="col-span-2 flex flex-col gap-3 sm:flex-row sm:items-start">
+                    <div className="grid flex-1 gap-1">
+                        <Label className="text-[11px] font-semibold text-muted-foreground">N° de Serie *</Label>
+                        <Input value={f.numero_serie} onChange={e => set('numero_serie', e.target.value)}
+                            placeholder={generando ? 'Generando…' : 'Ej. EXT-2024-001'} required className="h-9 text-sm" />
+                        {errors.numero_serie && <p className="text-[10px] text-red-500">{errors.numero_serie}</p>}
+                    </div>
+                    <div className="border-border bg-card flex flex-col items-center gap-2 rounded-xl border p-3 shrink-0">
+                        <div ref={qrRef} className="bg-white p-1 rounded">
+                            {f.numero_serie ? (
+                                <QRCodeSVG value={`${window.location.origin}/modules/flota/extintores/qr/${f.numero_serie}`} size={100} level="M" />
+                            ) : (
+                                <div className="text-muted-foreground flex size-[100px] items-center justify-center text-center text-xs">Sin código</div>
+                            )}
+                        </div>
+                        {f.numero_serie && (
+                            <Button type="button" variant="outline" size="sm" onClick={descargarQr}
+                                className="h-7 gap-1 text-xs">
+                                <Download className="size-3" /> Descargar QR
+                            </Button>
+                        )}
+                    </div>
                 </div>
                 <div className="grid gap-1">
                     <Label className="text-[11px] font-semibold text-muted-foreground">Marca</Label>
@@ -447,15 +511,16 @@ function ModalColumnas({ open, onClose, columnas }: {
 
 export default function ExtintoresIndex({ extintores, placas, columnas_extra, filters, imagenes_referencia }: Props) {
     // Flash
-    const { props } = usePage<{ flash?: { success?: string }; status?: string | { message?: string } }>();
-    const flashMsg = (() => {
+    const { props } = usePage<{ flash?: { success?: string }; status?: string | { message?: string; type?: string } }>();
+    const flashInfo = (() => {
         const s = props.status;
-        if (!s) return props.flash?.success ?? null;
-        if (typeof s === 'string') return s;
-        return s.message ?? null;
+        if (!s) return { msg: props.flash?.success ?? null, type: 'success' as string };
+        if (typeof s === 'string') return { msg: s, type: 'success' as string };
+        return { msg: s.message ?? null, type: s.type ?? 'success' };
     })();
-    const [successMsg, setSuccessMsg] = useState<string | null>(null);
-    useEffect(() => { if (flashMsg) setSuccessMsg(flashMsg); }, [flashMsg]);
+    const [flashMsg, setFlashMsg] = useState<string | null>(null);
+    const [flashType, setFlashType] = useState<string>('success');
+    useEffect(() => { if (flashInfo.msg) { setFlashMsg(flashInfo.msg); setFlashType(flashInfo.type); } }, [flashInfo.msg]);
 
     // Filtros
     const [serie, setSerie] = useState(filters.serie ?? '');
@@ -620,12 +685,26 @@ export default function ExtintoresIndex({ extintores, placas, columnas_extra, fi
             <Head title="Extintores" />
             <div className="flex flex-col gap-5 px-4 pb-10 sm:px-6">
 
-                {/* Banner éxito */}
-                {successMsg && (
-                    <div className="flex items-center gap-3 rounded-2xl border border-green-200 bg-green-50 px-5 py-3 dark:border-green-800/40 dark:bg-green-900/10">
-                        <CheckCircle2 className="size-5 shrink-0 text-green-700" />
-                        <p className="flex-1 text-sm font-semibold text-green-800 dark:text-green-300">{successMsg}</p>
-                        <button type="button" onClick={() => setSuccessMsg(null)} className="text-green-400 hover:text-green-600">
+                {/* Banner flash */}
+                {flashMsg && (
+                    <div className={`flex items-center gap-3 rounded-2xl border px-5 py-3 ${
+                        flashType === 'error'
+                            ? 'border-red-200 bg-red-50 dark:border-red-800/40 dark:bg-red-900/10'
+                            : 'border-green-200 bg-green-50 dark:border-green-800/40 dark:bg-green-900/10'
+                    }`}>
+                        {flashType === 'error'
+                            ? <AlertTriangle className="size-5 shrink-0 text-red-700" />
+                            : <CheckCircle2 className="size-5 shrink-0 text-green-700" />}
+                        <p className={`flex-1 text-sm font-semibold ${
+                            flashType === 'error'
+                                ? 'text-red-800 dark:text-red-300'
+                                : 'text-green-800 dark:text-green-300'
+                        }`}>{flashMsg}</p>
+                        <button type="button" onClick={() => setFlashMsg(null)} className={
+                            flashType === 'error'
+                                ? 'text-red-400 hover:text-red-600'
+                                : 'text-green-400 hover:text-green-600'
+                        }>
                             <XCircle className="size-4" />
                         </button>
                     </div>

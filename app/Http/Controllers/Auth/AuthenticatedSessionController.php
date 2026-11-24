@@ -33,6 +33,12 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        // Si la URL intended es un QR de extintor, redirigir allí
+        $intended = session('url.intended');
+        if ($intended && str_contains($intended, '/modules/flota/extintores/qr/')) {
+            return redirect($intended);
+        }
+
         // No usar redirect()->intended(): con roles estrictos por módulo, si
         // la sesión quedó con una URL "intended" de otro usuario (dispositivo
         // compartido) o de un módulo al que este usuario ya no tiene acceso,
