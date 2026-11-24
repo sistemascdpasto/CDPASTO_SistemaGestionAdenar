@@ -31,8 +31,9 @@ export function QrScanner({ onResult, onClose, hint = 'Apunta la cámara al cód
             .then((list) => {
                 setDevices(list);
                 setSelectedId((list.length === 1 ? list[0] : list.find(esCamaraTrasera))?.deviceId ?? null);
-                list.length || setError('No se encontró ninguna cámara en este dispositivo.');
-            })
+if (list.length === 0) {
+    setError('No se encontró ninguna cámara en este dispositivo.');
+}            })
             .catch(() => setError('No se pudo acceder a la cámara. Verifica los permisos del navegador.'));
     }, []);
 

@@ -8,6 +8,8 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import type { RequestPayload } from '@inertiajs/core';
+import { useCallback, useEffect, useRef, useState } from 'react';
+
 import {
     AlertTriangle,
     Camera,
@@ -28,8 +30,6 @@ import {
     X,
     XCircle,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
-
 // ─── Breadcrumbs ──────────────────────────────────────────────────────────────
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -185,8 +185,12 @@ function FormExtintor({ initial, onSubmit, submitting, errors, onCancel }: {
     onCancel: () => void;
 }) {
     const [f, setF] = useState<FormData>(initial);
-    const set = (k: keyof FormData, v: FormData[keyof FormData]) => setF(p => ({ ...p, [k]: v }));
-    const [previewUrl, setPreviewUrl] = useState<string | null>(initial.foto_preview ?? null);
+const set = useCallback(
+    (k: keyof FormData, v: FormData[keyof FormData]) => {
+        setF(p => ({ ...p, [k]: v }));
+    },
+    []
+);    const [previewUrl, setPreviewUrl] = useState<string | null>(initial.foto_preview ?? null);
     const fileRef = useRef<HTMLInputElement>(null);
 
     const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -215,7 +219,7 @@ function FormExtintor({ initial, onSubmit, submitting, errors, onCancel }: {
                 }
             })();
         }
-    }, []);
+}, [initial.numero_serie, set]);
 
     const descargarQr = () => {
         const svg = qrRef.current?.querySelector('svg');
