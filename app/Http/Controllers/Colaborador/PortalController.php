@@ -363,12 +363,12 @@ class PortalController extends Controller
         };
 
         // ── ACIs del mes ─────────────────────────────────────────────────────
-        $metaBase = 32;
+        $metaBase = 4;
         $aciRealizadas = Aci::whereMonth('fecha_incidente', $mes)
             ->whereYear('fecha_incidente', $anio)
             ->where('colaborador_id', $colaborador->id)
             ->count();
-        $porcentajeAci = round(($aciRealizadas / $metaBase) * 100, 1);
+        $porcentajeAci = min(100.0, round(($aciRealizadas / $metaBase) * 100, 1));
 
         // ── Historial ACI últimos 6 meses ─────────────────────────────────
         $historialAci = [];
@@ -466,7 +466,23 @@ class PortalController extends Controller
                 return false;
             });
 
-        $evento = $eventosColaborador->first();
+        // ── Promedios mensuales desde todos los registros diarios del colaborador ──
+        // Se usa el promedio aritmético de los N días con registro, igual que la
+        // fórmula de compensacion-variable-diaria:
+        //   Promedio = Σ rechazo_diario_i / N
+        $diasConRechazos    = $eventosColaborador->filter(fn ($r) => $r->rechazos !== null);
+        $diasConAdherencia  = $eventosColaborador->filter(fn ($r) => $r->adherencia_tiempo !== null);
+        $diasConRmd         = $eventosColaborador->filter(fn ($r) => $r->rmd !== null && is_numeric($r->rmd));
+
+        $promedioRechazos   = $diasConRechazos->count() > 0
+            ? round($diasConRechazos->sum('rechazos') / $diasConRechazos->count(), 4)
+            : null;
+        $promedioAdherencia = $diasConAdherencia->count() > 0
+            ? round($diasConAdherencia->sum('adherencia_tiempo') / $diasConAdherencia->count(), 2)
+            : null;
+        $promedioRmd        = $diasConRmd->count() > 0
+            ? round($diasConRmd->sum('rmd') / $diasConRmd->count(), 2)
+            : null;
 
         // Solo aplica checklist para conductores (Default 100% / Aprobado)
         $esConductorPortal = str_contains(strtoupper((string)($colaborador->cargo ?? '')), 'CONDUCTOR');
@@ -484,16 +500,39 @@ class PortalController extends Controller
 
         // ── Armar métricas ────────────────────────────────────────────────
         $metricas = [
-            'aci' => ['valor' => $porcentajeAci,       'label' => "{$porcentajeAci}%",     'pilar' => 'Seguridad', 'peso' => 10,  'emoji' => '🛡️', 'titulo' => 'ACI',                'meta_desc' => '(Realizadas ÷ 32) × 100'],
+            'aci' => ['valor' => $porcentajeAci, 'label' => "{$porcentajeAci}%", 'pilar' => 'Seguridad', 'peso' => 10, 'emoji' => '🛡️', 'titulo' => 'ACI', 'meta_desc' => '(Realizadas ÷ 4) × 100'],
             'owd' => ['valor' => $owdRuta,              'label' => $owdRuta !== null ? "{$owdRuta}%" : 'N/A',        'pilar' => 'Seguridad', 'peso' => 15,  'emoji' => '✅', 'titulo' => 'OWD Ruta',           'meta_desc' => 'Sin NO OK = 100% | Con NO OK = 0%'],
             'calificaciones' => ['valor' => $promedioCalif,        'label' => $promedioCalif !== null ? "{$promedioCalif}%" : 'N/A', 'pilar' => 'Seguridad', 'peso' => 10, 'emoji' => '🎓', 'titulo' => 'Calificaciones',     'meta_desc' => 'Promedio de notas por módulo'],
             'dpo' => ['valor' => $estaEnDpo ? 0.0 : 100.0, 'label' => $estaEnDpo ? '0%' : '100%',                        'pilar' => 'Gente',     'peso' => 5,   'emoji' => '📚', 'titulo' => 'DPO Academy',        'meta_desc' => 'Sin registro = 100% | En listado = 0%'],
             'ausentismo' => ['valor' => $porcentajeAusentismo, 'label' => $ausentismoAprobado ? '100%' : '0%', 'pilar' => 'Gente', 'peso' => 5, 'emoji' => '📅', 'titulo' => 'Ausentismo', 'meta_desc' => 'Default 100% · Manual'],
             'marcaciones' => ['valor' => $tieneMalasMarcaciones ? 0.0 : 100.0, 'label' => $tieneMalasMarcaciones ? '0%' : '100%', 'pilar' => 'Gente', 'peso' => 5, 'emoji' => '🕐', 'titulo' => 'Malas Marcaciones', 'meta_desc' => 'Sin corrección = 100%'],
-            'rechazos' => ['valor' => $evento?->rechazos !== null ? ((float) $evento->rechazos >= 2.4 ? 0.0 : 100.0) : null, 'label' => $evento?->rechazos !== null ? ((float) $evento->rechazos >= 2.4 ? '0%' : '100%') : 'N/A', 'pilar' => 'Reparto', 'peso' => 11, 'emoji' => '🔄', 'titulo' => 'Rechazos', 'meta_desc' => '< 2.4% rechazos = 100%'],
+            'rechazos' => [
+                'valor'     => $promedioRechazos !== null
+                    ? ($promedioRechazos < 2.0 ? 100.0 : ($promedioRechazos < 2.4 ? 80.0 : 0.0))
+                    : null,
+                'label'     => $promedioRechazos !== null
+                    ? ($promedioRechazos < 2.0 ? '100%' : ($promedioRechazos < 2.4 ? '80%' : '0%'))
+                    : 'N/A',
+                'promedio'  => $promedioRechazos,
+                'dias'      => $diasConRechazos->count(),
+                'pilar' => 'Reparto', 'peso' => 11, 'emoji' => '🔄', 'titulo' => 'Rechazos',
+                'meta_desc' => 'Promedio < 2.0% = 100% · 2.0%–2.39% = 80% · ≥ 2.4% = 0%',
+            ],
             'sac' => ['valor' => $casosSac === 0 ? 100.0 : 0.0, 'label' => $casosSac === 0 ? '100%' : '0%', 'pilar' => 'Reparto', 'peso' => 8, 'emoji' => '🎧', 'titulo' => 'SAC', 'meta_desc' => 'Sin casos = 100%'],
-            'adherencia' => ['valor' => $evento?->adherencia_tiempo !== null ? ((float) $evento->adherencia_tiempo >= 83 ? 100.0 : 0.0) : null, 'label' => $evento?->adherencia_tiempo !== null ? ((float) $evento->adherencia_tiempo >= 83 ? '100%' : '0%') : 'N/A', 'pilar' => 'Reparto', 'peso' => 8, 'emoji' => '⏰', 'titulo' => 'Adherencia Tiempo', 'meta_desc' => '≥ 83% = 100%'],
-            'rmd' => ['valor' => $evento?->rmd !== null ? ((float) $evento->rmd >= 4 ? 100.0 : 0.0) : null, 'label' => $evento?->rmd !== null ? ((float) $evento->rmd >= 4 ? '100%' : '0%') : 'N/A', 'pilar' => 'Reparto', 'peso' => 8, 'emoji' => '🏆', 'titulo' => 'RMD', 'meta_desc' => 'Promedio ≥ 4 = 100%'],
+            'adherencia' => [
+                'valor'    => $promedioAdherencia !== null ? ($promedioAdherencia >= 83 ? 100.0 : 0.0) : null,
+                'label'    => $promedioAdherencia !== null ? ($promedioAdherencia >= 83 ? '100%' : '0%') : 'N/A',
+                'promedio' => $promedioAdherencia,
+                'pilar' => 'Reparto', 'peso' => 8, 'emoji' => '⏰', 'titulo' => 'Adherencia Tiempo',
+                'meta_desc' => 'Promedio mensual ≥ 83% = 100%',
+            ],
+            'rmd' => [
+                'valor'    => $promedioRmd !== null ? ($promedioRmd >= 4 ? 100.0 : 0.0) : null,
+                'label'    => $promedioRmd !== null ? ($promedioRmd >= 4 ? '100%' : '0%') : 'N/A',
+                'promedio' => $promedioRmd,
+                'pilar' => 'Reparto', 'peso' => 8, 'emoji' => '🏆', 'titulo' => 'RMD',
+                'meta_desc' => 'Promedio mensual ≥ 4 = 100%',
+            ],
             // FLOTA — solo conductores, binario Aprobado/No Aprobado (default Aprobado)
             'cl_pre' => [
                 'valor'    => $esConductorPortal ? ($clPreAprobado ? 100.0 : 0.0) : null,

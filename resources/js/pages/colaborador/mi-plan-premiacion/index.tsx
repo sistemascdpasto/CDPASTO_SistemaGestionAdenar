@@ -45,6 +45,10 @@ interface Metrica {
     peso: number;
     titulo: string;
     meta_desc: string;
+    /** Promedio real del mes (para rechazos, adherencia, rmd). */
+    promedio?: number | null;
+    /** Número de días con registro en el mes. */
+    dias?: number | null;
 }
 
 interface HistorialAci {
@@ -100,6 +104,17 @@ function estadoLabel(valor: number | null): string {
     return 'Por mejorar';
 }
 
+// Estado por niveles de rechazos (misma fórmula de compensación variable diaria):
+//   < 2.0% → Meta cumplida (100%)
+//   2.0%–2.39% → 80% del valor (naranja)
+//   ≥ 2.4% → Perdido (rojo)
+function estadoRechazos(promedio: number | null): string {
+    if (promedio === null) return 'Sin dato';
+    if (promedio < 2.0)    return 'Meta cumplida';
+    if (promedio < 2.4)    return '80% del valor';
+    return 'Perdido';
+}
+
 // ─── Componentes base ─────────────────────────────────────────────────────────
 
 function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
@@ -124,8 +139,16 @@ function Barra({ pct, color }: { pct: number; color: string }) {
 }
 
 function FilaMetrica({ metrica }: { metrica: Metrica }) {
+    const esRechazos = metrica.titulo === 'Rechazos';
     const cumple = metrica.valor !== null && metrica.valor >= 95;
     const PilarIcon = PILAR_CONFIG[metrica.pilar].Icon;
+    // Promedio real del mes (rechazos, adherencia, rmd) mostrado junto al resultado
+    const promedioStr = metrica.promedio != null
+        ? `Promedio: ${metrica.promedio.toFixed(2)}%${metrica.dias ? ` · ${metrica.dias} día${metrica.dias !== 1 ? 's' : ''}` : ''}`
+        : null;
+    const estado = esRechazos && metrica.promedio != null
+        ? estadoRechazos(metrica.promedio)
+        : estadoLabel(metrica.valor);
     return (
         <div className="flex items-start gap-3 py-3 border-b border-sidebar-border/70 last:border-0 dark:border-sidebar-border">
             <div className={`flex size-8 shrink-0 items-center justify-center rounded-full ${cumple ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-muted text-muted-foreground'}`}>
@@ -141,7 +164,7 @@ function FilaMetrica({ metrica }: { metrica: Metrica }) {
                         <p className="text-[10px] text-muted-foreground">{metrica.meta_desc}</p>
                     </div>
                     <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${chipCls(metrica.valor)}`}>
-                        {estadoLabel(metrica.valor)}
+                        {estado}
                     </span>
                 </div>
                 <div className="mt-1.5">
@@ -149,6 +172,9 @@ function FilaMetrica({ metrica }: { metrica: Metrica }) {
                 </div>
                 <p className="mt-1 text-[10px] text-muted-foreground">
                     Resultado: <strong className="text-muted-foreground">{metrica.label}</strong>
+                    {promedioStr && (
+                        <span className="ml-2 text-muted-foreground/70">({promedioStr})</span>
+                    )}
                 </p>
             </div>
             {cumple && <Star className="size-4 shrink-0 fill-amber-400 text-amber-400" />}

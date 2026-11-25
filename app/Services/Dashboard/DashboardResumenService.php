@@ -201,7 +201,7 @@ class DashboardResumenService
                 ['key' => 'serie2', 'label' => 'SAC', 'color' => '#0369A1'],
             ],
             'pendientes' => [
-                ['label' => 'SAC sin resolver', 'value' => $sacAbiertos, 'href' => '/modules/gente/sac', 'tone' => 'warn'],
+                ['label' => 'SAC sin resolver', 'value' => $sacAbiertos, 'href' => '/modules/reparto/sac', 'tone' => 'warn'],
                 ['label' => 'Correcciones sin colaborador identificado', 'value' => $correccionesSinColaborador, 'href' => '/modules/gente/correccion-marcaciones', 'tone' => 'warn'],
             ],
         ];

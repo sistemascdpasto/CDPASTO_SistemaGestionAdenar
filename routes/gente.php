@@ -15,7 +15,6 @@ use App\Http\Controllers\Gente\PlanPremiacionController;
 use App\Http\Controllers\Gente\PerfilCargoController;
 use App\Http\Controllers\Gente\ReferenciaExternaController;
 use App\Http\Controllers\Gente\ResponsableRutaController;
-use App\Http\Controllers\Gente\SacController;
 use App\Http\Controllers\Gente\SeguimientoPruebasController;
 use App\Http\Controllers\Gente\TipoDocumentoController;
 use Illuminate\Support\Facades\Route;
@@ -225,12 +224,6 @@ Route::middleware(['auth', 'active', 'role:Administrador|Gente|Contratos', 'subm
         Route::delete('contratos/{colaborador}/activaciones/{activacion}', [ContratosController::class, 'destroyActivacion'])
             ->name('contratos.activaciones.destroy');
 
-        // SAC (Escritura: Importar / Limpiar)
-        Route::post('sac/importar', [SacController::class, 'importar'])
-            ->name('sac.importar');
-        Route::post('sac/limpiar', [SacController::class, 'limpiar'])
-            ->name('sac.limpiar');
-
         // Responsable de Ruta - Inicio / Finalización de la verificación de carga
         Route::post('responsable-ruta/inicio', [ResponsableRutaController::class, 'storeInicio'])
             ->name('responsable-ruta.inicio');
@@ -320,14 +313,6 @@ Route::middleware(['auth', 'active', 'role:Administrador|Seguridad|Reparto|Flota
         // Certificado laboral con funciones en PDF
         Route::get('contratos/{colaborador}/certificado-laboral-con-funciones-pdf', [ContratosController::class, 'exportarCertificadoLaboralConFuncionesPdf'])
             ->name('contratos.certificado-laboral-con-funciones-pdf');
-
-        // SAC (Lectura, Plantilla & Exportar)
-        Route::get('sac', [SacController::class, 'index'])
-            ->name('sac.index');
-        Route::get('sac/exportar', [SacController::class, 'exportar'])
-            ->name('sac.exportar');
-        Route::get('sac/plantilla', [SacController::class, 'plantilla'])
-            ->name('sac.plantilla');
     });
 
 Route::middleware(['auth', 'active', 'role:Administrador|Gente|Reparto', 'submodule.access'])

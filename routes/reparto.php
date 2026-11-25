@@ -18,6 +18,7 @@ use App\Http\Controllers\Reparto\ModulacionController;
 use App\Http\Controllers\Reparto\RevisionAleatoriaController;
 use App\Http\Controllers\Reparto\RevisionCausalController;
 use App\Http\Controllers\Reparto\RevisionResponsableController;
+use App\Http\Controllers\Reparto\SacController;
 use App\Http\Controllers\Reparto\VehiculosDetenidosController;
 use Illuminate\Support\Facades\Route;
 
@@ -264,4 +265,20 @@ Route::middleware(['auth', 'active', 'submodule.access'])
             ->name('vehiculos-detenidos.index');
         Route::post('/vehiculos-detenidos/actualizar', [VehiculosDetenidosController::class, 'actualizar'])
             ->name('vehiculos-detenidos.actualizar');
+
+        // SAC - Servicio al Cliente (Lectura: todos los roles del módulo)
+        Route::get('/sac', [SacController::class, 'index'])
+            ->name('sac.index');
+        Route::get('/sac/exportar', [SacController::class, 'exportar'])
+            ->name('sac.exportar');
+        Route::get('/sac/plantilla', [SacController::class, 'plantilla'])
+            ->name('sac.plantilla');
+
+        // SAC - Escritura: solo Administrador y Reparto
+        Route::middleware('role:Administrador|Reparto')->group(function () {
+            Route::post('/sac/importar', [SacController::class, 'importar'])
+                ->name('sac.importar');
+            Route::post('/sac/limpiar', [SacController::class, 'limpiar'])
+                ->name('sac.limpiar');
+        });
     });

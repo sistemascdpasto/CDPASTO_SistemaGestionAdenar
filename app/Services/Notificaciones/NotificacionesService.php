@@ -213,12 +213,12 @@ class NotificacionesService
             'titulo' => $s->nombre_cuenta ?: ('Caso '.($s->numero_caso_estandar ?: $s->id)),
             'detalle' => $s->motivo_queja ?: 'SAC sin resolver',
             'fecha' => optional($s->fecha)->format('d/m/Y'),
-            'url' => '/modules/gente/sac',
+            'url' => '/modules/reparto/sac',
         ])->all();
 
         return $this->grupo('sac', 'SAC sin resolver', 'file-warning', '#E3A11E', $items, [
             'label' => 'Ver SAC',
-            'url' => '/modules/gente/sac',
+            'url' => '/modules/reparto/sac',
         ], $total);
     }
 

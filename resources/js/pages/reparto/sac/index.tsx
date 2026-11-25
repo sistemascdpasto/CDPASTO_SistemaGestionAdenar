@@ -13,8 +13,8 @@ import { useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
-    { title: 'Gente', href: '/modules/gente' },
-    { title: 'SAC', href: '/modules/gente/sac' },
+    { title: 'Reparto', href: '/modules/reparto' },
+    { title: 'SAC', href: '/modules/reparto/sac' },
 ];
 
 interface ColaboradorInfo {
@@ -131,7 +131,7 @@ export default function SacIndex({ registros, kpis, options, filters }: Props) {
         if (newSub && newSub !== 'todas') query.subcategoria = newSub;
         if (newResp && newResp !== 'todos') query.responsable = newResp;
 
-        router.get('/modules/gente/sac', query, {
+        router.get('/modules/reparto/sac', query, {
             preserveState: true,
             replace: true,
         });
@@ -143,7 +143,7 @@ export default function SacIndex({ registros, kpis, options, filters }: Props) {
         setAnio('todos');
         setSubcategoria('todas');
         setResponsable('todos');
-        router.get('/modules/gente/sac', {}, { preserveState: true, replace: true });
+        router.get('/modules/reparto/sac', {}, { preserveState: true, replace: true });
     };
 
     const handleImportSubmit = (e: React.FormEvent) => {
@@ -154,7 +154,7 @@ export default function SacIndex({ registros, kpis, options, filters }: Props) {
         const formData = new FormData();
         formData.append('archivo', importFile);
 
-        router.post('/modules/gente/sac/importar', formData, {
+        router.post('/modules/reparto/sac/importar', formData, {
             onSuccess: () => {
                 setIsImportOpen(false);
                 setImportFile(null);
@@ -168,7 +168,7 @@ export default function SacIndex({ registros, kpis, options, filters }: Props) {
 
     const handleLimpiar = () => {
         if (confirm('¿Está seguro de que desea eliminar TODOS los registros de SAC? Esta acción no se puede deshacer.')) {
-            router.post('/modules/gente/sac/limpiar');
+            router.post('/modules/reparto/sac/limpiar');
         }
     };
 
@@ -192,7 +192,7 @@ export default function SacIndex({ registros, kpis, options, filters }: Props) {
                         <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => window.open('/modules/gente/sac/plantilla', '_blank')}
+                            onClick={() => window.open('/modules/reparto/sac/plantilla', '_blank')}
                         >
                             <Download className="mr-2 h-4 w-4" />
                             Plantilla Excel
@@ -201,7 +201,7 @@ export default function SacIndex({ registros, kpis, options, filters }: Props) {
                         <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => window.open(`/modules/gente/sac/exportar?search=${search}&mes=${mes === 'todos' ? '' : mes}&anio=${anio === 'todos' ? '' : anio}&subcategoria=${subcategoria === 'todas' ? '' : subcategoria}&responsable=${responsable === 'todos' ? '' : responsable}`, '_blank')}
+                            onClick={() => window.open(`/modules/reparto/sac/exportar?search=${search}&mes=${mes === 'todos' ? '' : mes}&anio=${anio === 'todos' ? '' : anio}&subcategoria=${subcategoria === 'todas' ? '' : subcategoria}&responsable=${responsable === 'todos' ? '' : responsable}`, '_blank')}
                         >
                             <FileSpreadsheet className="mr-2 h-4 w-4 text-emerald-600" />
                             Exportar CSV
@@ -309,9 +309,7 @@ export default function SacIndex({ registros, kpis, options, filters }: Props) {
                                     <SelectContent>
                                         <SelectItem value="todos">Todos los años</SelectItem>
                                         {safeOptions.anios.map((a) => (
-                                            <SelectItem key={a} value={a}>
-                                                {a}
-                                            </SelectItem>
+                                            <SelectItem key={a} value={a}>{a}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
@@ -331,9 +329,7 @@ export default function SacIndex({ registros, kpis, options, filters }: Props) {
                                     <SelectContent>
                                         <SelectItem value="todos">Todos los meses</SelectItem>
                                         {safeOptions.meses.map((m) => (
-                                            <SelectItem key={m} value={m}>
-                                                {m}
-                                            </SelectItem>
+                                            <SelectItem key={m} value={m}>{m}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
@@ -353,9 +349,7 @@ export default function SacIndex({ registros, kpis, options, filters }: Props) {
                                     <SelectContent>
                                         <SelectItem value="todas">Todas las subcategorías</SelectItem>
                                         {safeOptions.subcategorias.map((s) => (
-                                            <SelectItem key={s} value={s}>
-                                                {s}
-                                            </SelectItem>
+                                            <SelectItem key={s} value={s}>{s}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
@@ -375,9 +369,7 @@ export default function SacIndex({ registros, kpis, options, filters }: Props) {
                                     <SelectContent>
                                         <SelectItem value="todos">Todos los responsables</SelectItem>
                                         {safeOptions.responsables.map((r) => (
-                                            <SelectItem key={r} value={r}>
-                                                {r}
-                                            </SelectItem>
+                                            <SelectItem key={r} value={r}>{r}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>

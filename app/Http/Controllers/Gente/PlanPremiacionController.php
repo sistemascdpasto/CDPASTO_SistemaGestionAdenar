@@ -15,7 +15,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PlanPremiacionController extends Controller
 {
-    public const META_BASE = 32;
+    public const META_BASE    = 32; // Meta anual total de ACIs
+    public const META_MENSUAL = 4;  // Meta mensual para calificación (÷ 4 × 100)
 
     /** Umbral de adherencia (%) para aprobar cada checklist (Pre y Post). */
     public const UMBRAL_CHECKLIST = 90;
@@ -306,9 +307,9 @@ class PlanPremiacionController extends Controller
             $checklistsManuales, $normStr
         ) {
             $aciRealizadas = (int) ($conteosPorColaborador[$colaborador->id] ?? 0);
-            $porcentaje    = min(100.0, round(($aciRealizadas / self::META_BASE) * 100, 1));
-            $faltantes     = max(0, self::META_BASE - $aciRealizadas);
-            $cumple        = $aciRealizadas >= self::META_BASE;
+            $porcentaje    = min(100.0, round(($aciRealizadas / self::META_MENSUAL) * 100, 1));
+            $faltantes     = max(0, self::META_MENSUAL - $aciRealizadas);
+            $cumple        = $aciRealizadas >= self::META_MENSUAL;
             $estadoStr     = $cumple ? 'meta_alcanzada' : ($aciRealizadas > 0 ? 'en_progreso' : 'sin_participacion');
 
             // OWD Ruta — binario
@@ -366,12 +367,19 @@ class PlanPremiacionController extends Controller
             };
 
             // Rechazos
+            // Promedio aritmético de los % diarios (misma fórmula que
+            // compensacion-variable-diaria): Σ rechazo_diario_i / N días.
+            // Se compara SIN redondear contra la meta 2.4% para no voltear
+            // casos límite (ej: 2.44 no debe redondearse a 2.4).
             $valsRechazos = $getMetricVals($rechazosPorDocumento, $rechazosPorNombre);
             if (!empty($valsRechazos)) {
-                $porcentajeRechazos      = round(array_sum($valsRechazos) / count($valsRechazos), 1);
+                $promedioRechazosRaw   = array_sum($valsRechazos) / count($valsRechazos);
+                $porcentajeRechazos    = round($promedioRechazosRaw, 2);
+                $porcentajeRechazosRaw = $promedioRechazosRaw;
                 $porcentajeRechazosLabel = "{$porcentajeRechazos}%";
             } else {
                 $porcentajeRechazos      = null;
+                $porcentajeRechazosRaw   = null;
                 $porcentajeRechazosLabel = 'N/A';
             }
 
@@ -441,11 +449,24 @@ class PlanPremiacionController extends Controller
             }
 
             // Resultado Reparto (35 pts)
-            $calRechazos       = $porcentajeRechazos        !== null ? (int) ($porcentajeRechazos <= 2.4)       : 0;
+            // Rechazos — 3 niveles, igual que la fórmula de compensacion-variable-diaria:
+            //   promedio < 2.0%        → 100% del peso (11 pts)
+            //   2.0% ≤ promedio < 2.4% →  80% del peso (8.8 pts)
+            //   promedio ≥ 2.4%        →   0% (0 pts)
+            // Comparado sin redondear contra el promedio real del mes.
+            $factorRechazos = 0.0;
+            if ($porcentajeRechazosRaw !== null) {
+                if ($porcentajeRechazosRaw < 2.0) {
+                    $factorRechazos = 1.0;
+                } elseif ($porcentajeRechazosRaw < 2.4) {
+                    $factorRechazos = 0.8;
+                }
+            }
+            $puntosRechazos = round($factorRechazos * 11, 1);
             $calSac            = $tieneCasosSac ? 0 : 1;
             $calAdherenciaTiempo = $porcentajeAdherenciaTiempo !== null ? (int) ($porcentajeAdherenciaTiempo >= 83) : 0;
             $calRmd            = $promedioRmd                !== null ? (int) ($promedioRmd >= 4)                : 0;
-            $resultadoRepartoVal   = round(($calRechazos * 11) + ($calSac * 8) + ($calAdherenciaTiempo * 8) + ($calRmd * 8), 1);
+            $resultadoRepartoVal   = round($puntosRechazos + ($calSac * 8) + ($calAdherenciaTiempo * 8) + ($calRmd * 8), 1);
             $resultadoRepartoLabel = "{$resultadoRepartoVal}%";
 
             // Resultado Flota (15 pts — solo Conductores)
@@ -476,7 +497,7 @@ class PlanPremiacionController extends Controller
                 'cargo'                        => $colaborador->cargo ?? 'Sin cargo',
                 'area'                         => $colaborador->area  ?? 'General',
                 'aci_realizadas'               => $aciRealizadas,
-                'meta'                         => self::META_BASE,
+                'meta'                         => self::META_MENSUAL,
                 'porcentaje'                   => $porcentaje,
                 'porcentaje_owd_ruta'          => $porcentajeOwdRuta,
                 'porcentaje_owd_ruta_label'    => $porcentajeOwdRutaLabel,
@@ -494,6 +515,7 @@ class PlanPremiacionController extends Controller
                 'resultado_asistencia_label'   => $resultadoAsistenciaLabel,
                 'porcentaje_rechazos'          => $porcentajeRechazos,
                 'porcentaje_rechazos_label'    => $porcentajeRechazosLabel,
+                'dias_rechazos'                => !empty($valsRechazos) ? count($valsRechazos) : null,
                 'porcentaje_sac'               => $porcentajeSac,
                 'porcentaje_sac_label'         => $porcentajeSacLabel,
                 'porcentaje_adherencia_tiempo' => $porcentajeAdherenciaTiempo,
@@ -706,7 +728,7 @@ class PlanPremiacionController extends Controller
             ->where('colaborador_id', $colaborador->id)
             ->count();
 
-        $porcentajeAci = min(100.0, round(($aciRealizadas / self::META_BASE) * 100, 1));
+        $porcentajeAci = min(100.0, round(($aciRealizadas / self::META_MENSUAL) * 100, 1));
 
         // ── Historial ACI últimos 6 meses ──────────────────────────────────
         $historialAci = [];
@@ -719,8 +741,8 @@ class PlanPremiacionController extends Controller
             $historialAci[] = [
                 'mes'    => $fecha->translatedFormat('M Y'),
                 'total'  => $count,
-                'pct'    => round(($count / self::META_BASE) * 100, 1),
-                'cumple' => $count >= self::META_BASE,
+                'pct'    => round(($count / self::META_MENSUAL) * 100, 1),
+                'cumple' => $count >= self::META_MENSUAL,
             ];
         }
 

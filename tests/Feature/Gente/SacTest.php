@@ -39,7 +39,7 @@ class SacTest extends TestCase
 
         $response->assertOk();
         $response->assertInertia(fn ($page) => $page
-            ->component('gente/sac/index')
+            ->component('reparto/sac/index')
             ->has('registros')
             ->has('kpis')
             ->has('options')

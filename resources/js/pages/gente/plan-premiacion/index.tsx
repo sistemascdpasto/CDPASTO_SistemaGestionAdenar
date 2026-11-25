@@ -72,6 +72,7 @@ interface ColaboradorItem {
     resultado_asistencia_label: string;
     porcentaje_rechazos: number | null;
     porcentaje_rechazos_label: string;
+    dias_rechazos: number | null;
     porcentaje_sac: number;
     porcentaje_sac_label: string;
     porcentaje_adherencia_tiempo: number | null;
@@ -348,18 +349,24 @@ export default function PlanPremiacionIndex({ colaboradores, top3, peores2 = [],
 
             <div className="space-y-6 p-6">
                 {/* Header Banner */}
-                <div className="rounded-xl border border-amber-200 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent p-6 shadow-sm dark:border-amber-900/50 dark:from-amber-950/20">
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                                <Trophy className="h-6 w-6 text-amber-600 dark:text-amber-400" />
-                                <h1 className="text-2xl font-bold tracking-tight text-foreground">
-                                    Plan Premiación ACI, OWD & Calificaciones
-                                </h1>
+                {/* ── Card Título ───────────────────────────────────────────────── */}
+                <div className="rounded-2xl border border-border/70 bg-card shadow-sm px-8 py-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                            <div
+                                className="flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl shadow-sm shrink-0"
+                                style={{ background: 'linear-gradient(135deg, #78350f 0%, #b45309 60%, #d97706 100%)' }}
+                            >
+                                <Trophy className="h-7 w-7 text-white" />
                             </div>
-                            <p className="text-sm text-muted-foreground">
-                                Evaluación mensual de participación ACI, porcentaje OWD Ruta y promedio de Calificaciones por módulo.
-                            </p>
+                            <div>
+                                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+                                    Plan Premiación
+                                </h1>
+                                <p className="text-sm text-muted-foreground mt-0.5">
+                                    Evaluación mensual · ACI, OWD, Calificaciones, Reparto y Flota
+                                </p>
+                            </div>
                         </div>
                         <div className="min-w-[260px]">
                             <button
@@ -376,7 +383,7 @@ export default function PlanPremiacionIndex({ colaboradores, top3, peores2 = [],
                                     <div className="col-span-2 mt-1 mb-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
                                         <ShieldCheck className="h-3 w-3" /> Seguridad 35%
                                     </div>
-                                    <div><span className="font-bold text-emerald-700 dark:text-emerald-400">ACI</span> <span className="text-muted-foreground">(10%)</span> — Realizadas ÷ 32 × 100</div>
+                                    <div><span className="font-bold text-emerald-700 dark:text-emerald-400">ACI</span> <span className="text-muted-foreground">(10%)</span> — Realizadas ÷ 4 × 100</div>
                                     <div><span className="font-bold text-emerald-700 dark:text-emerald-400">OWD Ruta</span> <span className="text-muted-foreground">(15%)</span> — Sin NO OK = 100% | Con NO OK = 0%</div>
                                     <div><span className="font-bold text-emerald-700 dark:text-emerald-400">Calificaciones</span> <span className="text-muted-foreground">(10%)</span> — Promedio de notas por módulo</div>
 
@@ -392,7 +399,7 @@ export default function PlanPremiacionIndex({ colaboradores, top3, peores2 = [],
                                     <div className="col-span-2 mt-2 mb-0.5 text-[10px] font-bold text-rose-700 dark:text-rose-400 flex items-center gap-1">
                                         <Medal className="h-3 w-3" /> Reparto 35%
                                     </div>
-                                    <div><span className="font-bold text-rose-700 dark:text-rose-400">Rechazos</span> <span className="text-muted-foreground">(11%)</span> — &lt; 2.4% rechazos = 100% | ≥ 2.4% = 0%</div>
+                                    <div><span className="font-bold text-rose-700 dark:text-rose-400">Rechazos</span> <span className="text-muted-foreground">(11%)</span> — &lt; 2.0% = 100% (verde) | 2.0%–2.39% = 80% (naranja) | ≥ 2.4% = 0% (rojo)</div>
                                     <div><span className="font-bold text-rose-700 dark:text-rose-400">SAC</span> <span className="text-muted-foreground">(8%)</span> — Sin casos = 100% | Con casos = 0%</div>
                                     <div><span className="font-bold text-rose-700 dark:text-rose-400">Adherencia Tiempo</span> <span className="text-muted-foreground">(8%)</span> — ≥ 83% adherencia = 100% | &lt; 83% = 0%</div>
                                     <div><span className="font-bold text-rose-700 dark:text-rose-400">RMD</span> <span className="text-muted-foreground">(8%)</span> — Promedio ≥ 4 = 100% | &lt; 4 = 0%</div>
@@ -751,19 +758,23 @@ export default function PlanPremiacionIndex({ colaboradores, top3, peores2 = [],
                                                         <div className="w-20 overflow-hidden rounded-full bg-muted h-2">
                                                             <div
                                                                 className={`h-full rounded-full transition-all duration-300 ${
-                                                                    colab.porcentaje >= 100
+                                                                    colab.aci_realizadas >= 4
                                                                         ? 'bg-emerald-500'
-                                                                        : colab.porcentaje >= 50
-                                                                          ? 'bg-amber-500'
-                                                                          : colab.porcentaje > 0
-                                                                            ? 'bg-blue-500'
+                                                                        : colab.aci_realizadas > 0
+                                                                            ? 'bg-amber-500'
                                                                             : 'bg-muted-foreground/30'
                                                                 }`}
-                                                                style={{ width: `${Math.min(100, colab.porcentaje)}%` }}
+                                                                style={{ width: `${Math.min(100, (colab.aci_realizadas / 4) * 100)}%` }}
                                                             />
                                                         </div>
-                                                        <span className="font-bold text-foreground min-w-[40px]">
-                                                            {colab.porcentaje}%
+                                                        <span className={`font-bold min-w-[40px] ${
+                                                            colab.aci_realizadas >= 4
+                                                                ? 'text-emerald-600 dark:text-emerald-400'
+                                                                : colab.aci_realizadas > 0
+                                                                    ? 'text-amber-600 dark:text-amber-400'
+                                                                    : 'text-muted-foreground'
+                                                        }`}>
+                                                            {colab.aci_realizadas}/4
                                                         </span>
                                                     </div>
                                                 </TableCell>
@@ -932,17 +943,36 @@ export default function PlanPremiacionIndex({ colaboradores, top3, peores2 = [],
                                                 </TableCell>
                                                 )}
 
-                                                {/* % Rechazos */}
+                                                {/* % Rechazos — verde < 2.0% · naranja 2.0–2.39% · rojo ≥ 2.4% */}
                                                 {cv('rechazos') && (
                                                 <TableCell className="text-right">
                                                     {colab.porcentaje_rechazos !== null && colab.porcentaje_rechazos !== undefined ? (
-                                                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-extrabold ${
-                                                            colab.porcentaje_rechazos >= 100
-                                                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                                                                : 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'
-                                                        }`}>
-                                                            {colab.porcentaje_rechazos_label}
-                                                        </span>
+                                                        <div className="flex flex-col items-end gap-0.5">
+                                                            <div className="flex items-center justify-end gap-2">
+                                                                <div className="w-16 overflow-hidden rounded-full bg-muted h-2">
+                                                                    <div className={`h-full rounded-full transition-all duration-300 ${
+                                                                        colab.porcentaje_rechazos < 2.0
+                                                                            ? 'bg-emerald-500'
+                                                                            : colab.porcentaje_rechazos < 2.4
+                                                                                ? 'bg-amber-500'
+                                                                                : 'bg-rose-500'
+                                                                    }`}
+                                                                        style={{ width: `${Math.min(100, Math.max(0, (1 - colab.porcentaje_rechazos / 4.8) * 100))}%` }} />
+                                                                </div>
+                                                                <span className={`font-bold min-w-[40px] ${
+                                                                    colab.porcentaje_rechazos < 2.0
+                                                                        ? 'text-emerald-600 dark:text-emerald-400'
+                                                                        : colab.porcentaje_rechazos < 2.4
+                                                                            ? 'text-amber-600 dark:text-amber-400'
+                                                                            : 'text-rose-600 dark:text-rose-400'
+                                                                }`}>
+                                                                    {colab.porcentaje_rechazos_label}
+                                                                </span>
+                                                            </div>
+                                                            {colab.dias_rechazos != null && (
+                                                                <span className="text-[10px] text-muted-foreground">{colab.dias_rechazos} días</span>
+                                                            )}
+                                                        </div>
                                                     ) : (
                                                         <Badge variant="outline" className="text-muted-foreground border-input">N/A</Badge>
                                                     )}
