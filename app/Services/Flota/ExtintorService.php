@@ -273,38 +273,82 @@ class ExtintorService
         ], $tecnicos, $heredado);
     }
 
-    /** Catálogo de partes como [{value, label}]. */
+    /** Catálogo de partes como [{codigo, nombre}]. */
     public function catalogoPartes(): array
     {
         return collect(self::PARTES)
-            ->map(fn (string $label, $code) => ['value' => $code, 'label' => "{$code} — {$label}"])
+            ->map(fn (string $label, $code) => ['codigo' => (string) $code, 'nombre' => $label])
             ->values()
             ->all();
     }
 
-    /** "1,3,5" → [["code"=>"1","label"=>"Asa Percutora"], ...] */
+    /** "1,3,5" → ["1", "3", "5"] */
     public function partesComoLista(?string $parteMantenimiento): array
     {
         return collect(explode(',', (string) $parteMantenimiento))
             ->map(fn (string $code) => trim($code))
             ->filter(fn (string $code) => $code !== '')
-            ->map(fn (string $code) => ['code' => $code, 'label' => self::PARTES[$code] ?? $code])
             ->values()
             ->all();
     }
 
-    /** Timeline de inspecciones ordenada de la más reciente a la más antigua. */
-    public function historial(array $inspecciones): array
+    /** Timeline que incluye el registro inicial + inspecciones, ordenada de más reciente a más antigua. */
+    public function historial(array $inspecciones, array $datosExtintor = []): array
     {
-        return collect($inspecciones)
+        $filas = collect($inspecciones)
             ->map(fn (array $ins) => [
-                'id'                 => "ins-{$ins['id']}",
-                'fecha'              => $ins['fecha_inspeccion'] ?? '—',
-                'tipo'               => $ins['tipo'],
-                'tipo_label'         => $ins['tipo_label'],
-                'es_inspeccion'      => true,
-                'inspeccionOriginal' => $ins,
-            ])
+                'id'                  => "ins-{$ins['id']}",
+                'fecha'               => $ins['fecha_inspeccion'] ?? '—',
+                'tipo'                => $ins['tipo'],
+                'tipo_label'          => $ins['tipo_label'] ?? $ins['tipo'],
+                'es_inspeccion'       => true,
+                'inspeccion_id'       => $ins['id'],
+                'condicion'           => $ins['condicion'] ?? null,
+                'tipo_agente'         => $ins['tipo_agente'] ?? null,
+                'agente_impulsor'     => $ins['agente_impulsor'] ?? null,
+                'senalizacion'        => $ins['senalizacion'] ?? null,
+                'demarcacion'         => $ins['demarcacion'] ?? null,
+                'funcionamiento'      => $ins['funcionamiento'] ?? null,
+                'acceso'              => $ins['acceso'] ?? null,
+                'parte_mantenimiento' => $ins['parte_mantenimiento'] ?? null,
+                'observaciones'       => $ins['observaciones_inspeccion'] ?? null,
+            ]);
+
+        // Fila del registro inicial del extintor (datos capturados al crear)
+        if (! empty($datosExtintor)) {
+            $tieneCondiciones =
+                filled($datosExtintor['condicion'] ?? null) ||
+                filled($datosExtintor['tipo_agente'] ?? null) ||
+                filled($datosExtintor['agente_impulsor'] ?? null) ||
+                filled($datosExtintor['senalizacion'] ?? null) ||
+                filled($datosExtintor['demarcacion'] ?? null) ||
+                filled($datosExtintor['funcionamiento'] ?? null) ||
+                filled($datosExtintor['acceso'] ?? null) ||
+                filled($datosExtintor['parte_mantenimiento'] ?? null) ||
+                filled($datosExtintor['observaciones'] ?? null);
+
+            if ($tieneCondiciones) {
+                $filas->push([
+                    'id'                  => 'registro-inicial',
+                    'fecha'               => $datosExtintor['fecha_creacion'] ?? '—',
+                    'tipo'                => 'registro_inicial',
+                    'tipo_label'          => 'Registro inicial',
+                    'es_inspeccion'       => false,
+                    'inspeccion_id'       => null,
+                    'condicion'           => $datosExtintor['condicion'] ?? null,
+                    'tipo_agente'         => $datosExtintor['tipo_agente'] ?? null,
+                    'agente_impulsor'     => $datosExtintor['agente_impulsor'] ?? null,
+                    'senalizacion'        => $datosExtintor['senalizacion'] ?? null,
+                    'demarcacion'         => $datosExtintor['demarcacion'] ?? null,
+                    'funcionamiento'      => $datosExtintor['funcionamiento'] ?? null,
+                    'acceso'              => $datosExtintor['acceso'] ?? null,
+                    'parte_mantenimiento' => $datosExtintor['parte_mantenimiento'] ?? null,
+                    'observaciones'       => $datosExtintor['observaciones'] ?? null,
+                ]);
+            }
+        }
+
+        return $filas
             ->sortByDesc('fecha')
             ->values()
             ->all();

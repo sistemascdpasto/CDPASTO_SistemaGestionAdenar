@@ -207,7 +207,7 @@ class ExtintorController extends Controller
             'ultima_recarga'          => $datos['ultima_recarga'],
             'inspeccion_defaults'     => $this->service->defaultsInspeccion($datos, $inspecciones[0] ?? null, $tipo, $usuario),
             'partes_mantenimiento'    => $this->service->catalogoPartes(),
-            'historial'               => $this->service->historial($inspecciones),
+            'historial'               => $this->service->historial($inspecciones, $datos),
             'columnas_extra'          => $this->columnas(),
             'placas'                  => $this->placas(),
             'colaboradores'           => $this->colaboradores(),
@@ -230,7 +230,7 @@ class ExtintorController extends Controller
             fn () => $this->service->cambiarFoto($extintor, $request->file('foto'))
         );
 
-        return redirect()->route('flota.extintores.index')
+        return redirect()->route('flota.extintores.show', $extintor)
             ->with('status', $this->flash("Extintor {$extintor->numero_serie} registrado."));
     }
 
@@ -253,13 +253,15 @@ class ExtintorController extends Controller
 
     public function destroy(Extintor $extintor): RedirectResponse
     {
-        $extintor->delete();
+        $id = $extintor->id;
+
+        $extintor->forceDelete();
 
         // Foto, firmas y evidencias guardadas bajo extintores/{id}
-        Storage::disk('public')->deleteDirectory("extintores/{$extintor->id}");
+        Storage::disk('public')->deleteDirectory("extintores/{$id}");
 
         return redirect()->route('flota.extintores.index')
-            ->with('status', $this->flash('Extintor eliminado.'));
+            ->with('status', $this->flash('Extintor eliminado permanentemente.'));
     }
 
     // ── Asignaciones ──────────────────────────────────────────────────────────

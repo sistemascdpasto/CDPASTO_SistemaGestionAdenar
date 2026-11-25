@@ -1,9 +1,14 @@
 
+import InputError from '@/components/input-error';
 import { SafeImage } from '@/components/safe-image';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
 import { EntrenamientoDialog } from '@/pages/gente/colaboradores/entrenamiento-dialog';
 import { LlamadoAtencionDialog } from '@/pages/gente/colaboradores/llamado-atencion-dialog';
@@ -12,7 +17,7 @@ import {
     type DocumentInfo,
 } from '@/pages/seguridad/colaboradores/colaborador-form-fields';
 import { type BreadcrumbItem, type SharedData } from '@/types';
-import { Head, router, usePage } from '@inertiajs/react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
 import {
     AlertTriangle,
     CheckCircle2,
@@ -22,8 +27,11 @@ import {
     FileText,
     GraduationCap,
     OctagonX,
+    Pencil,
     Power,
+    Trash2,
     User,
+    X,
     XCircle,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -272,6 +280,45 @@ export default function ColaboradorShow({
 
     const tieneAlgunDocumento = documentoFields.some((doc) => documentosDe(colaborador, doc.key).length > 0);
     const [preview, setPreview] = useState<DocumentoPreview | null>(null);
+
+    // Condiciones de salud — editar / eliminar
+    const [editCondicion, setEditCondicion] = useState<CondicionRow | null>(null);
+    const [confirmDeleteCondicion, setConfirmDeleteCondicion] = useState<number | null>(null);
+
+    const condicionForm = useForm({
+        fecha_hora: '',
+        estado: '',
+        observacion: '',
+    });
+
+    function abrirEditarCondicion(condicion: CondicionRow) {
+        // fecha_hora llega como string legible; necesitamos formato datetime-local "YYYY-MM-DDTHH:mm"
+        const dt = new Date(condicion.fecha_hora);
+        const pad = (n: number) => String(n).padStart(2, '0');
+        const fechaLocal = `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+        condicionForm.setData({
+            fecha_hora: fechaLocal,
+            estado: condicion.estado,
+            observacion: condicion.observacion ?? '',
+        });
+        setEditCondicion(condicion);
+    }
+
+    function guardarCondicion(e: React.FormEvent) {
+        e.preventDefault();
+        if (!editCondicion) return;
+        condicionForm.patch(route('seguridad.condiciones-salud.update', editCondicion.id), {
+            preserveScroll: true,
+            onSuccess: () => setEditCondicion(null),
+        });
+    }
+
+    function eliminarCondicion(id: number) {
+        router.delete(route('seguridad.condiciones-salud.destroy', id), {
+            preserveScroll: true,
+            onSuccess: () => setConfirmDeleteCondicion(null),
+        });
+    }
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -836,12 +883,13 @@ export default function ColaboradorShow({
                                         <TableHead>Fecha</TableHead>
                                         <TableHead>Momento</TableHead>
                                         <TableHead>Estado</TableHead>
+                                        <TableHead className="text-right">Acciones</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {condicionesSalud.length === 0 && (
                                         <TableRow>
-                                            <TableCell colSpan={3} className="text-muted-foreground py-6 text-center">
+                                            <TableCell colSpan={4} className="text-muted-foreground py-6 text-center">
                                                 Sin registros de salud.
                                             </TableCell>
                                         </TableRow>
@@ -854,6 +902,47 @@ export default function ColaboradorShow({
                                                 <Badge variant={condicion.estado === 'Malo' ? 'destructive' : condicion.estado === 'Regular' ? 'secondary' : 'default'}>
                                                     {condicion.estado}
                                                 </Badge>
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <div className="flex items-center justify-end gap-1">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-7 w-7 p-0"
+                                                        title="Editar condición"
+                                                        onClick={() => abrirEditarCondicion(condicion)}
+                                                    >
+                                                        <Pencil className="size-3.5 text-muted-foreground hover:text-foreground transition-colors" />
+                                                    </Button>
+                                                    {confirmDeleteCondicion === condicion.id ? (
+                                                        <span className="flex items-center gap-1">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => eliminarCondicion(condicion.id)}
+                                                                className="rounded px-1.5 py-0.5 text-[10px] font-semibold bg-red-600 text-white hover:bg-red-700"
+                                                            >
+                                                                Confirmar
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setConfirmDeleteCondicion(null)}
+                                                                className="text-muted-foreground hover:text-foreground"
+                                                            >
+                                                                <X className="size-3.5" />
+                                                            </button>
+                                                        </span>
+                                                    ) : (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-7 w-7 p-0"
+                                                            title="Eliminar condición"
+                                                            onClick={() => setConfirmDeleteCondicion(condicion.id)}
+                                                        >
+                                                            <Trash2 className="size-3.5 text-muted-foreground/60 hover:text-red-500 transition-colors" />
+                                                        </Button>
+                                                    )}
+                                                </div>
                                             </TableCell>
                                         </TableRow>
                                     ))}
@@ -923,6 +1012,74 @@ export default function ColaboradorShow({
                             Este tipo de archivo no se puede previsualizar. Descargalo para abrirlo.
                         </div>
                     )}
+                </DialogContent>
+            </Dialog>
+
+            {/* ── Modal editar condición de salud ── */}
+            <Dialog open={editCondicion !== null} onOpenChange={(open) => { if (!open) setEditCondicion(null); }}>
+                <DialogContent className="max-w-md">
+                    <DialogTitle>Editar condición de salud</DialogTitle>
+                    <form onSubmit={guardarCondicion} className="space-y-4 pt-1">
+                        <div className="grid gap-1.5">
+                            <Label htmlFor="cs-fecha_hora">Fecha y hora</Label>
+                            <Input
+                                id="cs-fecha_hora"
+                                type="datetime-local"
+                                value={condicionForm.data.fecha_hora}
+                                onChange={(e) => condicionForm.setData('fecha_hora', e.target.value)}
+                            />
+                            <InputError message={condicionForm.errors.fecha_hora} />
+                        </div>
+
+                        <div className="grid gap-1.5">
+                            <Label htmlFor="cs-estado">Estado</Label>
+                            <Select
+                                value={condicionForm.data.estado}
+                                onValueChange={(v) => condicionForm.setData('estado', v)}
+                            >
+                                <SelectTrigger id="cs-estado">
+                                    <SelectValue placeholder="Selecciona un estado" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="Bueno">Bueno</SelectItem>
+                                    <SelectItem value="Regular">Regular</SelectItem>
+                                    <SelectItem value="Malo">Malo</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <InputError message={condicionForm.errors.estado} />
+                        </div>
+
+                        <div className="grid gap-1.5">
+                            <Label htmlFor="cs-observacion">
+                                Observación
+                                {(condicionForm.data.estado === 'Regular' || condicionForm.data.estado === 'Malo') && (
+                                    <span className="text-destructive ml-1">*</span>
+                                )}
+                            </Label>
+                            <Textarea
+                                id="cs-observacion"
+                                rows={3}
+                                value={condicionForm.data.observacion}
+                                onChange={(e) => condicionForm.setData('observacion', e.target.value)}
+                                placeholder={
+                                    condicionForm.data.estado === 'Regular' || condicionForm.data.estado === 'Malo'
+                                        ? 'Describa la condición del colaborador'
+                                        : 'Observaciones adicionales (opcional)'
+                                }
+                            />
+                            <InputError message={condicionForm.errors.observacion} />
+                        </div>
+
+                        <div className="flex justify-end gap-2 pt-1">
+                            <Button type="button" variant="secondary" onClick={() => setEditCondicion(null)}>
+                                Cancelar
+                            </Button>
+                            <Button type="submit" disabled={condicionForm.processing}>
+                                {condicionForm.processing && <X className="size-4 animate-spin" />}
+                                Guardar
+                            </Button>
+                        </div>
+                    </form>
                 </DialogContent>
             </Dialog>
         </AppLayout>

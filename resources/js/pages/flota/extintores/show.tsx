@@ -137,19 +137,18 @@ interface FilaHistorial {
     id: string;
     fecha: string;
     tipo: string;
-    numero_serie: string;
-    condicion: string;
-    tipo_agente: string;
-    agente_impulsor: string;
-    ultima_recarga: string;
-    parte_mantenimiento: string;
-    senalizacion: string;
-    demarcacion: string;
-    funcionamiento: string;
-    acceso: string;
-    placa_actual: string;
-    observaciones: string;
+    tipo_label: string;
+    es_inspeccion: boolean;
     inspeccion_id: number | null;
+    condicion: string | null;
+    tipo_agente: string | null;
+    agente_impulsor: string | null;
+    senalizacion: string | null;
+    demarcacion: string | null;
+    funcionamiento: string | null;
+    acceso: string | null;
+    parte_mantenimiento: string | null;
+    observaciones: string | null;
 }
 
 interface FormInspeccion {
@@ -452,6 +451,12 @@ export default function ExtintorShow({
         if (typeof s === 'string') return s;
         return s.message ?? null;
     })();
+
+    // Próxima recarga — de la inspección más reciente que registró recarga
+    const proximaRecarga = inspecciones
+        .filter(i => i.fecha_recarga)
+        .sort((a, b) => (b.fecha_recarga ?? '').localeCompare(a.fecha_recarga ?? ''))
+        [0]?.fecha_proxima_recarga ?? null;
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
     useEffect(() => { if (flashMsg) setSuccessMsg(flashMsg); }, [flashMsg]);
 
@@ -471,6 +476,7 @@ export default function ExtintorShow({
     const [modalFirmaManual, setModalFirmaManual] = useState(false);
     const [desplegarChecklist, setDesplegarChecklist] = useState(false);
     const [hayMantenimiento, setHayMantenimiento] = useState(false);
+    const [modoEdicion, setModoEdicion] = useState<'condiciones' | 'inspeccion' | null>(null);
 
     // Advertencia de ocupación de placa dentro del formulario de inspección
     const [extintoresEnPlacaInsp, setExtintoresEnPlacaInsp] = useState<ExtintorEnPlaca[]>([]);
@@ -497,7 +503,7 @@ export default function ExtintorShow({
         funcionamiento: ins.funcionamiento ?? '',
         acceso: ins.acceso ?? '',
         observaciones_inspeccion: ins.observaciones_inspeccion ?? '',
-        incluye_recarga: ins.incluye_recarga,
+        incluye_recarga: ins.incluye_recarga || !!(ins.fecha_recarga || ins.fecha_proxima_recarga),
         fecha_recarga: ins.fecha_recarga ?? '',
         fecha_proxima_recarga: ins.fecha_proxima_recarga ?? '',
         observaciones_recarga: ins.observaciones_recarga ?? '',
@@ -516,12 +522,13 @@ export default function ExtintorShow({
 
     const abrirNuevaInspeccion = () => {
         setEditInspeccion(null);
-        setFormInspeccion(inspeccion_defaults); // ya viene precargado desde el backend
+        setFormInspeccion(inspeccion_defaults);
         setArchivosInspeccion([]);
         setErrorsInspeccion({});
         setDesplegarChecklist(false);
         setHayMantenimiento(false);
         setExtintoresEnPlacaInsp([]);
+        setModoEdicion(null);
         firmaPadRef.current?.clear();
         cargarFirmaGuardada();
         setModalConfirmarFirma(false);
@@ -529,13 +536,23 @@ export default function ExtintorShow({
         setModalInspeccion(true);
     };
 
-    const abrirEditarInspeccion = (ins: Inspeccion) => {
+    const abrirEditarInspeccion = (ins: Inspeccion, desdeCondiciones = false) => {
         setEditInspeccion(ins);
-        setFormInspeccion(formDesdeInspeccion(ins));
+        const form = formDesdeInspeccion(ins);
+        // Al editar desde Condiciones solo interesa el checklist; la recarga no aplica
+        if (desdeCondiciones) {
+            form.incluye_recarga = false;
+            form.fecha_recarga = '';
+            form.fecha_proxima_recarga = '';
+            form.observaciones_recarga = '';
+        }
+        setFormInspeccion(form);
         setArchivosInspeccion([]);
         setErrorsInspeccion({});
-        setDesplegarChecklist(false);
+        setExtintoresEnPlacaInsp([]);
+        setDesplegarChecklist(desdeCondiciones);
         setHayMantenimiento(ins.partes_mantenimiento_lista.length > 0);
+        setModoEdicion(desdeCondiciones ? 'condiciones' : 'inspeccion');
         setModalConfirmarFirma(false);
         setModalFirmaManual(false);
         setModalInspeccion(true);
@@ -638,73 +655,25 @@ export default function ExtintorShow({
         return obj;
     };
 
-    const formAsignarVacio = () => ({
-        placa: '', fecha_colocacion: hoy(),
-        fecha_retiro: '',
-        responsable_colocacion: '', observaciones_colocacion: '',
-        responsable_retiro: '', observaciones_retiro: '',
-        checklist_colocacion: checklistVacio(),
-    });
-
-    const [modalAsignar, setModalAsignar] = useState(false);
-    const [editAsignacion, setEditAsignacion] = useState<Asignacion | null>(null);
-    const [savingAsignar, setSavingAsignar] = useState(false);
-    const [errorsAsignar, setErrorsAsignar] = useState<Record<string, string>>({});
-    const [extintoresEnPlaca, setExtintoresEnPlaca] = useState<ExtintorEnPlaca[]>([]);
-    const [cargandoPlaca, setCargandoPlaca] = useState(false);
-    const [desasociarPrevios, setDesasociarPrevios] = useState(false);
-    const [formAsignar, setFormAsignar] = useState(formAsignarVacio);
-    const setAsignar = (k: string, v: string) => setFormAsignar(p => ({ ...p, [k]: v }));
-    const setChecklistAsignar = (col: string, val: string) =>
-        setFormAsignar(p => ({ ...p, checklist_colocacion: { ...p.checklist_colocacion, [col]: val } }));
 
     const abrirEditarAsignacion = (a: Asignacion) => {
-        setEditAsignacion(a);
-        setFormAsignar({
-            placa: a.placa,
-            fecha_colocacion: a.fecha_colocacion ?? '',
-            fecha_retiro: a.fecha_retiro ?? '',
-            responsable_colocacion: a.responsable_colocacion ?? a.coloco_nombre ?? '',
-            observaciones_colocacion: a.observaciones_colocacion ?? '',
-            responsable_retiro: a.responsable_retiro ?? a.retiro_nombre ?? '',
-            observaciones_retiro: a.observaciones_retiro ?? '',
-            checklist_colocacion: { ...checklistVacio(), ...a.checklist_colocacion },
+        setEditInspeccion(null);
+        setFormInspeccion({
+            ...inspeccion_defaults,
+            registra_vehiculo: true,
+            nueva_placa: a.placa,
+            observaciones_vehiculo: a.observaciones_colocacion ?? '',
         });
-        setErrorsAsignar({});
-        setExtintoresEnPlaca([]);
-        setDesasociarPrevios(false);
-        setModalAsignar(true);
-    };
-
-    // El backend valida el cupo (máx. 2 por placa); aquí solo se pide confirmación.
-    const handleAsignar = (e: React.FormEvent) => {
-        e.preventDefault(); setSavingAsignar(true); setErrorsAsignar({});
-        if (editAsignacion) {
-            router.put(route('flota.extintores.asignaciones.update', { extintor: extintor.id, asignacion: editAsignacion.id }), formAsignar, {
-                onSuccess: () => { setModalAsignar(false); setSavingAsignar(false); },
-                onError: (errs) => { setErrorsAsignar(errs as Record<string, string>); setSavingAsignar(false); },
-                onFinish: () => setSavingAsignar(false),
-            });
-            return;
-        }
-
-        if (extintoresEnPlaca.length > 0) {
-            const msg = desasociarPrevios
-                ? `¿Confirma la asignación del extintor a la placa ${formAsignar.placa}? Los ${extintoresEnPlaca.length} extintor(es) actual(es) serán desasociados.`
-                : `¿Confirma la asignación del extintor a la placa ${formAsignar.placa}? El vehículo ya tiene ${extintoresEnPlaca.length} extintor(es) asociado(s) que se conservarán.`;
-            if (!window.confirm(msg)) {
-                setSavingAsignar(false);
-                return;
-            }
-        }
-        router.post(route('flota.extintores.asignar', extintor.id), {
-            ...formAsignar,
-            desasociar_previos: desasociarPrevios,
-        }, {
-            onSuccess: () => { setModalAsignar(false); setSavingAsignar(false); },
-            onError: (errs) => { setErrorsAsignar(errs as Record<string, string>); setSavingAsignar(false); },
-            onFinish: () => setSavingAsignar(false),
-        });
+        setArchivosInspeccion([]);
+        setErrorsInspeccion({});
+        setDesplegarChecklist(false);
+        setHayMantenimiento(false);
+        setExtintoresEnPlacaInsp([]);
+        setModoEdicion('inspeccion');
+        setModalConfirmarFirma(false);
+        setModalFirmaManual(false);
+        cargarFirmaGuardada();
+        setModalInspeccion(true);
     };
 
     const [confirmAsig, setConfirmAsig] = useState<number | null>(null);
@@ -736,6 +705,27 @@ export default function ExtintorShow({
     const [errorsEditarExtintor, setErrorsEditarExtintor] = useState<Record<string, string>>({});
     const [confirmExtintor, setConfirmExtintor] = useState(false);
     const [formEditarExtintor, setFormEditarExtintor] = useState(formExtintorDesdeProps);
+
+    // Sincronizar el formulario cuando el extintor de props se actualice
+    // (ocurre después de un guardado exitoso vía Inertia)
+    useEffect(() => {
+        setFormEditarExtintor(formExtintorDesdeProps());
+    }, [
+        extintor.numero_serie,
+        extintor.marca,
+        extintor.tipo_agente,
+        extintor.capacidad_kg,
+        extintor.fecha_fabricacion,
+        extintor.fecha_vencimiento,
+        extintor.condicion,
+        extintor.agente_impulsor,
+        extintor.parte_mantenimiento,
+        extintor.senalizacion,
+        extintor.demarcacion,
+        extintor.funcionamiento,
+        extintor.acceso,
+        extintor.observaciones,
+    ]);
 
     const setExtintorField = (k: string, v: string) =>
         setFormEditarExtintor(p => ({ ...p, [k]: v }));
@@ -974,10 +964,19 @@ export default function ExtintorShow({
                                         <img
                                             src={fotoActual}
                                             alt={`Extintor ${extintor.numero_serie}`}
-                                            className="block max-w-[284px] max-h-[400px] w-auto h-auto object-contain p-2 transition-transform duration-200 group-hover:scale-105 cursor-pointer"
+                                            className="block max-w-[284px] max-h-[400px] w-auto h-auto object-contain p-2 transition-transform duration-200 group-hover:scale-105 cursor-zoom-in"
                                             onClick={() => setLightboxOpen(true)}
                                             onError={() => setFotoError(true)}
                                         />
+                                        {/* Overlay de zoom */}
+                                        <div
+                                            className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-zoom-in bg-black/20 rounded-xl"
+                                            onClick={() => setLightboxOpen(true)}
+                                        >
+                                            <div className="flex items-center gap-1.5 bg-black/60 text-white text-xs font-medium px-3 py-1.5 rounded-full backdrop-blur-sm">
+                                                <ZoomIn className="size-3.5" /> Ver en grande
+                                            </div>
+                                        </div>
                                         <div className="absolute top-2 right-2 z-10">
                                             <button
                                                 type="button"
@@ -1032,16 +1031,42 @@ export default function ExtintorShow({
                                     <p className="mt-0.5 text-sm font-medium text-foreground">{extintor.fecha_fabricacion ?? '—'}</p>
                                 </div>
                                 <div className="bg-muted/20 rounded-lg p-3 border border-sidebar-border/40">
-                                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Fecha vencimiento / recarga</p>
+                                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Última recarga</p>
+                                    <p className="mt-0.5 text-sm font-medium text-foreground">{ultimaRecarga ?? '—'}</p>
+                                </div>
+                                <div className="bg-muted/20 rounded-lg p-3 border border-sidebar-border/40">
+                                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Próxima recarga (vencimiento)</p>
                                     <p className={`mt-0.5 text-sm font-medium ${extintor.vencido ? 'text-red-600 font-semibold' : 'text-foreground'}`}>
                                         {extintor.vencido ? (
                                             <span className="flex items-center gap-1">
                                                 <AlertTriangle className="size-3.5" />
-                                                {extintor.fecha_vencimiento ?? '—'}
+                                                {proximaRecarga ?? extintor.fecha_vencimiento ?? '—'}
                                             </span>
-                                        ) : (extintor.fecha_vencimiento ?? '—')}
+                                        ) : (proximaRecarga ?? extintor.fecha_vencimiento ?? '—')}
                                     </p>
                                 </div>
+                                <div className="bg-muted/20 rounded-lg p-3 border border-sidebar-border/40">
+                                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Última recarga</p>
+                                    <p className="mt-0.5 text-sm font-medium text-foreground">{ultimaRecarga ?? '—'}</p>
+                                </div>
+                                <div className="bg-muted/20 rounded-lg p-3 border border-sidebar-border/40">
+                                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Placa actual</p>
+                                    <p className="mt-0.5 text-sm font-mono font-medium text-foreground">
+                                        {extintor.placa_actual ?? 'En depósito'}
+                                    </p>
+                                    {extintor.fecha_colocacion_actual && (
+                                        <p className="text-[10px] text-muted-foreground">desde {extintor.fecha_colocacion_actual}</p>
+                                    )}
+                                </div>
+                                {extintor.vencido && (
+                                    <div className="bg-red-50 dark:bg-red-950/20 rounded-lg p-3 border border-red-200 dark:border-red-900/40">
+                                        <p className="text-[10px] font-semibold uppercase tracking-wide text-red-600 dark:text-red-400">Dado de baja / caducado</p>
+                                        <p className="mt-0.5 text-sm font-medium text-red-600 dark:text-red-400 flex items-center gap-1">
+                                            <AlertTriangle className="size-3.5" />
+                                            Caducó el {extintor.fecha_vencimiento ?? '—'}
+                                        </p>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -1106,52 +1131,139 @@ export default function ExtintorShow({
                         </div>
                     </div>
 
-                    <div className="rounded-2xl border border-sidebar-border/70 bg-card shadow-sm dark:border-sidebar-border overflow-hidden">
+                    {/* ── Ficha de identificación del extintor ── */}
+                    <h2 className="mb-3 text-base font-semibold text-foreground">Datos del Extintor</h2>
+                    <div className="rounded-2xl border border-sidebar-border/70 bg-card shadow-sm dark:border-sidebar-border overflow-hidden mb-6">
                         <div className="overflow-x-auto">
                             <Table>
                                 <TableHeader>
                                     <TableRow className="bg-muted dark:bg-muted">
-                                        {['Fecha', 'N° Serie', 'Condición', 'Agente extintor', 'Agente impulsor', 'Última recarga', 'Parte Mantenimiento', 'Señalización', 'Demarcación', 'Funcionamiento', 'Acceso al Extintor', 'Placa actual', 'Observaciones', ''].map(h => (
+                                        {['N° de Serie', 'Fecha de registro', 'Marca', 'Capacidad (kg)', 'Fecha de fabricación', 'Fecha de caducidad', ''].map(h => (
                                             <TableHead key={h} className="text-[11px] font-semibold text-muted-foreground whitespace-nowrap">{h}</TableHead>
                                         ))}
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {historial.map(row => {
+                                    <TableRow className="hover:bg-muted/50 transition-colors">
+                                        <TableCell className="text-xs font-mono font-semibold text-foreground whitespace-nowrap">
+                                            {extintor.numero_serie}
+                                        </TableCell>
+                                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                                            {extintor.fecha_creacion ?? '—'}
+                                        </TableCell>
+                                        <TableCell className="text-xs text-muted-foreground">
+                                            {extintor.marca ?? '—'}
+                                        </TableCell>
+                                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                                            {extintor.capacidad_kg ?? '—'}
+                                        </TableCell>
+                                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                                            {extintor.fecha_fabricacion ?? '—'}
+                                        </TableCell>
+                                        <TableCell className={`text-xs whitespace-nowrap ${extintor.vencido ? 'text-red-600 font-semibold' : 'text-muted-foreground'}`}>
+                                            {extintor.fecha_vencimiento ?? '—'}
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <div className="flex items-center justify-end gap-1">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-7 w-7 p-0"
+                                                    title="Editar extintor"
+                                                    onClick={abrirEditarRegistroInicial}
+                                                >
+                                                    <Pencil className="size-3.5 text-muted-foreground hover:text-foreground transition-colors" />
+                                                </Button>
+                                                {confirmExtintor ? (
+                                                    <ConfirmarEliminar
+                                                        texto="¿Eliminar extintor y todo su historial?"
+                                                        onConfirm={handleDeleteExtintor}
+                                                        onCancel={() => setConfirmExtintor(false)}
+                                                    />
+                                                ) : (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-7 w-7 p-0"
+                                                        title="Eliminar extintor y todo su historial"
+                                                        onClick={() => setConfirmExtintor(true)}
+                                                    >
+                                                        <Trash2 className="size-3.5 text-muted-foreground/60 hover:text-red-500 transition-colors" />
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </div>
+
+                    {/* ── Tabla de condiciones ── */}
+                    <h2 className="mb-3 text-base font-semibold text-foreground">Condiciones del Extintor</h2>
+                    <div className="rounded-2xl border border-sidebar-border/70 bg-card shadow-sm dark:border-sidebar-border overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow className="bg-muted dark:bg-muted">
+                                        {['Fecha', 'Condición', 'Agente extintor', 'Agente impulsor', 'Señalización', 'Demarcación', 'Funcionamiento', 'Acceso', 'Parte mantenimiento', 'Observaciones', ''].map(h => (
+                                            <TableHead key={h} className="text-[11px] font-semibold text-muted-foreground whitespace-nowrap">{h}</TableHead>
+                                        ))}
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {historial.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={11} className="py-6 text-center text-sm text-muted-foreground">
+                                                Sin condiciones registradas.
+                                            </TableCell>
+                                        </TableRow>
+                                    ) : historial.map(row => {
                                         const inspeccionOriginal = row.inspeccion_id !== null
                                             ? inspecciones.find(i => i.id === row.inspeccion_id) ?? null
                                             : null;
+                                        const esRegistroInicial = row.tipo === 'registro_inicial';
                                         return (
-                                            <TableRow key={row.id} className="hover:bg-muted/50 transition-colors">
-                                                <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                                                    <div className="flex flex-col">
-                                                        <span className="font-semibold text-foreground">{row.fecha}</span>
-                                                        <span className="text-[10px] text-muted-foreground">{row.tipo}</span>
-                                                    </div>
+                                            <TableRow key={row.id} className={`hover:bg-muted/50 transition-colors ${esRegistroInicial ? 'bg-blue-50/40 dark:bg-blue-950/10' : ''}`}>
+                                                <TableCell className="text-xs font-semibold text-foreground whitespace-nowrap">
+                                                    {row.fecha}
                                                 </TableCell>
-                                                <TableCell className="text-xs font-mono font-semibold text-foreground whitespace-nowrap">
-                                                    {row.numero_serie}
+                                                <TableCell>
+                                                    {row.condicion ? (
+                                                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold capitalize ${
+                                                            row.condicion === 'buena'
+                                                                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                                                : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                                        }`}>{row.condicion}</span>
+                                                    ) : <span className="text-xs text-muted-foreground">—</span>}
                                                 </TableCell>
-                                                <TableCell className="text-xs text-muted-foreground capitalize">{row.condicion}</TableCell>
-                                                <TableCell className="text-xs text-muted-foreground">{row.tipo_agente}</TableCell>
-                                                <TableCell className="text-xs text-muted-foreground capitalize">{row.agente_impulsor}</TableCell>
-                                                <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{row.ultima_recarga}</TableCell>
-                                                <TableCell className="text-xs text-muted-foreground max-w-[130px] truncate" title={row.parte_mantenimiento}>{row.parte_mantenimiento}</TableCell>
-                                                <TableCell className="text-xs text-muted-foreground max-w-[120px] truncate" title={row.senalizacion}>{row.senalizacion}</TableCell>
-                                                <TableCell className="text-xs text-muted-foreground">{row.demarcacion}</TableCell>
-                                                <TableCell className="text-xs text-muted-foreground max-w-[120px] truncate" title={row.funcionamiento}>{row.funcionamiento}</TableCell>
-                                                <TableCell className="text-xs text-muted-foreground max-w-[120px] truncate" title={row.acceso}>{row.acceso}</TableCell>
-                                                <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{row.placa_actual}</TableCell>
-                                                <TableCell className="text-xs text-muted-foreground max-w-[150px] truncate" title={row.observaciones}>{row.observaciones}</TableCell>
+                                                <TableCell className="text-xs text-muted-foreground">{row.tipo_agente || '—'}</TableCell>
+                                                <TableCell className="text-xs text-muted-foreground capitalize">{row.agente_impulsor || '—'}</TableCell>
+                                                <TableCell className="text-xs text-muted-foreground capitalize">{row.senalizacion || '—'}</TableCell>
+                                                <TableCell className="text-xs text-muted-foreground">{row.demarcacion || '—'}</TableCell>
+                                                <TableCell className="text-xs text-muted-foreground capitalize">{row.funcionamiento || '—'}</TableCell>
+                                                <TableCell className="text-xs text-muted-foreground capitalize">{row.acceso || '—'}</TableCell>
+                                                <TableCell className="text-xs text-muted-foreground max-w-[150px] truncate" title={row.parte_mantenimiento ?? undefined}>{row.parte_mantenimiento || '—'}</TableCell>
+                                                <TableCell className="text-xs text-muted-foreground max-w-[180px] truncate" title={row.observaciones ?? undefined}>{row.observaciones || '—'}</TableCell>
                                                 <TableCell className="text-right">
-                                                    {inspeccionOriginal ? (
+                                                    {esRegistroInicial ? (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-7 w-7 p-0"
+                                                            title="Editar registro inicial"
+                                                            onClick={abrirEditarRegistroInicial}
+                                                        >
+                                                            <Pencil className="size-3.5 text-muted-foreground hover:text-foreground transition-colors" />
+                                                        </Button>
+                                                    ) : inspeccionOriginal ? (
                                                         <div className="flex items-center justify-end gap-1">
                                                             <Button
                                                                 variant="ghost"
                                                                 size="sm"
                                                                 className="h-7 w-7 p-0"
                                                                 title="Editar inspección"
-                                                                onClick={() => abrirEditarInspeccion(inspeccionOriginal)}
+                                                                onClick={() => abrirEditarInspeccion(inspeccionOriginal, true)}
                                                             >
                                                                 <Pencil className="size-3.5 text-muted-foreground hover:text-foreground transition-colors" />
                                                             </Button>
@@ -1173,36 +1285,7 @@ export default function ExtintorShow({
                                                                 </Button>
                                                             )}
                                                         </div>
-                                                    ) : (
-                                                        <div className="flex items-center justify-end gap-1">
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                className="h-7 w-7 p-0"
-                                                                title="Editar registro inicial del extintor"
-                                                                onClick={abrirEditarRegistroInicial}
-                                                            >
-                                                                <Pencil className="size-3.5 text-muted-foreground hover:text-foreground transition-colors" />
-                                                            </Button>
-                                                            {confirmExtintor ? (
-                                                                <ConfirmarEliminar
-                                                                    texto="¿Eliminar extintor?"
-                                                                    onConfirm={handleDeleteExtintor}
-                                                                    onCancel={() => setConfirmExtintor(false)}
-                                                                />
-                                                            ) : (
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    className="h-7 w-7 p-0"
-                                                                    title="Eliminar extintor"
-                                                                    onClick={() => setConfirmExtintor(true)}
-                                                                >
-                                                                    <Trash2 className="size-3.5 text-muted-foreground/60 hover:text-red-500 transition-colors" />
-                                                                </Button>
-                                                            )}
-                                                        </div>
-                                                    )}
+                                                    ) : null}
                                                 </TableCell>
                                             </TableRow>
                                         );
@@ -1556,7 +1639,8 @@ export default function ExtintorShow({
                         </p>
                     </div>
 
-                    {/* Checklist de condiciones */}
+                    {/* Checklist de condiciones — solo al editar condiciones o crear */}
+                    {modoEdicion !== 'inspeccion' && (
                     <div className="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border overflow-hidden">
                         <label className="flex cursor-pointer items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors select-none">
                             <input
@@ -1727,7 +1811,10 @@ export default function ExtintorShow({
                         )}
                     </div>
 
-                    {/* Recarga */}
+                    )} {/* fin modoEdicion !== 'inspeccion' */}
+
+                    {/* Recarga — solo al editar inspecciones o crear */}
+                    {modoEdicion !== 'condiciones' && (
                     <div className="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border overflow-hidden">
                         <label className="flex cursor-pointer items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors select-none">
                             <input type="checkbox" checked={formInspeccion.incluye_recarga}
@@ -1784,9 +1871,10 @@ export default function ExtintorShow({
                             </div>
                         )}
                     </div>
+                    )} {/* fin modoEdicion !== 'condiciones' — Recarga */}
 
-                    {/* Vehículo — solo al crear, no al editar */}
-                    {!editInspeccion && (
+                    {/* Vehículo — solo al crear o al editar inspecciones/placa, no al editar condiciones */}
+                    {!editInspeccion && modoEdicion !== 'condiciones' && (
                         <div className="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border overflow-hidden">
                             <label className="flex cursor-pointer items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors select-none">
                                 <input type="checkbox" checked={formInspeccion.registra_vehiculo}
@@ -1915,153 +2003,6 @@ export default function ExtintorShow({
                 </form>
             </Modal>
 
-            {/* ── Modal: Asignar / Editar asignación ──────────────────────── */}
-            <Modal open={modalAsignar} onClose={() => { setModalAsignar(false); setErrorsAsignar({}); }}
-                title={editAsignacion ? `Editar asignación · ${editAsignacion.placa}` : 'Asignar extintor a vehículo'}>
-                <form onSubmit={handleAsignar} className="flex flex-col gap-4">
-                    {!editAsignacion && extintor.placa_actual && (
-                        <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800/40 dark:bg-amber-900/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
-                            <ArrowLeftRight className="size-3.5 shrink-0" />
-                            Placa actual: <span className="font-semibold">{extintor.placa_actual}</span> — se cerrará la asignación actual al reasignar.
-                        </div>
-                    )}
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="col-span-2 grid gap-1">
-                            <Label className="text-[11px] font-semibold text-muted-foreground">Placa *</Label>
-                            <select value={formAsignar.placa} onChange={e => {
-                                const placa = e.target.value;
-                                setAsignar('placa', placa);
-                                setDesasociarPrevios(false);
-                                if (!placa || editAsignacion) { setExtintoresEnPlaca([]); return; }
-                                setCargandoPlaca(true);
-                                fetch(`/modules/flota/extintores/por-placa/${encodeURIComponent(placa)}`)
-                                    .then(r => r.json())
-                                    .then(json => setExtintoresEnPlaca(json.extintores ?? []))
-                                    .catch(() => setExtintoresEnPlaca([]))
-                                    .finally(() => setCargandoPlaca(false));
-                            }} required
-                                className="h-9 rounded-lg border border-sidebar-border/70 dark:border-sidebar-border bg-card px-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring">
-                                <option value="">Seleccionar…</option>
-                                {placas.map(p => <option key={p} value={p}>{p}</option>)}
-                            </select>
-                            <FieldError msg={errorsAsignar.placa} />
-                        </div>
-
-                        {!editAsignacion && formAsignar.placa && (
-                            <div className="col-span-2">
-                                {cargandoPlaca ? (
-                                    <div className="flex items-center gap-2 rounded-xl border border-sidebar-border/70 dark:border-sidebar-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
-                                        <Loader2 className="size-3.5 animate-spin" /> Consultando extintores asociados…
-                                    </div>
-                                ) : extintoresEnPlaca.length > 0 ? (
-                                    <div className="rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800/40 dark:bg-amber-900/10 p-4">
-                                        <div className="flex items-center gap-2 mb-3">
-                                            <AlertTriangle className="size-4 text-amber-600" />
-                                            <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
-                                                Este vehículo ya tiene {extintoresEnPlaca.length} extintor{extintoresEnPlaca.length > 1 ? 'es' : ''} asociado{extintoresEnPlaca.length > 1 ? 's' : ''}
-                                            </p>
-                                        </div>
-                                        <div className="flex flex-wrap gap-3">
-                                            {extintoresEnPlaca.map(ext => (
-                                                <div key={ext.id} className="flex items-center gap-2.5 rounded-lg border border-amber-300/60 dark:border-amber-700/40 bg-white dark:bg-card p-2 pr-3">
-                                                    <div className="size-12 rounded-lg border border-sidebar-border/50 overflow-hidden bg-muted/20 flex items-center justify-center shrink-0">
-                                                        {ext.foto_url ? (
-                                                            <img src={ext.foto_url} alt={ext.numero_serie} className="w-full h-full object-contain" />
-                                                        ) : (
-                                                            <FlameKindling className="size-5 text-muted-foreground" />
-                                                        )}
-                                                    </div>
-                                                    <div className="text-xs">
-                                                        <p className="font-semibold text-foreground">{ext.numero_serie}</p>
-                                                        <p className="text-muted-foreground">
-                                                            {[ext.tipo_agente, ext.capacidad_kg ? `${ext.capacidad_kg} kg` : null, ext.marca].filter(Boolean).join(' · ')}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                        <div className="mt-3">
-                                            <label className="flex cursor-pointer items-center gap-2 text-xs text-amber-800 dark:text-amber-300">
-                                                <input type="checkbox" checked={desasociarPrevios}
-                                                    onChange={e => setDesasociarPrevios(e.target.checked)}
-                                                    className="h-4 w-4 rounded border-amber-400 focus:ring-amber-500" />
-                                                <span>
-                                                    <span className="font-semibold">Desasociar los extintores actuales</span> de este vehículo para asignar el nuevo.
-                                                    {!desasociarPrevios && extintoresEnPlaca.length >= 2 && (
-                                                        <span className="block text-red-600 dark:text-red-400 mt-0.5">El vehículo ya tiene 2 extintores. Debe marcar esta opción para continuar.</span>
-                                                    )}
-                                                </span>
-                                            </label>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 dark:border-green-800/40 dark:bg-green-900/10 px-4 py-3 text-xs text-green-700 dark:text-green-300">
-                                        <CheckCircle2 className="size-4" /> Este vehículo no tiene extintores asociados. Se puede asignar directamente.
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {/* Asignación */}
-                        <div className="grid gap-1">
-                            <Label className="text-[11px] font-semibold text-muted-foreground">Fecha asignado *</Label>
-                            <Input type="date" value={formAsignar.fecha_colocacion}
-                                onChange={e => setAsignar('fecha_colocacion', e.target.value)} required className="h-9 text-sm" />
-                            <FieldError msg={errorsAsignar.fecha_colocacion} />
-                        </div>
-                        <div className="grid gap-1">
-                            <Label className="text-[11px] font-semibold text-muted-foreground">Nombre (asignación)</Label>
-                            <ComboColaborador
-                                colaboradores={colaboradores}
-                                value={formAsignar.responsable_colocacion}
-                                onChange={v => setAsignar('responsable_colocacion', v)}
-                                placeholder="Buscar o escribir nombre…"
-                            />
-                        </div>
-                        <div className="col-span-2 grid gap-1">
-                            <Label className="text-[11px] font-semibold text-muted-foreground">Observaciones de la asignación</Label>
-                            <Input value={formAsignar.observaciones_colocacion}
-                                onChange={e => setAsignar('observaciones_colocacion', e.target.value)}
-                                placeholder="Opcional" className="h-9 text-sm" />
-                        </div>
-
-                        {/* Retiro */}
-                        <div className="grid gap-1">
-                            <Label className="text-[11px] font-semibold text-muted-foreground">Fecha de retiro</Label>
-                            <Input type="date" value={formAsignar.fecha_retiro}
-                                onChange={e => setAsignar('fecha_retiro', e.target.value)} className="h-9 text-sm" />
-                        </div>
-                        <div className="grid gap-1">
-                            <Label className="text-[11px] font-semibold text-muted-foreground">Nombre (retiro)</Label>
-                            <ComboColaborador
-                                colaboradores={colaboradores}
-                                value={formAsignar.responsable_retiro}
-                                onChange={v => setAsignar('responsable_retiro', v)}
-                                placeholder="Buscar o escribir nombre…"
-                            />
-                        </div>
-                        <div className="col-span-2 grid gap-1">
-                            <Label className="text-[11px] font-semibold text-muted-foreground">Observaciones del retiro</Label>
-                            <Input value={formAsignar.observaciones_retiro}
-                                onChange={e => setAsignar('observaciones_retiro', e.target.value)}
-                                placeholder="Opcional" className="h-9 text-sm" />
-                        </div>
-                    </div>
-                    {!editAsignacion && (
-                        <ChecklistSection columnas={columnas_extra} values={formAsignar.checklist_colocacion}
-                            onChange={setChecklistAsignar} label="Checklist al asignar" />
-                    )}
-                    <div className="flex justify-end gap-2 pt-1">
-                        <Button type="button" variant="ghost" size="sm"
-                            onClick={() => { setModalAsignar(false); setErrorsAsignar({}); }}>Cancelar</Button>
-                        <Button type="submit" size="sm" disabled={savingAsignar}
-                            className="bg-green-700 hover:bg-green-800 text-white gap-1.5">
-                            <LogIn className="size-4" />
-                            {savingAsignar ? 'Guardando…' : (editAsignacion ? 'Guardar cambios' : 'Confirmar asignación')}
-                        </Button>
-                    </div>
-                </form>
-            </Modal>
 
             {/* ── Modal: Registrar retiro ─────────────────────────────────────── */}
             <Modal open={modalRetirar} onClose={() => { setModalRetirar(false); setErrorsRetirar({}); }}
@@ -2254,6 +2195,13 @@ export default function ExtintorShow({
                         </div>
 
                         <div className="grid gap-1">
+                            <Label className="text-[11px] font-semibold text-muted-foreground">Fecha de registro</Label>
+                            <div className="flex h-9 items-center rounded-md border border-input bg-muted/40 px-3 text-sm text-muted-foreground">
+                                {extintor.fecha_creacion ?? '—'}
+                            </div>
+                        </div>
+
+                        <div className="grid gap-1">
                             <Label className="text-[11px] font-semibold text-muted-foreground">Marca</Label>
                             <Input
                                 value={formEditarExtintor.marca}
@@ -2262,23 +2210,6 @@ export default function ExtintorShow({
                                 className="h-9 text-sm"
                             />
                             <FieldError msg={errorsEditarExtintor.marca} />
-                        </div>
-
-                        <div className="grid gap-1">
-                            <Label className="text-[11px] font-semibold text-muted-foreground">Tipo de agente</Label>
-                            <select
-                                value={formEditarExtintor.tipo_agente}
-                                onChange={e => setExtintorField('tipo_agente', e.target.value)}
-                                className={SELECT_CLS}
-                            >
-                                <option value="">— Seleccionar —</option>
-                                <option value="ABC">ABC</option>
-                                <option value="Otro">Otro</option>
-                                {formEditarExtintor.tipo_agente && !['ABC', 'Otro', ''].includes(formEditarExtintor.tipo_agente) && (
-                                    <option value={formEditarExtintor.tipo_agente}>{formEditarExtintor.tipo_agente}</option>
-                                )}
-                            </select>
-                            <FieldError msg={errorsEditarExtintor.tipo_agente} />
                         </div>
 
                         <div className="grid gap-1">
@@ -2307,7 +2238,7 @@ export default function ExtintorShow({
                         </div>
 
                         <div className="grid gap-1">
-                            <Label className="text-[11px] font-semibold text-muted-foreground">Fecha vencimiento / recarga</Label>
+                            <Label className="text-[11px] font-semibold text-muted-foreground">Fecha de caducidad</Label>
                             <Input
                                 type="date"
                                 value={formEditarExtintor.fecha_vencimiento}
@@ -2317,124 +2248,8 @@ export default function ExtintorShow({
                             <FieldError msg={errorsEditarExtintor.fecha_vencimiento} />
                         </div>
 
-                        <div className="grid gap-1">
-                            <Label className="text-[11px] font-semibold text-muted-foreground">Condición</Label>
-                            <select
-                                value={formEditarExtintor.condicion}
-                                onChange={e => setExtintorField('condicion', e.target.value)}
-                                className={SELECT_CLS}
-                            >
-                                <option value="">— Seleccionar —</option>
-                                <option value="buena">Buena</option>
-                                <option value="mala">Mala</option>
-                            </select>
-                            <FieldError msg={errorsEditarExtintor.condicion} />
-                        </div>
-
-                        <div className="grid gap-1">
-                            <Label className="text-[11px] font-semibold text-muted-foreground">Agente impulsor</Label>
-                            <select
-                                value={formEditarExtintor.agente_impulsor}
-                                onChange={e => setExtintorField('agente_impulsor', e.target.value)}
-                                className={SELECT_CLS}
-                            >
-                                <option value="">— Seleccionar —</option>
-                                <option value="directa">Directa</option>
-                                <option value="indirecta">Indirecta</option>
-                            </select>
-                            <FieldError msg={errorsEditarExtintor.agente_impulsor} />
-                        </div>
-
-                        <div className="grid gap-1">
-                            <Label className="text-[11px] font-semibold text-muted-foreground">Demarcación</Label>
-                            <select
-                                value={formEditarExtintor.demarcacion}
-                                onChange={e => setExtintorField('demarcacion', e.target.value)}
-                                className={SELECT_CLS}
-                            >
-                                <option value="">— Seleccionar —</option>
-                                <option value="buena">Buena</option>
-                                <option value="mala">Mala</option>
-                                <option value="N/A">N/A</option>
-                            </select>
-                            <FieldError msg={errorsEditarExtintor.demarcacion} />
-                        </div>
-
-                        <div className="grid gap-1">
-                            <Label className="text-[11px] font-semibold text-muted-foreground">Señalización</Label>
-                            <select
-                                value={formEditarExtintor.senalizacion}
-                                onChange={e => setExtintorField('senalizacion', e.target.value)}
-                                className={SELECT_CLS}
-                            >
-                                <option value="">— Seleccionar —</option>
-                                <option value="buena">Buena</option>
-                                <option value="mala">Mala</option>
-                            </select>
-                            <FieldError msg={errorsEditarExtintor.senalizacion} />
-                        </div>
-
-                        <div className="grid gap-1">
-                            <Label className="text-[11px] font-semibold text-muted-foreground">Funcionamiento</Label>
-                            <select
-                                value={formEditarExtintor.funcionamiento}
-                                onChange={e => setExtintorField('funcionamiento', e.target.value)}
-                                className={SELECT_CLS}
-                            >
-                                <option value="">— Seleccionar —</option>
-                                <option value="bueno">Bueno</option>
-                                <option value="malo">Malo</option>
-                            </select>
-                            <FieldError msg={errorsEditarExtintor.funcionamiento} />
-                        </div>
-
-                        <div className="grid gap-1">
-                            <Label className="text-[11px] font-semibold text-muted-foreground">Acceso al extintor</Label>
-                            <select
-                                value={formEditarExtintor.acceso}
-                                onChange={e => setExtintorField('acceso', e.target.value)}
-                                className={SELECT_CLS}
-                            >
-                                <option value="">— Seleccionar —</option>
-                                <option value="bueno">Bueno</option>
-                                <option value="malo">Malo</option>
-                            </select>
-                            <FieldError msg={errorsEditarExtintor.acceso} />
-                        </div>
-
-                        <div className="col-span-1 sm:col-span-2 grid gap-1">
-                            <Label htmlFor="editar-parte-mantenimiento" className="text-[11px] font-semibold text-muted-foreground">Parte en mantenimiento</Label>
-                            <Input
-                                id="editar-parte-mantenimiento"
-                                value={formEditarExtintor.parte_mantenimiento}
-                                onChange={e => setExtintorField('parte_mantenimiento', e.target.value)}
-                                placeholder="Codificación o descripción"
-                                aria-invalid={!!errorsEditarExtintor.parte_mantenimiento}
-                                aria-describedby={errorsEditarExtintor.parte_mantenimiento ? 'err-editar-parte' : undefined}
-                                className="h-9 text-sm"
-                            />
-                            {errorsEditarExtintor.parte_mantenimiento && (
-                                <p id="err-editar-parte" role="alert" className="text-xs text-red-500">{errorsEditarExtintor.parte_mantenimiento}</p>
-                            )}
-                        </div>
-
-                        <div className="col-span-1 sm:col-span-2 grid gap-1">
-                            <Label htmlFor="editar-observaciones" className="text-[11px] font-semibold text-muted-foreground">Observaciones</Label>
-                            <textarea
-                                id="editar-observaciones"
-                                value={formEditarExtintor.observaciones}
-                                onChange={e => setExtintorField('observaciones', e.target.value)}
-                                placeholder="Opcional"
-                                rows={2}
-                                aria-invalid={!!errorsEditarExtintor.observaciones}
-                                aria-describedby={errorsEditarExtintor.observaciones ? 'err-editar-obs' : undefined}
-                                className={TEXTAREA_CLS}
-                            />
-                            {errorsEditarExtintor.observaciones && (
-                                <p id="err-editar-obs" role="alert" className="text-xs text-red-500">{errorsEditarExtintor.observaciones}</p>
-                            )}
-                        </div>
                     </div>
+
 
                     <div className="flex justify-end gap-2 pt-2 border-t border-sidebar-border/70 dark:border-sidebar-border">
                         <Button
