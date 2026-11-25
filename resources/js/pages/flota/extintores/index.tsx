@@ -20,7 +20,6 @@ import {
     FlameKindling,
     Loader2,
     Maximize2,
-    Pencil,
     Plus,
     QrCode,
     ScanLine,
@@ -1030,10 +1029,6 @@ export default function ExtintoresIndex({ extintores, placas, columnas_extra, fi
                                                     <a href={route('flota.extintores.exportar-excel', row.id)} target="_blank" rel="noopener noreferrer">
                                                         <FileDown className="size-3.5 text-muted-foreground hover:text-foreground transition-colors" />
                                                     </a>
-                                                </Button>
-                                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0"
-                                                    onClick={() => { setEditTarget(row); setModalOpen(true); }}>
-                                                    <Pencil className="size-3.5 text-muted-foreground hover:text-foreground transition-colors" />
                                                 </Button>
                                                 {confirmId === row.id ? (
                                                     <span className="flex items-center gap-1">

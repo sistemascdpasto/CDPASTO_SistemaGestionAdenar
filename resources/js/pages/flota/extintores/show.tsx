@@ -32,6 +32,7 @@ import {
     Upload,
     X,
     XCircle,
+    ZoomIn,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Fragment, useEffect, useRef, useState } from 'react';
