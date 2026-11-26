@@ -307,9 +307,9 @@ class PlanPremiacionController extends Controller
             $checklistsManuales, $normStr
         ) {
             $aciRealizadas = (int) ($conteosPorColaborador[$colaborador->id] ?? 0);
-            $porcentaje    = min(100.0, round(($aciRealizadas / self::META_MENSUAL) * 100, 1));
-            $faltantes     = max(0, self::META_MENSUAL - $aciRealizadas);
-            $cumple        = $aciRealizadas >= self::META_MENSUAL;
+            $porcentaje    = min(100.0, round(($aciRealizadas / self::META_BASE) * 100, 1));
+            $faltantes     = max(0, self::META_BASE - $aciRealizadas);
+            $cumple        = $aciRealizadas >= self::META_BASE;
             $estadoStr     = $cumple ? 'meta_alcanzada' : ($aciRealizadas > 0 ? 'en_progreso' : 'sin_participacion');
 
             // OWD Ruta — binario
@@ -435,7 +435,7 @@ class PlanPremiacionController extends Controller
             $calAusentism = min((float) $porcentajeAusentismo, 100) / 100;
             $calMarc      = min((float) $porcentajeMalasMarcaciones, 100) / 100;
             $resultadoAsistenciaVal   = round(($calDpo * 5) + ($calAusentism * 5) + ($calMarc * 5), 1);
-            $resultadoAsistenciaLabel = "{$resultadoAsistenciaVal}%";
+            $resultadoAsistenciaLabel = $resultadoAsistenciaVal === round($resultadoAsistenciaVal) ? (int)$resultadoAsistenciaVal.'%' : "{$resultadoAsistenciaVal}%";
 
             // SAC
             $valsSac       = $getMetricVals($sacPorColaboradorId, $sacPorResponsable);

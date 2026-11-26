@@ -17,6 +17,7 @@ use App\Http\Controllers\Gente\ReferenciaExternaController;
 use App\Http\Controllers\Gente\ResponsableRutaController;
 use App\Http\Controllers\Gente\SeguimientoPruebasController;
 use App\Http\Controllers\Gente\TipoDocumentoController;
+use App\Http\Controllers\Reparto\SacController;
 use Illuminate\Support\Facades\Route;
 
 // Colaboradores es propiedad de Gente (crear/importar/editar/eliminar),
@@ -87,6 +88,15 @@ Route::middleware(['auth', 'active', 'role:Administrador|Gente|Contratos', 'subm
         // Carga masiva desde el Excel de nómina ("BASE ACTUALIZADA").
         Route::post('colaboradores/importar', [ColaboradorImportController::class, 'store'])
             ->name('colaboradores.importar');
+
+        // SAC — accesible desde el módulo Gente (lectura para todos los roles del grupo)
+        Route::get('sac', [SacController::class, 'index'])->name('sac.index');
+        Route::get('sac/exportar', [SacController::class, 'exportar'])->name('sac.exportar');
+        Route::get('sac/plantilla', [SacController::class, 'plantilla'])->name('sac.plantilla');
+        Route::middleware('role:Administrador|Gente')->group(function () {
+            Route::post('sac/importar', [SacController::class, 'importar'])->name('sac.importar');
+            Route::post('sac/limpiar', [SacController::class, 'limpiar'])->name('sac.limpiar');
+        });
         Route::get('colaboradores/exportar', [ColaboradorController::class, 'exportar'])
             ->name('colaboradores.exportar');
         Route::post('perfiles-cargos', [PerfilCargoController::class, 'store'])
