@@ -226,25 +226,6 @@ export default function PlanPremiacionIndex({ colaboradores, top3: _top3, peores
     const safePage = Math.min(currentPage, totalPages);
     const paginatedColabs = colaboradores.slice((safePage - 1) * pageSize, safePage * pageSize);
 
-    const handlePageSizeInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setPageSizeInput(e.target.value);
-    };
-
-    const handlePageSizeInputBlur = () => {
-        const parsed = parseInt(pageSizeInput, 10);
-        if (!isNaN(parsed) && parsed >= 1) {
-            setPageSize(parsed);
-            setCurrentPage(1);
-        } else {
-            setPageSizeInput(String(pageSize));
-        }
-    };
-
-    const handlePageSizeInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter') {
-            void (e.target as HTMLInputElement).blur();
-        }
-    };
 
     const handleFilter = (newMes = mes, newAnio = anio, newSearch = search, newEstado = estado, newCargos = selectedCargos) => {
         setCurrentPage(1);
