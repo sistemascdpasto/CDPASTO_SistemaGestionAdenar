@@ -428,67 +428,67 @@ export default function PlanPremiacionIndex({ colaboradores, top3: _top3, peores
                                 </Button>
                             </div>
 
-                            {/* Fórmulas colapsables */}
-                            <div className="w-full max-w-xs sm:max-w-sm">
-                                <button
-                                    type="button"
-                                    onClick={() => setFormulasAbiertas(v => !v)}
-                                    className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 hover:text-emerald-900 dark:hover:text-emerald-200 transition-colors mb-1"
-                                >
-                                    <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${formulasAbiertas ? 'rotate-180' : ''}`} />
-                                    {formulasAbiertas ? 'Ocultar fórmulas' : 'Ver fórmulas de cálculo'}
-                                </button>
-                                {formulasAbiertas && (
-                                    <div className="mt-2 max-h-72 overflow-y-auto rounded-lg border border-border/60 bg-muted/40 dark:bg-muted/20 text-[11px]">
-                                        <table className="w-full">
-                                            <thead className="sticky top-0 bg-muted dark:bg-muted/80 z-10">
-                                                <tr className="border-b border-border/60">
-                                                    <th className="text-left px-3 py-1.5 font-semibold text-foreground">Indicador</th>
-                                                    <th className="text-center px-2 py-1.5 font-semibold text-foreground w-12">Peso</th>
-                                                    <th className="text-left px-3 py-1.5 font-semibold text-foreground">Regla</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <tr className="bg-emerald-50/60 dark:bg-emerald-950/20">
-                                                    <td colSpan={3} className="px-3 py-1 font-bold text-[10px] text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
-                                                        <ShieldCheck className="h-3 w-3" /> Seguridad — 35 pts
-                                                    </td>
-                                                </tr>
-                                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-emerald-700 dark:text-emerald-400">ACI</td><td className="px-2 py-1 text-center text-foreground">10%</td><td className="px-3 py-1 text-foreground">Realizadas ÷ 4 × 100</td></tr>
-                                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-emerald-700 dark:text-emerald-400">OWD Ruta</td><td className="px-2 py-1 text-center text-foreground">15%</td><td className="px-3 py-1 text-foreground">Sin NO OK = 100% | Con NO OK = 0%</td></tr>
-                                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-emerald-700 dark:text-emerald-400">Calificaciones</td><td className="px-2 py-1 text-center text-foreground">10%</td><td className="px-3 py-1 text-foreground">Promedio de notas por módulo</td></tr>
-                                                <tr className="bg-amber-50/60 dark:bg-amber-950/20">
-                                                    <td colSpan={3} className="px-3 py-1 font-bold text-[10px] text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                                                        <Users className="h-3 w-3" /> Gente — 15 pts
-                                                    </td>
-                                                </tr>
-                                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-amber-600 dark:text-amber-400">DPO Academy</td><td className="px-2 py-1 text-center text-foreground">5%</td><td className="px-3 py-1 text-foreground">Sin registro = 100% | En listado = 0%</td></tr>
-                                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-amber-600 dark:text-amber-400">Ausentismo</td><td className="px-2 py-1 text-center text-foreground">5%</td><td className="px-3 py-1 text-foreground">Sin incapacidad = 100% | Con incapacidad = 0%</td></tr>
-                                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-amber-600 dark:text-amber-400">Malas Marcaciones</td><td className="px-2 py-1 text-center text-foreground">5%</td><td className="px-3 py-1 text-foreground">Sin corrección = 100% | Con corrección = 0%</td></tr>
-                                                <tr className="bg-rose-50/60 dark:bg-rose-950/20">
-                                                    <td colSpan={3} className="px-3 py-1 font-bold text-[10px] text-rose-700 dark:text-rose-400 flex items-center gap-1">
-                                                        <Medal className="h-3 w-3" /> Reparto — 35 pts
-                                                    </td>
-                                                </tr>
-                                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-rose-700 dark:text-rose-400">Rechazos</td><td className="px-2 py-1 text-center text-foreground">11%</td><td className="px-3 py-1 text-foreground">&lt;2.0%=100% · 2.0–2.39%=80% · ≥2.4%=0%</td></tr>
-                                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-rose-700 dark:text-rose-400">SAC</td><td className="px-2 py-1 text-center text-foreground">8%</td><td className="px-3 py-1 text-foreground">Sin casos = 100% | Con casos = 0%</td></tr>
-                                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-rose-700 dark:text-rose-400">Adherencia Tiempo</td><td className="px-2 py-1 text-center text-foreground">8%</td><td className="px-3 py-1 text-foreground">≥ 83% = 100% | &lt; 83% = 0%</td></tr>
-                                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-rose-700 dark:text-rose-400">RMD</td><td className="px-2 py-1 text-center text-foreground">8%</td><td className="px-3 py-1 text-foreground">Promedio ≥ 4 = 100% | &lt; 4 = 0%</td></tr>
-                                                <tr className="bg-blue-50/60 dark:bg-blue-950/20">
-                                                    <td colSpan={3} className="px-3 py-1 font-bold text-[10px] text-blue-700 dark:text-blue-400 flex items-center gap-1">
-                                                        <CheckCircle2 className="h-3 w-3" /> Flota — 15 pts (solo conductores)
-                                                    </td>
-                                                </tr>
-                                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-blue-700 dark:text-blue-400">Checklist Pre</td><td className="px-2 py-1 text-center text-foreground">7.5%</td><td className="px-3 py-1 text-foreground">Default Aprobado (100%)</td></tr>
-                                                <tr className="hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-blue-700 dark:text-blue-400">Checklist Post</td><td className="px-2 py-1 text-center text-foreground">7.5%</td><td className="px-3 py-1 text-foreground">Default Aprobado (100%)</td></tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                )}
-                            </div>
+                            {/* Botón fórmulas */}
+                            <button
+                                type="button"
+                                onClick={() => setFormulasAbiertas(v => !v)}
+                                className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 hover:text-emerald-900 dark:hover:text-emerald-200 transition-colors"
+                            >
+                                <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${formulasAbiertas ? 'rotate-180' : ''}`} />
+                                {formulasAbiertas ? 'Ocultar fórmulas' : 'Ver fórmulas de cálculo'}
+                            </button>
                         </div>
                     </div>
                 </div>
+
+                {/* ── Fórmulas de cálculo ───────────────────────────────────────── */}
+                {formulasAbiertas && (
+                    <div className="rounded-2xl border border-border/70 bg-card shadow-sm overflow-hidden text-[11px]">
+                        <table className="w-full">
+                            <thead className="sticky top-0 bg-muted dark:bg-muted/80 z-10">
+                                <tr className="border-b border-border/60">
+                                    <th className="text-left px-4 py-2.5 font-semibold text-foreground">Indicador</th>
+                                    <th className="text-center px-3 py-2.5 font-semibold text-foreground w-16">Peso</th>
+                                    <th className="text-left px-4 py-2.5 font-semibold text-foreground">Regla</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr className="bg-emerald-50/60 dark:bg-emerald-950/20">
+                                    <td colSpan={3} className="px-4 py-1.5 font-bold text-[10px] text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+                                        <ShieldCheck className="h-3 w-3" /> Seguridad — 35 pts
+                                    </td>
+                                </tr>
+                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-4 py-1.5 font-semibold text-emerald-700 dark:text-emerald-400">ACI</td><td className="px-3 py-1.5 text-center text-foreground">10%</td><td className="px-4 py-1.5 text-foreground">Realizadas ÷ 4 × 100</td></tr>
+                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-4 py-1.5 font-semibold text-emerald-700 dark:text-emerald-400">OWD Ruta</td><td className="px-3 py-1.5 text-center text-foreground">15%</td><td className="px-4 py-1.5 text-foreground">Sin NO OK = 100% | Con NO OK = 0%</td></tr>
+                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-4 py-1.5 font-semibold text-emerald-700 dark:text-emerald-400">Calificaciones</td><td className="px-3 py-1.5 text-center text-foreground">10%</td><td className="px-4 py-1.5 text-foreground">Promedio de notas por módulo</td></tr>
+                                <tr className="bg-amber-50/60 dark:bg-amber-950/20">
+                                    <td colSpan={3} className="px-4 py-1.5 font-bold text-[10px] text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                                        <Users className="h-3 w-3" /> Gente — 15 pts
+                                    </td>
+                                </tr>
+                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-4 py-1.5 font-semibold text-amber-600 dark:text-amber-400">DPO Academy</td><td className="px-3 py-1.5 text-center text-foreground">5%</td><td className="px-4 py-1.5 text-foreground">Sin registro = 100% | En listado = 0%</td></tr>
+                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-4 py-1.5 font-semibold text-amber-600 dark:text-amber-400">Ausentismo</td><td className="px-3 py-1.5 text-center text-foreground">5%</td><td className="px-4 py-1.5 text-foreground">Sin incapacidad = 100% | Con incapacidad = 0%</td></tr>
+                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-4 py-1.5 font-semibold text-amber-600 dark:text-amber-400">Malas Marcaciones</td><td className="px-3 py-1.5 text-center text-foreground">5%</td><td className="px-4 py-1.5 text-foreground">Sin corrección = 100% | Con corrección = 0%</td></tr>
+                                <tr className="bg-rose-50/60 dark:bg-rose-950/20">
+                                    <td colSpan={3} className="px-4 py-1.5 font-bold text-[10px] text-rose-700 dark:text-rose-400 flex items-center gap-1">
+                                        <Medal className="h-3 w-3" /> Reparto — 35 pts
+                                    </td>
+                                </tr>
+                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-4 py-1.5 font-semibold text-rose-700 dark:text-rose-400">Rechazos</td><td className="px-3 py-1.5 text-center text-foreground">11%</td><td className="px-4 py-1.5 text-foreground">&lt;2.0%=100% · 2.0–2.39%=80% · ≥2.4%=0%</td></tr>
+                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-4 py-1.5 font-semibold text-rose-700 dark:text-rose-400">SAC</td><td className="px-3 py-1.5 text-center text-foreground">8%</td><td className="px-4 py-1.5 text-foreground">Sin casos = 100% | Con casos = 0%</td></tr>
+                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-4 py-1.5 font-semibold text-rose-700 dark:text-rose-400">Adherencia Tiempo</td><td className="px-3 py-1.5 text-center text-foreground">8%</td><td className="px-4 py-1.5 text-foreground">≥ 83% = 100% | &lt; 83% = 0%</td></tr>
+                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-4 py-1.5 font-semibold text-rose-700 dark:text-rose-400">RMD</td><td className="px-3 py-1.5 text-center text-foreground">8%</td><td className="px-4 py-1.5 text-foreground">Promedio ≥ 4 = 100% | &lt; 4 = 0%</td></tr>
+                                <tr className="bg-blue-50/60 dark:bg-blue-950/20">
+                                    <td colSpan={3} className="px-4 py-1.5 font-bold text-[10px] text-blue-700 dark:text-blue-400 flex items-center gap-1">
+                                        <CheckCircle2 className="h-3 w-3" /> Flota — 15 pts (solo conductores)
+                                    </td>
+                                </tr>
+                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-4 py-1.5 font-semibold text-blue-700 dark:text-blue-400">Checklist Pre</td><td className="px-3 py-1.5 text-center text-foreground">7.5%</td><td className="px-4 py-1.5 text-foreground">Default Aprobado (100%)</td></tr>
+                                <tr className="hover:bg-muted/30"><td className="px-4 py-1.5 font-semibold text-blue-700 dark:text-blue-400">Checklist Post</td><td className="px-3 py-1.5 text-center text-foreground">7.5%</td><td className="px-4 py-1.5 text-foreground">Default Aprobado (100%)</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                )}
 
                 {/* ── Filtros ───────────────────────────────────────────────────── */}
                 <div className="rounded-2xl border border-border/70 bg-card shadow-sm px-6 py-5">
@@ -610,7 +610,7 @@ export default function PlanPremiacionIndex({ colaboradores, top3: _top3, peores
                     const Reconocimiento = ({ item, puesto }: { item: ColaboradorItem; puesto: 1 | 2 }) => {
                         const primero = puesto === 1;
                         return (
-                            <div className={`rounded-xl border p-3 ${primero ? 'border-green-200 bg-green-50/60 dark:border-green-800/50 dark:bg-green-950/20' : 'border-orange-200 bg-orange-50/60 dark:border-orange-800/50 dark:bg-orange-950/20'}`}>
+                            <div className="rounded-xl border border-border/60 p-3">
                                 <div className="flex items-center gap-3">
                                     {item.foto_url ? (
                                         <img
@@ -630,17 +630,13 @@ export default function PlanPremiacionIndex({ colaboradores, top3: _top3, peores
                                                 {primero ? '1.er lugar' : '2.º lugar'}
                                             </span>
                                             {primero
-                                                ? <Trophy className="h-6 w-6" style={{ color: '#FFD700' }} />
-                                                : <Medal  className="h-6 w-6" style={{ color: '#A8A9AD' }} />
+                                                ? <Trophy className="h-6 w-6" style={{ color: '#b39c18ea' }} />
+                                                : <Medal  className="h-6 w-6" style={{ color: '#5f6066' }} />
                                             }
                                         </div>
                                         <p className="font-semibold text-sm text-foreground truncate">{item.nombre_completo}</p>
-                                        <p className="text-xs text-foreground truncate">{item.cargo}</p>
                                         <div className="flex items-center justify-between gap-2 mt-2">
-                                            <span className="flex items-center gap-1 text-xs text-foreground">
-                                                <IdCard className="h-3.5 w-3.5 shrink-0" />
-                                                {item.cedula}
-                                            </span>
+                                            
                                             <span className={`text-sm font-bold ${primero ? 'text-green-700 dark:text-green-400' : 'text-orange-700 dark:text-orange-400'}`}>
                                                 {item.calificacion_total_label}
                                             </span>
@@ -655,8 +651,7 @@ export default function PlanPremiacionIndex({ colaboradores, top3: _top3, peores
                         <div className="rounded-2xl border border-border/70 bg-card shadow-sm px-6 py-6">
                             <div className="flex items-center justify-between gap-2 mb-5">
                                 <div className="flex items-center gap-2">
-                                    <Award className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                                    <span className="text-base font-semibold text-foreground">Reconocimiento del Mes</span>
+                                    <span className="text-base font-semibold text-foreground">Líderes de Rendimiento</span>
                                 </div>
                                 <button
                                     type="button"

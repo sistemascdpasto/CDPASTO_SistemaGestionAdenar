@@ -23,13 +23,13 @@ interface Props {
 const MESES = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
 const PILARES = [
-    { key: 'resultado', label: 'Seguridad', max: 35, color: '#10b981' },
-    { key: 'resultado_asistencia', label: 'Gente', max: 15, color: '#f59e0b' },
-    { key: 'resultado_reparto', label: 'Reparto', max: 35, color: '#f43f5e' },
-    { key: 'resultado_flota', label: 'Flota', max: 15, color: '#3b82f6' },
+    { key: 'resultado', label: 'Seguridad', max: 35, color: '#6ee7b7' },
+    { key: 'resultado_asistencia', label: 'Gente', max: 15, color: '#fcd34d' },
+    { key: 'resultado_reparto', label: 'Reparto', max: 35, color: '#fda4af' },
+    { key: 'resultado_flota', label: 'Flota', max: 15, color: '#93c5fd' },
 ] as const;
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 20;
 
 interface TooltipPayload {
     value?: number;
@@ -46,7 +46,7 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
             <p className="text-foreground mb-2 text-xs leading-tight font-bold">{label}</p>
             {payload.map((p) => (
                 <div key={p.dataKey} className="flex items-center justify-between gap-4 text-xs">
-                    <span className="text-muted-foreground flex items-center gap-1.5">
+                    <span className="text-foreground flex items-center gap-1.5">
                         <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: p.color }} />
                         {p.name}
                     </span>
@@ -56,7 +56,7 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
                 </div>
             ))}
             <div className="border-border mt-1.5 flex items-center justify-between border-t pt-1.5 text-xs">
-                <span className="text-muted-foreground">Total</span>
+                <span className="text-foreground">Total</span>
                 <span
                     className={`font-black tabular-nums ${
                         total >= 70
@@ -125,7 +125,7 @@ export default function GraficoBarrasMes({ colaboradores, mes, anio }: Props) {
 
     return (
         <Card>
-            <CardHeader className="pb-2">
+            <CardHeader className="pb-4">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="flex items-center gap-2">
                         <BarChart2 className="text-foreground h-5 w-5" />
@@ -135,8 +135,8 @@ export default function GraficoBarrasMes({ colaboradores, mes, anio }: Props) {
                             </CardTitle>
                             <p className="text-foreground mt-0.5 text-xs">
                                 {sorted.length} colaborador{sorted.length !== 1 ? 'es' : ''} · prom. global{' '}
-                                <span className="font-semibold text-purple-600 dark:text-purple-400">{promedioGlobal.toFixed(1)}%</span>
-                                {totalPaginas > 1 && (
+                                <span className="font-semibold text-foreground">{promedioGlobal.toFixed(1)}%</span>
+                                {visible && totalPaginas > 1 && (
                                     <>
                                         {' '}
                                         · mostrando{' '}
@@ -151,19 +151,8 @@ export default function GraficoBarrasMes({ colaboradores, mes, anio }: Props) {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-3">
-                        {/* Leyenda pilares */}
-                        <div className="text-foreground flex flex-wrap gap-3 text-[11px]">
-                            {PILARES.map((p) => (
-                                <span key={p.key} className="flex items-center gap-1">
-                                    <span className="inline-block h-2 w-2 rounded-sm" style={{ backgroundColor: p.color }} />
-                                    {p.label}
-                                    <span className="text-foreground">/{p.max}%</span>
-                                </span>
-                            ))}
-                        </div>
-
                         {/* Controles de paginación */}
-                        {totalPaginas > 1 && (
+                        {visible && totalPaginas > 1 && (
                             <div className="flex items-center gap-1">
                                 <Button
                                     variant="outline"
@@ -174,7 +163,7 @@ export default function GraficoBarrasMes({ colaboradores, mes, anio }: Props) {
                                 >
                                     <ChevronLeft className="h-3.5 w-3.5" />
                                 </Button>
-                                <span className="text-muted-foreground px-1 text-xs tabular-nums">
+                                <span className="text-foreground px-1 text-xs tabular-nums">
                                     {paginaSegura + 1} / {totalPaginas}
                                 </span>
                                 <Button
@@ -188,23 +177,34 @@ export default function GraficoBarrasMes({ colaboradores, mes, anio }: Props) {
                                 </Button>
                             </div>
                         )}
+
+                        {/* Botón colapsar/expandir */}
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 gap-1 text-xs px-2"
+                            onClick={() => setVisible((v) => !v)}
+                        >
+                            <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${visible ? '' : '-rotate-90'}`} />
+                            {visible ? 'Ocultar' : 'Mostrar'}
+                        </Button>
                     </div>
                 </div>
             </CardHeader>
 
-            <CardContent className="pt-4">
+            {visible && <CardContent className="pt-6">
                 <ResponsiveContainer width="100%" height={chartHeight}>
                     <BarChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 48 }} barCategoryGap="18%">
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                         <XAxis
                             dataKey="nombre"
-                            tick={{ fontSize: 10, fill: '#64748b' }}
+                            tick={{ fontSize: 10, fill: '#0f172a' }}
                             angle={-35}
                             textAnchor="end"
                             interval="preserveStartEnd"
                             height={52}
                         />
-                        <YAxis domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 10, fill: '#64748b' }} width={42} />
+                        <YAxis domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 10, fill: '#0f172a' }} width={42} />
                         <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(148,163,184,0.1)' }} />
 
                         {/* Promedio de la página visible */}
@@ -263,11 +263,11 @@ export default function GraficoBarrasMes({ colaboradores, mes, anio }: Props) {
                         return (
                             <div key={p.key} className="flex flex-col gap-1">
                                 <div className="flex items-center justify-between text-[11px]">
-                                    <span className="text-muted-foreground flex items-center gap-1 font-medium">
+                                    <span className="text-foreground flex items-center gap-1 font-medium">
                                         <span className="inline-block h-2 w-2 rounded-sm" style={{ backgroundColor: p.color }} />
                                         {p.label}
                                     </span>
-                                    <span className="font-bold tabular-nums" style={{ color: p.color }}>
+                                    <span className="text-foreground font-bold tabular-nums">
                                         {avg.toFixed(1)}/{p.max}%
                                     </span>
                                 </div>
@@ -281,7 +281,7 @@ export default function GraficoBarrasMes({ colaboradores, mes, anio }: Props) {
                         );
                     })}
                 </div>
-            </CardContent>
+            </CardContent>}
         </Card>
     );
 }
