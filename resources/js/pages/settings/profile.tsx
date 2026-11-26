@@ -113,7 +113,7 @@ export default function Profile({ mustVerifyEmail, status }: { mustVerifyEmail: 
                     </form>
                 </div>
 
-                <DeleteUser />
+                {auth.isAdmin && <DeleteUser />}
             </SettingsLayout>
         </AppLayout>
     );

@@ -44,6 +44,9 @@ const ANIOS = [2024, 2025, 2026, 2027];
 const ANIO_ACTUAL = new Date().getFullYear();
 const MES_ACTUAL  = new Date().getMonth() + 1; // 1-based
 
+// Solo mostrar años que ya ocurrieron o el actual (nunca años futuros)
+const ANIOS_DISPONIBLES = ANIOS.filter((a) => a <= ANIO_ACTUAL);
+
 interface ColaboradorItem {
     id: number;
     cedula: string;
@@ -497,7 +500,7 @@ export default function PlanPremiacionIndex({ colaboradores, top3: _top3, peores
                                     <SelectValue placeholder="Seleccionar Año" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {ANIOS.map((a) => (
+                                    {ANIOS_DISPONIBLES.map((a) => (
                                         <SelectItem key={a} value={String(a)}>{a}</SelectItem>
                                     ))}
                                 </SelectContent>
