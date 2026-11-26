@@ -1,5 +1,4 @@
 import InputError from '@/components/input-error';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -15,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useForm } from '@inertiajs/react';
-import { AlertCircle, CalendarPlus, CheckCircle2, FileDown, History, PlusCircle } from 'lucide-react';
+import { AlertCircle, CalendarPlus, CheckCircle2, FileDown, PlusCircle } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 export interface ContratoItemDialog {

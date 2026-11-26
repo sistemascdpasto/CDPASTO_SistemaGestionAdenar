@@ -15,7 +15,6 @@ import {
     Folder,
     FolderOpen,
     HeartHandshake,
-    HeartHandshake as ParejasIcon,
     ImageIcon,
     Search,
     Sparkles,

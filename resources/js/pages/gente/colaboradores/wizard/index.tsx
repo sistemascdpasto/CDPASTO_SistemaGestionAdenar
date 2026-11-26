@@ -1,9 +1,8 @@
-import { SafeImage } from '@/components/safe-image';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
-import { Briefcase, FolderOpen, IdCard, ListChecks, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { Briefcase, FolderOpen, IdCard, ListChecks } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { type WizardCatalogos } from './catalogos';
 import { Paso1DatosPersonales } from './paso-1-datos-personales';
 import { Paso2RequisitosCargo } from './paso-2-requisitos-cargo';

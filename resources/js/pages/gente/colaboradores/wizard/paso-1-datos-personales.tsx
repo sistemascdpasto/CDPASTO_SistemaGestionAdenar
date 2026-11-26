@@ -2,7 +2,7 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { calcularEdad, PillToggle, SeccionCard } from '@/pages/seguridad/colaboradores/colaborador-form-fields';
 import { ArrowRight, IdCard, LoaderCircle, MapPin, Phone, Plus, ShieldCheck, Stethoscope, Trash2, User, UserCog } from 'lucide-react';

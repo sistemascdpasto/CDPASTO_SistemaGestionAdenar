@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { AlertCircle, Calendar, Camera, CheckCircle2, Clock, ImageIcon, Search, ShieldAlert, Upload, UserCheck, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 

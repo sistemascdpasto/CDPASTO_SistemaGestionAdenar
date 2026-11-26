@@ -21,7 +21,6 @@ import {
     Loader2,
     Maximize2,
     Plus,
-    QrCode,
     ScanLine,
     Trash2,
     Upload,

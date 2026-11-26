@@ -10,9 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import AppLayout from '@/layouts/app-layout';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
-import { calcularTiempoTrabajado } from '@/pages/seguridad/colaboradores/colaborador-form-fields';
 import { ImportarColaboradoresDialog } from '@/pages/gente/colaboradores/importar-dialog';
-import { CargoCombobox } from '@/pages/gente/colaboradores/wizard/components/cargo-combobox';
 import { type WizardCatalogos } from '@/pages/gente/colaboradores/wizard/catalogos';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
@@ -24,8 +22,6 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Gente', href: '/modules/gente' },
     { title: 'Colaboradores', href: '/modules/gente/colaboradores' },
 ];
-
-const TIPO_PADRINO_LABELS: Record<string, string> = { padrino: 'Padrino', plan_padrino_personal_nuevo: 'Plan padrino personal nuevo' };
 
 interface ColaboradorRow {
     id: number;
@@ -102,11 +98,6 @@ type Filters = {
 };
 
 const TODOS = 'todos';
-
-function nombreArl(colaborador: ColaboradorRow): string {
-    if (!colaborador.arl) return '—';
-    return colaborador.arl === 'Otro' ? (colaborador.arl_otro ?? 'Otro') : colaborador.arl;
-}
 
 export default function ColaboradoresIndex({
     colaboradores,

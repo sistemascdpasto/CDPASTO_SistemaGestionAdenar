@@ -1,4 +1,3 @@
-import HeadingSmall from '@/components/heading-small';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/app-layout';

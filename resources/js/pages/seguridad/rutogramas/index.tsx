@@ -1,6 +1,5 @@
 ﻿import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -8,7 +7,7 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/react';
 import { ArcElement, BarController, BarElement, CategoryScale, Chart as ChartJS, DoughnutController, Legend, LinearScale, Tooltip } from 'chart.js';
-import { AlertCircle, Building2, Calendar, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Clock, ExternalLink, Layers, MapPinned, Navigation, Package, Search, Truck, TrendingUp, Upload, User, X } from 'lucide-react';
+import { AlertCircle, Building2, Calendar, ChevronDown, ChevronLeft, ChevronRight, ExternalLink, Layers, MapPinned, Navigation, Package, Search, Truck, TrendingUp, Upload, User, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Bar, Doughnut } from 'react-chartjs-2';
 

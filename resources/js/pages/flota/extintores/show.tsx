@@ -9,7 +9,6 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     AlertTriangle,
     ArrowLeft,
-    ArrowLeftRight,
     CalendarClock,
     Camera,
     CheckCircle2,
