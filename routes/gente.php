@@ -87,6 +87,8 @@ Route::middleware(['auth', 'active', 'role:Administrador|Gente|Contratos', 'subm
         // Carga masiva desde el Excel de nómina ("BASE ACTUALIZADA").
         Route::post('colaboradores/importar', [ColaboradorImportController::class, 'store'])
             ->name('colaboradores.importar');
+        Route::get('colaboradores/exportar', [ColaboradorController::class, 'exportar'])
+            ->name('colaboradores.exportar');
         Route::post('perfiles-cargos', [PerfilCargoController::class, 'store'])
             ->name('perfiles-cargos.store');
 

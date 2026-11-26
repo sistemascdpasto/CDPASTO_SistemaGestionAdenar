@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Gente;
 
 use App\Enums\Role;
+use App\Exports\Gente\ColaboradoresExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Gente\StoreColaboradorRequest;
 use App\Http\Requests\Gente\UpdateColaboradorPaso1Request;
@@ -31,6 +32,8 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ColaboradorController extends Controller
 {
@@ -49,6 +52,9 @@ class ColaboradorController extends Controller
         $fechaIngresoHasta = $request->string('fecha_ingreso_hasta')->trim()->toString();
         $vencimientoContrato = $request->string('vencimiento_contrato')->trim()->toString();
         $licenciaVencimiento = $request->string('licencia_vencimiento')->trim()->toString();
+        $perPage = in_array((int) $request->input('per_page'), [10, 25, 50, 100, 200])
+            ? (int) $request->input('per_page')
+            : 15;
 
         // Mismo umbral que la alerta de HU03, para que "próximos a vencer"
         // signifique lo mismo en la alerta y en este filtro.
@@ -98,7 +104,7 @@ class ColaboradorController extends Controller
             ->when($licenciaVencimiento === 'vencidas', fn ($query) => $query->whereNotNull('fecha_vencimiento_licencia')->where('fecha_vencimiento_licencia', '<', now()->toDateString()))
             ->when($licenciaVencimiento === 'proximas', fn ($query) => $query->whereNotNull('fecha_vencimiento_licencia')->whereBetween('fecha_vencimiento_licencia', [now()->toDateString(), $limiteProximoVencerLicencia->toDateString()]))
             ->orderBy('nombres')
-            ->paginate(15)
+            ->paginate($perPage)
             ->withQueryString();
 
         // Resumen global (siempre sobre todos los registros, sin filtros activos)
@@ -149,6 +155,7 @@ class ColaboradorController extends Controller
                 'fecha_ingreso_hasta' => $fechaIngresoHasta,
                 'vencimiento_contrato' => $vencimientoContrato,
                 'licencia_vencimiento' => $licenciaVencimiento,
+                'per_page' => (string) $perPage,
             ],
             'borradoresCount' => $resumen['borradores'],
             'catalogos' => $this->catalogos($catalogos),
@@ -846,6 +853,14 @@ class ColaboradorController extends Controller
                 'brigadista' => count($documentos['documento_certificado_brigadista'] ?? []) > 0,
             ],
         ]);
+    }
+
+    /**
+     * Exporta el listado completo de colaboradores a Excel.
+     */
+    public function exportar(): BinaryFileResponse
+    {
+        return Excel::download(new ColaboradoresExport, 'colaboradores-'.now()->format('Y-m-d').'.xlsx');
     }
 
     /**
