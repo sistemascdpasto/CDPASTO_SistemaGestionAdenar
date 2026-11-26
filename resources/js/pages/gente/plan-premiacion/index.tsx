@@ -587,50 +587,211 @@ export default function PlanPremiacionIndex({ colaboradores, top3, peores2 = [],
                 </div>
 
 
-                {/* Podio + Peores */}
-                {(top3.length > 0 || peores2.length > 0) && (
-                    <div className="rounded-2xl bg-card shadow-sm px-6 py-5">
-                        <div className="flex items-center gap-2 mb-4">
-                            <Award className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                            <span className="text-base font-semibold text-foreground">Reconocimiento del Mes</span>
-                        </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-                            {/* Top 3 */}
-                            {top3.map((item, idx) => {
-                                const cfg = idx === 0
-                                    ? { posLabel: '1° Lugar', posCls: 'text-base font-black text-emerald-600 dark:text-emerald-400', nameCls: 'text-xl font-extrabold text-emerald-700 dark:text-emerald-400', scoreCls: 'text-lg font-black text-emerald-600 dark:text-emerald-400', iconCls: 'text-emerald-600 dark:text-emerald-400' }
-                                    : idx === 1
-                                    ? { posLabel: '2° Lugar', posCls: 'text-base font-black text-orange-500 dark:text-orange-400', nameCls: 'text-base font-bold text-orange-600 dark:text-orange-400', scoreCls: 'text-base font-extrabold text-orange-500 dark:text-orange-400', iconCls: 'text-orange-500 dark:text-orange-400' }
-                                    : { posLabel: '3° Lugar', posCls: 'text-base font-black text-slate-500 dark:text-slate-400', nameCls: 'text-sm font-bold text-slate-500 dark:text-slate-400', scoreCls: 'text-sm font-extrabold text-slate-500 dark:text-slate-400', iconCls: 'text-slate-500 dark:text-slate-400' };
-                                return (
-                                    <div key={item.id} className="rounded-lg border border-emerald-600/40 dark:border-emerald-700/40 bg-transparent p-3 shadow-sm flex flex-col items-center gap-1 text-center">
-                                        <Trophy className={`h-7 w-7 ${cfg.iconCls}`} />
-                                        <span className={cfg.posCls}>{cfg.posLabel}</span>
-                                        <p className={`leading-tight line-clamp-2 ${cfg.nameCls}`}>{item.nombre_completo}</p>
-                                        <p className={cfg.scoreCls}>{item.calificacion_total_label}</p>
-                                        <p className="text-[11px] text-foreground leading-tight line-clamp-1">{item.cargo}</p>
-                                        <p className="text-[11px] text-foreground font-mono">{item.cedula}</p>
-                                    </div>
-                                );
-                            })}
+                {/* ── Podio por Cargo ──────────────────────────────────────────── */}
+                {colaboradores.length > 0 && (() => {
+                    const CARGOS_PODIO = [
+                        { key: 'Conductor',               label: 'Conductores' },
+                        { key: 'Responsable de Reparto',  label: 'Responsables de Reparto' },
+                        { key: 'Auxiliar de Reparto',     label: 'Auxiliares de Reparto' },
+                    ];
 
-                            {/* Peores 2 */}
-                            {peores2.map((item, idx) => (
-                                <div key={item.id} className="rounded-lg border border-emerald-600/40 dark:border-emerald-700/40 bg-transparent p-3 shadow-sm flex flex-col gap-1">
-                                    <span className="text-base font-black text-red-600 dark:text-red-400">
-                                        {idx === 0 ? 'Penúltimo lugar' : 'Último lugar'}
+                    // Top 2 por cargo ordenados desc por calificacion_total
+                    const topPorCargo = CARGOS_PODIO.map(({ key, label }) => {
+                        const filtered = colaboradores
+                            .filter(c => c.cargo.toLowerCase().includes(key.toLowerCase()))
+                            .sort((a, b) => b.calificacion_total - a.calificacion_total)
+                            .slice(0, 2);
+                        return { key, label, ganadores: filtered };
+                    });
+
+                    const hayDatos = topPorCargo.some(g => g.ganadores.length > 0);
+                    if (!hayDatos) return null;
+
+                    // Tarjeta primer lugar (dorado)
+                    const CardPrimero = ({ item, cargoLabel }: { item: ColaboradorItem; cargoLabel: string }) => (
+                        <div className="flex flex-col items-center gap-0 select-none">
+                            {/* Trofeo dorado */}
+                            <div className="relative flex items-center justify-center mb-1">
+                                <svg viewBox="0 0 80 80" className="w-20 h-20 drop-shadow-lg" fill="none">
+                                    {/* laureles */}
+                                    <ellipse cx="40" cy="62" rx="28" ry="8" fill="#d97706" opacity="0.18"/>
+                                    <path d="M14 38 Q8 28 14 18 Q20 28 14 38Z" fill="#fbbf24"/>
+                                    <path d="M66 38 Q72 28 66 18 Q60 28 66 38Z" fill="#fbbf24"/>
+                                    <path d="M10 36 Q4 24 12 14 Q16 26 10 36Z" fill="#f59e0b" opacity="0.7"/>
+                                    <path d="M70 36 Q76 24 68 14 Q64 26 70 36Z" fill="#f59e0b" opacity="0.7"/>
+                                    {/* copa */}
+                                    <path d="M28 10 h24 v22 a12 12 0 0 1-24 0 Z" fill="#fbbf24" stroke="#d97706" strokeWidth="1.5"/>
+                                    <path d="M34 44 v8 h-6 v4 h16 v-4 h-6 v-8Z" fill="#fbbf24" stroke="#d97706" strokeWidth="1.2"/>
+                                    <path d="M28 10 h24" stroke="#fde68a" strokeWidth="1.5"/>
+                                    <path d="M52 10 Q60 10 60 20 Q60 30 52 32" stroke="#d97706" strokeWidth="2" fill="none"/>
+                                    <path d="M28 10 Q20 10 20 20 Q20 30 28 32" stroke="#d97706" strokeWidth="2" fill="none"/>
+                                    {/* estrella */}
+                                    <text x="40" y="31" textAnchor="middle" fontSize="13" fill="#fff" fontWeight="bold">★</text>
+                                </svg>
+                            </div>
+                            {/* Badge 1er Lugar */}
+                            <div
+                                className="w-full rounded-t-xl px-3 py-1.5 text-center"
+                                style={{ background: 'linear-gradient(135deg, #15803d 0%, #16a34a 100%)' }}
+                            >
+                                <span className="text-white font-black text-sm tracking-wide">
+                                    1<sup>er</sup> Lugar
+                                </span>
+                            </div>
+                            {/* Sub-banner cargo */}
+                            <div
+                                className="w-full px-2 py-1 text-center"
+                                style={{ background: 'linear-gradient(135deg, #166534 0%, #15803d 100%)' }}
+                            >
+                                <span className="text-green-100 font-semibold text-[11px]">{cargoLabel}</span>
+                            </div>
+                            {/* Tarjeta info */}
+                            <div className="w-full rounded-b-xl border border-t-0 border-green-700/40 bg-white dark:bg-zinc-900 px-4 py-3 flex flex-col items-center gap-1 shadow-md">
+                                {/* Avatar placeholder */}
+                                <div className="w-14 h-14 rounded-full border-4 border-green-600 bg-green-100 dark:bg-green-900 flex items-center justify-center mb-1 overflow-hidden">
+                                    <span className="text-green-700 dark:text-green-300 font-black text-lg">
+                                        {item.nombre_completo.charAt(0)}
                                     </span>
-                                    <div className="flex items-baseline gap-2 flex-wrap">
-                                        <p className="text-sm font-bold text-red-600 dark:text-red-400 leading-tight line-clamp-2">{item.nombre_completo}</p>
-                                        <p className="text-base font-extrabold text-red-600 dark:text-red-400 shrink-0">{item.calificacion_total_label}</p>
-                                    </div>
-                                    <p className="text-[11px] text-foreground leading-tight line-clamp-1">{item.cargo}</p>
-                                    <p className="text-[11px] text-foreground font-mono">{item.cedula}</p>
                                 </div>
-                            ))}
+                                <p className="font-extrabold text-sm text-gray-800 dark:text-gray-100 text-center leading-tight">
+                                    {item.nombre_completo}
+                                </p>
+                                <div className="flex items-center gap-1 text-[11px] text-gray-500 dark:text-gray-400">
+                                    <span>🗂️</span>
+                                    <span>{item.cargo}</span>
+                                </div>
+                                <div className="flex items-center gap-1 text-[11px] text-gray-500 dark:text-gray-400">
+                                    <span>🪪</span>
+                                    <span>CC {item.cedula}</span>
+                                </div>
+                                <div className="mt-1 flex items-center gap-1 bg-green-50 dark:bg-green-950/40 rounded-full px-3 py-1">
+                                    <span className="text-sm">🏆</span>
+                                    <span className="font-black text-green-700 dark:text-green-400 text-base">
+                                        {item.calificacion_total_label}
+                                    </span>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                )}
+                    );
+
+                    // Tarjeta segundo lugar (plateado/naranja)
+                    const CardSegundo = ({ item, cargoLabel }: { item: ColaboradorItem; cargoLabel: string }) => (
+                        <div className="flex flex-col items-center gap-0 select-none">
+                            {/* Medalla plateada */}
+                            <div className="relative flex items-center justify-center mb-1">
+                                <svg viewBox="0 0 80 80" className="w-20 h-20 drop-shadow-lg" fill="none">
+                                    <ellipse cx="40" cy="62" rx="28" ry="8" fill="#78716c" opacity="0.15"/>
+                                    <path d="M14 38 Q8 28 14 18 Q20 28 14 38Z" fill="#d1d5db"/>
+                                    <path d="M66 38 Q72 28 66 18 Q60 28 66 38Z" fill="#d1d5db"/>
+                                    <path d="M10 36 Q4 24 12 14 Q16 26 10 36Z" fill="#9ca3af" opacity="0.7"/>
+                                    <path d="M70 36 Q76 24 68 14 Q64 26 70 36Z" fill="#9ca3af" opacity="0.7"/>
+                                    <circle cx="40" cy="34" r="22" fill="#e5e7eb" stroke="#9ca3af" strokeWidth="2"/>
+                                    <circle cx="40" cy="34" r="17" fill="#f3f4f6" stroke="#d1d5db" strokeWidth="1.5"/>
+                                    <text x="40" y="39" textAnchor="middle" fontSize="15" fill="#6b7280" fontWeight="bold">★</text>
+                                </svg>
+                            </div>
+                            {/* Badge 2do Lugar */}
+                            <div
+                                className="w-full rounded-t-xl px-3 py-1.5 text-center"
+                                style={{ background: 'linear-gradient(135deg, #ea580c 0%, #f97316 100%)' }}
+                            >
+                                <span className="text-white font-black text-sm tracking-wide">
+                                    2° Lugar
+                                </span>
+                            </div>
+                            {/* Sub-banner cargo */}
+                            <div
+                                className="w-full px-2 py-1 text-center"
+                                style={{ background: 'linear-gradient(135deg, #c2410c 0%, #ea580c 100%)' }}
+                            >
+                                <span className="text-orange-100 font-semibold text-[11px]">{cargoLabel}</span>
+                            </div>
+                            {/* Tarjeta info */}
+                            <div className="w-full rounded-b-xl border border-t-0 border-orange-400/40 bg-white dark:bg-zinc-900 px-4 py-3 flex flex-col items-center gap-1 shadow-md">
+                                {/* Avatar placeholder */}
+                                <div className="w-14 h-14 rounded-full border-4 border-orange-400 bg-orange-50 dark:bg-orange-900/30 flex items-center justify-center mb-1 overflow-hidden">
+                                    <span className="text-orange-600 dark:text-orange-300 font-black text-lg">
+                                        {item.nombre_completo.charAt(0)}
+                                    </span>
+                                </div>
+                                <p className="font-extrabold text-sm text-gray-800 dark:text-gray-100 text-center leading-tight">
+                                    {item.nombre_completo}
+                                </p>
+                                <div className="flex items-center gap-1 text-[11px] text-gray-500 dark:text-gray-400">
+                                    <span>🗂️</span>
+                                    <span>{item.cargo}</span>
+                                </div>
+                                <div className="flex items-center gap-1 text-[11px] text-gray-500 dark:text-gray-400">
+                                    <span>🪪</span>
+                                    <span>CC {item.cedula}</span>
+                                </div>
+                                <div className="mt-1 flex items-center gap-1 bg-orange-50 dark:bg-orange-950/40 rounded-full px-3 py-1">
+                                    <span className="text-sm">🏆</span>
+                                    <span className="font-black text-orange-600 dark:text-orange-400 text-base">
+                                        {item.calificacion_total_label}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    );
+
+                    return (
+                        <div className="rounded-2xl border border-border/70 bg-card shadow-sm px-6 py-6">
+                            <div className="flex items-center gap-2 mb-6">
+                                <Award className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                                <span className="text-base font-semibold text-foreground">Reconocimiento del Mes</span>
+                            </div>
+
+                            {/* Fila 1er Lugar */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
+                                {topPorCargo.map(({ label, ganadores }) =>
+                                    ganadores[0] ? (
+                                        <CardPrimero key={`1-${label}`} item={ganadores[0]} cargoLabel={label} />
+                                    ) : (
+                                        <div key={`empty-1-${label}`} className="flex flex-col items-center gap-0 opacity-40">
+                                            <div className="w-20 h-20 mb-1 flex items-center justify-center">
+                                                <Trophy className="h-10 w-10 text-muted-foreground" />
+                                            </div>
+                                            <div className="w-full rounded-t-xl px-3 py-1.5 text-center bg-muted">
+                                                <span className="text-muted-foreground font-black text-sm">1<sup>er</sup> Lugar</span>
+                                            </div>
+                                            <div className="w-full px-2 py-1 text-center bg-muted/60">
+                                                <span className="text-muted-foreground text-[11px]">{label}</span>
+                                            </div>
+                                            <div className="w-full rounded-b-xl border border-t-0 border-border bg-card px-4 py-6 text-center text-xs text-muted-foreground">
+                                                Sin datos
+                                            </div>
+                                        </div>
+                                    )
+                                )}
+                            </div>
+
+                            {/* Fila 2do Lugar */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                                {topPorCargo.map(({ label, ganadores }) =>
+                                    ganadores[1] ? (
+                                        <CardSegundo key={`2-${label}`} item={ganadores[1]} cargoLabel={label} />
+                                    ) : (
+                                        <div key={`empty-2-${label}`} className="flex flex-col items-center gap-0 opacity-40">
+                                            <div className="w-20 h-20 mb-1 flex items-center justify-center">
+                                                <Medal className="h-10 w-10 text-muted-foreground" />
+                                            </div>
+                                            <div className="w-full rounded-t-xl px-3 py-1.5 text-center bg-muted">
+                                                <span className="text-muted-foreground font-black text-sm">2° Lugar</span>
+                                            </div>
+                                            <div className="w-full px-2 py-1 text-center bg-muted/60">
+                                                <span className="text-muted-foreground text-[11px]">{label}</span>
+                                            </div>
+                                            <div className="w-full rounded-b-xl border border-t-0 border-border bg-card px-4 py-6 text-center text-xs text-muted-foreground">
+                                                Sin datos
+                                            </div>
+                                        </div>
+                                    )
+                                )}
+                            </div>
+                        </div>
+                    );
+                })()}
 
                 {/* Gráfico de Barras del Mes */}
                 <GraficoBarrasMes colaboradores={colaboradores} mes={mes} anio={anio} />

@@ -206,15 +206,13 @@ class SacController extends Controller
         $headerRow = array_shift($rows);
         $columnIndexMap = [];
 
+        $mappedFields = []; // track which DB field has already been claimed by an earlier column
         foreach ($headerRow as $colLetter => $headerName) {
             $normHeader = $this->normalizeHeader((string) $headerName);
-            if (isset(self::COLUMN_MAP[$normHeader])) {
-                $columnIndexMap[$colLetter] = self::COLUMN_MAP[$normHeader];
-            } else {
-                $fuzzy = $this->fuzzyMatchHeader($normHeader);
-                if ($fuzzy) {
-                    $columnIndexMap[$colLetter] = $fuzzy;
-                }
+            $field = self::COLUMN_MAP[$normHeader] ?? $this->fuzzyMatchHeader($normHeader);
+            if ($field && !isset($mappedFields[$field])) {
+                $columnIndexMap[$colLetter] = $field;
+                $mappedFields[$field] = $colLetter;
             }
         }
 
@@ -475,6 +473,11 @@ class SacController extends Controller
             } catch (\Exception $e) {
                 return null;
             }
+        }
+
+        // Truncate strings that exceed the 255-char column limit.
+        if (mb_strlen($valStr) > 255) {
+            $valStr = mb_substr($valStr, 0, 255);
         }
 
         return $valStr;
