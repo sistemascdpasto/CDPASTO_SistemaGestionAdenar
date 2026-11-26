@@ -91,6 +91,7 @@ interface ColaboradorItem {
     resultado_flota_label: string;
     calificacion_total: number;
     calificacion_total_label: string;
+    foto_url: string | null;
     faltantes: number;
     cumple: boolean;
     estado: 'meta_alcanzada' | 'en_progreso' | 'sin_participacion';
@@ -131,7 +132,7 @@ const parseCargosFilter = (filterStr?: string): string[] => {
 };
 
 
-export default function PlanPremiacionIndex({ colaboradores, top3, peores2 = [], cargos = [], filters, puede_editar = false }: Props) {
+export default function PlanPremiacionIndex({ colaboradores, top3: _top3, peores2: _peores2 = [], cargos = [], filters, puede_editar = false }: Props) {
     const [mes, setMes] = useState<number>(filters.mes || new Date().getMonth() + 1);
     const [anio, setAnio] = useState<number>(filters.anio || new Date().getFullYear());
     const [search, setSearch] = useState<string>(filters.search || '');
@@ -523,7 +524,8 @@ export default function PlanPremiacionIndex({ colaboradores, top3, peores2 = [],
                         </div>
 
                         <div>
-                            <label className="mb-1 block text-[11px] font-medium text-muted-foreground">Mes</label>
+                            <label className="mb-1                
+ block text-[11px] font-medium text-muted-foreground">Mes</label>
                             <Select value={String(mes)} onValueChange={handleMesChange}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Seleccionar Mes" />
@@ -590,12 +592,11 @@ export default function PlanPremiacionIndex({ colaboradores, top3, peores2 = [],
                 {/* ── Podio por Cargo ──────────────────────────────────────────── */}
                 {colaboradores.length > 0 && (() => {
                     const CARGOS_PODIO = [
-                        { key: 'Conductor',               label: 'Conductores' },
-                        { key: 'Responsable de Reparto',  label: 'Responsables de Reparto' },
-                        { key: 'Auxiliar de Reparto',     label: 'Auxiliares de Reparto' },
+                        { key: 'Conductor',              label: 'Conductores' },
+                        { key: 'Responsable de Reparto', label: 'Responsables de Reparto' },
+                        { key: 'Auxiliar de Reparto',    label: 'Auxiliares de Reparto' },
                     ];
 
-                    // Top 2 por cargo ordenados desc por calificacion_total
                     const topPorCargo = CARGOS_PODIO.map(({ key, label }) => {
                         const filtered = colaboradores
                             .filter(c => c.cargo.toLowerCase().includes(key.toLowerCase()))
@@ -604,132 +605,58 @@ export default function PlanPremiacionIndex({ colaboradores, top3, peores2 = [],
                         return { key, label, ganadores: filtered };
                     });
 
-                    const hayDatos = topPorCargo.some(g => g.ganadores.length > 0);
-                    if (!hayDatos) return null;
+                    if (!topPorCargo.some(g => g.ganadores.length > 0)) return null;
 
-                    // Tarjeta primer lugar (dorado)
-                    const CardPrimero = ({ item, cargoLabel }: { item: ColaboradorItem; cargoLabel: string }) => (
-                        <div className="flex flex-col items-center gap-0 select-none">
-                            {/* Trofeo dorado */}
-                            <div className="relative flex items-center justify-center mb-1">
-                                <svg viewBox="0 0 80 80" className="w-20 h-20 drop-shadow-lg" fill="none">
-                                    {/* laureles */}
-                                    <ellipse cx="40" cy="62" rx="28" ry="8" fill="#d97706" opacity="0.18"/>
-                                    <path d="M14 38 Q8 28 14 18 Q20 28 14 38Z" fill="#fbbf24"/>
-                                    <path d="M66 38 Q72 28 66 18 Q60 28 66 38Z" fill="#fbbf24"/>
-                                    <path d="M10 36 Q4 24 12 14 Q16 26 10 36Z" fill="#f59e0b" opacity="0.7"/>
-                                    <path d="M70 36 Q76 24 68 14 Q64 26 70 36Z" fill="#f59e0b" opacity="0.7"/>
-                                    {/* copa */}
-                                    <path d="M28 10 h24 v22 a12 12 0 0 1-24 0 Z" fill="#fbbf24" stroke="#d97706" strokeWidth="1.5"/>
-                                    <path d="M34 44 v8 h-6 v4 h16 v-4 h-6 v-8Z" fill="#fbbf24" stroke="#d97706" strokeWidth="1.2"/>
-                                    <path d="M28 10 h24" stroke="#fde68a" strokeWidth="1.5"/>
-                                    <path d="M52 10 Q60 10 60 20 Q60 30 52 32" stroke="#d97706" strokeWidth="2" fill="none"/>
-                                    <path d="M28 10 Q20 10 20 20 Q20 30 28 32" stroke="#d97706" strokeWidth="2" fill="none"/>
-                                    {/* estrella */}
-                                    <text x="40" y="31" textAnchor="middle" fontSize="13" fill="#fff" fontWeight="bold">★</text>
-                                </svg>
-                            </div>
-                            {/* Badge 1er Lugar */}
-                            <div
-                                className="w-full rounded-t-xl px-3 py-1.5 text-center"
-                                style={{ background: 'linear-gradient(135deg, #15803d 0%, #16a34a 100%)' }}
-                            >
-                                <span className="text-white font-black text-sm tracking-wide">
-                                    1<sup>er</sup> Lugar
+                    const Avatar = ({ item, ring }: { item: ColaboradorItem; ring: string }) => (
+                        <div className={`w-16 h-16 shrink-0 rounded-full border-[3px] ${ring} overflow-hidden bg-muted flex items-center justify-center`}>
+                            {item.foto_url ? (
+                                <img
+                                    src={item.foto_url}
+                                    alt={item.nombre_completo}
+                                    className="w-full h-full object-cover"
+                                    onError={e => { (e.currentTarget as HTMLImageElement).src = ''; e.currentTarget.style.display = 'none'; }}
+                                />
+                            ) : (
+                                <span className="text-xl font-black text-muted-foreground">
+                                    {item.nombre_completo.charAt(0)}
                                 </span>
-                            </div>
-                            {/* Sub-banner cargo */}
-                            <div
-                                className="w-full px-2 py-1 text-center"
-                                style={{ background: 'linear-gradient(135deg, #166534 0%, #15803d 100%)' }}
-                            >
-                                <span className="text-green-100 font-semibold text-[11px]">{cargoLabel}</span>
-                            </div>
-                            {/* Tarjeta info */}
-                            <div className="w-full rounded-b-xl border border-t-0 border-green-700/40 bg-white dark:bg-zinc-900 px-4 py-3 flex flex-col items-center gap-1 shadow-md">
-                                {/* Avatar placeholder */}
-                                <div className="w-14 h-14 rounded-full border-4 border-green-600 bg-green-100 dark:bg-green-900 flex items-center justify-center mb-1 overflow-hidden">
-                                    <span className="text-green-700 dark:text-green-300 font-black text-lg">
-                                        {item.nombre_completo.charAt(0)}
-                                    </span>
-                                </div>
-                                <p className="font-extrabold text-sm text-gray-800 dark:text-gray-100 text-center leading-tight">
-                                    {item.nombre_completo}
-                                </p>
-                                <div className="flex items-center gap-1 text-[11px] text-gray-500 dark:text-gray-400">
-                                    <span>🗂️</span>
-                                    <span>{item.cargo}</span>
-                                </div>
-                                <div className="flex items-center gap-1 text-[11px] text-gray-500 dark:text-gray-400">
-                                    <span>🪪</span>
-                                    <span>CC {item.cedula}</span>
-                                </div>
-                                <div className="mt-1 flex items-center gap-1 bg-green-50 dark:bg-green-950/40 rounded-full px-3 py-1">
-                                    <span className="text-sm">🏆</span>
-                                    <span className="font-black text-green-700 dark:text-green-400 text-base">
-                                        {item.calificacion_total_label}
-                                    </span>
-                                </div>
-                            </div>
+                            )}
                         </div>
                     );
 
-                    // Tarjeta segundo lugar (plateado/naranja)
-                    const CardSegundo = ({ item, cargoLabel }: { item: ColaboradorItem; cargoLabel: string }) => (
-                        <div className="flex flex-col items-center gap-0 select-none">
-                            {/* Medalla plateada */}
-                            <div className="relative flex items-center justify-center mb-1">
-                                <svg viewBox="0 0 80 80" className="w-20 h-20 drop-shadow-lg" fill="none">
-                                    <ellipse cx="40" cy="62" rx="28" ry="8" fill="#78716c" opacity="0.15"/>
-                                    <path d="M14 38 Q8 28 14 18 Q20 28 14 38Z" fill="#d1d5db"/>
-                                    <path d="M66 38 Q72 28 66 18 Q60 28 66 38Z" fill="#d1d5db"/>
-                                    <path d="M10 36 Q4 24 12 14 Q16 26 10 36Z" fill="#9ca3af" opacity="0.7"/>
-                                    <path d="M70 36 Q76 24 68 14 Q64 26 70 36Z" fill="#9ca3af" opacity="0.7"/>
-                                    <circle cx="40" cy="34" r="22" fill="#e5e7eb" stroke="#9ca3af" strokeWidth="2"/>
-                                    <circle cx="40" cy="34" r="17" fill="#f3f4f6" stroke="#d1d5db" strokeWidth="1.5"/>
-                                    <text x="40" y="39" textAnchor="middle" fontSize="15" fill="#6b7280" fontWeight="bold">★</text>
-                                </svg>
+                    /* Tarjeta genérica — foto izquierda, datos derecha */
+                    const PodioCard = ({
+                        item, pos, accentBg, accentText, ringColor, badgeIcon,
+                    }: {
+                        item: ColaboradorItem;
+                        pos: string;
+                        accentBg: string;
+                        accentText: string;
+                        ringColor: string;
+                        badgeIcon: React.ReactNode;
+                    }) => (
+                        <div className="rounded-2xl overflow-hidden shadow border border-border/60 bg-card flex flex-col">
+                            {/* Header coloreado con posición */}
+                            <div className={`${accentBg} px-4 py-2 flex items-center gap-2`}>
+                                {badgeIcon}
+                                <span className={`font-black text-sm tracking-wide ${accentText}`}>{pos}</span>
                             </div>
-                            {/* Badge 2do Lugar */}
-                            <div
-                                className="w-full rounded-t-xl px-3 py-1.5 text-center"
-                                style={{ background: 'linear-gradient(135deg, #ea580c 0%, #f97316 100%)' }}
-                            >
-                                <span className="text-white font-black text-sm tracking-wide">
-                                    2° Lugar
-                                </span>
-                            </div>
-                            {/* Sub-banner cargo */}
-                            <div
-                                className="w-full px-2 py-1 text-center"
-                                style={{ background: 'linear-gradient(135deg, #c2410c 0%, #ea580c 100%)' }}
-                            >
-                                <span className="text-orange-100 font-semibold text-[11px]">{cargoLabel}</span>
-                            </div>
-                            {/* Tarjeta info */}
-                            <div className="w-full rounded-b-xl border border-t-0 border-orange-400/40 bg-white dark:bg-zinc-900 px-4 py-3 flex flex-col items-center gap-1 shadow-md">
-                                {/* Avatar placeholder */}
-                                <div className="w-14 h-14 rounded-full border-4 border-orange-400 bg-orange-50 dark:bg-orange-900/30 flex items-center justify-center mb-1 overflow-hidden">
-                                    <span className="text-orange-600 dark:text-orange-300 font-black text-lg">
-                                        {item.nombre_completo.charAt(0)}
-                                    </span>
-                                </div>
-                                <p className="font-extrabold text-sm text-gray-800 dark:text-gray-100 text-center leading-tight">
-                                    {item.nombre_completo}
-                                </p>
-                                <div className="flex items-center gap-1 text-[11px] text-gray-500 dark:text-gray-400">
-                                    <span>🗂️</span>
-                                    <span>{item.cargo}</span>
-                                </div>
-                                <div className="flex items-center gap-1 text-[11px] text-gray-500 dark:text-gray-400">
-                                    <span>🪪</span>
-                                    <span>CC {item.cedula}</span>
-                                </div>
-                                <div className="mt-1 flex items-center gap-1 bg-orange-50 dark:bg-orange-950/40 rounded-full px-3 py-1">
-                                    <span className="text-sm">🏆</span>
-                                    <span className="font-black text-orange-600 dark:text-orange-400 text-base">
+                            {/* Cuerpo: foto izquierda + datos derecha */}
+                            <div className="flex items-center gap-4 px-4 py-3">
+                                <Avatar item={item} ring={ringColor} />
+                                <div className="min-w-0 flex-1">
+                                    <p className="font-bold text-sm text-foreground leading-tight truncate">
+                                        {item.nombre_completo}
+                                    </p>
+                                    <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
+                                        {item.cargo}
+                                    </p>
+                                    <p className="text-[11px] text-muted-foreground font-mono">
+                                        CC {item.cedula}
+                                    </p>
+                                    <p className={`mt-1 text-base font-black ${accentText}`}>
                                         {item.calificacion_total_label}
-                                    </span>
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -737,57 +664,52 @@ export default function PlanPremiacionIndex({ colaboradores, top3, peores2 = [],
 
                     return (
                         <div className="rounded-2xl border border-border/70 bg-card shadow-sm px-6 py-6">
-                            <div className="flex items-center gap-2 mb-6">
+                            <div className="flex items-center gap-2 mb-5">
                                 <Award className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                                 <span className="text-base font-semibold text-foreground">Reconocimiento del Mes</span>
                             </div>
 
-                            {/* Fila 1er Lugar */}
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
-                                {topPorCargo.map(({ label, ganadores }) =>
-                                    ganadores[0] ? (
-                                        <CardPrimero key={`1-${label}`} item={ganadores[0]} cargoLabel={label} />
-                                    ) : (
-                                        <div key={`empty-1-${label}`} className="flex flex-col items-center gap-0 opacity-40">
-                                            <div className="w-20 h-20 mb-1 flex items-center justify-center">
-                                                <Trophy className="h-10 w-10 text-muted-foreground" />
-                                            </div>
-                                            <div className="w-full rounded-t-xl px-3 py-1.5 text-center bg-muted">
-                                                <span className="text-muted-foreground font-black text-sm">1<sup>er</sup> Lugar</span>
-                                            </div>
-                                            <div className="w-full px-2 py-1 text-center bg-muted/60">
-                                                <span className="text-muted-foreground text-[11px]">{label}</span>
-                                            </div>
-                                            <div className="w-full rounded-b-xl border border-t-0 border-border bg-card px-4 py-6 text-center text-xs text-muted-foreground">
-                                                Sin datos
-                                            </div>
-                                        </div>
-                                    )
-                                )}
-                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                                {topPorCargo.map(({ label, ganadores }) => (
+                                    <div key={label} className="flex flex-col gap-3">
+                                        {/* Título de categoría */}
+                                        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground text-center">
+                                            {label}
+                                        </p>
 
-                            {/* Fila 2do Lugar */}
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                                {topPorCargo.map(({ label, ganadores }) =>
-                                    ganadores[1] ? (
-                                        <CardSegundo key={`2-${label}`} item={ganadores[1]} cargoLabel={label} />
-                                    ) : (
-                                        <div key={`empty-2-${label}`} className="flex flex-col items-center gap-0 opacity-40">
-                                            <div className="w-20 h-20 mb-1 flex items-center justify-center">
-                                                <Medal className="h-10 w-10 text-muted-foreground" />
-                                            </div>
-                                            <div className="w-full rounded-t-xl px-3 py-1.5 text-center bg-muted">
-                                                <span className="text-muted-foreground font-black text-sm">2° Lugar</span>
-                                            </div>
-                                            <div className="w-full px-2 py-1 text-center bg-muted/60">
-                                                <span className="text-muted-foreground text-[11px]">{label}</span>
-                                            </div>
-                                            <div className="w-full rounded-b-xl border border-t-0 border-border bg-card px-4 py-6 text-center text-xs text-muted-foreground">
+                                        {/* 1er lugar */}
+                                        {ganadores[0] ? (
+                                            <PodioCard
+                                                item={ganadores[0]}
+                                                pos="1er Lugar"
+                                                accentBg="bg-gradient-to-r from-emerald-700 to-emerald-500"
+                                                accentText="text-white"
+                                                ringColor="border-emerald-500"
+                                                badgeIcon={<Trophy className="h-4 w-4 text-yellow-300" />}
+                                            />
+                                        ) : (
+                                            <div className="rounded-2xl border border-border/40 bg-muted/30 px-4 py-6 text-center text-xs text-muted-foreground">
                                                 Sin datos
                                             </div>
-                                        </div>
-                                    )
-                                )}
+                                        )}
+
+                                        {/* 2do lugar */}
+                                        {ganadores[1] ? (
+                                            <PodioCard
+                                                item={ganadores[1]}
+                                                pos="2° Lugar"
+                                                accentBg="bg-gradient-to-r from-orange-600 to-orange-400"
+                                                accentText="text-white"
+                                                ringColor="border-orange-400"
+                                                badgeIcon={<Medal className="h-4 w-4 text-white/80" />}
+                                            />
+                                        ) : (
+                                            <div className="rounded-2xl border border-border/40 bg-muted/30 px-4 py-6 text-center text-xs text-muted-foreground">
+                                                Sin datos
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     );

@@ -119,7 +119,7 @@ class PlanPremiacionController extends Controller
         $queryColaboradores = Colaborador::query()
             ->where('is_active', true)
             ->whereRaw("LOWER(TRIM(area)) = 'operativa'")
-            ->select(['id', 'cedula', 'nombres', 'apellidos', 'cargo', 'area', 'codigo_qr_skap']);
+            ->select(['id', 'cedula', 'nombres', 'apellidos', 'cargo', 'area', 'codigo_qr_skap', 'imagen']);
 
         if (!empty($cargosSeleccionados)) {
             $queryColaboradores->whereIn('cargo', $cargosSeleccionados);
@@ -496,6 +496,7 @@ class PlanPremiacionController extends Controller
                 'apellidos'                    => $colaborador->apellidos,
                 'cargo'                        => $colaborador->cargo ?? 'Sin cargo',
                 'area'                         => $colaborador->area  ?? 'General',
+                'foto_url'                     => (!empty($colaborador->imagen) ? \Storage::disk('public')->url($colaborador->imagen) : null),
                 'aci_realizadas'               => $aciRealizadas,
                 'meta'                         => self::META_MENSUAL,
                 'porcentaje'                   => $porcentaje,
