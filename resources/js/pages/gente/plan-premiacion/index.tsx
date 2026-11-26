@@ -16,7 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/react';
-import { Award, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Download, Filter, Medal, Search, ShieldCheck, Trophy, Users, X } from 'lucide-react';
+import { Award, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Download, Filter, IdCard, Medal, Search, ShieldCheck, Trophy, UserRound, Users, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -137,6 +137,7 @@ export default function PlanPremiacionIndex({ colaboradores, top3: _top3, peores
     const [anio, setAnio] = useState<number>(filters.anio || new Date().getFullYear());
     const [search, setSearch] = useState<string>(filters.search || '');
     const [formulasAbiertas, setFormulasAbiertas] = useState<boolean>(false);
+    const [podioVisible, setPodioVisible] = useState<boolean>(true);
     const [estado] = useState<string>(filters.estado || 'todos');
     const [selectedCargos, setSelectedCargos] = useState<string[]>(parseCargosFilter(filters.cargo));
 
@@ -602,115 +603,88 @@ export default function PlanPremiacionIndex({ colaboradores, top3: _top3, peores
                             .filter(c => c.cargo.toLowerCase().includes(key.toLowerCase()))
                             .sort((a, b) => b.calificacion_total - a.calificacion_total)
                             .slice(0, 2);
-                        return { key, label, ganadores: filtered };
+                        return { label, ganadores: filtered };
                     });
 
                     if (!topPorCargo.some(g => g.ganadores.length > 0)) return null;
 
-                    const Avatar = ({ item, ring }: { item: ColaboradorItem; ring: string }) => (
-                        <div className={`w-16 h-16 shrink-0 rounded-full border-[3px] ${ring} overflow-hidden bg-muted flex items-center justify-center`}>
-                            {item.foto_url ? (
-                                <img
-                                    src={item.foto_url}
-                                    alt={item.nombre_completo}
-                                    className="w-full h-full object-cover"
-                                    onError={e => { (e.currentTarget as HTMLImageElement).src = ''; e.currentTarget.style.display = 'none'; }}
-                                />
-                            ) : (
-                                <span className="text-xl font-black text-muted-foreground">
-                                    {item.nombre_completo.charAt(0)}
-                                </span>
-                            )}
-                        </div>
-                    );
-
-                    /* Tarjeta genérica — foto izquierda, datos derecha */
-                    const PodioCard = ({
-                        item, pos, accentBg, accentText, ringColor, badgeIcon,
-                    }: {
-                        item: ColaboradorItem;
-                        pos: string;
-                        accentBg: string;
-                        accentText: string;
-                        ringColor: string;
-                        badgeIcon: React.ReactNode;
-                    }) => (
-                        <div className="rounded-2xl overflow-hidden shadow border border-border/60 bg-card flex flex-col">
-                            {/* Header coloreado con posición */}
-                            <div className={`${accentBg} px-4 py-2 flex items-center gap-2`}>
-                                {badgeIcon}
-                                <span className={`font-black text-sm tracking-wide ${accentText}`}>{pos}</span>
-                            </div>
-                            {/* Cuerpo: foto izquierda + datos derecha */}
-                            <div className="flex items-center gap-4 px-4 py-3">
-                                <Avatar item={item} ring={ringColor} />
-                                <div className="min-w-0 flex-1">
-                                    <p className="font-bold text-sm text-foreground leading-tight truncate">
-                                        {item.nombre_completo}
-                                    </p>
-                                    <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
-                                        {item.cargo}
-                                    </p>
-                                    <p className="text-[11px] text-muted-foreground font-mono">
-                                        CC {item.cedula}
-                                    </p>
-                                    <p className={`mt-1 text-base font-black ${accentText}`}>
-                                        {item.calificacion_total_label}
-                                    </p>
+                    const Reconocimiento = ({ item, puesto }: { item: ColaboradorItem; puesto: 1 | 2 }) => {
+                        const primero = puesto === 1;
+                        return (
+                            <div className={`rounded-xl border p-3 ${primero ? 'border-green-200 bg-green-50/60 dark:border-green-800/50 dark:bg-green-950/20' : 'border-orange-200 bg-orange-50/60 dark:border-orange-800/50 dark:bg-orange-950/20'}`}>
+                                <div className="flex items-center gap-3">
+                                    {item.foto_url ? (
+                                        <img
+                                            src={item.foto_url}
+                                            alt={item.nombre_completo}
+                                            className="h-14 w-14 shrink-0 rounded-full object-cover border-2 border-white shadow-sm"
+                                            onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                                        />
+                                    ) : (
+                                        <div className="h-14 w-14 shrink-0 rounded-full bg-white dark:bg-muted flex items-center justify-center shadow-sm">
+                                            <UserRound className="h-7 w-7 text-slate-400" />
+                                        </div>
+                                    )}
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-center justify-between gap-2">
+                                            <span className={`text-xs font-semibold ${primero ? 'text-green-700 dark:text-green-400' : 'text-orange-700 dark:text-orange-400'}`}>
+                                                {primero ? '1.er lugar' : '2.º lugar'}
+                                            </span>
+                                            {primero
+                                                ? <Trophy className="h-4 w-4 text-green-700 dark:text-green-400" />
+                                                : <Medal className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                                            }
+                                        </div>
+                                        <p className="font-semibold text-sm text-foreground truncate">{item.nombre_completo}</p>
+                                        <p className="text-xs text-muted-foreground truncate">{item.cargo}</p>
+                                        <div className="flex items-center justify-between gap-2 mt-2">
+                                            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                                                <IdCard className="h-3.5 w-3.5 shrink-0" />
+                                                {item.cedula}
+                                            </span>
+                                            <span className={`text-sm font-bold ${primero ? 'text-green-700 dark:text-green-400' : 'text-orange-700 dark:text-orange-400'}`}>
+                                                {item.calificacion_total_label}
+                                            </span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    );
+                        );
+                    };
 
                     return (
                         <div className="rounded-2xl border border-border/70 bg-card shadow-sm px-6 py-6">
-                            <div className="flex items-center gap-2 mb-5">
-                                <Award className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                                <span className="text-base font-semibold text-foreground">Reconocimiento del Mes</span>
+                            <div className="flex items-center justify-between gap-2 mb-5">
+                                <div className="flex items-center gap-2">
+                                    <Award className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                                    <span className="text-base font-semibold text-foreground">Reconocimiento del Mes</span>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setPodioVisible(v => !v)}
+                                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                                >
+                                    <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${podioVisible ? 'rotate-180' : ''}`} />
+                                    {podioVisible ? 'Ocultar' : 'Mostrar'}
+                                </button>
                             </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                            {podioVisible && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                                 {topPorCargo.map(({ label, ganadores }) => (
-                                    <div key={label} className="flex flex-col gap-3">
-                                        {/* Título de categoría */}
-                                        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground text-center">
-                                            {label}
-                                        </p>
-
-                                        {/* 1er lugar */}
-                                        {ganadores[0] ? (
-                                            <PodioCard
-                                                item={ganadores[0]}
-                                                pos="1er Lugar"
-                                                accentBg="bg-gradient-to-r from-emerald-700 to-emerald-500"
-                                                accentText="text-white"
-                                                ringColor="border-emerald-500"
-                                                badgeIcon={<Trophy className="h-4 w-4 text-yellow-300" />}
-                                            />
-                                        ) : (
-                                            <div className="rounded-2xl border border-border/40 bg-muted/30 px-4 py-6 text-center text-xs text-muted-foreground">
-                                                Sin datos
-                                            </div>
-                                        )}
-
-                                        {/* 2do lugar */}
-                                        {ganadores[1] ? (
-                                            <PodioCard
-                                                item={ganadores[1]}
-                                                pos="2° Lugar"
-                                                accentBg="bg-gradient-to-r from-orange-600 to-orange-400"
-                                                accentText="text-white"
-                                                ringColor="border-orange-400"
-                                                badgeIcon={<Medal className="h-4 w-4 text-white/80" />}
-                                            />
-                                        ) : (
-                                            <div className="rounded-2xl border border-border/40 bg-muted/30 px-4 py-6 text-center text-xs text-muted-foreground">
-                                                Sin datos
-                                            </div>
-                                        )}
+                                    <div key={label} className="rounded-xl border border-border/60 bg-background p-3 space-y-3">
+                                        <h3 className="text-sm font-bold text-foreground">{label}</h3>
+                                        {ganadores[0]
+                                            ? <Reconocimiento item={ganadores[0]} puesto={1} />
+                                            : <div className="rounded-xl border border-border/40 bg-muted/30 px-4 py-5 text-center text-xs text-muted-foreground">Sin datos</div>
+                                        }
+                                        {ganadores[1]
+                                            ? <Reconocimiento item={ganadores[1]} puesto={2} />
+                                            : <div className="rounded-xl border border-border/40 bg-muted/30 px-4 py-5 text-center text-xs text-muted-foreground">Sin datos</div>
+                                        }
                                     </div>
                                 ))}
                             </div>
+                            )}
                         </div>
                     );
                 })()}
