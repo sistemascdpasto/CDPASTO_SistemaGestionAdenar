@@ -46,6 +46,7 @@ interface ColaboradorRow {
     arl: string | null;
     arl_otro: string | null;
     fecha_ingreso_empresa: string | null;
+    fecha_vencimiento_licencia: string | null;
     tipo_padrino: string | null;
     imagen: string | null;
     is_active: boolean;
@@ -77,6 +78,8 @@ interface Resumen {
     area_administrativa: number;
     contratos_proximos: number;
     contratos_vencidos: number;
+    licencias_proximas: number;
+    licencias_vencidas: number;
 }
 
 type Filters = {
@@ -92,6 +95,7 @@ type Filters = {
     fecha_ingreso_desde: string;
     fecha_ingreso_hasta: string;
     vencimiento_contrato: string;
+    licencia_vencimiento: string;
 };
 
 const TODOS = 'todos';
@@ -341,6 +345,76 @@ export default function ColaboradoresIndex({
                         }`}>{resumen.contratos_vencidos}</p>
                         <p className="mt-1 text-[11px] text-muted-foreground">contratos vencidos</p>
                     </div>
+
+                    {/* Licencias próximas a vencer */}
+                    <div
+                        className={`rounded-xl border p-4 shadow-sm bg-gradient-to-br to-white dark:to-transparent cursor-pointer transition-all ${
+                            resumen.licencias_proximas > 0
+                                ? 'border-orange-200 from-orange-50 dark:border-orange-900/50 dark:from-orange-950/20'
+                                : 'border-border from-muted'
+                        } ${filters.licencia_vencimiento === 'proximas' ? 'ring-2 ring-orange-400' : ''}`}
+                        onClick={() => applyFilters({ licencia_vencimiento: filters.licencia_vencimiento === 'proximas' ? '' : 'proximas' })}
+                    >
+                        <div className="flex min-w-0 items-center gap-2 mb-2">
+                            <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${
+                                resumen.licencias_proximas > 0
+                                    ? 'bg-orange-100 dark:bg-orange-900/40'
+                                    : 'bg-muted'
+                            }`}>
+                                <AlertTriangle className={`h-4 w-4 ${
+                                    resumen.licencias_proximas > 0
+                                        ? 'text-orange-600 dark:text-orange-400'
+                                        : 'text-muted-foreground'
+                                }`} />
+                            </div>
+                            <span className={`truncate text-xs font-semibold uppercase tracking-wide ${
+                                resumen.licencias_proximas > 0
+                                    ? 'text-orange-700 dark:text-orange-400'
+                                    : 'text-muted-foreground'
+                            }`}>Lic. por vencer</span>
+                        </div>
+                        <p className={`text-3xl font-black ${
+                            resumen.licencias_proximas > 0
+                                ? 'text-orange-600 dark:text-orange-400'
+                                : 'text-muted-foreground'
+                        }`}>{resumen.licencias_proximas}</p>
+                        <p className="mt-1 text-[11px] text-muted-foreground">licencias ≤ 1 año</p>
+                    </div>
+
+                    {/* Licencias vencidas */}
+                    <div
+                        className={`rounded-xl border p-4 shadow-sm bg-gradient-to-br to-white dark:to-transparent cursor-pointer transition-all ${
+                            resumen.licencias_vencidas > 0
+                                ? 'border-red-200 from-red-50 dark:border-red-900/50 dark:from-red-950/20'
+                                : 'border-border from-muted'
+                        } ${filters.licencia_vencimiento === 'vencidas' ? 'ring-2 ring-red-400' : ''}`}
+                        onClick={() => applyFilters({ licencia_vencimiento: filters.licencia_vencimiento === 'vencidas' ? '' : 'vencidas' })}
+                    >
+                        <div className="flex min-w-0 items-center gap-2 mb-2">
+                            <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${
+                                resumen.licencias_vencidas > 0
+                                    ? 'bg-red-100 dark:bg-red-900/40'
+                                    : 'bg-muted'
+                            }`}>
+                                <FileWarning className={`h-4 w-4 ${
+                                    resumen.licencias_vencidas > 0
+                                        ? 'text-red-600 dark:text-red-400'
+                                        : 'text-muted-foreground'
+                                }`} />
+                            </div>
+                            <span className={`truncate text-xs font-semibold uppercase tracking-wide ${
+                                resumen.licencias_vencidas > 0
+                                    ? 'text-red-700 dark:text-red-400'
+                                    : 'text-muted-foreground'
+                            }`}>Lic. vencidas</span>
+                        </div>
+                        <p className={`text-3xl font-black ${
+                            resumen.licencias_vencidas > 0
+                                ? 'text-red-600 dark:text-red-400'
+                                : 'text-muted-foreground'
+                        }`}>{resumen.licencias_vencidas}</p>
+                        <p className="mt-1 text-[11px] text-muted-foreground">licencias vencidas</p>
+                    </div>
                 </div>
 
                 <div className="flex flex-wrap items-end gap-2">
@@ -454,6 +528,20 @@ export default function ColaboradoresIndex({
                             <SelectItem value="proximos">Próximos a vencer</SelectItem>
                             <SelectItem value="vencidos">Vencidos</SelectItem>
                             <SelectItem value="vigentes">Vigentes</SelectItem>
+                        </SelectContent>
+                    </Select>
+
+                    <Select
+                        value={filters.licencia_vencimiento || TODOS}
+                        onValueChange={(value) => applyFilters({ licencia_vencimiento: value === TODOS ? '' : value })}
+                    >
+                        <SelectTrigger className="w-52">
+                            <SelectValue placeholder="Licencia de conducción" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value={TODOS}>Licencia: todas</SelectItem>
+                            <SelectItem value="proximas">Próximas a vencer (≤ 1 año)</SelectItem>
+                            <SelectItem value="vencidas">Vencidas</SelectItem>
                         </SelectContent>
                     </Select>
 

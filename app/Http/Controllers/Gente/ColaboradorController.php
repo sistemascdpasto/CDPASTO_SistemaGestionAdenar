@@ -48,10 +48,14 @@ class ColaboradorController extends Controller
         $fechaIngresoDesde = $request->string('fecha_ingreso_desde')->trim()->toString();
         $fechaIngresoHasta = $request->string('fecha_ingreso_hasta')->trim()->toString();
         $vencimientoContrato = $request->string('vencimiento_contrato')->trim()->toString();
+        $licenciaVencimiento = $request->string('licencia_vencimiento')->trim()->toString();
 
         // Mismo umbral que la alerta de HU03, para que "próximos a vencer"
         // signifique lo mismo en la alerta y en este filtro.
         $limiteProximoVencer = now()->addDays((int) config('gente.dias_alerta_vencimiento_contrato'));
+
+        // Para licencias usamos 1 año (365 días) como umbral de "próxima a vencer".
+        $limiteProximoVencerLicencia = now()->addDays(365);
 
         $colaboradores = Colaborador::query()
             ->select([
@@ -59,6 +63,7 @@ class ColaboradorController extends Controller
                 'celular_1', 'codigo_qr_skap', 'correo', 'direccion', 'centro_trabajo',
                 'eps', 'eps_otro', 'arl', 'arl_otro', 'fecha_ingreso_empresa', 'tipo_padrino',
                 'imagen', 'is_active', 'estado_registro', 'wizard_step',
+                'fecha_vencimiento_licencia',
             ])
             ->withExists(['prorrogas as tiene_finalizacion' => fn ($query) => $query
                 ->where('tipo', 'finalizacion')
@@ -90,12 +95,15 @@ class ColaboradorController extends Controller
             ->when($vencimientoContrato === 'vigentes', fn ($query) => $query->where(function ($query) use ($limiteProximoVencer) {
                 $query->whereNull('fecha_retiro_empresa')->orWhere('fecha_retiro_empresa', '>', $limiteProximoVencer);
             })->sinFinalizacionConfirmada())
+            ->when($licenciaVencimiento === 'vencidas', fn ($query) => $query->whereNotNull('fecha_vencimiento_licencia')->where('fecha_vencimiento_licencia', '<', now()->toDateString()))
+            ->when($licenciaVencimiento === 'proximas', fn ($query) => $query->whereNotNull('fecha_vencimiento_licencia')->whereBetween('fecha_vencimiento_licencia', [now()->toDateString(), $limiteProximoVencerLicencia->toDateString()]))
             ->orderBy('nombres')
             ->paginate(15)
             ->withQueryString();
 
         // Resumen global (siempre sobre todos los registros, sin filtros activos)
         $limiteProximoVencerResumen = now()->addDays((int) config('gente.dias_alerta_vencimiento_contrato'));
+        $limiteProximoVencerLicenciaResumen = now()->addDays(365);
         $totalCompletos = Colaborador::completos()->count();
         $resumen = [
             'total' => $totalCompletos,
@@ -113,6 +121,14 @@ class ColaboradorController extends Controller
                 ->sinFinalizacionConfirmada()
                 ->whereNotNull('fecha_retiro_empresa')
                 ->where('fecha_retiro_empresa', '<', now())
+                ->count(),
+            'licencias_proximas' => Colaborador::completos()
+                ->whereNotNull('fecha_vencimiento_licencia')
+                ->whereBetween('fecha_vencimiento_licencia', [now()->toDateString(), $limiteProximoVencerLicenciaResumen->toDateString()])
+                ->count(),
+            'licencias_vencidas' => Colaborador::completos()
+                ->whereNotNull('fecha_vencimiento_licencia')
+                ->where('fecha_vencimiento_licencia', '<', now()->toDateString())
                 ->count(),
         ];
 
@@ -132,6 +148,7 @@ class ColaboradorController extends Controller
                 'fecha_ingreso_desde' => $fechaIngresoDesde,
                 'fecha_ingreso_hasta' => $fechaIngresoHasta,
                 'vencimiento_contrato' => $vencimientoContrato,
+                'licencia_vencimiento' => $licenciaVencimiento,
             ],
             'borradoresCount' => $resumen['borradores'],
             'catalogos' => $this->catalogos($catalogos),

@@ -16,7 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/react';
-import { Award, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Download, Medal, Search, ShieldCheck, Trophy, Users } from 'lucide-react';
+import { Award, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Download, Filter, Medal, Search, ShieldCheck, Trophy, Users, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -355,7 +355,7 @@ export default function PlanPremiacionIndex({ colaboradores, top3, peores2 = [],
                         <div className="flex items-center gap-3">
                             <div
                                 className="flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl shadow-sm shrink-0"
-                                style={{ background: 'linear-gradient(135deg, #78350f 0%, #b45309 60%, #d97706 100%)' }}
+                                style={{ background: 'linear-gradient(135deg, #064e3b 0%, #047857 60%, #059669 100%)' }}
                             >
                                 <Trophy className="h-7 w-7 text-white" />
                             </div>
@@ -363,155 +363,23 @@ export default function PlanPremiacionIndex({ colaboradores, top3, peores2 = [],
                                 <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
                                     Plan Premiación
                                 </h1>
-                                <p className="text-sm text-muted-foreground mt-0.5">
-                                    Evaluación mensual · ACI, OWD, Calificaciones, Reparto y Flota
-                                </p>
+                                
                             </div>
                         </div>
-                        <div className="min-w-[260px]">
-                            <button
-                                type="button"
-                                onClick={() => setFormulasAbiertas(v => !v)}
-                                className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-200 transition-colors mb-1"
-                            >
-                                <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${formulasAbiertas ? 'rotate-180' : ''}`} />
-                                {formulasAbiertas ? 'Ocultar fórmulas' : 'Ver fórmulas de cálculo'}
-                            </button>
-                            {formulasAbiertas && (
-                                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] font-medium text-foreground rounded-lg border border-amber-200/60 bg-amber-500/10 dark:border-amber-900/40 dark:bg-amber-950/20 px-3 py-2">
-                                    {/* SEGURIDAD 35% */}
-                                    <div className="col-span-2 mt-1 mb-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
-                                        <ShieldCheck className="h-3 w-3" /> Seguridad 35%
-                                    </div>
-                                    <div><span className="font-bold text-emerald-700 dark:text-emerald-400">ACI</span> <span className="text-muted-foreground">(10%)</span> — Realizadas ÷ 4 × 100</div>
-                                    <div><span className="font-bold text-emerald-700 dark:text-emerald-400">OWD Ruta</span> <span className="text-muted-foreground">(15%)</span> — Sin NO OK = 100% | Con NO OK = 0%</div>
-                                    <div><span className="font-bold text-emerald-700 dark:text-emerald-400">Calificaciones</span> <span className="text-muted-foreground">(10%)</span> — Promedio de notas por módulo</div>
-
-                                    {/* GENTE 15% */}
-                                    <div className="col-span-2 mt-2 mb-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                                        <Users className="h-3 w-3" /> Gente 15%
-                                    </div>
-                                    <div><span className="font-bold text-amber-600 dark:text-amber-400">DPO Academy</span> <span className="text-muted-foreground">(5%)</span> — Sin registro = 100% | En listado = 0%</div>
-                                    <div><span className="font-bold text-amber-600 dark:text-amber-400">Ausentismo</span> <span className="text-muted-foreground">(5%)</span> — Sin incapacidad = 100% | Con incapacidad = 0%</div>
-                                    <div><span className="font-bold text-amber-600 dark:text-amber-400">Malas Marcaciones</span> <span className="text-muted-foreground">(5%)</span> — Sin corrección = 100% | Con corrección = 0%</div>
-
-                                    {/* REPARTO 35% */}
-                                    <div className="col-span-2 mt-2 mb-0.5 text-[10px] font-bold text-rose-700 dark:text-rose-400 flex items-center gap-1">
-                                        <Medal className="h-3 w-3" /> Reparto 35%
-                                    </div>
-                                    <div><span className="font-bold text-rose-700 dark:text-rose-400">Rechazos</span> <span className="text-muted-foreground">(11%)</span> — &lt; 2.0% = 100% (verde) | 2.0%–2.39% = 80% (naranja) | ≥ 2.4% = 0% (rojo)</div>
-                                    <div><span className="font-bold text-rose-700 dark:text-rose-400">SAC</span> <span className="text-muted-foreground">(8%)</span> — Sin casos = 100% | Con casos = 0%</div>
-                                    <div><span className="font-bold text-rose-700 dark:text-rose-400">Adherencia Tiempo</span> <span className="text-muted-foreground">(8%)</span> — ≥ 83% adherencia = 100% | &lt; 83% = 0%</div>
-                                    <div><span className="font-bold text-rose-700 dark:text-rose-400">RMD</span> <span className="text-muted-foreground">(8%)</span> — Promedio ≥ 4 = 100% | &lt; 4 = 0%</div>
-
-                                    {/* FLOTA 15% */}
-                                    <div className="col-span-2 mt-2 mb-0.5 text-[10px] font-bold text-blue-700 dark:text-blue-400 flex items-center gap-1">
-                                        <CheckCircle2 className="h-3 w-3" /> Flota 15% (Ambos Aprobados = 15% | Si uno no está Aprobado = 0%)
-                                    </div>
-                                    <div><span className="font-bold text-blue-700 dark:text-blue-400">Checklist Pre</span> — Solo conductores · Default Aprobado (100%)</div>
-                                    <div><span className="font-bold text-blue-700 dark:text-blue-400">Checklist Post</span> — Solo conductores · Default Aprobado (100%)</div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Filtros */}
-                <Card>
-                    <CardHeader className="pb-4">
-                        <CardTitle className="text-base font-semibold">Filtros y Búsqueda</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 w-full">
-                                <div>
-                                    <label className="mb-1 block text-xs font-medium text-muted-foreground">Año</label>
-                                    <Select value={String(anio)} onValueChange={handleAnioChange}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Seleccionar Año" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {ANIOS.map((a) => (
-                                                <SelectItem key={a} value={String(a)}>
-                                                    {a}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                <div>
-                                    <label className="mb-1 block text-xs font-medium text-muted-foreground">Mes</label>
-                                    <Select value={String(mes)} onValueChange={handleMesChange}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Seleccionar Mes" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {MESES.filter((m) => anio < ANIO_ACTUAL || m.value <= MES_ACTUAL).map((m) => (
-                                                <SelectItem key={m.value} value={String(m.value)}>
-                                                    {m.label}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                <div>
-                                    <label className="mb-1 block text-xs font-medium text-muted-foreground">Buscar Colaborador</label>
-                                    <div className="relative">
-                                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                                        <Input
-                                            type="text"
-                                            placeholder="Nombre, apellido, cédula..."
-                                            value={search}
-                                            onChange={handleSearchChange}
-                                            className="pl-9"
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Filtro de Cargos */}
-                                {cargos.length > 0 && (
-                                    <div>
-                                        <label className="mb-1 block text-xs font-medium text-muted-foreground">Cargo</label>
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="outline" className="w-full justify-between text-sm font-normal truncate">
-                                                    <span className="truncate">{getCargoLabel()}</span>
-                                                    <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="start" className="w-64 max-h-72 overflow-y-auto">
-                                                <DropdownMenuCheckboxItem
-                                                    checked={selectedCargos.length === 0}
-                                                    onCheckedChange={() => handleToggleCargo('todos')}
-                                                    className="text-xs font-medium"
-                                                >
-                                                    Todos los Cargos
-                                                </DropdownMenuCheckboxItem>
-                                                <DropdownMenuSeparator />
-                                                {cargos.map((c) => (
-                                                    <DropdownMenuCheckboxItem
-                                                        key={c}
-                                                        checked={selectedCargos.includes(c)}
-                                                        onCheckedChange={() => handleToggleCargo(c)}
-                                                        className="text-xs"
-                                                    >
-                                                        {c}
-                                                    </DropdownMenuCheckboxItem>
-                                                ))}
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="flex flex-wrap items-center gap-2 md:self-end">
-                                {/* Selector de columnas visibles */}
+                        <div className="flex flex-col gap-2 items-end shrink-0">
+                            {/* Botones de acción */}
+                            <div className="flex flex-wrap items-center gap-2">
+                                {/* Selector de columnas */}
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                        <Button variant="outline" size="sm" className="gap-2 text-xs">
-                                            <ChevronDown className="h-4 w-4" />
-                                            Columnas
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-8 text-xs border-green-300 text-green-700 hover:bg-green-50 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-950/30 gap-1.5"
+                                        >
+                                            <ChevronDown className="h-3.5 w-3.5" />
+                                            <span className="hidden sm:inline">Columnas</span>
+                                            <span className="sm:hidden">Cols.</span>
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end" className="w-60 max-h-96 overflow-y-auto">
@@ -536,7 +404,7 @@ export default function PlanPremiacionIndex({ colaboradores, top3, peores2 = [],
                                         <div className="px-2 py-1">
                                             <button
                                                 onClick={() => setColsVisibles(new Set(allKeys))}
-                                                className="w-full rounded text-[11px] text-muted-foreground hover:text-foreground dark:text-muted-foreground  underline text-center py-0.5 transition-colors"
+                                                className="w-full rounded text-[11px] text-muted-foreground hover:text-foreground underline text-center py-0.5 transition-colors"
                                             >
                                                 Mostrar todas
                                             </button>
@@ -544,82 +412,224 @@ export default function PlanPremiacionIndex({ colaboradores, top3, peores2 = [],
                                     </DropdownMenuContent>
                                 </DropdownMenu>
 
-                                <Button asChild variant="outline" className="w-full md:w-auto">
+                                {/* Exportar */}
+                                <Button
+                                    asChild
+                                    size="sm"
+                                    className="h-8 text-xs border-green-300 text-green-700 hover:bg-green-50 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-950/30"
+                                    variant="outline"
+                                >
                                     <a href={exportUrl} target="_blank" rel="noopener noreferrer">
-                                        <Download className="mr-2 h-4 w-4" />
-                                        Exportar Excel
+                                        <Download className="h-3.5 w-3.5 mr-1 sm:mr-1.5" />
+                                        <span className="hidden sm:inline">Exportar Excel</span>
+                                        <span className="sm:hidden">Exp.</span>
                                     </a>
                                 </Button>
                             </div>
-                    </CardContent>
-                </Card>
 
-
-                {/* Podio + Peores — todos en una sola fila */}
-                {(top3.length > 0 || peores2.length > 0) && (
-                    <Card className="border-sidebar-border/70 dark:border-sidebar-border">
-                        <CardHeader className="pb-2">
-                            <div className="flex items-center gap-2">
-                                <Award className="h-5 w-5 text-amber-500" />
-                                <CardTitle className="text-base font-semibold">Reconocimiento del Mes</CardTitle>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-                                {/* Top 3 */}
-                                {top3.map((item, idx) => {
-                                    const badge =
-                                        idx === 0 ? { bg: 'bg-amber-500', label: '1° Lugar' }
-                                        : idx === 1 ? { bg: 'bg-slate-400', label: '2° Lugar' }
-                                        : { bg: 'bg-amber-700', label: '3° Lugar' };
-                                    const cardBg =
-                                        idx === 0 ? 'bg-amber-50 border-amber-300 dark:bg-amber-950/30 dark:border-amber-800'
-                                        : idx === 1 ? 'bg-muted/40 border-input dark:bg-muted/40 dark:border-sidebar-border'
-                                        : 'bg-orange-50/50 border-orange-300 dark:bg-orange-950/20 dark:border-orange-900/40';
-                                    return (
-                                        <div key={item.id} className={`rounded-lg border p-3 shadow-sm flex flex-col gap-1 ${cardBg}`}>
-                                            <span className={`self-start rounded-full px-2 py-0.5 text-[10px] font-bold text-white ${badge.bg}`}>
-                                                {badge.label}
-                                            </span>
-                                            <p className="text-sm font-bold text-foreground leading-tight line-clamp-2">
-                                                {item.nombre_completo}
-                                            </p>
-                                            <p className="text-base font-extrabold text-amber-600 dark:text-amber-400">
-                                                {item.calificacion_total_label}
-                                            </p>
-                                            <p className="text-[11px] text-muted-foreground leading-tight line-clamp-1">
-                                                {item.cargo}
-                                            </p>
-                                            <p className="text-[11px] text-muted-foreground font-mono">
-                                                {item.cedula}
-                                            </p>
-                                        </div>
-                                    );
-                                })}
-
-                                {/* Peores 2 */}
-                                {peores2.map((item, idx) => (
-                                    <div key={item.id} className="rounded-lg border border-rose-200 bg-rose-50/50 p-3 shadow-sm flex flex-col gap-1 dark:border-rose-900/40 dark:bg-rose-950/10">
-                                        <span className="self-start rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-bold text-white">
-                                            {idx === 0 ? 'Penúltimo' : 'Último'} lugar
-                                        </span>
-                                        <p className="text-sm font-bold text-foreground leading-tight line-clamp-2">
-                                            {item.nombre_completo}
-                                        </p>
-                                        <p className="text-base font-extrabold text-red-600 dark:text-red-400">
-                                            {item.calificacion_total_label}
-                                        </p>
-                                        <p className="text-[11px] text-muted-foreground leading-tight line-clamp-1">
-                                            {item.cargo}
-                                        </p>
-                                        <p className="text-[11px] text-muted-foreground font-mono">
-                                            {item.cedula}
-                                        </p>
+                            {/* Fórmulas colapsables */}
+                            <div className="w-full max-w-xs sm:max-w-sm">
+                                <button
+                                    type="button"
+                                    onClick={() => setFormulasAbiertas(v => !v)}
+                                    className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 hover:text-emerald-900 dark:hover:text-emerald-200 transition-colors mb-1"
+                                >
+                                    <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${formulasAbiertas ? 'rotate-180' : ''}`} />
+                                    {formulasAbiertas ? 'Ocultar fórmulas' : 'Ver fórmulas de cálculo'}
+                                </button>
+                                {formulasAbiertas && (
+                                    <div className="mt-2 max-h-72 overflow-y-auto rounded-lg border border-border/60 bg-muted/40 dark:bg-muted/20 text-[11px]">
+                                        <table className="w-full">
+                                            <thead className="sticky top-0 bg-muted dark:bg-muted/80 z-10">
+                                                <tr className="border-b border-border/60">
+                                                    <th className="text-left px-3 py-1.5 font-semibold text-muted-foreground">Indicador</th>
+                                                    <th className="text-center px-2 py-1.5 font-semibold text-muted-foreground w-12">Peso</th>
+                                                    <th className="text-left px-3 py-1.5 font-semibold text-muted-foreground">Regla</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr className="bg-emerald-50/60 dark:bg-emerald-950/20">
+                                                    <td colSpan={3} className="px-3 py-1 font-bold text-[10px] text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+                                                        <ShieldCheck className="h-3 w-3" /> Seguridad — 35 pts
+                                                    </td>
+                                                </tr>
+                                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-emerald-700 dark:text-emerald-400">ACI</td><td className="px-2 py-1 text-center text-muted-foreground">10%</td><td className="px-3 py-1 text-muted-foreground">Realizadas ÷ 4 × 100</td></tr>
+                                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-emerald-700 dark:text-emerald-400">OWD Ruta</td><td className="px-2 py-1 text-center text-muted-foreground">15%</td><td className="px-3 py-1 text-muted-foreground">Sin NO OK = 100% | Con NO OK = 0%</td></tr>
+                                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-emerald-700 dark:text-emerald-400">Calificaciones</td><td className="px-2 py-1 text-center text-muted-foreground">10%</td><td className="px-3 py-1 text-muted-foreground">Promedio de notas por módulo</td></tr>
+                                                <tr className="bg-amber-50/60 dark:bg-amber-950/20">
+                                                    <td colSpan={3} className="px-3 py-1 font-bold text-[10px] text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                                                        <Users className="h-3 w-3" /> Gente — 15 pts
+                                                    </td>
+                                                </tr>
+                                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-amber-600 dark:text-amber-400">DPO Academy</td><td className="px-2 py-1 text-center text-muted-foreground">5%</td><td className="px-3 py-1 text-muted-foreground">Sin registro = 100% | En listado = 0%</td></tr>
+                                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-amber-600 dark:text-amber-400">Ausentismo</td><td className="px-2 py-1 text-center text-muted-foreground">5%</td><td className="px-3 py-1 text-muted-foreground">Sin incapacidad = 100% | Con incapacidad = 0%</td></tr>
+                                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-amber-600 dark:text-amber-400">Malas Marcaciones</td><td className="px-2 py-1 text-center text-muted-foreground">5%</td><td className="px-3 py-1 text-muted-foreground">Sin corrección = 100% | Con corrección = 0%</td></tr>
+                                                <tr className="bg-rose-50/60 dark:bg-rose-950/20">
+                                                    <td colSpan={3} className="px-3 py-1 font-bold text-[10px] text-rose-700 dark:text-rose-400 flex items-center gap-1">
+                                                        <Medal className="h-3 w-3" /> Reparto — 35 pts
+                                                    </td>
+                                                </tr>
+                                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-rose-700 dark:text-rose-400">Rechazos</td><td className="px-2 py-1 text-center text-muted-foreground">11%</td><td className="px-3 py-1 text-muted-foreground">&lt;2.0%=100% · 2.0–2.39%=80% · ≥2.4%=0%</td></tr>
+                                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-rose-700 dark:text-rose-400">SAC</td><td className="px-2 py-1 text-center text-muted-foreground">8%</td><td className="px-3 py-1 text-muted-foreground">Sin casos = 100% | Con casos = 0%</td></tr>
+                                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-rose-700 dark:text-rose-400">Adherencia Tiempo</td><td className="px-2 py-1 text-center text-muted-foreground">8%</td><td className="px-3 py-1 text-muted-foreground">≥ 83% = 100% | &lt; 83% = 0%</td></tr>
+                                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-rose-700 dark:text-rose-400">RMD</td><td className="px-2 py-1 text-center text-muted-foreground">8%</td><td className="px-3 py-1 text-muted-foreground">Promedio ≥ 4 = 100% | &lt; 4 = 0%</td></tr>
+                                                <tr className="bg-blue-50/60 dark:bg-blue-950/20">
+                                                    <td colSpan={3} className="px-3 py-1 font-bold text-[10px] text-blue-700 dark:text-blue-400 flex items-center gap-1">
+                                                        <CheckCircle2 className="h-3 w-3" /> Flota — 15 pts (solo conductores)
+                                                    </td>
+                                                </tr>
+                                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-blue-700 dark:text-blue-400">Checklist Pre</td><td className="px-2 py-1 text-center text-muted-foreground">7.5%</td><td className="px-3 py-1 text-muted-foreground">Default Aprobado (100%)</td></tr>
+                                                <tr className="hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-blue-700 dark:text-blue-400">Checklist Post</td><td className="px-2 py-1 text-center text-muted-foreground">7.5%</td><td className="px-3 py-1 text-muted-foreground">Default Aprobado (100%)</td></tr>
+                                            </tbody>
+                                        </table>
                                     </div>
-                                ))}
+                                )}
                             </div>
-                        </CardContent>
-                    </Card>
+                        </div>
+                    </div>
+                </div>
+
+                {/* ── Filtros ───────────────────────────────────────────────────── */}
+                <div className="rounded-2xl border border-border/70 bg-card shadow-sm px-6 py-5">
+                    <div className="flex items-center justify-between mb-3">
+                        <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                            <Filter className="h-3.5 w-3.5 text-green-700 dark:text-green-400" />
+                            Filtros de búsqueda
+                        </span>
+                        {(search || selectedCargos.length > 0) && (
+                            <button
+                                type="button"
+                                onClick={() => { setSearch(''); setSelectedCargos([]); }}
+                                className="inline-flex items-center gap-1 text-xs font-medium text-red-600 hover:text-red-700 dark:text-red-400 hover:underline cursor-pointer transition-colors"
+                            >
+                                <X className="h-3.5 w-3.5" />
+                                Limpiar filtros
+                            </button>
+                        )}
+                    </div>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 w-full">
+                        <div>
+                            <label className="mb-1 block text-[11px] font-medium text-muted-foreground">Año</label>
+                            <Select value={String(anio)} onValueChange={handleAnioChange}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Seleccionar Año" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {ANIOS.map((a) => (
+                                        <SelectItem key={a} value={String(a)}>{a}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div>
+                            <label className="mb-1 block text-[11px] font-medium text-muted-foreground">Mes</label>
+                            <Select value={String(mes)} onValueChange={handleMesChange}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Seleccionar Mes" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {MESES.filter((m) => anio < ANIO_ACTUAL || m.value <= MES_ACTUAL).map((m) => (
+                                        <SelectItem key={m.value} value={String(m.value)}>{m.label}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div>
+                            <label className="mb-1 block text-[11px] font-medium text-muted-foreground">Buscar Colaborador</label>
+                            <div className="relative">
+                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    type="text"
+                                    placeholder="Nombre, apellido, cédula..."
+                                    value={search}
+                                    onChange={handleSearchChange}
+                                    className="pl-9"
+                                />
+                            </div>
+                        </div>
+
+                        {cargos.length > 0 && (
+                            <div>
+                                <label className="mb-1 block text-[11px] font-medium text-muted-foreground">Cargo</label>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="outline" className="w-full justify-between text-sm font-normal truncate">
+                                            <span className="truncate">{getCargoLabel()}</span>
+                                            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="start" className="w-64 max-h-72 overflow-y-auto">
+                                        <DropdownMenuCheckboxItem
+                                            checked={selectedCargos.length === 0}
+                                            onCheckedChange={() => handleToggleCargo('todos')}
+                                            className="text-xs font-medium"
+                                        >
+                                            Todos los Cargos
+                                        </DropdownMenuCheckboxItem>
+                                        <DropdownMenuSeparator />
+                                        {cargos.map((c) => (
+                                            <DropdownMenuCheckboxItem
+                                                key={c}
+                                                checked={selectedCargos.includes(c)}
+                                                onCheckedChange={() => handleToggleCargo(c)}
+                                                className="text-xs"
+                                            >
+                                                {c}
+                                            </DropdownMenuCheckboxItem>
+                                        ))}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+
+                {/* Podio + Peores */}
+                {(top3.length > 0 || peores2.length > 0) && (
+                    <div className="rounded-2xl bg-card shadow-sm px-6 py-5">
+                        <div className="flex items-center gap-2 mb-4">
+                            <Award className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                            <span className="text-base font-semibold text-foreground">Reconocimiento del Mes</span>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                            {/* Top 3 */}
+                            {top3.map((item, idx) => {
+                                const cfg = idx === 0
+                                    ? { posLabel: '1° Lugar', posCls: 'text-base font-black text-emerald-600 dark:text-emerald-400', nameCls: 'text-xl font-extrabold text-emerald-700 dark:text-emerald-400', scoreCls: 'text-lg font-black text-emerald-600 dark:text-emerald-400', iconCls: 'text-emerald-600 dark:text-emerald-400' }
+                                    : idx === 1
+                                    ? { posLabel: '2° Lugar', posCls: 'text-base font-black text-orange-500 dark:text-orange-400', nameCls: 'text-base font-bold text-orange-600 dark:text-orange-400', scoreCls: 'text-base font-extrabold text-orange-500 dark:text-orange-400', iconCls: 'text-orange-500 dark:text-orange-400' }
+                                    : { posLabel: '3° Lugar', posCls: 'text-base font-black text-slate-500 dark:text-slate-400', nameCls: 'text-sm font-bold text-slate-500 dark:text-slate-400', scoreCls: 'text-sm font-extrabold text-slate-500 dark:text-slate-400', iconCls: 'text-slate-500 dark:text-slate-400' };
+                                return (
+                                    <div key={item.id} className="rounded-lg border border-emerald-600/40 dark:border-emerald-700/40 bg-transparent p-3 shadow-sm flex flex-col items-center gap-1 text-center">
+                                        <Trophy className={`h-7 w-7 ${cfg.iconCls}`} />
+                                        <span className={cfg.posCls}>{cfg.posLabel}</span>
+                                        <p className={`leading-tight line-clamp-2 ${cfg.nameCls}`}>{item.nombre_completo}</p>
+                                        <p className={cfg.scoreCls}>{item.calificacion_total_label}</p>
+                                        <p className="text-[11px] text-foreground leading-tight line-clamp-1">{item.cargo}</p>
+                                        <p className="text-[11px] text-foreground font-mono">{item.cedula}</p>
+                                    </div>
+                                );
+                            })}
+
+                            {/* Peores 2 */}
+                            {peores2.map((item, idx) => (
+                                <div key={item.id} className="rounded-lg border border-emerald-600/40 dark:border-emerald-700/40 bg-transparent p-3 shadow-sm flex flex-col gap-1">
+                                    <span className="text-base font-black text-red-600 dark:text-red-400">
+                                        {idx === 0 ? 'Penúltimo lugar' : 'Último lugar'}
+                                    </span>
+                                    <div className="flex items-baseline gap-2 flex-wrap">
+                                        <p className="text-sm font-bold text-red-600 dark:text-red-400 leading-tight line-clamp-2">{item.nombre_completo}</p>
+                                        <p className="text-base font-extrabold text-red-600 dark:text-red-400 shrink-0">{item.calificacion_total_label}</p>
+                                    </div>
+                                    <p className="text-[11px] text-foreground leading-tight line-clamp-1">{item.cargo}</p>
+                                    <p className="text-[11px] text-foreground font-mono">{item.cedula}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
                 )}
 
                 {/* Gráfico de Barras del Mes */}
