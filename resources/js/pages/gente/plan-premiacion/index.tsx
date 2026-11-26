@@ -1,7 +1,6 @@
 import GraficoBarrasMes from '@/components/gente/GraficoBarrasMes';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import {
     DropdownMenu,
@@ -143,8 +142,8 @@ export default function PlanPremiacionIndex({ colaboradores, top3: _top3, peores
 
     // Paginación
     const [currentPage, setCurrentPage] = useState<number>(1);
-    const [pageSize, setPageSize] = useState<number>(25);
-    const [pageSizeInput, setPageSizeInput] = useState<string>('25');
+    const [pageSize, setPageSize] = useState<number>(20);
+    const [pageSizeInput, setPageSizeInput] = useState<string>('20');
 
     // Columnas visibles
     type ColKey = 'aci' | 'owd' | 'calificaciones' | 'res_seguridad'
@@ -170,7 +169,7 @@ export default function PlanPremiacionIndex({ colaboradores, top3: _top3, peores
         { key: 'cl_pre',            label: 'CL Pre (7.5%)',              pilar: 'FLOTA' },
         { key: 'cl_post',           label: 'CL Post (7.5%)',             pilar: 'FLOTA' },
         { key: 'res_flota',         label: 'Resultado Flota',            pilar: 'FLOTA' },
-        { key: 'total',             label: 'TOTAL 100%',                 pilar: 'TOTAL' },
+        { key: 'total',             label: 'TOTAL',                      pilar: 'TOTAL' },
     ];
 
     const STORAGE_KEY = 'plan-premiacion:cols-visibles';
@@ -389,7 +388,7 @@ export default function PlanPremiacionIndex({ colaboradores, top3: _top3, peores
                                         <DropdownMenuSeparator />
                                         {['SEGURIDAD', 'GENTE', 'REPARTO', 'FLOTA', 'TOTAL'].map(pilar => (
                                             <div key={pilar}>
-                                                <DropdownMenuLabel className="text-[10px] font-bold text-muted-foreground py-1">{pilar}</DropdownMenuLabel>
+                                                <DropdownMenuLabel className="text-[10px] font-bold text-foreground py-1">{pilar}</DropdownMenuLabel>
                                                 {COLUMNAS_DEF.filter(c => c.pilar === pilar).map(col => (
                                                     <DropdownMenuCheckboxItem
                                                         key={col.key}
@@ -406,7 +405,7 @@ export default function PlanPremiacionIndex({ colaboradores, top3: _top3, peores
                                         <div className="px-2 py-1">
                                             <button
                                                 onClick={() => setColsVisibles(new Set(allKeys))}
-                                                className="w-full rounded text-[11px] text-muted-foreground hover:text-foreground underline text-center py-0.5 transition-colors"
+                                                className="w-full rounded text-[11px] text-foreground hover:text-foreground underline text-center py-0.5 transition-colors"
                                             >
                                                 Mostrar todas
                                             </button>
@@ -444,9 +443,9 @@ export default function PlanPremiacionIndex({ colaboradores, top3: _top3, peores
                                         <table className="w-full">
                                             <thead className="sticky top-0 bg-muted dark:bg-muted/80 z-10">
                                                 <tr className="border-b border-border/60">
-                                                    <th className="text-left px-3 py-1.5 font-semibold text-muted-foreground">Indicador</th>
-                                                    <th className="text-center px-2 py-1.5 font-semibold text-muted-foreground w-12">Peso</th>
-                                                    <th className="text-left px-3 py-1.5 font-semibold text-muted-foreground">Regla</th>
+                                                    <th className="text-left px-3 py-1.5 font-semibold text-foreground">Indicador</th>
+                                                    <th className="text-center px-2 py-1.5 font-semibold text-foreground w-12">Peso</th>
+                                                    <th className="text-left px-3 py-1.5 font-semibold text-foreground">Regla</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -455,33 +454,33 @@ export default function PlanPremiacionIndex({ colaboradores, top3: _top3, peores
                                                         <ShieldCheck className="h-3 w-3" /> Seguridad — 35 pts
                                                     </td>
                                                 </tr>
-                                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-emerald-700 dark:text-emerald-400">ACI</td><td className="px-2 py-1 text-center text-muted-foreground">10%</td><td className="px-3 py-1 text-muted-foreground">Realizadas ÷ 4 × 100</td></tr>
-                                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-emerald-700 dark:text-emerald-400">OWD Ruta</td><td className="px-2 py-1 text-center text-muted-foreground">15%</td><td className="px-3 py-1 text-muted-foreground">Sin NO OK = 100% | Con NO OK = 0%</td></tr>
-                                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-emerald-700 dark:text-emerald-400">Calificaciones</td><td className="px-2 py-1 text-center text-muted-foreground">10%</td><td className="px-3 py-1 text-muted-foreground">Promedio de notas por módulo</td></tr>
+                                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-emerald-700 dark:text-emerald-400">ACI</td><td className="px-2 py-1 text-center text-foreground">10%</td><td className="px-3 py-1 text-foreground">Realizadas ÷ 4 × 100</td></tr>
+                                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-emerald-700 dark:text-emerald-400">OWD Ruta</td><td className="px-2 py-1 text-center text-foreground">15%</td><td className="px-3 py-1 text-foreground">Sin NO OK = 100% | Con NO OK = 0%</td></tr>
+                                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-emerald-700 dark:text-emerald-400">Calificaciones</td><td className="px-2 py-1 text-center text-foreground">10%</td><td className="px-3 py-1 text-foreground">Promedio de notas por módulo</td></tr>
                                                 <tr className="bg-amber-50/60 dark:bg-amber-950/20">
                                                     <td colSpan={3} className="px-3 py-1 font-bold text-[10px] text-amber-600 dark:text-amber-400 flex items-center gap-1">
                                                         <Users className="h-3 w-3" /> Gente — 15 pts
                                                     </td>
                                                 </tr>
-                                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-amber-600 dark:text-amber-400">DPO Academy</td><td className="px-2 py-1 text-center text-muted-foreground">5%</td><td className="px-3 py-1 text-muted-foreground">Sin registro = 100% | En listado = 0%</td></tr>
-                                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-amber-600 dark:text-amber-400">Ausentismo</td><td className="px-2 py-1 text-center text-muted-foreground">5%</td><td className="px-3 py-1 text-muted-foreground">Sin incapacidad = 100% | Con incapacidad = 0%</td></tr>
-                                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-amber-600 dark:text-amber-400">Malas Marcaciones</td><td className="px-2 py-1 text-center text-muted-foreground">5%</td><td className="px-3 py-1 text-muted-foreground">Sin corrección = 100% | Con corrección = 0%</td></tr>
+                                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-amber-600 dark:text-amber-400">DPO Academy</td><td className="px-2 py-1 text-center text-foreground">5%</td><td className="px-3 py-1 text-foreground">Sin registro = 100% | En listado = 0%</td></tr>
+                                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-amber-600 dark:text-amber-400">Ausentismo</td><td className="px-2 py-1 text-center text-foreground">5%</td><td className="px-3 py-1 text-foreground">Sin incapacidad = 100% | Con incapacidad = 0%</td></tr>
+                                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-amber-600 dark:text-amber-400">Malas Marcaciones</td><td className="px-2 py-1 text-center text-foreground">5%</td><td className="px-3 py-1 text-foreground">Sin corrección = 100% | Con corrección = 0%</td></tr>
                                                 <tr className="bg-rose-50/60 dark:bg-rose-950/20">
                                                     <td colSpan={3} className="px-3 py-1 font-bold text-[10px] text-rose-700 dark:text-rose-400 flex items-center gap-1">
                                                         <Medal className="h-3 w-3" /> Reparto — 35 pts
                                                     </td>
                                                 </tr>
-                                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-rose-700 dark:text-rose-400">Rechazos</td><td className="px-2 py-1 text-center text-muted-foreground">11%</td><td className="px-3 py-1 text-muted-foreground">&lt;2.0%=100% · 2.0–2.39%=80% · ≥2.4%=0%</td></tr>
-                                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-rose-700 dark:text-rose-400">SAC</td><td className="px-2 py-1 text-center text-muted-foreground">8%</td><td className="px-3 py-1 text-muted-foreground">Sin casos = 100% | Con casos = 0%</td></tr>
-                                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-rose-700 dark:text-rose-400">Adherencia Tiempo</td><td className="px-2 py-1 text-center text-muted-foreground">8%</td><td className="px-3 py-1 text-muted-foreground">≥ 83% = 100% | &lt; 83% = 0%</td></tr>
-                                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-rose-700 dark:text-rose-400">RMD</td><td className="px-2 py-1 text-center text-muted-foreground">8%</td><td className="px-3 py-1 text-muted-foreground">Promedio ≥ 4 = 100% | &lt; 4 = 0%</td></tr>
+                                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-rose-700 dark:text-rose-400">Rechazos</td><td className="px-2 py-1 text-center text-foreground">11%</td><td className="px-3 py-1 text-foreground">&lt;2.0%=100% · 2.0–2.39%=80% · ≥2.4%=0%</td></tr>
+                                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-rose-700 dark:text-rose-400">SAC</td><td className="px-2 py-1 text-center text-foreground">8%</td><td className="px-3 py-1 text-foreground">Sin casos = 100% | Con casos = 0%</td></tr>
+                                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-rose-700 dark:text-rose-400">Adherencia Tiempo</td><td className="px-2 py-1 text-center text-foreground">8%</td><td className="px-3 py-1 text-foreground">≥ 83% = 100% | &lt; 83% = 0%</td></tr>
+                                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-rose-700 dark:text-rose-400">RMD</td><td className="px-2 py-1 text-center text-foreground">8%</td><td className="px-3 py-1 text-foreground">Promedio ≥ 4 = 100% | &lt; 4 = 0%</td></tr>
                                                 <tr className="bg-blue-50/60 dark:bg-blue-950/20">
                                                     <td colSpan={3} className="px-3 py-1 font-bold text-[10px] text-blue-700 dark:text-blue-400 flex items-center gap-1">
                                                         <CheckCircle2 className="h-3 w-3" /> Flota — 15 pts (solo conductores)
                                                     </td>
                                                 </tr>
-                                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-blue-700 dark:text-blue-400">Checklist Pre</td><td className="px-2 py-1 text-center text-muted-foreground">7.5%</td><td className="px-3 py-1 text-muted-foreground">Default Aprobado (100%)</td></tr>
-                                                <tr className="hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-blue-700 dark:text-blue-400">Checklist Post</td><td className="px-2 py-1 text-center text-muted-foreground">7.5%</td><td className="px-3 py-1 text-muted-foreground">Default Aprobado (100%)</td></tr>
+                                                <tr className="border-b border-border/40 hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-blue-700 dark:text-blue-400">Checklist Pre</td><td className="px-2 py-1 text-center text-foreground">7.5%</td><td className="px-3 py-1 text-foreground">Default Aprobado (100%)</td></tr>
+                                                <tr className="hover:bg-muted/30"><td className="px-3 py-1 font-semibold text-blue-700 dark:text-blue-400">Checklist Post</td><td className="px-2 py-1 text-center text-foreground">7.5%</td><td className="px-3 py-1 text-foreground">Default Aprobado (100%)</td></tr>
                                             </tbody>
                                         </table>
                                     </div>
@@ -511,7 +510,7 @@ export default function PlanPremiacionIndex({ colaboradores, top3: _top3, peores
                     </div>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 w-full">
                         <div>
-                            <label className="mb-1 block text-[11px] font-medium text-muted-foreground">Año</label>
+                            <label className="mb-1 block text-[11px] font-medium text-foreground">Año</label>
                             <Select value={String(anio)} onValueChange={handleAnioChange}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Seleccionar Año" />
@@ -526,7 +525,7 @@ export default function PlanPremiacionIndex({ colaboradores, top3: _top3, peores
 
                         <div>
                             <label className="mb-1                
- block text-[11px] font-medium text-muted-foreground">Mes</label>
+ block text-[11px] font-medium text-foreground">Mes</label>
                             <Select value={String(mes)} onValueChange={handleMesChange}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Seleccionar Mes" />
@@ -540,7 +539,7 @@ export default function PlanPremiacionIndex({ colaboradores, top3: _top3, peores
                         </div>
 
                         <div>
-                            <label className="mb-1 block text-[11px] font-medium text-muted-foreground">Buscar Colaborador</label>
+                            <label className="mb-1 block text-[11px] font-medium text-foreground">Buscar Colaborador</label>
                             <div className="relative">
                                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                                 <Input
@@ -555,7 +554,7 @@ export default function PlanPremiacionIndex({ colaboradores, top3: _top3, peores
 
                         {cargos.length > 0 && (
                             <div>
-                                <label className="mb-1 block text-[11px] font-medium text-muted-foreground">Cargo</label>
+                                <label className="mb-1 block text-[11px] font-medium text-foreground">Cargo</label>
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                         <Button variant="outline" className="w-full justify-between text-sm font-normal truncate">
@@ -617,28 +616,28 @@ export default function PlanPremiacionIndex({ colaboradores, top3: _top3, peores
                                         <img
                                             src={item.foto_url}
                                             alt={item.nombre_completo}
-                                            className="h-14 w-14 shrink-0 rounded-full object-cover border-2 border-white shadow-sm"
+                                            className="h-20 w-20 shrink-0 rounded-full object-cover border-2 border-white shadow-sm"
                                             onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                                         />
                                     ) : (
-                                        <div className="h-14 w-14 shrink-0 rounded-full bg-white dark:bg-muted flex items-center justify-center shadow-sm">
-                                            <UserRound className="h-7 w-7 text-slate-400" />
+                                        <div className="h-20 w-20 shrink-0 rounded-full bg-white dark:bg-muted flex items-center justify-center shadow-sm">
+                                            <UserRound className="h-10 w-10 text-slate-400" />
                                         </div>
                                     )}
                                     <div className="min-w-0 flex-1">
                                         <div className="flex items-center justify-between gap-2">
-                                            <span className={`text-xs font-semibold ${primero ? 'text-green-700 dark:text-green-400' : 'text-orange-700 dark:text-orange-400'}`}>
+                                            <span className={`text-base font-bold ${primero ? 'text-green-700 dark:text-green-400' : 'text-orange-700 dark:text-orange-400'}`}>
                                                 {primero ? '1.er lugar' : '2.º lugar'}
                                             </span>
                                             {primero
-                                                ? <Trophy className="h-4 w-4 text-green-700 dark:text-green-400" />
-                                                : <Medal className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                                                ? <Trophy className="h-6 w-6" style={{ color: '#FFD700' }} />
+                                                : <Medal  className="h-6 w-6" style={{ color: '#A8A9AD' }} />
                                             }
                                         </div>
                                         <p className="font-semibold text-sm text-foreground truncate">{item.nombre_completo}</p>
-                                        <p className="text-xs text-muted-foreground truncate">{item.cargo}</p>
+                                        <p className="text-xs text-foreground truncate">{item.cargo}</p>
                                         <div className="flex items-center justify-between gap-2 mt-2">
-                                            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                                            <span className="flex items-center gap-1 text-xs text-foreground">
                                                 <IdCard className="h-3.5 w-3.5 shrink-0" />
                                                 {item.cedula}
                                             </span>
@@ -662,7 +661,7 @@ export default function PlanPremiacionIndex({ colaboradores, top3: _top3, peores
                                 <button
                                     type="button"
                                     onClick={() => setPodioVisible(v => !v)}
-                                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                                    className="flex items-center gap-1 text-xs text-foreground hover:text-foreground transition-colors"
                                 >
                                     <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${podioVisible ? 'rotate-180' : ''}`} />
                                     {podioVisible ? 'Ocultar' : 'Mostrar'}
@@ -675,11 +674,11 @@ export default function PlanPremiacionIndex({ colaboradores, top3: _top3, peores
                                         <h3 className="text-sm font-bold text-foreground">{label}</h3>
                                         {ganadores[0]
                                             ? <Reconocimiento item={ganadores[0]} puesto={1} />
-                                            : <div className="rounded-xl border border-border/40 bg-muted/30 px-4 py-5 text-center text-xs text-muted-foreground">Sin datos</div>
+                                            : <div className="rounded-xl border border-border/40 bg-muted/30 px-4 py-5 text-center text-xs text-foreground">Sin datos</div>
                                         }
                                         {ganadores[1]
                                             ? <Reconocimiento item={ganadores[1]} puesto={2} />
-                                            : <div className="rounded-xl border border-border/40 bg-muted/30 px-4 py-5 text-center text-xs text-muted-foreground">Sin datos</div>
+                                            : <div className="rounded-xl border border-border/40 bg-muted/30 px-4 py-5 text-center text-xs text-foreground">Sin datos</div>
                                         }
                                     </div>
                                 ))}
@@ -694,45 +693,36 @@ export default function PlanPremiacionIndex({ colaboradores, top3: _top3, peores
 
                 {/* Tabla Principal */}
                 <Card>
-                    <CardHeader className="pb-3">
-                        <div className="flex items-center justify-between flex-wrap gap-2">
-                            <CardTitle className="text-base font-semibold">
-                                Lista de Colaboradores ({colaboradores.length})
-                                {totalPages > 1 && (
-                                    <span className="ml-2 text-xs font-normal text-muted-foreground">
-                                        — mostrando {(safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, colaboradores.length)} de {colaboradores.length}
-                                    </span>
-                                )}
-                            </CardTitle>
-
-                            {/* Control de registros por página */}
-                            <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                                <span className="text-xs whitespace-nowrap">Registros por página:</span>
-                                <Input
-                                    type="number"
-                                    min={1}
-                                    max={colaboradores.length || 9999}
-                                    value={pageSizeInput}
-                                    onChange={handlePageSizeInputChange}
-                                    onBlur={handlePageSizeInputBlur}
-                                    onKeyDown={handlePageSizeInputKeyDown}
-                                    className="w-20 h-8 text-center text-sm"
-                                />
-                                <div className="flex gap-1 items-center">
-                                    {[10, 25, 50, 100].map((n) => (
-                                        <button
-                                            key={n}
-                                            onClick={() => { setPageSize(n); setPageSizeInput(String(n)); setCurrentPage(1); }}
-                                            className={`px-2 py-0.5 rounded text-xs border transition-colors ${
-                                                pageSize === n
-                                                    ? 'bg-foreground text-background border-transparent'
-                                                    : 'bg-card text-muted-foreground border-sidebar-border/70 hover:bg-muted/60 dark:border-sidebar-border dark:text-muted-foreground'
-                                            }`}
-                                        >
-                                            {n}
-                                        </button>
-                                    ))}
+                    <CardHeader className="p-0">
+                        <div
+                            className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 py-3 border-b border-emerald-200/80 dark:border-emerald-800/80 rounded-t-lg"
+                            style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.12) 0%, rgba(5,150,105,0.18) 100%)', backdropFilter: 'blur(8px)' }}
+                        >
+                            {/* Izquierda: ícono + título + badge de registros */}
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm font-extrabold text-emerald-950 dark:text-white tracking-wide">
+                                    Ranking de Desempeño
+                                </span>
+                                <div className="inline-flex items-center rounded-full px-2.5 py-0.5 font-semibold ml-2 text-[10px] sm:text-xs whitespace-nowrap bg-emerald-500/20 text-emerald-900 dark:text-emerald-100 border border-emerald-400/40">
+                                    {colaboradores.length === 0
+                                        ? '0 registros'
+                                        : `${(safePage - 1) * pageSize + 1}–${Math.min(safePage * pageSize, colaboradores.length)} / ${colaboradores.length}`
+                                    }
                                 </div>
+                            </div>
+
+                            {/* Derecha: selector de registros por página */}
+                            <div className="flex items-center gap-2 self-end sm:self-auto text-xs text-emerald-900 dark:text-emerald-200">
+                                <span className="text-[11px] font-medium text-emerald-800 dark:text-emerald-300">Mostrar:</span>
+                                <select
+                                    value={pageSize}
+                                    onChange={(e) => { const n = Number(e.target.value); setPageSize(n); setPageSizeInput(String(n)); setCurrentPage(1); }}
+                                    className="h-7 rounded-lg border border-emerald-300/80 dark:border-emerald-700 bg-white/90 dark:bg-card px-2 text-xs font-semibold text-emerald-950 dark:text-emerald-100 shadow-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                                >
+                                    {[10, 20, 50, 100, 200].map(n => (
+                                        <option key={n} value={n}>{n} registros</option>
+                                    ))}
+                                </select>
                             </div>
                         </div>
                     </CardHeader>
@@ -742,8 +732,8 @@ export default function PlanPremiacionIndex({ colaboradores, top3: _top3, peores
                                 <TableHeader>
                                     {/* Fila 1: Grupos de Pilares con Porcentajes */}
                                     <TableRow className="border-b border-sidebar-border/70 bg-muted">
-                                        <TableHead rowSpan={2} className="align-middle font-bold text-foreground">Nombre</TableHead>
-                                        <TableHead rowSpan={2} className="align-middle font-bold text-foreground">Cargo</TableHead>
+                                        <TableHead rowSpan={2} className="align-middle font-bold text-foreground bg-card">Nombre</TableHead>
+                                        <TableHead rowSpan={2} className="align-middle font-bold text-foreground bg-card">Cargo</TableHead>
 
                                         {colSpanSeguridad > 0 && (
                                             <TableHead colSpan={colSpanSeguridad} className="text-center font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-100/70 dark:bg-emerald-950/60 border-x border-emerald-200 dark:border-emerald-800/50 py-2 text-xs">
@@ -766,39 +756,39 @@ export default function PlanPremiacionIndex({ colaboradores, top3: _top3, peores
                                             </TableHead>
                                         )}
                                         {cv('total') && (
-                                            <TableHead rowSpan={2} className="text-center font-bold text-purple-800 dark:text-purple-300 bg-purple-100/70 dark:bg-purple-950/60 border-x border-purple-200 dark:border-purple-800/50 py-2 text-xs align-middle">
-                                                TOTAL 100%
+                                            <TableHead rowSpan={2} className="text-center font-bold text-foreground bg-card border-x border-border/50 py-2 text-xs align-middle">
+                                                TOTAL
                                             </TableHead>
                                         )}
                                     </TableRow>
 
                                     {/* Fila 2: Subcolumnas de Métricas */}
-                                    <TableRow className="border-b border-sidebar-border/70 bg-muted/40 text-xs">
-                                        {cv('aci')            && <TableHead className="w-32 text-right bg-emerald-50/40 dark:bg-emerald-950/20">% ACI <span className="text-emerald-600 font-bold">(10%)</span></TableHead>}
-                                        {cv('owd')            && <TableHead className="w-32 text-right bg-emerald-50/40 dark:bg-emerald-950/20">% OWD Ruta <span className="text-emerald-600 font-bold">(15%)</span></TableHead>}
-                                        {cv('calificaciones') && <TableHead className="w-36 text-right bg-emerald-50/40 dark:bg-emerald-950/20">% Calificaciones <span className="text-emerald-600 font-bold">(10%)</span></TableHead>}
-                                        {cv('res_seguridad')  && <TableHead className="w-32 text-right font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100/50 dark:bg-emerald-900/30">Resultado</TableHead>}
+                                    <TableRow className="border-b border-sidebar-border/70 bg-muted/40 text-[11px]">
+                                        {cv('aci')            && <TableHead className="w-20 px-2 text-right bg-emerald-50/40 dark:bg-emerald-950/20 whitespace-nowrap">% ACI <span className="text-emerald-600 font-bold">(10%)</span></TableHead>}
+                                        {cv('owd')            && <TableHead className="w-20 px-2 text-right bg-emerald-50/40 dark:bg-emerald-950/20 whitespace-nowrap">% OWD <span className="text-emerald-600 font-bold">(15%)</span></TableHead>}
+                                        {cv('calificaciones') && <TableHead className="w-20 px-2 text-right bg-emerald-50/40 dark:bg-emerald-950/20 whitespace-nowrap">% Calif. <span className="text-emerald-600 font-bold">(10%)</span></TableHead>}
+                                        {cv('res_seguridad')  && <TableHead className="w-20 px-2 text-right font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100/50 dark:bg-emerald-900/30 whitespace-nowrap">Resultado</TableHead>}
 
-                                        {cv('dpo')            && <TableHead className="w-32 text-right bg-amber-50/40 dark:bg-amber-950/20">% DPO Academy <span className="text-amber-600 font-bold">(5%)</span></TableHead>}
-                                        {cv('ausentismo')     && <TableHead className="w-32 text-right bg-amber-50/40 dark:bg-amber-950/20">% Ausentismo <span className="text-amber-600 font-bold">(5%)</span></TableHead>}
-                                        {cv('marcaciones')    && <TableHead className="w-36 text-right bg-amber-50/40 dark:bg-amber-950/20">% Malas Marcaciones <span className="text-amber-600 font-bold">(5%)</span></TableHead>}
-                                        {cv('res_gente')      && <TableHead className="w-32 text-right font-bold text-amber-700 dark:text-amber-400 bg-amber-100/50 dark:bg-amber-900/30">Resultado</TableHead>}
+                                        {cv('dpo')            && <TableHead className="w-20 px-2 text-right bg-amber-50/40 dark:bg-amber-950/20 whitespace-nowrap">% DPO <span className="text-amber-600 font-bold">(5%)</span></TableHead>}
+                                        {cv('ausentismo')     && <TableHead className="w-20 px-2 text-right bg-amber-50/40 dark:bg-amber-950/20 whitespace-nowrap">% Aus. <span className="text-amber-600 font-bold">(5%)</span></TableHead>}
+                                        {cv('marcaciones')    && <TableHead className="w-20 px-2 text-right bg-amber-50/40 dark:bg-amber-950/20 whitespace-nowrap">% Marc. <span className="text-amber-600 font-bold">(5%)</span></TableHead>}
+                                        {cv('res_gente')      && <TableHead className="w-20 px-2 text-right font-bold text-amber-700 dark:text-amber-400 bg-amber-100/50 dark:bg-amber-900/30 whitespace-nowrap">Resultado</TableHead>}
 
-                                        {cv('rechazos')           && <TableHead className="w-32 text-right bg-rose-50/40 dark:bg-rose-950/20">% Rechazos <span className="text-rose-600 font-bold">(11%)</span></TableHead>}
-                                        {cv('sac')                && <TableHead className="w-32 text-right bg-rose-50/40 dark:bg-rose-950/20">% SAC <span className="text-rose-600 font-bold">(8%)</span></TableHead>}
-                                        {cv('adherencia_tiempo')  && <TableHead className="w-36 text-right bg-rose-50/40 dark:bg-rose-950/20">% Adherencia Tiempo <span className="text-rose-600 font-bold">(8%)</span></TableHead>}
-                                        {cv('rmd')                && <TableHead className="w-24 text-right bg-rose-50/40 dark:bg-rose-950/20">RMD <span className="text-rose-600 font-bold">(8%)</span></TableHead>}
-                                        {cv('res_reparto')        && <TableHead className="w-32 text-right font-bold text-rose-700 dark:text-rose-400 bg-rose-100/50 dark:bg-rose-900/30">Resultado</TableHead>}
+                                        {cv('rechazos')           && <TableHead className="w-20 px-2 text-right bg-rose-50/40 dark:bg-rose-950/20 whitespace-nowrap">% Rech. <span className="text-rose-600 font-bold">(11%)</span></TableHead>}
+                                        {cv('sac')                && <TableHead className="w-20 px-2 text-right bg-rose-50/40 dark:bg-rose-950/20 whitespace-nowrap">% SAC <span className="text-rose-600 font-bold">(8%)</span></TableHead>}
+                                        {cv('adherencia_tiempo')  && <TableHead className="w-20 px-2 text-right bg-rose-50/40 dark:bg-rose-950/20 whitespace-nowrap">% Adh. <span className="text-rose-600 font-bold">(8%)</span></TableHead>}
+                                        {cv('rmd')                && <TableHead className="w-16 px-2 text-right bg-rose-50/40 dark:bg-rose-950/20 whitespace-nowrap">RMD <span className="text-rose-600 font-bold">(8%)</span></TableHead>}
+                                        {cv('res_reparto')        && <TableHead className="w-20 px-2 text-right font-bold text-rose-700 dark:text-rose-400 bg-rose-100/50 dark:bg-rose-900/30 whitespace-nowrap">Resultado</TableHead>}
 
-                                        {cv('cl_pre')    && <TableHead className="w-36 text-right bg-blue-50/40 dark:bg-blue-950/20">CL Pre <span className="text-blue-600 font-bold">(7.5%)</span></TableHead>}
-                                        {cv('cl_post')   && <TableHead className="w-36 text-right bg-blue-50/40 dark:bg-blue-950/20">CL Post <span className="text-blue-600 font-bold">(7.5%)</span></TableHead>}
-                                        {cv('res_flota') && <TableHead className="w-32 text-right font-bold text-blue-700 dark:text-blue-400 bg-blue-100/50 dark:bg-blue-900/30">Resultado</TableHead>}
+                                        {cv('cl_pre')    && <TableHead className="w-20 px-2 text-right bg-blue-50/40 dark:bg-blue-950/20 whitespace-nowrap">CL Pre <span className="text-blue-600 font-bold">(7.5%)</span></TableHead>}
+                                        {cv('cl_post')   && <TableHead className="w-20 px-2 text-right bg-blue-50/40 dark:bg-blue-950/20 whitespace-nowrap">CL Post <span className="text-blue-600 font-bold">(7.5%)</span></TableHead>}
+                                        {cv('res_flota') && <TableHead className="w-20 px-2 text-right font-bold text-blue-700 dark:text-blue-400 bg-blue-100/50 dark:bg-blue-900/30 whitespace-nowrap">Resultado</TableHead>}
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {colaboradores.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={2 + colsVisibles.size} className="py-8 text-center text-muted-foreground">
+                                            <TableCell colSpan={2 + colsVisibles.size} className="py-8 text-center text-foreground">
                                                 No se encontraron colaboradores para el filtro seleccionado.
                                             </TableCell>
                                         </TableRow>
@@ -820,415 +810,180 @@ export default function PlanPremiacionIndex({ colaboradores, top3: _top3, peores
 
                                                 {/* % ACI */}
                                                 {cv('aci') && (
-                                                <TableCell className="text-right">
-                                                    <div className="flex items-center justify-end gap-2">
-                                                        <div className="w-20 overflow-hidden rounded-full bg-muted h-2">
-                                                            <div
-                                                                className={`h-full rounded-full transition-all duration-300 ${
-                                                                    colab.aci_realizadas >= 4
-                                                                        ? 'bg-emerald-500'
-                                                                        : colab.aci_realizadas > 0
-                                                                            ? 'bg-amber-500'
-                                                                            : 'bg-muted-foreground/30'
-                                                                }`}
-                                                                style={{ width: `${Math.min(100, (colab.aci_realizadas / 4) * 100)}%` }}
-                                                            />
-                                                        </div>
-                                                        <span className={`font-bold min-w-[40px] ${
-                                                            colab.aci_realizadas >= 4
-                                                                ? 'text-emerald-600 dark:text-emerald-400'
-                                                                : colab.aci_realizadas > 0
-                                                                    ? 'text-amber-600 dark:text-amber-400'
-                                                                    : 'text-muted-foreground'
-                                                        }`}>
-                                                            {colab.aci_realizadas}/4
-                                                        </span>
-                                                    </div>
+                                                <TableCell className="px-2 py-1 text-right text-xs">
+                                                    <span className="text-foreground">{colab.aci_realizadas}/4</span>
                                                 </TableCell>
                                                 )}
 
                                                 {/* % OWD Ruta */}
                                                 {cv('owd') && (
-                                                <TableCell className="text-right">
-                                                    {colab.porcentaje_owd_ruta !== null ? (
-                                                        <div className="flex items-center justify-end gap-2">
-                                                            <div className="w-20 overflow-hidden rounded-full bg-muted h-2">
-                                                                <div
-                                                                    className={`h-full rounded-full transition-all duration-300 ${
-                                                                        colab.porcentaje_owd_ruta >= 100
-                                                                            ? 'bg-emerald-500'
-                                                                            : colab.porcentaje_owd_ruta >= 50
-                                                                              ? 'bg-amber-500'
-                                                                              : 'bg-rose-500'
-                                                                    }`}
-                                                                    style={{ width: `${Math.min(100, colab.porcentaje_owd_ruta)}%` }}
-                                                                />
-                                                            </div>
-                                                            <span className={`font-bold min-w-[40px] ${
-                                                                colab.porcentaje_owd_ruta >= 100
-                                                                    ? 'text-emerald-600 dark:text-emerald-400'
-                                                                    : colab.porcentaje_owd_ruta >= 50
-                                                                      ? 'text-amber-600 dark:text-amber-400'
-                                                                      : 'text-rose-600 dark:text-rose-400'
-                                                            }`}>
-                                                                {colab.porcentaje_owd_ruta_label}
-                                                            </span>
-                                                        </div>
-                                                    ) : (
-                                                        <Badge variant="outline" className="text-muted-foreground border-input">N/A</Badge>
-                                                    )}
+                                                <TableCell className="px-2 py-1 text-right text-xs">
+                                                    <span className="text-foreground">{colab.porcentaje_owd_ruta !== null ? colab.porcentaje_owd_ruta_label : 'N/A'}</span>
                                                 </TableCell>
                                                 )}
 
                                                 {/* % Calificaciones Módulos */}
                                                 {cv('calificaciones') && (
-                                                <TableCell className="text-right">
-                                                    {colab.promedio_calificaciones !== null ? (
-                                                        <div className="flex items-center justify-end gap-2">
-                                                            <div className="w-20 overflow-hidden rounded-full bg-muted h-2">
-                                                                <div
-                                                                    className={`h-full rounded-full transition-all duration-300 ${
-                                                                        colab.promedio_calificaciones >= 80 || colab.promedio_calificaciones >= 8.0 || colab.promedio_calificaciones >= 4.0
-                                                                            ? 'bg-emerald-500'
-                                                                            : colab.promedio_calificaciones >= 60 || colab.promedio_calificaciones >= 6.0 || colab.promedio_calificaciones >= 3.0
-                                                                              ? 'bg-amber-500'
-                                                                              : 'bg-rose-500'
-                                                                    }`}
-                                                                    style={{ width: `${Math.min(100, colab.promedio_calificaciones > 10 ? colab.promedio_calificaciones : colab.promedio_calificaciones * 20)}%` }}
-                                                                />
-                                                            </div>
-                                                            <span className="font-bold text-foreground min-w-[45px]">
-                                                                {colab.promedio_calificaciones_label}
-                                                            </span>
-                                                        </div>
-                                                    ) : (
-                                                        <Badge variant="outline" className="text-muted-foreground border-input">N/A</Badge>
-                                                    )}
+                                                <TableCell className="px-2 py-1 text-right text-xs">
+                                                    <span className="text-foreground">{colab.promedio_calificaciones !== null ? colab.promedio_calificaciones_label : 'N/A'}</span>
                                                 </TableCell>
                                                 )}
 
                                                 {/* Resultado Seguridad */}
                                                 {cv('res_seguridad') && (
-                                                <TableCell className="text-right bg-emerald-50/30 dark:bg-emerald-950/10">
+                                                <TableCell className="px-2 py-1 text-right text-xs bg-emerald-50/30 dark:bg-emerald-950/10">
                                                     {colab.resultado !== null ? (
-                                                        <div className="flex items-center justify-end gap-2">
-                                                            <div className="w-20 overflow-hidden rounded-full bg-muted h-2.5">
-                                                                <div
-                                                                    className={`h-full rounded-full transition-all duration-300 ${
-                                                                        colab.resultado >= 24.5 ? 'bg-emerald-500'
-                                                                        : colab.resultado >= 14   ? 'bg-amber-500'
-                                                                        : 'bg-red-500'
-                                                                    }`}
-                                                                    style={{ width: `${Math.min(100, (colab.resultado / 35) * 100)}%` }}
-                                                                />
-                                                            </div>
-                                                            <span className={`font-black min-w-[45px] text-sm ${
-                                                                colab.resultado >= 24.5 ? 'text-emerald-600 dark:text-emerald-400'
-                                                                : colab.resultado >= 14   ? 'text-amber-600 dark:text-amber-400'
-                                                                : 'text-red-600 dark:text-red-400'
-                                                            }`}>{colab.resultado_label}</span>
-                                                        </div>
-                                                    ) : (
-                                                        <Badge variant="outline" className="text-muted-foreground border-input">N/A</Badge>
-                                                    )}
+                                                        <span className={`font-black ${
+                                                            colab.resultado >= 24.5 ? 'text-emerald-600 dark:text-emerald-400'
+                                                            : colab.resultado >= 14  ? 'text-amber-600 dark:text-amber-400'
+                                                            : 'text-red-600 dark:text-red-400'
+                                                        }`}>{colab.resultado_label}</span>
+                                                    ) : <span className="text-foreground">N/A</span>}
                                                 </TableCell>
                                                 )}
 
                                                 {/* % DPO Academy */}
                                                 {cv('dpo') && (
-                                                <TableCell className="text-right">
-                                                    <div className="flex items-center justify-end gap-2">
-                                                        <div className="w-16 overflow-hidden rounded-full bg-muted h-2">
-                                                            <div className={`h-full rounded-full transition-all duration-300 ${colab.porcentaje_dpo >= 100 ? 'bg-emerald-500' : 'bg-rose-500'}`}
-                                                                style={{ width: `${colab.porcentaje_dpo}%` }} />
-                                                        </div>
-                                                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-extrabold ${colab.porcentaje_dpo >= 100 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'}`}>
-                                                            {colab.porcentaje_dpo_label}
-                                                        </span>
-                                                    </div>
+                                                <TableCell className="px-2 py-1 text-right text-xs">
+                                                    <span className="text-foreground">{colab.porcentaje_dpo_label}</span>
                                                 </TableCell>
                                                 )}
 
-                                                {/* % Ausentismo — toggle manual Aprobado/No Aprobado */}
+                                                {/* % Ausentismo — toggle manual */}
                                                 {cv('ausentismo') && (
-                                                <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                                                    <div className="flex flex-col items-end gap-0.5">
-                                                        <button
-                                                            type="button"
-                                                            disabled={!puede_editar}
-                                                            onClick={(e) => handleToggleAusentismo(colab.id, e)}
-                                                            title={puede_editar ? `Haz clic para cambiar a ${colab.porcentaje_ausentismo !== null && colab.porcentaje_ausentismo >= 100 ? '0%' : '100%'}` : undefined}
-                                                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold transition-all ${
-                                                                colab.porcentaje_ausentismo !== null && colab.porcentaje_ausentismo >= 100
-                                                                    ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50'
-                                                                    : 'bg-rose-100 text-rose-700 hover:bg-rose-200 dark:bg-rose-900/30 dark:text-rose-400 dark:hover:bg-rose-900/50'
-                                                            } ${puede_editar ? 'cursor-pointer hover:scale-105 shadow-xs' : 'cursor-default'}`}
-                                                        >
-                                                            {colab.porcentaje_ausentismo_label}
-                                                        </button>
-                                                    </div>
+                                                <TableCell className="px-2 py-1 text-right text-xs" onClick={(e) => e.stopPropagation()}>
+                                                    <button
+                                                        type="button"
+                                                        disabled={!puede_editar}
+                                                        onClick={(e) => handleToggleAusentismo(colab.id, e)}
+                                                        title={puede_editar ? `Haz clic para cambiar a ${colab.porcentaje_ausentismo !== null && colab.porcentaje_ausentismo >= 100 ? '0%' : '100%'}` : undefined}
+                                                        className={`text-foreground ${puede_editar ? 'cursor-pointer underline-offset-2 hover:underline' : 'cursor-default'}`}
+                                                    >
+                                                        {colab.porcentaje_ausentismo_label}
+                                                    </button>
                                                 </TableCell>
                                                 )}
 
                                                 {/* % Malas Marcaciones */}
                                                 {cv('marcaciones') && (
-                                                <TableCell className="text-right">
-                                                    <div className="flex items-center justify-end gap-2">
-                                                        <div className="w-16 overflow-hidden rounded-full bg-muted h-2">
-                                                            <div className={`h-full rounded-full transition-all duration-300 ${colab.porcentaje_malas_marcaciones >= 100 ? 'bg-emerald-500' : 'bg-rose-500'}`}
-                                                                style={{ width: `${colab.porcentaje_malas_marcaciones}%` }} />
-                                                        </div>
-                                                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-extrabold ${colab.porcentaje_malas_marcaciones >= 100 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'}`}>
-                                                            {colab.porcentaje_malas_marcaciones_label}
-                                                        </span>
-                                                    </div>
+                                                <TableCell className="px-2 py-1 text-right text-xs">
+                                                    <span className="text-foreground">{colab.porcentaje_malas_marcaciones_label}</span>
                                                 </TableCell>
                                                 )}
 
                                                 {/* Resultado Gente */}
                                                 {cv('res_gente') && (
-                                                <TableCell className="text-right bg-amber-50/30 dark:bg-amber-950/10">
+                                                <TableCell className="px-2 py-1 text-right text-xs bg-amber-50/30 dark:bg-amber-950/10">
                                                     {colab.resultado_asistencia !== null && colab.resultado_asistencia !== undefined ? (
-                                                        <div className="flex items-center justify-end gap-2">
-                                                            <div className="w-20 overflow-hidden rounded-full bg-muted h-2.5">
-                                                                <div className={`h-full rounded-full transition-all duration-300 ${
-                                                                    colab.resultado_asistencia >= 10.5 ? 'bg-emerald-500'
-                                                                    : colab.resultado_asistencia >= 6    ? 'bg-amber-500'
-                                                                    : 'bg-red-500'
-                                                                }`}
-                                                                    style={{ width: `${Math.min(100, (colab.resultado_asistencia / 15) * 100)}%` }} />
-                                                            </div>
-                                                            <span className={`font-black min-w-[45px] text-sm ${
-                                                                colab.resultado_asistencia >= 10.5 ? 'text-emerald-600 dark:text-emerald-400'
-                                                                : colab.resultado_asistencia >= 6    ? 'text-amber-600 dark:text-amber-400'
-                                                                : 'text-red-600 dark:text-red-400'
-                                                            }`}>{colab.resultado_asistencia_label}</span>
-                                                        </div>
-                                                    ) : (
-                                                        <Badge variant="outline" className="text-muted-foreground border-input">N/A</Badge>
-                                                    )}
+                                                        <span className={`font-black ${
+                                                            colab.resultado_asistencia >= 10.5 ? 'text-emerald-600 dark:text-emerald-400'
+                                                            : colab.resultado_asistencia >= 6   ? 'text-amber-600 dark:text-amber-400'
+                                                            : 'text-red-600 dark:text-red-400'
+                                                        }`}>{colab.resultado_asistencia_label}</span>
+                                                    ) : <span className="text-foreground">N/A</span>}
                                                 </TableCell>
                                                 )}
 
-                                                {/* % Rechazos — verde < 2.0% · naranja 2.0–2.39% · rojo ≥ 2.4% */}
+                                                {/* % Rechazos */}
                                                 {cv('rechazos') && (
-                                                <TableCell className="text-right">
+                                                <TableCell className="px-2 py-1 text-right text-xs">
                                                     {colab.porcentaje_rechazos !== null && colab.porcentaje_rechazos !== undefined ? (
-                                                        <div className="flex flex-col items-end gap-0.5">
-                                                            <div className="flex items-center justify-end gap-2">
-                                                                <div className="w-16 overflow-hidden rounded-full bg-muted h-2">
-                                                                    <div className={`h-full rounded-full transition-all duration-300 ${
-                                                                        colab.porcentaje_rechazos < 2.0
-                                                                            ? 'bg-emerald-500'
-                                                                            : colab.porcentaje_rechazos < 2.4
-                                                                                ? 'bg-amber-500'
-                                                                                : 'bg-rose-500'
-                                                                    }`}
-                                                                        style={{ width: `${Math.min(100, Math.max(0, (1 - colab.porcentaje_rechazos / 4.8) * 100))}%` }} />
-                                                                </div>
-                                                                <span className={`font-bold min-w-[40px] ${
-                                                                    colab.porcentaje_rechazos < 2.0
-                                                                        ? 'text-emerald-600 dark:text-emerald-400'
-                                                                        : colab.porcentaje_rechazos < 2.4
-                                                                            ? 'text-amber-600 dark:text-amber-400'
-                                                                            : 'text-rose-600 dark:text-rose-400'
-                                                                }`}>
-                                                                    {colab.porcentaje_rechazos_label}
-                                                                </span>
-                                                            </div>
-                                                            {colab.dias_rechazos != null && (
-                                                                <span className="text-[10px] text-muted-foreground">{colab.dias_rechazos} días</span>
-                                                            )}
-                                                        </div>
-                                                    ) : (
-                                                        <Badge variant="outline" className="text-muted-foreground border-input">N/A</Badge>
-                                                    )}
+                                                        <span className="text-foreground">{colab.porcentaje_rechazos_label}</span>
+                                                    ) : <span className="text-foreground">N/A</span>}
                                                 </TableCell>
                                                 )}
 
                                                 {/* % SAC */}
                                                 {cv('sac') && (
-                                                <TableCell className="text-right">
-                                                    <div className="flex items-center justify-end gap-2">
-                                                        <div className="w-16 overflow-hidden rounded-full bg-muted h-2">
-                                                            <div className={`h-full rounded-full transition-all duration-300 ${colab.porcentaje_sac >= 90 ? 'bg-emerald-500' : colab.porcentaje_sac >= 70 ? 'bg-amber-500' : 'bg-rose-500'}`}
-                                                                style={{ width: `${Math.min(100, colab.porcentaje_sac)}%` }} />
-                                                        </div>
-                                                        <span className={`font-bold min-w-[40px] ${colab.porcentaje_sac >= 90 ? 'text-emerald-600 dark:text-emerald-400' : colab.porcentaje_sac >= 70 ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                                                            {colab.porcentaje_sac_label}
-                                                        </span>
-                                                    </div>
+                                                <TableCell className="px-2 py-1 text-right text-xs">
+                                                    <span className="text-foreground">{colab.porcentaje_sac_label}</span>
                                                 </TableCell>
                                                 )}
 
                                                 {/* % Adherencia Tiempo */}
                                                 {cv('adherencia_tiempo') && (
-                                                <TableCell className="text-right">
-                                                    {colab.porcentaje_adherencia_tiempo !== null && colab.porcentaje_adherencia_tiempo !== undefined ? (
-                                                        <div className="flex items-center justify-end gap-2">
-                                                            <div className="w-16 overflow-hidden rounded-full bg-muted h-2">
-                                                                <div className={`h-full rounded-full transition-all duration-300 ${colab.porcentaje_adherencia_tiempo >= 100 ? 'bg-emerald-500' : 'bg-rose-500'}`}
-                                                                    style={{ width: `${Math.min(100, colab.porcentaje_adherencia_tiempo)}%` }} />
-                                                            </div>
-                                                            <span className={`font-bold min-w-[40px] ${colab.porcentaje_adherencia_tiempo >= 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                                                                {colab.porcentaje_adherencia_tiempo_label}
-                                                            </span>
-                                                        </div>
-                                                    ) : (
-                                                        <Badge variant="outline" className="text-muted-foreground border-input">N/A</Badge>
-                                                    )}
+                                                <TableCell className="px-2 py-1 text-right text-xs">
+                                                    <span className="text-foreground">{colab.porcentaje_adherencia_tiempo !== null && colab.porcentaje_adherencia_tiempo !== undefined ? colab.porcentaje_adherencia_tiempo_label : 'N/A'}</span>
                                                 </TableCell>
                                                 )}
 
                                                 {/* RMD */}
                                                 {cv('rmd') && (
-                                                <TableCell className="text-right">
-                                                    {colab.promedio_rmd !== null && colab.promedio_rmd !== undefined ? (
-                                                        <div className="flex items-center justify-end gap-2">
-                                                            <div className="w-16 overflow-hidden rounded-full bg-muted h-2">
-                                                                <div className={`h-full rounded-full transition-all duration-300 ${colab.promedio_rmd >= 100 ? 'bg-emerald-500' : 'bg-rose-500'}`}
-                                                                    style={{ width: `${Math.min(100, colab.promedio_rmd)}%` }} />
-                                                            </div>
-                                                            <span className={`font-bold min-w-[40px] ${colab.promedio_rmd >= 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                                                                {colab.promedio_rmd_label}
-                                                            </span>
-                                                        </div>
-                                                    ) : (
-                                                        <Badge variant="outline" className="text-muted-foreground border-input">N/A</Badge>
-                                                    )}
+                                                <TableCell className="px-2 py-1 text-right text-xs">
+                                                    <span className="text-foreground">{colab.promedio_rmd !== null && colab.promedio_rmd !== undefined ? colab.promedio_rmd_label : 'N/A'}</span>
                                                 </TableCell>
                                                 )}
 
                                                 {/* Resultado Reparto */}
                                                 {cv('res_reparto') && (
-                                                <TableCell className="text-right bg-rose-50/30 dark:bg-rose-950/10">
-                                                    <div className="flex items-center justify-end gap-2">
-                                                        <div className="w-20 overflow-hidden rounded-full bg-muted h-2.5">
-                                                            <div className={`h-full rounded-full transition-all duration-300 ${
-                                                                colab.resultado_reparto >= 24.5 ? 'bg-emerald-500'
-                                                                : colab.resultado_reparto >= 10  ? 'bg-amber-500'
-                                                                : 'bg-red-500'
-                                                            }`}
-                                                                style={{ width: `${Math.min(100, (colab.resultado_reparto / 35) * 100)}%` }} />
-                                                        </div>
-                                                        <span className={`font-black min-w-[45px] text-sm ${
-                                                            colab.resultado_reparto >= 24.5 ? 'text-emerald-600 dark:text-emerald-400'
-                                                            : colab.resultado_reparto >= 10  ? 'text-amber-600 dark:text-amber-400'
-                                                            : 'text-red-600 dark:text-red-400'
-                                                        }`}>{colab.resultado_reparto_label}</span>
-                                                    </div>
+                                                <TableCell className="px-2 py-1 text-right text-xs bg-rose-50/30 dark:bg-rose-950/10">
+                                                    <span className={`font-black ${
+                                                        colab.resultado_reparto >= 24.5 ? 'text-emerald-600 dark:text-emerald-400'
+                                                        : colab.resultado_reparto >= 10  ? 'text-amber-600 dark:text-amber-400'
+                                                        : 'text-red-600 dark:text-red-400'
+                                                    }`}>{colab.resultado_reparto_label}</span>
                                                 </TableCell>
                                                 )}
-
-                                                {/* Checklist Pre — solo conductores, binario Aprobado/No Aprobado (Default Aprobado) */}
+                                                {/* Checklist Pre */}
                                                 {cv('cl_pre') && (
-                                                <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                                                <TableCell className="px-2 py-1 text-right text-xs" onClick={(e) => e.stopPropagation()}>
                                                     {colab.porcentaje_checklist_pre !== null && colab.porcentaje_checklist_pre !== undefined ? (
-                                                        <div className="flex flex-col items-end gap-0.5">
-                                                            <button
-                                                                type="button"
-                                                                disabled={!puede_editar}
-                                                                onClick={(e) => handleToggleChecklist(colab.id, 'pre', e)}
-                                                                title={puede_editar ? `Haz clic para cambiar a ${colab.porcentaje_checklist_pre >= 100 ? 'No Aprobado' : 'Aprobado'}` : undefined}
-                                                                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold transition-all ${
-                                                                    colab.porcentaje_checklist_pre >= 100
-                                                                        ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50'
-                                                                        : 'bg-rose-100 text-rose-700 hover:bg-rose-200 dark:bg-rose-900/30 dark:text-rose-400 dark:hover:bg-rose-900/50'
-                                                                } ${puede_editar ? 'cursor-pointer hover:scale-105 shadow-xs' : 'cursor-default'}`}
-                                                            >
-                                                                {colab.porcentaje_checklist_pre_label}
-                                                            </button>
-                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            disabled={!puede_editar}
+                                                            onClick={(e) => handleToggleChecklist(colab.id, 'pre', e)}
+                                                            title={puede_editar ? `Haz clic para cambiar a ${colab.porcentaje_checklist_pre >= 100 ? 'No Aprobado' : 'Aprobado'}` : undefined}
+                                                            className={`text-foreground ${puede_editar ? 'cursor-pointer hover:underline underline-offset-2' : 'cursor-default'}`}
+                                                        >
+                                                            {colab.porcentaje_checklist_pre_label}
+                                                        </button>
                                                     ) : (
-                                                        <Badge variant="outline" className="text-muted-foreground border-input">N/A</Badge>
+                                                        <span className="text-foreground">N/A</span>
                                                     )}
                                                 </TableCell>
                                                 )}
 
-                                                {/* Checklist Post — solo conductores, binario Aprobado/No Aprobado (Default Aprobado) */}
+                                                {/* Checklist Post */}
                                                 {cv('cl_post') && (
-                                                <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                                                <TableCell className="px-2 py-1 text-right text-xs" onClick={(e) => e.stopPropagation()}>
                                                     {colab.porcentaje_checklist_post !== null && colab.porcentaje_checklist_post !== undefined ? (
-                                                        <div className="flex flex-col items-end gap-0.5">
-                                                            <button
-                                                                type="button"
-                                                                disabled={!puede_editar}
-                                                                onClick={(e) => handleToggleChecklist(colab.id, 'post', e)}
-                                                                title={puede_editar ? `Haz clic para cambiar a ${colab.porcentaje_checklist_post >= 100 ? 'No Aprobado' : 'Aprobado'}` : undefined}
-                                                                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold transition-all ${
-                                                                    colab.porcentaje_checklist_post >= 100
-                                                                        ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50'
-                                                                        : 'bg-rose-100 text-rose-700 hover:bg-rose-200 dark:bg-rose-900/30 dark:text-rose-400 dark:hover:bg-rose-900/50'
-                                                                } ${puede_editar ? 'cursor-pointer hover:scale-105 shadow-xs' : 'cursor-default'}`}
-                                                            >
-                                                                {colab.porcentaje_checklist_post_label}
-                                                            </button>
-                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            disabled={!puede_editar}
+                                                            onClick={(e) => handleToggleChecklist(colab.id, 'post', e)}
+                                                            title={puede_editar ? `Haz clic para cambiar a ${colab.porcentaje_checklist_post >= 100 ? 'No Aprobado' : 'Aprobado'}` : undefined}
+                                                            className={`text-foreground ${puede_editar ? 'cursor-pointer hover:underline underline-offset-2' : 'cursor-default'}`}
+                                                        >
+                                                            {colab.porcentaje_checklist_post_label}
+                                                        </button>
                                                     ) : (
-                                                        <Badge variant="outline" className="text-muted-foreground border-input">N/A</Badge>
+                                                        <span className="text-foreground">N/A</span>
                                                     )}
                                                 </TableCell>
                                                 )}
 
                                                 {/* Resultado Flota */}
                                                 {cv('res_flota') && (
-                                                <TableCell className="text-right bg-blue-50/30 dark:bg-blue-950/10">
-                                                    <div className="flex items-center justify-end gap-2">
-                                                        <div className="w-20 overflow-hidden rounded-full bg-muted h-2.5">
-                                                            <div className={`h-full rounded-full transition-all duration-300 ${
-                                                                colab.resultado_flota >= 10.5 ? 'bg-emerald-500'
-                                                                : colab.resultado_flota >= 6   ? 'bg-amber-500'
-                                                                : 'bg-red-500'
-                                                            }`}
-                                                                style={{ width: `${Math.min(100, (colab.resultado_flota / 15) * 100)}%` }} />
-                                                        </div>
-                                                        <span className={`font-black min-w-[45px] text-sm ${
-                                                            colab.resultado_flota >= 10.5 ? 'text-emerald-600 dark:text-emerald-400'
-                                                            : colab.resultado_flota >= 6   ? 'text-amber-600 dark:text-amber-400'
-                                                            : 'text-red-600 dark:text-red-400'
-                                                        }`}>{colab.resultado_flota_label}</span>
-                                                    </div>
+                                                <TableCell className="px-2 py-1 text-right text-xs bg-blue-50/30 dark:bg-blue-950/10">
+                                                    <span className={`font-black ${
+                                                        colab.resultado_flota >= 10.5 ? 'text-emerald-600 dark:text-emerald-400'
+                                                        : colab.resultado_flota >= 6   ? 'text-amber-600 dark:text-amber-400'
+                                                        : 'text-red-600 dark:text-red-400'
+                                                    }`}>{colab.resultado_flota_label}</span>
                                                 </TableCell>
                                                 )}
+
                                                 {/* Calificación Total */}
                                                 {cv('total') && (
-                                                <TableCell className="text-right bg-purple-50/40 dark:bg-purple-950/20">
+                                                <TableCell className="px-2 py-1 text-right text-xs bg-purple-50/40 dark:bg-purple-950/20">
                                                     <div className="flex flex-col items-end gap-0.5">
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-24 overflow-hidden rounded-full bg-muted h-3">
-                                                                <div
-                                                                    className={`h-full rounded-full transition-all duration-300 ${
-                                                                        colab.calificacion_total >= 90
-                                                                            ? 'bg-emerald-500'
-                                                                            : colab.calificacion_total >= 50
-                                                                              ? 'bg-orange-500'
-                                                                              : 'bg-red-500'
-                                                                    }`}
-                                                                    style={{ width: `${Math.min(100, colab.calificacion_total)}%` }}
-                                                                />
-                                                            </div>
-                                                            <span className={`font-black min-w-[50px] text-base ${
-                                                                colab.calificacion_total >= 90
-                                                                    ? 'text-emerald-600 dark:text-emerald-400'
-                                                                    : colab.calificacion_total >= 50
-                                                                      ? 'text-orange-600 dark:text-orange-400'
-                                                                      : 'text-red-600 dark:text-red-400'
-                                                            }`}>
-                                                                {colab.calificacion_total_label}
-                                                            </span>
-                                                        </div>
-                                                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
-                                                            colab.calificacion_total >= 90
-                                                                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
-                                                                : colab.calificacion_total >= 50
-                                                                  ? 'bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300'
-                                                                  : 'bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300'
-                                                        }`}>
-                                                            {colab.calificacion_total >= 90
-                                                                ? 'Sobresaliente'
-                                                                : colab.calificacion_total >= 50
-                                                                  ? 'En camino'
-                                                                  : 'Por mejorar'}
+                                                        <span className={`font-black text-sm ${
+                                                            colab.calificacion_total >= 90 ? 'text-emerald-600 dark:text-emerald-400'
+                                                            : colab.calificacion_total >= 50 ? 'text-orange-600 dark:text-orange-400'
+                                                            : 'text-red-600 dark:text-red-400'
+                                                        }`}>{colab.calificacion_total_label}</span>
+                                                        <span className="text-[10px] text-foreground">
+                                                            {colab.calificacion_total >= 90 ? 'Sobresaliente' : colab.calificacion_total >= 50 ? 'En camino' : 'Por mejorar'}
                                                         </span>
                                                     </div>
                                                 </TableCell>
@@ -1242,37 +997,23 @@ export default function PlanPremiacionIndex({ colaboradores, top3: _top3, peores
 
                         {/* Paginación */}
                         {totalPages > 1 && (
-                            <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t pt-4">
-                                <p className="text-sm text-muted-foreground">
-                                    Página <span className="font-semibold text-foreground">{safePage}</span> de{' '}
-                                    <span className="font-semibold text-foreground">{totalPages}</span>
-                                    {' '}· {colaboradores.length} registros totales
-                                </p>
-                                <div className="flex items-center gap-1">
-                                    <Button
-                                        variant="outline"
-                                        size="icon"
-                                        className="h-8 w-8"
-                                        onClick={() => setCurrentPage(1)}
+                            <div
+                                className="flex justify-center px-4 py-3 border-t border-emerald-200/80 dark:border-emerald-800/80 rounded-b-lg"
+                                style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.08) 0%, rgba(5,150,105,0.14) 100%)', backdropFilter: 'blur(8px)' }}
+                            >
+                                <div className="flex gap-1 flex-wrap justify-center">
+                                    {/* Previous */}
+                                    <button
+                                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                                         disabled={safePage === 1}
-                                        title="Primera página"
+                                        className="inline-flex items-center justify-center h-7 sm:h-8 min-w-[1.75rem] sm:min-w-[2rem] px-2 text-xs rounded-md font-medium border border-emerald-200/80 dark:border-emerald-800 bg-background text-black dark:text-white hover:bg-emerald-50 dark:hover:bg-emerald-950/60 disabled:opacity-50 disabled:pointer-events-none"
                                     >
-                                        <ChevronsLeft className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        size="icon"
-                                        className="h-8 w-8"
-                                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                                        disabled={safePage === 1}
-                                        title="Página anterior"
-                                    >
-                                        <ChevronLeft className="h-4 w-4" />
-                                    </Button>
+                                        <span>« Anterior</span>
+                                    </button>
 
-                                    {/* Números de página */}
+                                    {/* Números */}
                                     {Array.from({ length: totalPages }, (_, i) => i + 1)
-                                        .filter((p) => p === 1 || p === totalPages || Math.abs(p - safePage) <= 2)
+                                        .filter(p => p === 1 || p === totalPages || Math.abs(p - safePage) <= 2)
                                         .reduce<(number | '...')[]>((acc, p, idx, arr) => {
                                             if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push('...');
                                             acc.push(p);
@@ -1280,40 +1021,30 @@ export default function PlanPremiacionIndex({ colaboradores, top3: _top3, peores
                                         }, [])
                                         .map((p, idx) =>
                                             p === '...' ? (
-                                                <span key={`ellipsis-${idx}`} className="px-1 text-muted-foreground text-sm select-none">…</span>
+                                                <span key={`ellipsis-${idx}`} className="inline-flex items-center justify-center h-7 sm:h-8 px-1 text-sm text-black dark:text-white select-none">…</span>
                                             ) : (
-                                                <Button
+                                                <button
                                                     key={p}
-                                                    variant={safePage === p ? 'default' : 'outline'}
-                                                    size="icon"
-                                                    className="h-8 w-8 text-xs"
                                                     onClick={() => setCurrentPage(p as number)}
+                                                    className={`inline-flex items-center justify-center h-7 sm:h-8 min-w-[1.75rem] sm:min-w-[2rem] px-2 text-xs rounded-md font-medium ${
+                                                        safePage === p
+                                                            ? 'bg-emerald-600 text-white border border-emerald-700 shadow-sm hover:bg-emerald-700'
+                                                            : 'border border-emerald-200/80 dark:border-emerald-800 bg-background text-black dark:text-white hover:bg-emerald-50 dark:hover:bg-emerald-950/60'
+                                                    }`}
                                                 >
                                                     {p}
-                                                </Button>
+                                                </button>
                                             )
                                         )}
 
-                                    <Button
-                                        variant="outline"
-                                        size="icon"
-                                        className="h-8 w-8"
-                                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                                    {/* Next */}
+                                    <button
+                                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                                         disabled={safePage === totalPages}
-                                        title="Página siguiente"
+                                        className="inline-flex items-center justify-center h-7 sm:h-8 min-w-[1.75rem] sm:min-w-[2rem] px-2 text-xs rounded-md font-medium border border-emerald-200/80 dark:border-emerald-800 bg-background text-black dark:text-white hover:bg-emerald-50 dark:hover:bg-emerald-950/60 disabled:opacity-50 disabled:pointer-events-none"
                                     >
-                                        <ChevronRight className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        size="icon"
-                                        className="h-8 w-8"
-                                        onClick={() => setCurrentPage(totalPages)}
-                                        disabled={safePage === totalPages}
-                                        title="Última página"
-                                    >
-                                        <ChevronsRight className="h-4 w-4" />
-                                    </Button>
+                                        <span>Siguiente »</span>
+                                    </button>
                                 </div>
                             </div>
                         )}

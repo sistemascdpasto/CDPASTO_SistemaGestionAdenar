@@ -1,8 +1,8 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BarChart2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { BarChart2, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Bar, BarChart, CartesianGrid, Cell, Legend, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Bar, BarChart, CartesianGrid, Cell, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 interface ColaboradorItem {
     nombre_completo: string;
@@ -85,6 +85,7 @@ function abreviarNombre(nombre: string, maxLen = 13): string {
 export default function GraficoBarrasMes({ colaboradores, mes, anio }: Props) {
     // Hook siempre antes de cualquier return
     const [pagina, setPagina] = useState(0);
+    const [visible, setVisible] = useState(true);
 
     // Resetear a página 0 cuando cambian los datos (mes, año o filtros)
     useEffect(() => {
@@ -127,12 +128,12 @@ export default function GraficoBarrasMes({ colaboradores, mes, anio }: Props) {
             <CardHeader className="pb-2">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="flex items-center gap-2">
-                        <BarChart2 className="text-muted-foreground h-5 w-5" />
+                        <BarChart2 className="text-foreground h-5 w-5" />
                         <div>
                             <CardTitle className="text-base font-semibold">
                                 Resultados por Pilar — {MESES[mes]} {anio}
                             </CardTitle>
-                            <p className="text-muted-foreground mt-0.5 text-xs">
+                            <p className="text-foreground mt-0.5 text-xs">
                                 {sorted.length} colaborador{sorted.length !== 1 ? 'es' : ''} · prom. global{' '}
                                 <span className="font-semibold text-purple-600 dark:text-purple-400">{promedioGlobal.toFixed(1)}%</span>
                                 {totalPaginas > 1 && (
@@ -151,12 +152,12 @@ export default function GraficoBarrasMes({ colaboradores, mes, anio }: Props) {
 
                     <div className="flex flex-wrap items-center gap-3">
                         {/* Leyenda pilares */}
-                        <div className="text-muted-foreground flex flex-wrap gap-3 text-[11px]">
+                        <div className="text-foreground flex flex-wrap gap-3 text-[11px]">
                             {PILARES.map((p) => (
                                 <span key={p.key} className="flex items-center gap-1">
                                     <span className="inline-block h-2 w-2 rounded-sm" style={{ backgroundColor: p.color }} />
                                     {p.label}
-                                    <span className="text-muted-foreground">/{p.max}%</span>
+                                    <span className="text-foreground">/{p.max}%</span>
                                 </span>
                             ))}
                         </div>
@@ -191,7 +192,7 @@ export default function GraficoBarrasMes({ colaboradores, mes, anio }: Props) {
                 </div>
             </CardHeader>
 
-            <CardContent>
+            <CardContent className="pt-4">
                 <ResponsiveContainer width="100%" height={chartHeight}>
                     <BarChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 48 }} barCategoryGap="18%">
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
@@ -205,10 +206,6 @@ export default function GraficoBarrasMes({ colaboradores, mes, anio }: Props) {
                         />
                         <YAxis domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 10, fill: '#64748b' }} width={42} />
                         <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(148,163,184,0.1)' }} />
-                        <Legend
-                            wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
-                            formatter={(value) => <span style={{ color: '#475569' }}>{value}</span>}
-                        />
 
                         {/* Promedio de la página visible */}
                         <ReferenceLine
@@ -248,7 +245,7 @@ export default function GraficoBarrasMes({ colaboradores, mes, anio }: Props) {
                 </ResponsiveContainer>
 
                 {/* Mini resumen — promedios de la página visible */}
-                <div className="border-border mt-3 grid grid-cols-2 gap-2 border-t pt-3 sm:grid-cols-4">
+                <div className="border-border mt-1 grid grid-cols-2 gap-2 border-t pt-3 sm:grid-cols-4">
                     {PILARES.map((p) => {
                         const avg =
                             data.reduce((acc, c) => {
