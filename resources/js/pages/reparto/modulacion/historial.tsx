@@ -66,6 +66,7 @@ interface Props {
         fecha_desde: string;
         fecha_hasta: string;
         placa: string;
+        centro: string;
     };
 }
 
@@ -73,6 +74,7 @@ type Filters = {
     fecha_desde: string;
     fecha_hasta: string;
     placa: string;
+    centro: string;
 };
 
 function formatFecha(fecha: string) {
@@ -176,6 +178,7 @@ export default function HistorialModulacion({ planeaciones, placas_disponibles =
     const [fechaDesde, setFechaDesde] = useState(filters.fecha_desde ?? '');
     const [fechaHasta, setFechaHasta] = useState(filters.fecha_hasta ?? '');
     const [placa, setPlaca] = useState(filters.placa ?? '');
+    const [centro, setCentro] = useState(filters.centro ?? '');
     const [exportUrl, setExportUrl] = useState<string | null>(null);
     const [expandedRows, setExpandedRows] = useState<number[]>([]);
 
@@ -198,6 +201,7 @@ export default function HistorialModulacion({ planeaciones, placas_disponibles =
                 fecha_desde: overrides.fecha_desde ?? debouncedFechaDesde,
                 fecha_hasta: overrides.fecha_hasta ?? debouncedFechaHasta,
                 placa: overrides.placa ?? debouncedPlaca,
+                centro: overrides.centro ?? centro,
             },
             { preserveState: true, preserveScroll: true, replace: true },
         );
@@ -212,10 +216,17 @@ export default function HistorialModulacion({ planeaciones, placas_disponibles =
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [debouncedFechaDesde, debouncedFechaHasta, debouncedPlaca]);
 
+    const handleCentroChange = (newCentro: string) => {
+        const value = centro === newCentro ? '' : newCentro;
+        setCentro(value);
+        applyFilters({ centro: value });
+    };
+
     const handleClear = () => {
         setFechaDesde('');
         setFechaHasta('');
         setPlaca('');
+        setCentro('');
         router.get(route('reparto.modulacion.historial'), {}, { preserveState: false });
     };
 
@@ -386,7 +397,7 @@ export default function HistorialModulacion({ planeaciones, placas_disponibles =
         XLSX.writeFile(workbook, `Reporte_Planeaciones_Por_Placa_${fechaArchivo}.xlsx`);
     };
 
-    const hasActiveFilters = Boolean(fechaDesde || fechaHasta || placa);
+    const hasActiveFilters = Boolean(fechaDesde || fechaHasta || placa || centro);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -410,6 +421,40 @@ export default function HistorialModulacion({ planeaciones, placas_disponibles =
                             </Link>
                         </Button>
                     </div>
+                </div>
+
+                {/* Toggle UC / UD */}
+                <div className="flex items-center gap-3">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Centro:</span>
+                    <div className="inline-flex rounded-lg border border-border p-0.5 bg-muted/50">
+                        <button
+                            type="button"
+                            onClick={() => handleCentroChange('UC')}
+                            className={`px-5 py-1.5 rounded-md text-sm font-bold transition-all ${
+                                centro === 'UC'
+                                    ? 'bg-primary text-primary-foreground shadow-sm'
+                                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                            }`}
+                        >
+                            UC
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => handleCentroChange('UD')}
+                            className={`px-5 py-1.5 rounded-md text-sm font-bold transition-all ${
+                                centro === 'UD'
+                                    ? 'bg-primary text-primary-foreground shadow-sm'
+                                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                            }`}
+                        >
+                            UD
+                        </button>
+                    </div>
+                    {centro && (
+                        <Badge variant="outline" className="font-mono text-xs border-primary/40 text-primary">
+                            Mostrando: {centro}
+                        </Badge>
+                    )}
                 </div>
 
                 <form className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" onSubmit={(e) => e.preventDefault()}>

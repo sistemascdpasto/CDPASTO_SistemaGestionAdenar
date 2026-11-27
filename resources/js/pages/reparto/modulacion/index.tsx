@@ -20,6 +20,7 @@ import {
     Filter,
     LoaderCircle,
     MapPin,
+    Navigation,
     Pencil,
     Plus,
     Save,
@@ -39,6 +40,12 @@ interface ColaboradorOption {
     nombre_completo: string;
     cargo: string;
     area: string | null;
+    centro: string | null;
+}
+
+interface VehiculoOption {
+    placa: string;
+    centro: string | null;
 }
 
 interface MiembroTripulacion {
@@ -159,7 +166,7 @@ interface Props {
     modulacion: ModulacionData | null;
     colaboradores: ColaboradorOption[];
     cargosCatalogo?: string[];
-    vehiculos: string[];
+    vehiculos: VehiculoOption[];
     currentUser: string;
     readOnly?: boolean;
     exportExcel?: boolean;
@@ -281,8 +288,6 @@ function NarinoMunicipioInput({
     onChange,
     barrio,
     onBarrioChange,
-    cliente,
-    onClienteChange,
     horaDestino,
     onHoraDestinoChange,
     puedeAgregarViaje,
@@ -296,8 +301,6 @@ function NarinoMunicipioInput({
     onChange: (val: string) => void;
     barrio: string;
     onBarrioChange: (val: string) => void;
-    cliente: string;
-    onClienteChange: (val: string) => void;
     horaDestino: string;
     onHoraDestinoChange: (val: string) => void;
     puedeAgregarViaje: boolean;
@@ -538,9 +541,9 @@ function NarinoMunicipioInput({
     }, [municipioSeleccionadoId, barriosReloadToken]);
 
     return (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
             <div>
-                <Label htmlFor={`${baseId}-departamento`} className="text-xs font-medium text-muted-foreground">Departamento</Label>
+                <Label htmlFor={`${baseId}-departamento`} className="text-xs font-medium text-foreground">Departamento</Label>
                 <Input
                     id={`${baseId}-departamento`}
                     name={`${baseId}-departamento`}
@@ -551,7 +554,7 @@ function NarinoMunicipioInput({
                 />
             </div>
             <div>
-                <Label htmlFor={`${baseId}-municipio`} className="text-xs font-medium text-muted-foreground">Municipio / Destino</Label>
+                <Label htmlFor={`${baseId}-municipio`} className="text-xs font-medium text-foreground">Municipio / Destino</Label>
                 <div className="mt-0.5 flex gap-2">
                     <Input
                         id={`${baseId}-municipio`}
@@ -564,7 +567,7 @@ function NarinoMunicipioInput({
                             onChange(event.target.value);
                             onBarrioChange('');
                         }}
-                        placeholder={municipiosLoading ? 'Cargando municipios...' : 'Seleccione o escriba un municipio'}
+                        placeholder={municipiosLoading ? 'Cargando...' : 'Municipio'}
                         className="h-10 text-sm"
                         autoComplete="off"
                     />
@@ -593,12 +596,12 @@ function NarinoMunicipioInput({
                 </datalist>
                 {!municipioInput.trim() && value.trim() && (
                     <p className="mt-1 text-xs text-muted-foreground" aria-live="polite">
-                        Municipio agregado a este viaje: <span className="font-medium text-foreground">{value}</span>
+                        Municipio: <span className="font-medium text-foreground">{value}</span>
                     </p>
                 )}
             </div>
             <div className="grid gap-1.5">
-                <Label htmlFor={`${baseId}-barrio`} className="text-xs font-medium text-muted-foreground">Barrio</Label>
+                <Label htmlFor={`${baseId}-barrio`} className="text-xs font-medium text-foreground">Barrio</Label>
                 <div className="mt-0.5 flex gap-2">
                     <Input
                         id={`${baseId}-barrio`}
@@ -611,7 +614,7 @@ function NarinoMunicipioInput({
                             onBarrioChange(event.target.value);
                         }}
                         disabled={!municipioInput.trim()}
-                        placeholder={municipioInput.trim() ? 'Seleccione o escriba un barrio' : 'Escriba primero el municipio'}
+                        placeholder={municipioInput.trim() ? 'Barrio' : 'Primero el municipio'}
                         className="h-10 text-sm"
                         autoComplete="off"
                     />
@@ -642,9 +645,9 @@ function NarinoMunicipioInput({
                 </datalist>
             </div>
 
-            {/* Hora de cita — opcional (al frente del barrio) */}
+            {/* Hora de cita — opcional */}
             <div className="grid gap-1.5">
-                <Label htmlFor={`${baseId}-hora`} className="text-xs font-medium text-muted-foreground">
+                <Label htmlFor={`${baseId}-hora`} className="text-xs font-medium text-foreground">
                     Hora de cita <span className="text-muted-foreground/60">(opcional)</span>
                 </Label>
                 <Input
@@ -653,27 +656,23 @@ function NarinoMunicipioInput({
                     type="time"
                     value={horaDestino}
                     onChange={(e) => onHoraDestinoChange(e.target.value)}
-                    className="mt-0.5 h-10 text-sm w-full sm:w-36"
+                    className="mt-0.5 h-10 text-sm w-full"
                 />
-                {horaDestino && (
-                    <p className="text-xs text-muted-foreground">
-                        Aparecerá como <span className="font-medium text-foreground">CITA {horaDestino}</span> en la ruta y el Excel.
-                    </p>
-                )}
             </div>
 
-            {/* Tabla de destinos registrados / pendientes y mensajes (ocupan ambas columnas debajo para no desplazar los inputs) */}
-            <div className="sm:col-span-2 space-y-1.5">
+            {/* Tabla de destinos registrados / pendientes y mensajes (ocupan todas las columnas debajo para no desplazar los inputs) */}
+            <div className="col-span-4 space-y-1.5">
                 {(viajesRegistrados.length > 0 || destinosPendientes.length > 0) && (
-                    <div className="overflow-hidden rounded-md border border-border/70 bg-muted/30 text-xs" aria-live="polite">
+                    <div className="overflow-hidden rounded-md border border-border/70 text-xs" aria-live="polite">
                         <p className="border-b border-border/70 px-3 py-2 font-medium text-foreground">
                             Destinos de la ruta ({viajesRegistrados.length + (destinosPendientes.length > 0 ? 1 : 0)} viajes)
                         </p>
                         <table className="w-full table-fixed border-collapse">
                             <thead>
-                                <tr className="bg-muted/60 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                    <th scope="col" className="w-1/4 border-b border-r border-border/70 px-3 py-2">Viaje</th>
-                                    <th scope="col" className="border-b border-border/70 px-3 py-2">Municipio y barrio</th>
+                                <tr className="bg-muted/60 text-left text-[11px] font-semibold uppercase tracking-wide text-foreground">
+                                    <th scope="col" className="w-1/5 border-b border-r border-border/70 px-3 py-2">Viaje</th>
+                                    <th scope="col" className="border-b border-r border-border/70 px-3 py-2">Municipio y barrio</th>
+                                    <th scope="col" className="w-20 border-b border-border/70 px-3 py-2">Hora</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -682,13 +681,21 @@ function NarinoMunicipioInput({
                                     <th scope="row" className="border-r border-border/70 px-3 py-2 text-left align-top font-medium text-foreground">
                                         Viaje {viaje.numero}
                                     </th>
-                                    <td className="px-3 py-2 text-muted-foreground">
+                                    <td className="px-3 py-2 border-r border-border/70 text-foreground">
                                         <ul className="space-y-1">
                                         {obtenerDestinosViaje(viaje.viaje).map((destino, destinoIndex) => (
                                             <li key={`${destino.lugares}-${destino.barrio}-${destinoIndex}`} className="break-words">
-                                                <span className="mr-1 text-foreground" aria-hidden="true">•</span>
+                                                <span className="mr-1" aria-hidden="true">•</span>
                                                 {destino.barrio ? `${destino.lugares} — ${destino.barrio}` : destino.lugares}
-                                                {destino.hora && <span className="ml-1 font-semibold text-amber-600"> · Cita {destino.hora}</span>}
+                                            </li>
+                                        ))}
+                                        </ul>
+                                    </td>
+                                    <td className="px-3 py-2 text-foreground align-top">
+                                        <ul className="space-y-1">
+                                        {obtenerDestinosViaje(viaje.viaje).map((destino, destinoIndex) => (
+                                            <li key={`hora-${destinoIndex}`}>
+                                                {destino.hora ? <span className="font-semibold">{destino.hora}</span> : <span className="text-muted-foreground">—</span>}
                                             </li>
                                         ))}
                                         </ul>
@@ -696,18 +703,17 @@ function NarinoMunicipioInput({
                                 </tr>
                             ))}
                             {destinosPendientes.length > 0 && (
-                                <tr className="border-b border-border/50 last:border-0 bg-primary/5">
+                                <tr className="border-b border-border/50 last:border-0">
                                     <th scope="row" className="border-r border-border/70 px-3 py-2 text-left align-top font-medium text-foreground">
                                         Viaje {numeroViajePendiente} (en edición)
                                     </th>
-                                    <td className="px-3 py-2 text-muted-foreground">
+                                    <td className="px-3 py-2 border-r border-border/70 text-foreground">
                                         <ul className="space-y-1">
                                         {destinosPendientes.map((destino, destinoIndex) => (
                                             <li key={`${destino.lugares}-${destino.barrio}-${destinoIndex}`} className="flex items-center justify-between gap-2">
                                                 <span className="min-w-0 break-words">
-                                                    <span className="mr-1 text-foreground" aria-hidden="true">•</span>
-                                                {destino.barrio ? `${destino.lugares} — ${destino.barrio}` : destino.lugares}
-                                                {destino.hora && <span className="ml-1 font-semibold text-amber-600"> · Cita {destino.hora}</span>}
+                                                    <span className="mr-1" aria-hidden="true">•</span>
+                                                    {destino.barrio ? `${destino.lugares} — ${destino.barrio}` : destino.lugares}
                                                 </span>
                                                 <Button
                                                     type="button"
@@ -720,6 +726,15 @@ function NarinoMunicipioInput({
                                                 >
                                                     <X className="size-3" />
                                                 </Button>
+                                            </li>
+                                        ))}
+                                        </ul>
+                                    </td>
+                                    <td className="px-3 py-2 text-foreground align-top">
+                                        <ul className="space-y-1">
+                                        {destinosPendientes.map((destino, destinoIndex) => (
+                                            <li key={`hora-p-${destinoIndex}`}>
+                                                {destino.hora ? <span className="font-semibold">{destino.hora}</span> : <span className="text-muted-foreground">—</span>}
                                             </li>
                                         ))}
                                         </ul>
@@ -745,21 +760,7 @@ function NarinoMunicipioInput({
                             : ''}
                 </p>
             </div>
-            <div className="grid gap-1.5">
-                <Label htmlFor={`${baseId}-cliente`} className="text-xs font-medium text-muted-foreground">Cliente</Label>
-                <Input
-                    id={`${baseId}-cliente`}
-                    name="cliente"
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={cliente}
-                    onChange={(event) => onClienteChange(event.target.value)}
-                    placeholder="Ingrese el número de cliente"
-                    className="mt-0.5 h-10 text-sm"
-                />
-            </div>
-            {ubicacionesError && <p role="alert" className="text-xs text-destructive sm:col-span-2">{ubicacionesError}</p>}
+            {ubicacionesError && <p role="alert" className="text-xs text-destructive col-span-4">{ubicacionesError}</p>}
         </div>
     );
 }
@@ -888,6 +889,7 @@ export default function ModulacionIndex({
         setEditingIndex(null);
         setEditingViajeIndex(null);
         setFilterTablePlaca('todas');
+        setFilterCentro('');
         setNovedadesLocal([]);
         setUdProgramadoPor(cleanString(currentUser, ''));
         setDespachadoPorId('');
@@ -1057,6 +1059,7 @@ export default function ModulacionIndex({
     // Filtros de búsqueda para el Checklist de tripulación
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [cargoFilter, setCargoFilter] = useState<string>('todos');
+    const [filterCentro, setFilterCentro] = useState<string>('');
     // COLABORADORES FIJOS
     const fijosColaboradorIds = useMemo(() => {
         const ids = new Set<string>();
@@ -1913,8 +1916,8 @@ export default function ModulacionIndex({
 
     // SEPARACIÓN Y FILTRADO ESTRICTO DE COLABORADORES
     const isFiltering = useMemo(() => {
-        return searchQuery.trim() !== '' || cargoFilter !== 'todos';
-    }, [searchQuery, cargoFilter]);
+        return searchQuery.trim() !== '' || cargoFilter !== 'todos' || (filterCentro === 'UC' || filterCentro === 'UD');
+    }, [searchQuery, cargoFilter, filterCentro]);
 
     const { selectedColaboradores, unselectedColaboradores } = useMemo(() => {
         const selected: ColaboradorOption[] = [];
@@ -1940,15 +1943,18 @@ export default function ModulacionIndex({
                 return;
             }
 
-            // Mostrar colaboradores libres que coincidan con el filtro de búsqueda/cargo
+            // Mostrar colaboradores libres que coincidan con el filtro de búsqueda/cargo/centro
+            // Si no hay centro seleccionado (UC o UD), no mostrar colaboradores sin seleccionar
+            if (filterCentro !== 'UC' && filterCentro !== 'UD') return;
             const matchesCargo = cargoFilter === 'todos' || col.cargo === cargoFilter;
+            const matchesCentro = (col.centro ?? '').toUpperCase() === filterCentro.toUpperCase();
             const q = searchQuery.toLowerCase().trim();
             const matchesSearch =
                 !q ||
                 (col.nombre_completo && col.nombre_completo.toLowerCase().includes(q)) ||
                 (col.cedula && col.cedula.includes(q));
 
-            if (matchesCargo && matchesSearch) {
+            if (matchesCargo && matchesCentro && matchesSearch) {
                 const isAssignedElsewhere = isCollaboratorAlreadyAssigned(col);
                 if (!isAssignedElsewhere) {
                     unselected.push(col);
@@ -1974,12 +1980,13 @@ export default function ModulacionIndex({
                     nombre_completo: m.nombres || 'Colaborador',
                     cargo: m.cargo || '',
                     area: null,
+                    centro: null,
                 });
             }
         });
 
         return { selectedColaboradores: selected, unselectedColaboradores: unselected };
-    }, [colaboradores, cargoFilter, searchQuery, currentRoute.tripulacion, isCollaboratorAlreadyAssigned]);
+    }, [colaboradores, cargoFilter, filterCentro, searchQuery, currentRoute.tripulacion, isCollaboratorAlreadyAssigned]);
 
     const allChecklistColaboradores = [...selectedColaboradores, ...unselectedColaboradores];
 
@@ -1991,15 +1998,12 @@ export default function ModulacionIndex({
     const cargosOperativos = useMemo(() => {
         return Array.from(
             new Set(
-                [
-                    ...cargosCatalogoActualizados,
-                    ...baseColaboradoresOperativos.map((col) => col.cargo),
-                ]
-                    .map((cargo) => cargo.trim())
+                baseColaboradoresOperativos
+                    .map((col) => col.cargo.trim())
                     .filter((cargo) => cargo !== ''),
             ),
         ).sort((a, b) => a.localeCompare(b));
-    }, [baseColaboradoresOperativos, cargosCatalogoActualizados]);
+    }, [baseColaboradoresOperativos]);
 
     // ─── CÁLCULO DE PERSONAL PENDIENTE POR PROGRAMAR A RUTAS ─────────────────
     const personalFaltantePorProgramar = useMemo(() => {
@@ -2065,8 +2069,13 @@ export default function ModulacionIndex({
 
         return { total, programados, pendientes, disponibles, conNovedad };
     }, [personalFaltantePorProgramar]);
-    const placasDisponibles = vehiculos.filter((vehiculo) => {
-        const placaUpper = String(vehiculo).toUpperCase();
+    // Vehículos filtrados por centro cuando hay filtro activo
+    const vehiculosFiltradosPorCentro = (filterCentro === 'UC' || filterCentro === 'UD')
+        ? vehiculos.filter((v) => (v.centro ?? '').toUpperCase() === filterCentro.toUpperCase())
+        : []; // Sin selección de centro, no se muestran vehículos
+
+    const placasDisponibles = vehiculosFiltradosPorCentro.filter((vehiculo) => {
+        const placaUpper = vehiculo.placa.toUpperCase();
         if (placaUpper === currentRoute.placa.toUpperCase()) return true;
         return !rutas.some((ruta, index) => {
             if (editingIndex !== null && index === editingIndex) return false;
@@ -2074,13 +2083,13 @@ export default function ModulacionIndex({
         });
     });
     const placasCoincidentes = placasDisponibles.filter((vehiculo) =>
-        String(vehiculo).toUpperCase().includes(placaSearch.trim().toUpperCase()),
+        vehiculo.placa.toUpperCase().includes(placaSearch.trim().toUpperCase()),
     );
 
     // Placas disponibles para placa adicional: excluye la placa principal de la ruta actual
     // y las placas ya asignadas en otras rutas, pero permite la que ya está seleccionada como adicional
-    const placasDisponiblesAdicional = vehiculos.filter((vehiculo) => {
-        const placaUpper = String(vehiculo).toUpperCase();
+    const placasDisponiblesAdicional = vehiculosFiltradosPorCentro.filter((vehiculo) => {
+        const placaUpper = vehiculo.placa.toUpperCase();
         // Excluir la placa principal de la ruta actual
         if (placaUpper === currentRoute.placa.toUpperCase()) return false;
         // Permitir la que ya está seleccionada como adicional
@@ -2092,7 +2101,7 @@ export default function ModulacionIndex({
         });
     });
     const placasAdicionalCoincidentes = placasDisponiblesAdicional.filter((vehiculo) =>
-        String(vehiculo).toUpperCase().includes(placaAdicionalSearch.trim().toUpperCase()),
+        vehiculo.placa.toUpperCase().includes(placaAdicionalSearch.trim().toUpperCase()),
     );
 
     // LISTA ÚNICA DE PLACAS
@@ -2774,49 +2783,108 @@ export default function ModulacionIndex({
             <div className="flex h-full flex-1 flex-col gap-6 rounded-xl p-4">
 
                 {/* ── Header ─────────────────────────────────────────────── */}
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                            <div className="flex size-10 items-center justify-center rounded-xl" style={{ backgroundColor: '#D4102A20' }}>
-                                <MapPin className="size-5" style={{ color: ACCENT }} />
+                <div className="rounded-2xl border border-border/70 bg-card shadow-sm px-8 py-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                            <div
+                                className="flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl shadow-sm shrink-0"
+                                style={{ background: 'linear-gradient(135deg, rgb(6, 78, 59) 0%, rgb(4, 120, 87) 60%, rgb(5, 150, 105) 100%)' }}
+                            >
+                                <MapPin className="h-7 w-7 text-white" />
                             </div>
                             <div>
-                                <h1 className="text-2xl font-bold tracking-tight text-foreground">Planificación de ruta</h1>
-                                <p className="text-sm text-muted-foreground">Organiza y gestiona la salida de la ruta de reparto</p>
+                                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Planeación de ruta</h1>
                             </div>
                         </div>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-3">
-                        {readOnly && (
-                            <Button variant="outline" size="sm" asChild>
-                                <Link href={route('reparto.modulacion.historial')}>
-                                    <ArrowLeft className="size-4" />
-                                    Volver al historial
-                                </Link>
-                            </Button>
-                        )}
-                        <div className="flex flex-wrap items-center gap-2">
-                            <Label htmlFor="ud_programado_por" className="text-xs font-semibold text-muted-foreground whitespace-nowrap">
-                                UD Programado Por:
-                            </Label>
-                            <Input
-                                id="ud_programado_por"
-                                type="text"
-                                placeholder="Nombre del usuario programador"
-                                value={udProgramadoPor}
-                                onChange={(e) => setUdProgramadoPor(e.target.value)}
-                                className="h-10 w-full min-w-0 text-sm bg-background sm:w-64"
-                            />
+                        <div className="flex gap-2 flex-wrap items-start">
+                            <div className="flex flex-col gap-1.5">
+                                <div className="flex items-center gap-2">
+                                    <Label htmlFor="ud_programado_por" className="text-xs font-semibold text-muted-foreground whitespace-nowrap w-36">
+                                        UD Programado Por:
+                                    </Label>
+                                    <Input
+                                        id="ud_programado_por"
+                                        type="text"
+                                        placeholder="Nombre del usuario programador"
+                                        value={udProgramadoPor}
+                                        onChange={(e) => setUdProgramadoPor(e.target.value)}
+                                        className="h-8 min-w-0 text-xs bg-background w-40 sm:w-56"
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={handleExportExcel}
+                                        className="h-8 text-xs border-green-300 text-green-700 hover:bg-green-50 shrink-0"
+                                    >
+                                        <FileSpreadsheet className="h-3.5 w-3.5 mr-1 sm:mr-1.5" />
+                                        <span className="hidden sm:inline">Exportar Excel</span>
+                                        <span className="sm:hidden">Excel</span>
+                                    </Button>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Label htmlFor="despachado_por" className="text-xs font-semibold text-muted-foreground whitespace-nowrap w-36">
+                                        Despachado Por:
+                                    </Label>
+                                    <div className="relative w-40 sm:w-56">
+                                        <Input
+                                            id="despachado_por"
+                                            type="text"
+                                            value={despachadoPorNombre}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                setDespachadoPorNombre(val);
+                                                setShowDespachadorDropdown(true);
+                                                const found = colaboradores.find(
+                                                    (c) => c.nombre_completo.toLowerCase() === val.toLowerCase() ||
+                                                           `${c.nombre_completo} ${c.cedula}`.toLowerCase() === val.toLowerCase()
+                                                );
+                                                setDespachadoPorId(found ? String(found.id) : '');
+                                            }}
+                                            onBlur={() => setTimeout(() => setShowDespachadorDropdown(false), 150)}
+                                            placeholder="Busque o escriba el nombre..."
+                                            autoComplete="off"
+                                            className="h-8 text-xs bg-background"
+                                        />
+                                        {showDespachadorDropdown && (
+                                            <div className="absolute left-0 right-0 top-full z-10 mt-0.5 max-h-48 overflow-y-auto rounded-lg border border-input bg-popover shadow-lg">
+                                                {colaboradores
+                                                    .filter((c) => {
+                                                        const q = despachadoPorNombre.toLowerCase().trim();
+                                                        if (!q) return true;
+                                                        const full = (c.nombre_completo + " " + (c.cedula || "")).toLowerCase();
+                                                        return c.nombre_completo.toLowerCase().includes(q) || (c.cedula && c.cedula.includes(q)) || full.includes(q);
+                                                    })
+                                                    .map((c) => (
+                                                        <div
+                                                            key={c.id}
+                                                            onMouseDown={() => {
+                                                                setDespachadoPorNombre(`${c.nombre_completo} ${c.cedula}`);
+                                                                setDespachadoPorId(String(c.id));
+                                                                setShowDespachadorDropdown(false);
+                                                            }}
+                                                            className="cursor-pointer border-b border-border px-3 py-2 text-sm last:border-b-0 hover:bg-muted"
+                                                        >
+                                                            <div className="font-medium text-foreground">{c.nombre_completo}</div>
+                                                            <div className="text-xs text-muted-foreground">
+                                                                CC: {c.cedula || '—'} · Área: {c.area || '—'} · Cargo: {c.cargo || '—'}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 {/* ── Filtros de fecha y placa ───────────────────────────── */}
                 {isEditing && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 rounded-xl border border-sidebar-border/70 bg-card p-4 dark:border-sidebar-border">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 rounded-xl border border-sidebar-border/70 bg-card p-4 dark:border-sidebar-border">
                     <div>
-                        <Label htmlFor="filtro-fecha" className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground mb-1.5">
-                            <Calendar className="h-3.5 w-3.5" style={{ color: ACCENT }} />
+                        <Label htmlFor="filtro-fecha" className="flex items-center gap-1.5 text-xs font-semibold text-foreground mb-1.5">
+                            <Calendar className="h-3.5 w-3.5 text-emerald-600" />
                             Fecha de la planeación
                         </Label>
                         <Input
@@ -2843,9 +2911,27 @@ export default function ModulacionIndex({
                         )}
                     </div>
                     <div>
-                        <Label htmlFor="filtro-placa" className="flex items-center gap-1 text-xs font-semibold text-muted-foreground mb-1.5">
-                            <Filter className="size-3.5" style={{ color: ACCENT }} />
-                            Resaltar placa
+                        <Label htmlFor="filtro-centro" className="flex items-center gap-1 text-xs font-semibold text-foreground mb-1.5">
+                            <Filter className="size-3.5 text-emerald-600" />
+                            Centro <span className="text-red-500">*</span>
+                        </Label>
+                        <Select value={filterCentro} onValueChange={(val) => { setFilterCentro(val); }}>
+                            <SelectTrigger
+                                id="filtro-centro"
+                                className="h-10 text-sm w-full"
+                            >
+                                <SelectValue placeholder="-- Seleccione UC o UD --" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="UC">UC</SelectItem>
+                                <SelectItem value="UD">UD</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div>
+                        <Label htmlFor="filtro-placa" className="flex items-center gap-1 text-xs font-semibold text-foreground mb-1.5">
+                            <Filter className="size-3.5 text-emerald-600" />
+                            Buscar por placa
                         </Label>
                         <Select value={filterTablePlaca} onValueChange={setFilterTablePlaca}>
                             <SelectTrigger id="filtro-placa" className="h-10 text-sm w-full">
@@ -2867,29 +2953,25 @@ export default function ModulacionIndex({
                     {/* Card 1: Datos generales y Tripulación */}
                     <div className="rounded-xl border border-sidebar-border/70 bg-card p-5 dark:border-sidebar-border shadow-sm space-y-6">
 
-                        {/* Título inline (modo edición) */}
-                        {editingIndex !== null && (
-                            <div className="flex items-center justify-between border-b border-border pb-3">
-                                <div className="flex items-center gap-2">
-                                    <FileText className="size-4" style={{ color: ACCENT }} />
-                                    <span className="font-semibold text-foreground">
-                                        Editando ruta #{editingIndex + 1}
-                                    </span>
-                                    {currentRoute.placa && (
-                                        <Badge variant="outline" className="font-mono text-xs" style={{ borderColor: ACCENT, color: ACCENT }}>
-                                            {currentRoute.placa}
-                                        </Badge>
-                                    )}
-                                </div>
-                            </div>
-                        )}
+                        {/* Título de la card */}
+                        <div className="flex items-center gap-2 border-b border-border pb-3">
+                            <MapPin className="size-4 text-emerald-600" />
+                            <span className="font-semibold text-foreground">Datos de ruta</span>
+                            {editingIndex !== null && currentRoute.placa && (
+                                <Badge variant="outline" className="font-mono text-xs" style={{ borderColor: '#16a34a', color: '#16a34a' }}>
+                                    Editando #{editingIndex + 1} · {currentRoute.placa}
+                                </Badge>
+                            )}
+                        </div>
+
+                        {/* Título inline (modo edición) — oculto, reemplazado por el título de arriba */}
 
                         {/* ── Sección 1: Datos Generales de la Salida ── */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                             {/* Placa */}
                             <div className="grid gap-1.5">
                                 <Label htmlFor="placa-ruta" className="text-xs font-medium">
-                                    Placa <span className="text-red-500">*</span>
+                                    Placa
                                 </Label>
                                 <div className="relative">
                                     <Input
@@ -2898,10 +2980,12 @@ export default function ModulacionIndex({
                                         type="text"
                                         value={showPlacaDropdown ? placaSearch : currentRoute.placa}
                                         onFocus={() => {
+                                            if (filterCentro !== 'UC' && filterCentro !== 'UD') return;
                                             setPlacaSearch('');
                                             setShowPlacaDropdown(true);
                                         }}
                                         onChange={(e) => {
+                                            if (filterCentro !== 'UC' && filterCentro !== 'UD') return;
                                             setPlacaSearch(e.target.value);
                                             setShowPlacaDropdown(true);
                                         }}
@@ -2909,28 +2993,34 @@ export default function ModulacionIndex({
                                             setShowPlacaDropdown(false);
                                             setPlacaSearch('');
                                         }, 150)}
-                                        placeholder="Escriba para buscar una placa..."
+                                        placeholder={(filterCentro !== 'UC' && filterCentro !== 'UD') ? "⚠ Seleccione UC o UD primero..." : "Escriba para buscar una placa..."}
                                         autoComplete="off"
+                                        disabled={filterCentro !== 'UC' && filterCentro !== 'UD'}
                                         className="h-10 font-mono text-sm uppercase"
                                     />
-                                    {showPlacaDropdown && (
+                                    {showPlacaDropdown && (filterCentro === 'UC' || filterCentro === 'UD') && (
                                         <div className="absolute left-0 right-0 top-full z-20 mt-0.5 max-h-48 overflow-y-auto rounded-lg border border-input bg-popover shadow-lg">
                                             {placasCoincidentes.map((vehiculo) => (
                                                 <div
-                                                    key={vehiculo}
+                                                    key={vehiculo.placa}
                                                     onMouseDown={() => {
-                                                        handlePlacaChange(String(vehiculo));
+                                                        handlePlacaChange(vehiculo.placa);
                                                         setPlacaSearch('');
                                                         setShowPlacaDropdown(false);
                                                     }}
                                                     className="cursor-pointer border-b border-border px-3 py-2 font-mono text-sm last:border-b-0 hover:bg-muted"
                                                 >
-                                                    {String(vehiculo)}
+                                                    {vehiculo.placa}
+                                                    {vehiculo.centro && (
+                                                        <span className="ml-2 text-xs text-muted-foreground">{vehiculo.centro}</span>
+                                                    )}
                                                 </div>
                                             ))}
                                             {placasCoincidentes.length === 0 && (
                                                 <p className="px-3 py-2 text-sm text-muted-foreground">
-                                                    No hay placas existentes que coincidan.
+                                                    {(filterCentro !== 'UC' && filterCentro !== 'UD')
+                                                        ? '⚠ Seleccione UC o UD en el filtro de centro para ver las placas disponibles.'
+                                                        : 'No hay placas existentes que coincidan.'}
                                                 </p>
                                             )}
                                         </div>
@@ -3007,15 +3097,18 @@ export default function ModulacionIndex({
                                             <div className="absolute left-0 right-0 top-full z-20 mt-0.5 max-h-48 overflow-y-auto rounded-lg border border-input bg-popover shadow-lg">
                                                 {placasAdicionalCoincidentes.map((vehiculo) => (
                                                     <div
-                                                        key={vehiculo}
+                                                        key={vehiculo.placa}
                                                         onMouseDown={() => {
-                                                            handleCurrentRouteFieldChange('placa_adicional', String(vehiculo).toUpperCase());
+                                                            handleCurrentRouteFieldChange('placa_adicional', vehiculo.placa.toUpperCase());
                                                             setPlacaAdicionalSearch('');
                                                             setShowPlacaAdicionalDropdown(false);
                                                         }}
                                                         className="cursor-pointer border-b border-border px-3 py-2 font-mono text-sm font-semibold text-red-600 last:border-b-0 hover:bg-muted"
                                                     >
-                                                        {String(vehiculo)}
+                                                        {vehiculo.placa}
+                                                        {vehiculo.centro && (
+                                                            <span className="ml-2 text-xs font-normal text-muted-foreground">{vehiculo.centro}</span>
+                                                        )}
                                                     </div>
                                                 ))}
                                                 {placasAdicionalCoincidentes.length === 0 && (
@@ -3035,75 +3128,22 @@ export default function ModulacionIndex({
                                 </div>
                             )}
 
-                            {/* Despachado Por */}
-                            <div className="grid gap-1.5">
-                                <Label htmlFor="despachado_por" className="text-xs font-medium">
-                                    Despachado Por (Colaborador)
-                                </Label>
-                                <div className="relative">
-                                    <Input
-                                        id="despachado_por"
-                                        type="text"
-                                        value={despachadoPorNombre}
-                                        onChange={(e) => {
-                                            const val = e.target.value;
-                                            setDespachadoPorNombre(val);
-                                            setShowDespachadorDropdown(true);
-                                            const found = colaboradores.find(
-                                                (c) => c.nombre_completo.toLowerCase() === val.toLowerCase() ||
-                                                       `${c.nombre_completo} ${c.cedula}`.toLowerCase() === val.toLowerCase()
-                                            );
-                                            setDespachadoPorId(found ? String(found.id) : '');
-                                        }}
-                                        onBlur={() => setTimeout(() => setShowDespachadorDropdown(false), 150)}
-                                        placeholder="Busque o escriba el nombre..."
-                                        autoComplete="off"
-                                        className="h-10 text-sm"
-                                    />
-                                    {showDespachadorDropdown && (
-                                        <div className="absolute left-0 right-0 top-full z-10 mt-0.5 max-h-48 overflow-y-auto rounded-lg border border-input bg-popover shadow-lg">
-                                            {colaboradores
-                                                .filter((c) => {
-                                                    const q = despachadoPorNombre.toLowerCase().trim();
-                                                    if (!q) return true;
-                                                    const full = (c.nombre_completo + " " + (c.cedula || "")).toLowerCase();
-                                                    return c.nombre_completo.toLowerCase().includes(q) || (c.cedula && c.cedula.includes(q)) || full.includes(q);
-                                                })
-                                                .map((c) => (
-                                                    <div
-                                                        key={c.id}
-                                                        onMouseDown={() => {
-                                                            setDespachadoPorNombre(`${c.nombre_completo} ${c.cedula}`);
-                                                            setDespachadoPorId(String(c.id));
-                                                            setShowDespachadorDropdown(false);
-                                                        }}
-                                                        className="cursor-pointer border-b border-border px-3 py-2 text-sm last:border-b-0 hover:bg-muted"
-                                                    >
-                                                        <div className="font-medium text-foreground">{c.nombre_completo}</div>
-                                                        <div className="text-xs text-muted-foreground">
-                                                            CC: {c.cedula || '—'} · Área: {c.area || '—'} · Cargo: {c.cargo || '—'}
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
+
                         </div>
 
                         {/* ── Sección 2: Tripulación de la Ruta ── */}
-                        <div className="space-y-3 pt-2 border-t border-border/60">
-                            <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                                <Users className="size-3.5" style={{ color: ACCENT }} />
-                                Tripulación de la Ruta
-                            </p>
-                            <div className="space-y-3">
+                        <div className="space-y-3 pt-2">
+                            <div className="flex items-center gap-2">
+                                <Users className="size-4 text-emerald-600" />
+                                <span className="font-semibold text-foreground">Tripulación de la Ruta</span>
+                            </div>
+                            <div className="space-y-3 border-t border-border/60 pt-4">
                                 {/* Filtros */}
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div className="grid gap-1.5">
-                                        <Label htmlFor="buscar-tripulacion" className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
-                                            <Search className="size-3" style={{ color: ACCENT }} />
-                                            Buscar por Nombre o Cédula
+                                        <Label htmlFor="buscar-tripulacion" className="flex items-center gap-1 text-xs font-medium text-foreground">
+                                            <Search className="size-3 text-emerald-600" />
+                                            Buscar Nombre o Cédula
                                         </Label>
                                         <Input
                                             id="buscar-tripulacion"
@@ -3116,8 +3156,8 @@ export default function ModulacionIndex({
                                         />
                                     </div>
                                     <div className="grid gap-1.5">
-                                        <Label htmlFor="filtrar-cargo" className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
-                                            <Filter className="size-3" style={{ color: ACCENT }} />
+                                        <Label htmlFor="filtrar-cargo" className="flex items-center gap-1 text-xs font-medium text-foreground">
+                                            <Filter className="size-3 text-emerald-600" />
                                             Filtrar por Cargo
                                         </Label>
                                         <Select value={cargoFilter} onValueChange={setCargoFilter}>
@@ -3135,9 +3175,10 @@ export default function ModulacionIndex({
                                 </div>
 
                                 {/* Checklist */}
+                                {(filterCentro !== 'UC' && filterCentro !== 'UD') ? null : isFiltering && (
                                 <div className="rounded-lg border border-border bg-background p-3 max-h-52 overflow-y-auto">
-                                    <p className="mb-2 flex items-center gap-1 text-[11px] font-semibold text-muted-foreground">
-                                        <CheckSquare className="size-3.5" style={{ color: ACCENT }} />
+                                    <p className="mb-2 flex items-center gap-1 text-[11px] font-semibold text-foreground">
+                                        <CheckSquare className="size-3.5 text-emerald-600" />
                                         {isFiltering
                                             ? `Resultados del filtro (${allChecklistColaboradores.length})`
                                             : `Colaboradores disponibles (${unselectedColaboradores.length}) · Seleccionados (${selectedColaboradores.length})`}
@@ -3176,7 +3217,6 @@ export default function ModulacionIndex({
                                                         <div className="min-w-0 flex-1">
                                                             <p className="text-xs font-semibold text-foreground truncate">{String(col.nombre_completo ?? '')}</p>
                                                             {col.cedula && <p className="text-[10px] font-mono text-muted-foreground">Cédula: {col.cedula}</p>}
-                                                            <p className="text-[10px] text-muted-foreground truncate">Área: {col.area || '—'}</p>
                                                             {col.cargo && <p className="text-[10px] text-muted-foreground truncate">Cargo: {col.cargo}</p>}
                                                         </div>
                                                         {isFijo && isChecked && (
@@ -3194,6 +3234,7 @@ export default function ModulacionIndex({
                                         </p>
                                     )}
                                 </div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -3202,30 +3243,17 @@ export default function ModulacionIndex({
                     <div className="rounded-xl border border-sidebar-border/70 bg-card p-5 dark:border-sidebar-border shadow-sm space-y-4">
                         {/* Header con botón para colapsar y métricas */}
                         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
-                            <div className="flex items-center gap-2.5">
-                                <div className="flex size-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                                    <Users className="size-5" />
-                                </div>
-                                <div>
-                                    <div className="flex items-center gap-2">
-                                        <h3 className="text-sm font-bold text-foreground">
-                                            Personal Pendiente por Programar a las Rutas
-                                        </h3>
-                                        <Badge
-                                            variant="outline"
-                                            className={`font-mono text-xs ${
-                                                statsPendientes.pendientes > 0
-                                                    ? 'border-amber-500/40 text-amber-600 dark:text-amber-400 bg-amber-500/5'
-                                                    : 'border-emerald-500/40 text-emerald-600 dark:text-emerald-400 bg-emerald-500/5'
-                                            }`}
-                                        >
-                                            {statsPendientes.pendientes > 0
-                                                ? `${statsPendientes.pendientes} sin programar`
-                                                : 'Todos programados'}
-                                        </Badge>
-                                    </div>
-                                   
-                                </div>
+                            <div className="flex items-center gap-2">
+                                <Users className="size-4 text-emerald-600" />
+                                <span className="text-sm font-bold text-foreground">Personal Pendiente por Programar en Rutas</span>
+                                <Badge
+                                    variant="outline"
+                                    className="font-mono text-xs border-emerald-500/40 text-emerald-600 dark:text-emerald-400 bg-emerald-500/5"
+                                >
+                                    {statsPendientes.pendientes > 0
+                                        ? `${statsPendientes.pendientes} sin programar`
+                                        : 'Todos programados'}
+                                </Badge>
                             </div>
 
                             <div className="flex items-center gap-2">
@@ -3261,32 +3289,13 @@ export default function ModulacionIndex({
                                                         : 'border-border bg-background hover:border-sidebar-border hover:shadow-xs'
                                                 }`}
                                             >
-                                                <div className="space-y-1.5">
-                                                    <div className="flex items-start justify-between gap-1.5">
-                                                        <p className="font-semibold text-foreground truncate" title={col.nombre_completo}>
-                                                            {col.nombre_completo}
-                                                        </p>
-                                                        {col.esBloqueante ? (
-                                                            <Badge variant="outline" className="shrink-0 text-[9px] px-1.5 py-0 border-amber-300 bg-amber-100/50 text-amber-800 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-300">
-                                                                {col.tipoNovedadStr}
-                                                            </Badge>
-                                                        ) : (
-                                                            <Badge variant="outline" className="shrink-0 text-[9px] px-1.5 py-0 border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-                                                                Disponible
-                                                            </Badge>
-                                                        )}
-                                                    </div>
-
-                                                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground font-mono">
-                                                        <span>CC: {col.cedula || '—'}</span>
-                                                    </div>
-
-                                                    <p className="text-[11px] text-muted-foreground truncate" title={col.area || '—'}>
-                                                        Área: {col.area || '—'}
+                                                <div className="space-y-1">
+                                                    <p className="font-semibold text-foreground truncate text-xs" title={col.nombre_completo}>
+                                                        {col.nombre_completo}
                                                     </p>
                                                     {col.cargo && (
                                                         <p className="text-[11px] text-muted-foreground truncate" title={col.cargo}>
-                                                            Cargo: {col.cargo}
+                                                            {col.cargo}
                                                         </p>
                                                     )}
                                                 </div>
@@ -3300,20 +3309,21 @@ export default function ModulacionIndex({
 
                     {/* Card 2: Viajes de la Ruta */}
                     <div className="rounded-xl border border-sidebar-border/70 bg-card p-5 dark:border-sidebar-border shadow-sm space-y-6">
-                        <div className="flex items-center justify-between">
-                            <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                                <MapPin className="size-3.5" style={{ color: ACCENT }} />
-                                Viajes de la Ruta
-                            </p>
+                        <div className="flex items-center gap-2 border-b border-border pb-3">
+                            <MapPin className="size-4 text-emerald-600" />
+                            <span className="font-semibold text-foreground">Viajes de la Ruta</span>
                         </div>
 
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
-                                <span className="text-xs font-bold uppercase tracking-wider" style={{ color: ACCENT }}>
-                                    {editingViajeIndex !== null
-                                        ? `Editando viaje #${editingViajeIndex + 1}`
-                                        : `Nuevo viaje #${(currentRoute.viajes?.length || 0) + 1}`}
-                                </span>
+                                <div className="flex items-center gap-2">
+                                    <Navigation className="size-4 text-emerald-600" />
+                                    <span className="font-semibold text-foreground">
+                                        {editingViajeIndex !== null
+                                            ? (() => { const n = editingViajeIndex + 1; const ord = ['Primer','Segundo','Tercer','Cuarto','Quinto','Sexto','Séptimo','Octavo','Noveno','Décimo']; return `${ord[n-1] ?? `Viaje ${n}`} viaje (editando)`; })()
+                                            : (() => { const n = (currentRoute.viajes?.length || 0) + 1; const ord = ['Primer','Segundo','Tercer','Cuarto','Quinto','Sexto','Séptimo','Octavo','Noveno','Décimo']; return `${ord[n-1] ?? `Viaje ${n}`} viaje`; })()}
+                                    </span>
+                                </div>
                             </div>
 
                             {/* Campos en 2 columnas: Departamento hasta Peso */}
@@ -3335,8 +3345,6 @@ export default function ModulacionIndex({
                                                 setHoraDestinoPendiente('');
                                             }
                                         }}
-                                        cliente={String(currentViajeForm.cliente ?? '')}
-                                        onClienteChange={(val) => handleViajeFormChange('cliente', val)}
                                         horaDestino={horaDestinoPendiente}
                                         onHoraDestinoChange={setHoraDestinoPendiente}
                                         puedeAgregarViaje={Boolean(currentRoute.placa.trim())}
@@ -3393,8 +3401,24 @@ export default function ModulacionIndex({
                                     />
                                 </div>
 
+                                {/* Cliente y Peso (Toneladas) en la misma fila */}
+                                <div className="grid gap-1.5">
+                                    <Label htmlFor="cliente-viaje" className="text-xs font-medium text-muted-foreground">Cliente</Label>
+                                    <Input
+                                        id="cliente-viaje"
+                                        name="cliente"
+                                        type="number"
+                                        min="0"
+                                        step="1"
+                                        value={String(currentViajeForm.cliente ?? '')}
+                                        onChange={(e) => handleViajeFormChange('cliente', e.target.value)}
+                                        placeholder="Ingrese el número de cliente"
+                                        className="mt-0.5 h-10 text-sm"
+                                    />
+                                </div>
+
                                 {/* Peso (Toneladas) */}
-                                <div className="grid gap-1.5 sm:col-span-2">
+                                <div className="grid gap-1.5">
                                     <Label htmlFor="peso-viaje" className="text-xs font-medium text-muted-foreground">Peso (Toneladas)</Label>
                                     <Input
                                         id="peso-viaje"
@@ -3416,7 +3440,8 @@ export default function ModulacionIndex({
                             <Button
                                 type="button"
                                 onClick={(e) => handleAddViaje(e)}
-                                className="gap-1.5 h-10 px-6"
+                                variant="outline"
+                                className="gap-1.5 h-8 px-3 text-xs border-green-300 text-green-700 hover:bg-green-50"
                             >
                                 {editingViajeIndex !== null ? (
                                     <>
@@ -3436,12 +3461,12 @@ export default function ModulacionIndex({
 
                 {/* ── Tabla planeación de ruta ────────────────────────────── */}
                 <div className="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border overflow-hidden">
-                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-sidebar-border/70 dark:border-sidebar-border bg-muted/30 px-5 py-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-sidebar-border/70 dark:border-sidebar-border bg-white/90 dark:bg-card px-5 py-3">
                         <div className="flex items-center gap-2">
-                            <FileText className="size-4" style={{ color: ACCENT }} />
-                            <span className="font-semibold text-foreground">Planeación de Ruta</span>
+                            <FileText className="size-4 text-emerald-600 dark:text-emerald-400" />
+                            <span className="font-semibold text-emerald-950 dark:text-emerald-100">Planeación de Ruta</span>
                             {filteredRutasTable.length > 0 && (
-                                <span className="text-xs text-muted-foreground">({rutasConDocTransporte.length} ruta{rutasConDocTransporte.length !== 1 ? 's' : ''})</span>
+                                <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">({rutasConDocTransporte.length} ruta{rutasConDocTransporte.length !== 1 ? 's' : ''})</span>
                             )}
                         </div>
                     </div>
@@ -3462,7 +3487,7 @@ export default function ModulacionIndex({
                                     <TableRow>
                                         <TableCell colSpan={5} className="py-12 text-center">
                                             <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                                                <FileText className="size-8 opacity-30" style={{ color: ACCENT }} />
+                                                <FileText className="size-8 opacity-30" style={{ color: '#059669' }} />
                                                 <p className="text-sm">
                                                     {rutas.length === 0
                                                         ? 'No hay rutas registradas. Complete el formulario y presione Guardar ruta.'
@@ -3512,9 +3537,9 @@ export default function ModulacionIndex({
                                                                 <div key={`trip-${m.colaborador_id ?? m.cedula}-${mIdx}`} className="flex items-start gap-2">
                                                                     <span className="mt-1.5 size-2 shrink-0 rounded-full bg-current" aria-hidden="true" />
                                                                     <div className="space-y-0.5">
-                                                                        <p><span className="font-medium">Identificación:</span> {m.cedula || '—'}</p>
-                                                                        <p><span className="font-medium">Nombre:</span> {m.nombres || 'Sin nombre'}</p>
-                                                                        <p><span className="font-medium">Cargo:</span> {m.cargo || '—'}</p>
+                                                                        <p>{m.cedula || '—'}</p>
+                                                                        <p>{m.nombres || 'Sin nombre'}</p>
+                                                                        <p>{m.cargo || '—'}</p>
                                                                     </div>
                                                                 </div>
                                                             ))}
@@ -3527,7 +3552,7 @@ export default function ModulacionIndex({
                                                         <div className="space-y-2">
                                                             {viajesList.map((v, vIdx) => (
                                                                 <div key={v.id ?? `viaje-${vIdx}`} className="border-b border-border/50 pb-2 last:border-0">
-                                                                    <p className="mb-1.5 font-semibold text-xs" style={{ color: ACCENT }}>Viaje {vIdx + 1}</p>
+                                                                    <p className="mb-1.5 font-semibold text-xs" style={{ color: '#059669' }}>Viaje {vIdx + 1}</p>
                                                                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,2fr)_minmax(5rem,1fr)_minmax(5rem,1fr)_auto] sm:items-start">
                                                                         <div className="space-y-1">
                                                                             {obtenerDestinosViaje(v).length > 0 ? (
@@ -3552,7 +3577,7 @@ export default function ModulacionIndex({
                                                                         <p><span className="font-medium">Cliente:</span> {v.cliente || '—'}</p>
                                                                         <p><span className="font-medium">Peso:</span> {v.peso ? `${v.peso} ton` : '—'}</p>
                                                                         <div className="flex items-center gap-1 sm:justify-end">
-                                                                            <Button variant="ghost" size="icon" aria-label={`Editar viaje ${vIdx + 1} de la ruta ${item.placa}`} onClick={() => handleEditViajeIndividual(rutaIndex, vIdx)} className="size-6 hover:bg-accent/10" style={{ color: ACCENT }}>
+                                                                            <Button variant="ghost" size="icon" aria-label={`Editar viaje ${vIdx + 1} de la ruta ${item.placa}`} onClick={() => handleEditViajeIndividual(rutaIndex, vIdx)} className="size-6 hover:bg-accent/10" style={{ color: '#059669' }}>
                                                                                 <Pencil className="size-3" />
                                                                             </Button>
                                                                             <Button
@@ -3585,7 +3610,7 @@ export default function ModulacionIndex({
                 {(isEditing || (!isEditing && novedadesLocal.length > 0)) && (
                 <div className="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border overflow-hidden">
                     <div className="flex items-center gap-2 border-b border-sidebar-border/70 dark:border-sidebar-border bg-muted/30 px-5 py-3">
-                        <Users className="size-4 text-blue-600" />
+                        <MapPin className="size-4 text-emerald-600" />
                         <span className="font-semibold text-foreground">Novedades de Colaboradores</span>
                         {novedadesLocal.length > 0 && (
                             <Badge variant="secondary">{novedadesLocal.length}</Badge>

@@ -146,7 +146,7 @@ export default function PlanPremiacionIndex({ colaboradores, top3: _top3, peores
     // Paginación
     const [currentPage, setCurrentPage] = useState<number>(1);
     const [pageSize, setPageSize] = useState<number>(20);
-    const [pageSizeInput, setPageSizeInput] = useState<string>('20');
+    const [_pageSizeInput, setPageSizeInput] = useState<string>('20');
 
     // Columnas visibles
     type ColKey = 'aci' | 'owd' | 'calificaciones' | 'res_seguridad'

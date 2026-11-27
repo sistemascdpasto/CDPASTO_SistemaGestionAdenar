@@ -232,7 +232,6 @@ export const modules: ModuleDef[] = [
             { title: 'Contratos', slug: 'contratos', icon: FileStack },
             { title: 'Asistencia GeoVictoria', slug: 'asistencia-geovictoria', icon: Clock },
             { title: 'Alertas', slug: 'alertas', icon: BellRing },
-            { title: 'Configuración del formulario', slug: 'configuracion-catalogo', icon: ListTodo },
         ],
     },
     {

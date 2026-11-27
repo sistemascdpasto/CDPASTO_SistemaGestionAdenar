@@ -8,12 +8,12 @@ use App\Models\Seguridad\Colaborador;
 class ModulacionTripulacionService
 {
     /**
-     * @return array<int, array{id: int, cedula: ?string, nombres: string, apellidos: string, nombre_completo: string, cargo: string, area: ?string}>
+     * @return array<int, array{id: int, cedula: ?string, nombres: string, apellidos: string, nombre_completo: string, cargo: string, area: ?string, centro: ?string}>
      */
     public function colaboradoresActivos(): array
     {
         return Colaborador::query()
-            ->select(['id', 'cedula', 'nombres', 'apellidos', 'cargo', 'area'])
+            ->select(['id', 'cedula', 'nombres', 'apellidos', 'cargo', 'area', 'centro'])
             ->where('is_active', true)
             ->orderBy('nombres')
             ->get()
@@ -25,6 +25,7 @@ class ModulacionTripulacionService
                 'nombre_completo' => trim("{$colaborador->nombres} {$colaborador->apellidos}"),
                 'cargo' => $colaborador->cargo ?? '',
                 'area' => $colaborador->area,
+                'centro' => $colaborador->centro,
             ])
             ->all();
     }

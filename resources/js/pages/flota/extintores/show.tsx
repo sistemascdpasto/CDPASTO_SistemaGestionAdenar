@@ -710,6 +710,7 @@ export default function ExtintorShow({
     // (ocurre después de un guardado exitoso vía Inertia)
     useEffect(() => {
         setFormEditarExtintor(formExtintorDesdeProps());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [
         extintor.numero_serie,
         extintor.marca,

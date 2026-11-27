@@ -199,7 +199,9 @@ class ModulacionController extends Controller
 
         $vehiculos = Vehiculo::where('is_active', true)
             ->orderBy('placa')
-            ->pluck('placa');
+            ->get(['placa', 'centro'])
+            ->map(fn ($v) => ['placa' => $v->placa, 'centro' => $v->centro])
+            ->values();
 
         $currentUser = $request->user()?->name ?? '';
         $readOnly = $request->boolean('readOnly', false);
@@ -267,6 +269,7 @@ class ModulacionController extends Controller
         $fechaDesde = $request->input('fecha_desde', '');
         $fechaHasta = $request->input('fecha_hasta', '');
         $placa = $request->input('placa', '');
+        $centro = $request->input('centro', '');
         $perPage = 20;
 
         $query = Modulacion::withCount('items')
@@ -287,6 +290,23 @@ class ModulacionController extends Controller
         if ($placa) {
             $query->whereHas('items', function ($q) use ($placa) {
                 $q->where('placa', strtoupper($placa));
+            });
+        }
+
+        // Filtro por centro (UC o UD) — filtra modulaciones que tengan al menos un item
+        // cuya placa pertenezca a un vehículo del centro seleccionado
+        if ($centro && in_array(strtoupper($centro), ['UC', 'UD'])) {
+            $centroUpper = strtoupper($centro);
+            $placasCentro = \App\Models\Flota\Vehiculo::where('centro', $centroUpper)
+                ->pluck('placa')
+                ->map(fn($p) => strtoupper(trim((string)$p)))
+                ->filter()
+                ->unique()
+                ->values()
+                ->toArray();
+
+            $query->whereHas('items', function ($q) use ($placasCentro) {
+                $q->whereIn(\DB::raw('UPPER(placa)'), $placasCentro);
             });
         }
 
@@ -415,6 +435,7 @@ class ModulacionController extends Controller
                 'fecha_desde' => $fechaDesde,
                 'fecha_hasta' => $fechaHasta,
                 'placa'       => $placa,
+                'centro'      => $centro,
             ],
         ]);
     }

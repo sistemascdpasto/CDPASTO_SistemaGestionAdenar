@@ -536,7 +536,7 @@ export default function ExtintoresIndex({ extintores, placas, columnas_extra, fi
     })();
     const [flashMsg, setFlashMsg] = useState<string | null>(null);
     const [flashType, setFlashType] = useState<string>('success');
-    useEffect(() => { if (flashInfo.msg) { setFlashMsg(flashInfo.msg); setFlashType(flashInfo.type); } }, [flashInfo.msg]);
+    useEffect(() => { if (flashInfo.msg) { setFlashMsg(flashInfo.msg); setFlashType(flashInfo.type); } }, [flashInfo.msg, flashInfo.type]);
 
     // Filtros
     const [serie, setSerie] = useState(filters.serie ?? '');

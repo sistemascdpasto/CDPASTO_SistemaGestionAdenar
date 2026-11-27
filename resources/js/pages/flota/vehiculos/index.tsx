@@ -82,7 +82,7 @@ export default function VehiculosIndex({
             return;
         }
         router.get(route('flota.vehiculos.index'), { search: debouncedSearch, centro }, { preserveState: true, replace: true });
-    }, [debouncedSearch]);
+    }, [debouncedSearch, centro]);
 
     const submitFilters: FormEventHandler = (e) => {
         e.preventDefault();
