@@ -17,6 +17,7 @@ class Modulacion extends Model
 
     protected $fillable = [
         'fecha',
+        'centro',
         'ud_programado_por',
         'despachado_por_colaborador_id',
         'despachado_por_nombre',

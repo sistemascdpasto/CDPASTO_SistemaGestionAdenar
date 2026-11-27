@@ -4,17 +4,22 @@ namespace App\Services\Reparto;
 
 use App\Models\Reparto\Modulacion;
 use App\Models\Seguridad\Colaborador;
+use Illuminate\Support\Collection;
 
 class ModulacionTripulacionService
 {
     /**
+     * Devuelve colaboradores activos. Si se indica $centro ('UC' o 'UD') solo retorna
+     * los de ese centro; sin $centro devuelve todos (uso interno / compatibilidad).
+     *
      * @return array<int, array{id: int, cedula: ?string, nombres: string, apellidos: string, nombre_completo: string, cargo: string, area: ?string, centro: ?string}>
      */
-    public function colaboradoresActivos(): array
+    public function colaboradoresActivos(?string $centro = null): array
     {
         return Colaborador::query()
             ->select(['id', 'cedula', 'nombres', 'apellidos', 'cargo', 'area', 'centro'])
             ->where('is_active', true)
+            ->when($centro !== null, fn ($query) => $query->where('centro', $this->normalizarCentro($centro)))
             ->orderBy('nombres')
             ->get()
             ->map(fn (Colaborador $colaborador) => [
@@ -42,113 +47,108 @@ class ModulacionTripulacionService
         $cargosGuardados = $this->cargosGuardados($modulacion);
         $colaboradoresActuales = $this->colaboradoresDeRutas($rutas);
 
-        foreach ($rutas as &$ruta) {
+        return array_map(function ($ruta) use ($cargosGuardados, $colaboradoresActuales) {
             if (! is_array($ruta['tripulacion'] ?? null)) {
-                continue;
+                return $ruta;
             }
 
-            foreach ($ruta['tripulacion'] as &$miembro) {
-                if (! is_array($miembro)) {
-                    continue;
-                }
+            $ruta['tripulacion'] = array_map(
+                fn ($miembro) => is_array($miembro)
+                    ? $this->resolverCargo($miembro, $cargosGuardados, $colaboradoresActuales)
+                    : $miembro,
+                $ruta['tripulacion']
+            );
 
-                $id = ! empty($miembro['colaborador_id']) ? (string) $miembro['colaborador_id'] : null;
-                $cedula = ! empty($miembro['cedula']) ? trim((string) $miembro['cedula']) : null;
-
-                if ($id !== null && array_key_exists($id, $cargosGuardados['por_id'])) {
-                    $miembro['cargo'] = $cargosGuardados['por_id'][$id];
-                    continue;
-                }
-                if ($cedula !== null && array_key_exists($cedula, $cargosGuardados['por_cedula'])) {
-                    $miembro['cargo'] = $cargosGuardados['por_cedula'][$cedula];
-                    continue;
-                }
-
-                $colaborador = $id !== null ? $colaboradoresActuales['por_id']->get($id) : null;
-                $colaborador ??= $cedula !== null ? $colaboradoresActuales['por_cedula']->get($cedula) : null;
-
-                if ($colaborador) {
-                    $miembro['cargo'] = $colaborador->cargo;
-                }
-            }
-            unset($miembro);
-        }
-        unset($ruta);
-
-        return $rutas;
+            return $ruta;
+        }, $rutas);
     }
 
     /**
+     * Prioridad del cargo de un miembro:
+     * 1) guardado por id, 2) guardado por cédula, 3) actual del colaborador (por id o cédula).
+     * Si no hay coincidencia, el miembro queda igual.
+     *
+     * @param  array<string, mixed>  $miembro
+     * @param  array{por_id: array<string, mixed>, por_cedula: array<string, mixed>}  $cargosGuardados
+     * @param  array{por_id: Collection, por_cedula: Collection}  $colaboradoresActuales
+     * @return array<string, mixed>
+     */
+    private function resolverCargo(array $miembro, array $cargosGuardados, array $colaboradoresActuales): array
+    {
+        $id = $this->claveId($miembro);
+        $cedula = $this->claveCedula($miembro);
+
+        foreach ([[$cargosGuardados['por_id'], $id], [$cargosGuardados['por_cedula'], $cedula]] as [$guardados, $clave]) {
+            if ($clave !== null && array_key_exists($clave, $guardados)) {
+                return array_merge($miembro, ['cargo' => $guardados[$clave]]);
+            }
+        }
+
+        $colaborador = $colaboradoresActuales['por_id']->get($id ?? '')
+            ?? $colaboradoresActuales['por_cedula']->get($cedula ?? '');
+
+        return $colaborador
+            ? array_merge($miembro, ['cargo' => $colaborador->cargo])
+            : $miembro;
+    }
+
+    /**
+     * Cargo guardado de cada miembro en la planeación (gana la primera aparición).
+     * La planeación ya pertenece a un único centro, así que no hay mezcla UC/UD.
+     *
      * @return array{por_id: array<string, mixed>, por_cedula: array<string, mixed>}
      */
     private function cargosGuardados(Modulacion $modulacion): array
     {
-        $porId = [];
-        $porCedula = [];
+        $miembros = $this->miembros(
+            $modulacion->items()->orderBy('id')->get(['tripulacion'])
+                ->map(fn ($item) => is_array($item->tripulacion) ? $item->tripulacion : [])
+        );
 
-        foreach ($modulacion->items()->orderBy('id')->get(['tripulacion']) as $item) {
-            foreach (is_array($item->tripulacion) ? $item->tripulacion : [] as $miembro) {
-                if (! is_array($miembro)) {
-                    continue;
-                }
+        return [
+            'por_id' => $this->primerCargoPorClave($miembros, 'colaborador_id', fn ($valor) => (string) $valor),
+            'por_cedula' => $this->primerCargoPorClave($miembros, 'cedula', fn ($valor) => trim((string) $valor)),
+        ];
+    }
 
-                $cargo = $miembro['cargo'] ?? null;
-                if (! empty($miembro['colaborador_id'])) {
-                    $id = (string) $miembro['colaborador_id'];
-                    if (! array_key_exists($id, $porId)) {
-                        $porId[$id] = $cargo;
-                    }
-                }
-                if (! empty($miembro['cedula'])) {
-                    $cedula = trim((string) $miembro['cedula']);
-                    if (! array_key_exists($cedula, $porCedula)) {
-                        $porCedula[$cedula] = $cargo;
-                    }
-                }
-            }
-        }
-
-        return ['por_id' => $porId, 'por_cedula' => $porCedula];
+    /**
+     * @param  Collection<int, array<string, mixed>>  $miembros
+     * @return array<string, mixed>
+     */
+    private function primerCargoPorClave(Collection $miembros, string $campo, callable $normalizar): array
+    {
+        return $miembros
+            ->filter(fn (array $miembro) => ! empty($miembro[$campo]))
+            ->unique(fn (array $miembro) => $normalizar($miembro[$campo]))
+            ->mapWithKeys(fn (array $miembro) => [$normalizar($miembro[$campo]) => $miembro['cargo'] ?? null])
+            ->all();
     }
 
     /**
      * @param  array<int, array<string, mixed>>  $rutas
-     * @return array{por_id: \Illuminate\Support\Collection, por_cedula: \Illuminate\Support\Collection}
+     * @return array{por_id: Collection, por_cedula: Collection}
      */
     private function colaboradoresDeRutas(array $rutas): array
     {
-        $ids = [];
-        $cedulas = [];
+        $miembros = $this->miembros(
+            collect($rutas)->map(fn ($ruta) => is_array($ruta['tripulacion'] ?? null) ? $ruta['tripulacion'] : [])
+        );
 
-        foreach ($rutas as $ruta) {
-            foreach ($ruta['tripulacion'] ?? [] as $miembro) {
-                if (! empty($miembro['colaborador_id'])) {
-                    $ids[] = $miembro['colaborador_id'];
-                }
-                if (! empty($miembro['cedula'])) {
-                    $cedulas[] = trim((string) $miembro['cedula']);
-                }
-            }
-        }
+        $ids = $miembros->pluck('colaborador_id')->filter()->unique()->values()->all();
+        $cedulas = $miembros->pluck('cedula')->filter()
+            ->map(fn ($cedula) => trim((string) $cedula))
+            ->unique()->values()->all();
 
-        $ids = array_values(array_unique($ids));
-        $cedulas = array_values(array_unique($cedulas));
         if ($ids === [] && $cedulas === []) {
             return ['por_id' => collect(), 'por_cedula' => collect()];
         }
 
-        $query = Colaborador::query()->select(['id', 'cedula', 'cargo']);
-        if ($ids !== [] && $cedulas !== []) {
-            $query->where(fn ($query) => $query
+        $colaboradores = Colaborador::query()
+            ->select(['id', 'cedula', 'cargo'])
+            ->where(fn ($query) => $query
                 ->whereIn('id', $ids)
-                ->orWhereIn('cedula', $cedulas));
-        } elseif ($ids !== []) {
-            $query->whereIn('id', $ids);
-        } else {
-            $query->whereIn('cedula', $cedulas);
-        }
-
-        $colaboradores = $query->get();
+                ->orWhereIn('cedula', $cedulas))
+            ->get();
 
         return [
             'por_id' => $colaboradores->keyBy(fn (Colaborador $colaborador) => (string) $colaborador->id),
@@ -156,5 +156,32 @@ class ModulacionTripulacionService
                 ->filter(fn (Colaborador $colaborador) => filled($colaborador->cedula))
                 ->keyBy(fn (Colaborador $colaborador) => trim((string) $colaborador->cedula)),
         ];
+    }
+
+    /**
+     * Aplana listas de tripulaciones en una sola colección de miembros válidos (arrays).
+     *
+     * @param  Collection<int, array<int, mixed>>  $tripulaciones
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function miembros(Collection $tripulaciones): Collection
+    {
+        return $tripulaciones->flatten(1)->filter('is_array')->values();
+    }
+
+    private function claveId(array $miembro): ?string
+    {
+        return empty($miembro['colaborador_id']) ? null : (string) $miembro['colaborador_id'];
+    }
+
+    private function claveCedula(array $miembro): ?string
+    {
+        return empty($miembro['cedula']) ? null : trim((string) $miembro['cedula']);
+    }
+
+    /** Acepta "uc", " UD ", etc. y deja siempre 'UC' o 'UD' en mayúscula. */
+    private function normalizarCentro(?string $centro): string
+    {
+        return strtoupper(trim((string) $centro));
     }
 }
