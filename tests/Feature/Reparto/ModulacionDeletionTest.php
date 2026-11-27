@@ -33,7 +33,8 @@ class ModulacionDeletionTest extends TestCase
     private function crearPlaneacion(): Modulacion
     {
         return Modulacion::create([
-            'fecha' => '2026-09-29',
+            'fecha'             => '2026-09-29',
+            'centro'            => 'UC',
             'ud_programado_por' => 'Usuario de prueba',
         ]);
     }
@@ -52,24 +53,26 @@ class ModulacionDeletionTest extends TestCase
     {
         $this->actingAs($this->usuarioReparto())
             ->post(route('reparto.modulacion.storeBatch'), [
-                'fecha' => '2026-09-29',
-                'rutas' => [
+                'fecha'   => '2026-09-29',
+                'centro'  => 'UC',
+                'rutas'   => [
                     [
-                        'placa' => 'AAA111',
+                        'placa'       => 'AAA111',
                         'tripulacion' => [],
-                        'viajes' => [],
+                        'viajes'      => [],
                     ],
                 ],
             ])
             ->assertRedirect(route('reparto.modulacion.index', [
-                'fecha' => '2026-09-29',
+                'fecha'    => '2026-09-29',
+                'centro'   => 'UC',
                 'readOnly' => 'true',
             ]));
 
-        $modulacion = Modulacion::query()->where('fecha', '2026-09-29')->firstOrFail();
+        $modulacion = Modulacion::query()->where('fecha', '2026-09-29')->where('centro', 'UC')->firstOrFail();
         $this->assertDatabaseHas('modulacion_items', [
             'modulacion_id' => $modulacion->id,
-            'placa' => 'AAA111',
+            'placa'         => 'AAA111',
         ]);
     }
 
@@ -77,41 +80,43 @@ class ModulacionDeletionTest extends TestCase
     {
         $this->actingAs($this->usuarioReparto())
             ->post(route('reparto.modulacion.storeBatch'), [
-                'fecha' => '2026-09-29',
-                'rutas' => [
+                'fecha'  => '2026-09-29',
+                'centro' => 'UC',
+                'rutas'  => [
                     [
-                        'placa' => 'AAA111',
+                        'placa'       => 'AAA111',
                         'tripulacion' => [],
-                        'viajes' => [
+                        'viajes'      => [
                             [
-                                'lugares' => 'Albán',
-                                'barrio' => null,
+                                'lugares'  => 'Albán',
+                                'barrio'   => null,
                                 'destinos' => [
-                                    ['lugares' => 'Albán', 'barrio' => null],
-                                    ['lugares' => 'La Unión', 'barrio' => null],
+                                    ['lugares' => 'Albán',     'barrio' => null],
+                                    ['lugares' => 'La Unión',  'barrio' => null],
                                 ],
-                                'cliente' => '125',
-                                'peso' => '12.5',
+                                'cliente'  => '125',
+                                'peso'     => '12.5',
                             ],
                         ],
                     ],
                 ],
             ])
             ->assertRedirect(route('reparto.modulacion.index', [
-                'fecha' => '2026-09-29',
+                'fecha'    => '2026-09-29',
+                'centro'   => 'UC',
                 'readOnly' => 'true',
             ]));
 
-        $modulacion = Modulacion::query()->where('fecha', '2026-09-29')->firstOrFail();
+        $modulacion = Modulacion::query()->where('fecha', '2026-09-29')->where('centro', 'UC')->firstOrFail();
         $ruta = $modulacion->items()->where('placa', 'AAA111')->firstOrFail();
         $viaje = $ruta->viajes[0];
 
         $this->assertCount(2, $viaje['destinos']);
-        $this->assertSame('Albán', $viaje['destinos'][0]['lugares']);
+        $this->assertSame('Albán',    $viaje['destinos'][0]['lugares']);
         $this->assertNull($viaje['destinos'][0]['barrio']);
         $this->assertSame('La Unión', $viaje['destinos'][1]['lugares']);
         $this->assertNull($viaje['destinos'][1]['barrio']);
-        $this->assertSame('125', $viaje['cliente']);
+        $this->assertSame('125',  $viaje['cliente']);
         $this->assertSame('12.5', $viaje['peso']);
     }
 
@@ -156,32 +161,34 @@ class ModulacionDeletionTest extends TestCase
     public function test_tripulacion_recibe_colaboradores_con_su_area_incluyendo_responsable_de_reparto(): void
     {
         Colaborador::create([
-                'cedula' => '900111111',
-                'nombres' => 'Ana',
-                'apellidos' => 'Operativa',
-                'cargo' => 'RESPONSABLE DE REPARTO',
-                'area' => 'Operativa',
-                'estado_registro' => 'completo',
-                'is_active' => true,
+            'cedula'           => '900111111',
+            'nombres'          => 'Ana',
+            'apellidos'        => 'Operativa',
+            'cargo'            => 'RESPONSABLE DE REPARTO',
+            'area'             => 'Operativa',
+            'centro'           => 'UC',
+            'estado_registro'  => 'completo',
+            'is_active'        => true,
         ]);
 
         Colaborador::create([
-                'cedula' => '900222222',
-                'nombres' => 'Beto',
-                'apellidos' => 'Administrativo',
-                'cargo' => 'AUXILIAR ADMINISTRATIVO',
-                'area' => 'Administrativa',
-                'estado_registro' => 'completo',
-                'is_active' => true,
+            'cedula'           => '900222222',
+            'nombres'          => 'Beto',
+            'apellidos'        => 'Administrativo',
+            'cargo'            => 'AUXILIAR ADMINISTRATIVO',
+            'area'             => 'Administrativa',
+            'centro'           => 'UC',
+            'estado_registro'  => 'completo',
+            'is_active'        => true,
         ]);
 
         $this->actingAs($this->usuarioReparto())
-                ->get(route('reparto.modulacion.index', ['fecha' => '2026-09-29']))
-                ->assertInertia(fn ($page) => $page
-                    ->component('reparto/modulacion/index')
-                    ->has('colaboradores', 2)
-                    ->where('colaboradores.0.cargo', 'RESPONSABLE DE REPARTO')
-                    ->where('colaboradores.0.area', 'Operativa'));
+            ->get(route('reparto.modulacion.index', ['fecha' => '2026-09-29', 'centro' => 'UC']))
+            ->assertInertia(fn ($page) => $page
+                ->component('reparto/modulacion/index')
+                ->has('colaboradores', 2)
+                ->where('colaboradores.0.cargo', 'RESPONSABLE DE REPARTO')
+                ->where('colaboradores.0.area', 'Operativa'));
     }
 
     public function test_modulacion_carga_y_sincroniza_el_catalogo_de_cargos_de_geovictoria(): void
@@ -206,22 +213,23 @@ class ModulacionDeletionTest extends TestCase
     {
         GeovictoriaAsistencia::create([
             'identificador' => '900444444',
-            'fecha' => '2026-11-13',
-            'nombres' => 'Diego',
-            'cargo' => 'CARGO ACTUALIZADO',
+            'fecha'         => '2026-11-13',
+            'nombres'       => 'Diego',
+            'cargo'         => 'CARGO ACTUALIZADO',
         ]);
         Colaborador::create([
-            'cedula' => '900555555',
-            'nombres' => 'Elena',
-            'apellidos' => 'Actualizada',
-            'cargo' => 'CARGO VIGENTE',
-            'area' => 'Operativa',
+            'cedula'          => '900555555',
+            'nombres'         => 'Elena',
+            'apellidos'       => 'Actualizada',
+            'cargo'           => 'CARGO VIGENTE',
+            'area'            => 'Operativa',
+            'centro'          => 'UC',
             'estado_registro' => 'completo',
-            'is_active' => true,
+            'is_active'       => true,
         ]);
 
         $this->actingAs($this->usuarioReparto())
-            ->getJson(route('reparto.modulacion.checkFecha', ['fecha' => '2026-11-14']))
+            ->getJson(route('reparto.modulacion.checkFecha', ['fecha' => '2026-11-14', 'centro' => 'UC']))
             ->assertOk()
             ->assertJsonPath('cargosCatalogo.0', 'CARGO ACTUALIZADO')
             ->assertJsonPath('colaboradores.0.cargo', 'CARGO VIGENTE');
@@ -232,25 +240,27 @@ class ModulacionDeletionTest extends TestCase
     public function test_nueva_programacion_guarda_el_cargo_vigente_del_colaborador(): void
     {
         $colaborador = Colaborador::create([
-            'cedula' => '900666666',
-            'nombres' => 'Fabio',
-            'apellidos' => 'Actual',
-            'cargo' => 'CARGO VIGENTE',
-            'area' => 'Operativa',
+            'cedula'          => '900666666',
+            'nombres'         => 'Fabio',
+            'apellidos'       => 'Actual',
+            'cargo'           => 'CARGO VIGENTE',
+            'area'            => 'Operativa',
+            'centro'          => 'UC',
             'estado_registro' => 'completo',
-            'is_active' => true,
+            'is_active'       => true,
         ]);
 
         $this->actingAs($this->usuarioReparto())
             ->postJson(route('reparto.modulacion.storeBatchApi'), [
-                'fecha' => '2026-11-15',
-                'rutas' => [[
-                    'placa' => 'DDD444',
+                'fecha'  => '2026-11-15',
+                'centro' => 'UC',
+                'rutas'  => [[
+                    'placa'       => 'DDD444',
                     'tripulacion' => [[
                         'colaborador_id' => $colaborador->id,
-                        'cedula' => $colaborador->cedula,
-                        'nombres' => $colaborador->nombre_completo,
-                        'cargo' => 'CARGO ANTERIOR',
+                        'cedula'         => $colaborador->cedula,
+                        'nombres'        => $colaborador->nombre_completo,
+                        'cargo'          => 'CARGO ANTERIOR',
                     ]],
                     'viajes' => [],
                 ]],
@@ -259,43 +269,45 @@ class ModulacionDeletionTest extends TestCase
 
         $this->assertSame(
             'CARGO VIGENTE',
-            Modulacion::query()->whereDate('fecha', '2026-11-15')->firstOrFail()->items()->firstOrFail()->tripulacion[0]['cargo'],
+            Modulacion::query()->whereDate('fecha', '2026-11-15')->where('centro', 'UC')->firstOrFail()->items()->firstOrFail()->tripulacion[0]['cargo'],
         );
     }
 
     public function test_editar_programacion_conserva_el_cargo_historico_guardado(): void
     {
         $colaborador = Colaborador::create([
-            'cedula' => '900777777',
-            'nombres' => 'Gloria',
-            'apellidos' => 'Actualizada',
-            'cargo' => 'CARGO ACTUAL',
-            'area' => 'Operativa',
+            'cedula'          => '900777777',
+            'nombres'         => 'Gloria',
+            'apellidos'       => 'Actualizada',
+            'cargo'           => 'CARGO ACTUAL',
+            'area'            => 'Operativa',
+            'centro'          => 'UC',
             'estado_registro' => 'completo',
-            'is_active' => true,
+            'is_active'       => true,
         ]);
         $modulacion = $this->crearPlaneacion();
         $ruta = $this->crearRuta($modulacion, 'EEE555');
         $ruta->update([
             'tripulacion' => [[
                 'colaborador_id' => $colaborador->id,
-                'cedula' => $colaborador->cedula,
-                'nombres' => $colaborador->nombre_completo,
-                'cargo' => 'CARGO HISTORICO',
+                'cedula'         => $colaborador->cedula,
+                'nombres'        => $colaborador->nombre_completo,
+                'cargo'          => 'CARGO HISTORICO',
             ]],
         ]);
 
         $this->actingAs($this->usuarioReparto())
             ->postJson(route('reparto.modulacion.storeBatchApi'), [
                 'modulacion_id' => $modulacion->id,
-                'fecha' => $modulacion->fecha,
-                'rutas' => [[
-                    'placa' => $ruta->placa,
+                'fecha'         => $modulacion->fecha,
+                'centro'        => $modulacion->centro,
+                'rutas'         => [[
+                    'placa'       => $ruta->placa,
                     'tripulacion' => [[
                         'colaborador_id' => $colaborador->id,
-                        'cedula' => $colaborador->cedula,
-                        'nombres' => $colaborador->nombre_completo,
-                        'cargo' => $colaborador->cargo,
+                        'cedula'         => $colaborador->cedula,
+                        'nombres'        => $colaborador->nombre_completo,
+                        'cargo'          => $colaborador->cargo,
                     ]],
                     'viajes' => [],
                 ]],
@@ -365,7 +377,8 @@ class ModulacionDeletionTest extends TestCase
                 'return_read_only' => true,
             ])
             ->assertRedirect(route('reparto.modulacion.index', [
-                'fecha' => $modulacion->fecha,
+                'fecha'    => $modulacion->fecha,
+                'centro'   => 'UC',
                 'readOnly' => 'true',
             ]));
 

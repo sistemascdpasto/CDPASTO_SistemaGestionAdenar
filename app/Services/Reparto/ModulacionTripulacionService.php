@@ -166,7 +166,7 @@ class ModulacionTripulacionService
      */
     private function miembros(Collection $tripulaciones): Collection
     {
-        return $tripulaciones->flatten(1)->filter('is_array')->values();
+        return $tripulaciones->flatten(1)->filter(fn($item) => is_array($item))->values();
     }
 
     private function claveId(array $miembro): ?string
