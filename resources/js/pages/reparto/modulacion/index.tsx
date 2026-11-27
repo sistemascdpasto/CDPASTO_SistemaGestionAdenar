@@ -1331,6 +1331,25 @@ export default function ModulacionIndex({
             return;
         }
 
+        // Validar que no se mezclen centros UC/UD (solo en modo creación, no en historial)
+        if (!readOnly) {
+        const placaUpper = currentRoute.placa.trim().toUpperCase();
+        const vehiculoActual = vehiculos.find((v) => v.placa.toUpperCase() === placaUpper);
+        const centroActual = (vehiculoActual?.centro ?? '').toUpperCase();
+        if (centroActual === 'UC' || centroActual === 'UD') {
+            const rutasDeOtroCentro = rutas.filter((r, idx) => {
+                if (editingIndex !== null && idx === editingIndex) return false;
+                const veh = vehiculos.find((v) => v.placa.toUpperCase() === r.placa.trim().toUpperCase());
+                const c = (veh?.centro ?? '').toUpperCase();
+                return (c === 'UC' || c === 'UD') && c !== centroActual;
+            });
+            if (rutasDeOtroCentro.length > 0) {
+                alert(`No se puede agregar esta ruta. La placa ${placaUpper} pertenece al centro ${centroActual}, pero ya existen rutas del centro ${centroActual === 'UC' ? 'UD' : 'UC'}. No se pueden mezclar centros en una misma planeación.`);
+                return;
+            }
+        }
+        }
+
         const cv = currentViajeForm;
         const destinos = destinosViajePendientes.length > 0
             ? destinosViajePendientes
@@ -1662,6 +1681,20 @@ export default function ModulacionIndex({
     const handleGuardarTodo = () => {
         const finalRutas = [...rutas];
 
+        // Validar que no haya mezcla de centros UC/UD en las rutas a guardar (solo en modo creación)
+        if (!readOnly) {
+        const centrosPresentes = new Set<string>();
+        finalRutas.forEach((r) => {
+            const veh = vehiculos.find((v) => v.placa.toUpperCase() === r.placa.trim().toUpperCase());
+            const c = (veh?.centro ?? '').toUpperCase();
+            if (c === 'UC' || c === 'UD') centrosPresentes.add(c);
+        });
+        if (centrosPresentes.has('UC') && centrosPresentes.has('UD')) {
+            alert('No se puede guardar la planeación. Existen rutas de UC y UD mezcladas. Elimine las rutas del centro incorrecto antes de guardar.');
+            return;
+        }
+        }
+
         if (currentRoute.placa && currentRoute.placa.trim() !== '') {
             const viajes = Array.isArray(currentRoute.viajes) ? [...currentRoute.viajes] : [];
             const cv = currentViajeForm;
@@ -1827,6 +1860,13 @@ export default function ModulacionIndex({
     const colaboradoresOperativosNovedad = colaboradores
         .filter((col) => esPersonalOperativoDeRuta(col.area))
         .filter((col) => {
+            // Solo filtrar por centro al crear rutas nuevas, no al editar planeaciones existentes
+            if (!activeModulacionId && (filterCentro === 'UC' || filterCentro === 'UD')) {
+                return (col.centro ?? '').toUpperCase() === filterCentro.toUpperCase();
+            }
+            return true;
+        })
+        .filter((col) => {
             const query = novedadColaboradorSearch.trim().toLocaleLowerCase();
             return !query ||
                 (col.nombre_completo ?? '').toLocaleLowerCase().includes(query) ||
@@ -1927,6 +1967,12 @@ export default function ModulacionIndex({
             const colIdStr = String(col.id).trim();
             const colCedStr = col.cedula ? String(col.cedula).trim() : '';
 
+            // Si hay centro seleccionado, ignorar colaboradores de otro centro
+            if ((filterCentro === 'UC' || filterCentro === 'UD') &&
+                (col.centro ?? '').toUpperCase() !== filterCentro.toUpperCase()) {
+                return;
+            }
+
             const isCheckedInCurrent = currentRoute.tripulacion.some(
                 (m) =>
                     (m.colaborador_id && String(m.colaborador_id).trim() === colIdStr) ||
@@ -1945,9 +1991,13 @@ export default function ModulacionIndex({
 
             // Mostrar colaboradores libres que coincidan con el filtro de búsqueda/cargo/centro
             // Si no hay centro seleccionado (UC o UD), no mostrar colaboradores sin seleccionar
-            if (filterCentro !== 'UC' && filterCentro !== 'UD') return;
+            // En edición de planeación existente (activeModulacionId), no filtrar por centro
+            if (!activeModulacionId && (filterCentro !== 'UC' && filterCentro !== 'UD')) return;
             const matchesCargo = cargoFilter === 'todos' || col.cargo === cargoFilter;
-            const matchesCentro = (col.centro ?? '').toUpperCase() === filterCentro.toUpperCase();
+            // Filtrar por centro solo al crear rutas nuevas, no al editar planeaciones existentes
+            const matchesCentro = activeModulacionId
+                ? true
+                : (col.centro ?? '').toUpperCase() === filterCentro.toUpperCase();
             const q = searchQuery.toLowerCase().trim();
             const matchesSearch =
                 !q ||
@@ -1992,8 +2042,13 @@ export default function ModulacionIndex({
 
     const baseColaboradoresOperativos = useMemo(() => {
         const op = colaboradores.filter((col) => esPersonalOperativoDeRuta(col.area));
-        return op.length > 0 ? op : colaboradores;
-    }, [colaboradores]);
+        const base = op.length > 0 ? op : colaboradores;
+        // Filtrar por centro solo al crear rutas nuevas, no al editar planeaciones existentes
+        if (!activeModulacionId && (filterCentro === 'UC' || filterCentro === 'UD')) {
+            return base.filter((col) => (col.centro ?? '').toUpperCase() === filterCentro.toUpperCase());
+        }
+        return base;
+    }, [colaboradores, filterCentro, activeModulacionId]);
 
     const cargosOperativos = useMemo(() => {
         return Array.from(
@@ -2113,15 +2168,26 @@ export default function ModulacionIndex({
         return Array.from(set);
     }, [rutas]);
 
-    // RUTAS EN LA TABLA PLANEACIÓN DE RUTA (se muestran todas las rutas sin ocultar ninguna)
+    // RUTAS EN LA TABLA PLANEACIÓN DE RUTA
+    // En modo creación: filtradas por centro para evitar mezclas UC/UD
+    // En modo historial (readOnly): se muestran todas tal como fueron guardadas,
+    // independientemente del centro actual del vehículo en el catálogo
     const filteredRutasTable = useMemo(() => {
-        return rutas;
-    }, [rutas]);
+        if (readOnly) return rutas; // historial: nunca filtrar por centro actual
+        if (filterCentro !== 'UC' && filterCentro !== 'UD') return rutas;
+        return rutas.filter((r) => {
+            const vehiculo = vehiculos.find(
+                (v) => v.placa.toUpperCase() === r.placa.trim().toUpperCase(),
+            );
+            if (!vehiculo) return true; // placa no encontrada en catálogo actual: se muestra igual
+            return (vehiculo.centro ?? '').toUpperCase() === filterCentro.toUpperCase();
+        });
+    }, [rutas, filterCentro, vehiculos, readOnly]);
 
     // Solo las rutas con doc. transporte lleno (para el contador de rutas)
     const rutasConDocTransporte = useMemo(() => {
-        return rutas.filter((r) => r.doc_tras && r.doc_tras.trim() !== '');
-    }, [rutas]);
+        return filteredRutasTable.filter((r) => r.doc_tras && r.doc_tras.trim() !== '');
+    }, [filteredRutasTable]);
 
     // Desplazar automáticamente hacia la fila resaltada si viene seleccionada una placa
     useEffect(() => {
@@ -2911,22 +2977,88 @@ export default function ModulacionIndex({
                         )}
                     </div>
                     <div>
-                        <Label htmlFor="filtro-centro" className="flex items-center gap-1 text-xs font-semibold text-foreground mb-1.5">
-                            <Filter className="size-3.5 text-emerald-600" />
-                            Centro <span className="text-red-500">*</span>
-                        </Label>
-                        <Select value={filterCentro} onValueChange={(val) => { setFilterCentro(val); }}>
-                            <SelectTrigger
-                                id="filtro-centro"
-                                className="h-10 text-sm w-full"
+                        {/* Centro: se detecta automáticamente del catálogo de vehículos.
+                            Solo se bloquea cambiar a un centro DIFERENTE al que ya tienen las rutas existentes. */}
+                        {(() => {
+                            const centrosEnRutas = new Set<string>();
+                            rutas.forEach((r) => {
+                                const veh = vehiculos.find((v) => v.placa.toUpperCase() === r.placa.trim().toUpperCase());
+                                const c = (veh?.centro ?? '').toUpperCase();
+                                if (c === 'UC' || c === 'UD') centrosEnRutas.add(c);
+                            });
+                            // Centro único detectado en las rutas existentes
+                            const centroDetectado = centrosEnRutas.size === 1 ? [...centrosEnRutas][0] : '';
+                            // Auto-seleccionar si aún no hay centro elegido y se detectó uno
+                            if (centroDetectado && !filterCentro) {
+                                setTimeout(() => setFilterCentro(centroDetectado), 0);
+                            }
+                            // Bloquear cambio solo si hay rutas con centro definido Y el nuevo valor sería diferente
+                            const centroBloqueado = centrosEnRutas.size > 0;
+                            return (
+                            <>
+                            <Label htmlFor="filtro-centro" className="flex items-center gap-1 text-xs font-semibold text-foreground mb-1.5">
+                                <Filter className="size-3.5 text-emerald-600" />
+                                Centro <span className="text-red-500">*</span>
+                                {centroBloqueado && filterCentro && (
+                                    <span className="ml-1 text-[10px] font-normal text-muted-foreground">— fijado en {filterCentro}</span>
+                                )}
+                            </Label>
+                            <Select
+                                value={filterCentro}
+                                onValueChange={(val) => {
+                                    if (centroBloqueado && val !== centroDetectado) {
+                                        alert(`No puedes cambiar el centro a ${val}: las rutas existentes pertenecen a ${centroDetectado}. Elimina todas las rutas primero.`);
+                                        return;
+                                    }
+                                    setFilterCentro(val);
+                                    // Recargar fijos iniciales del nuevo centro si no hay novedades guardadas en BD
+                                    const hayNovedadesGuardadas = novedadesLocal.some((n) => n.id > 0);
+                                    if (!hayNovedadesGuardadas && fechaTexto) {
+                                        void fetch(`/modules/reparto/modulacion/check-fecha?fecha=${encodeURIComponent(fechaTexto)}&centro=${encodeURIComponent(val)}`, {
+                                            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                                            credentials: 'same-origin',
+                                        }).then((res) => res.ok ? res.json() : null).then((data: { fijosIniciales?: Array<{ colaborador_id?: number; cedula?: string; nombres?: string; cargo?: string; observaciones?: string; permiso?: boolean; no_asitio?: boolean; incapacidad?: boolean; vacaciones?: boolean }> } | null) => {
+                                            if (data?.fijosIniciales && data.fijosIniciales.length > 0) {
+                                                setNovedadesLocal(
+                                                    data.fijosIniciales.map((f, i) => ({
+                                                        id: -(i + 1),
+                                                        modulacion_id: 0,
+                                                        colaborador_id: f.colaborador_id,
+                                                        cedula: f.cedula,
+                                                        nombres: f.nombres,
+                                                        cargo: f.cargo,
+                                                        observaciones: f.observaciones ?? '',
+                                                        fijo: true,
+                                                        permiso: f.permiso ?? false,
+                                                        no_asitio: f.no_asitio ?? false,
+                                                        incapacidad: f.incapacidad ?? false,
+                                                        vacaciones: f.vacaciones ?? false,
+                                                    }))
+                                                );
+                                            }
+                                        });
+                                    }
+                                }}
                             >
-                                <SelectValue placeholder="-- Seleccione UC o UD --" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="UC">UC</SelectItem>
-                                <SelectItem value="UD">UD</SelectItem>
-                            </SelectContent>
-                        </Select>
+                                <SelectTrigger
+                                    id="filtro-centro"
+                                    className="h-10 text-sm w-full"
+                                >
+                                    <SelectValue placeholder="-- Seleccione UC o UD --" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="UC">UC</SelectItem>
+                                    <SelectItem value="UD">UD</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            {centroBloqueado && filterCentro && (
+                                <p className="mt-1 text-[11px] text-muted-foreground">
+                                    Centro fijado en <span className="font-semibold">{filterCentro}</span> para esta planeación.
+                                </p>
+                            )}
+                            </>
+                            );
+                        })()}
                     </div>
                     <div>
                         <Label htmlFor="filtro-placa" className="flex items-center gap-1 text-xs font-semibold text-foreground mb-1.5">

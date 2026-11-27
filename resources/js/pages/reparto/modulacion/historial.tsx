@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
-import { ChevronDown, Eye, FileSpreadsheet, FileText, MapPinned, Trash2, Truck, Users, X } from 'lucide-react';
+import { ChevronDown, Eye, FileSpreadsheet, FileText, MapPinned, Pencil, Trash2, Truck, Users, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import * as XLSX from 'xlsx-js-style';
 
@@ -490,7 +490,6 @@ export default function HistorialModulacion({ planeaciones, placas_disponibles =
                             <TableRow>
                                 <TableHead className="w-28">Fecha</TableHead>
                                 <TableHead className="min-w-[140px]">Doc. Transporte</TableHead>
-                                <TableHead className="min-w-[140px]">Programado por</TableHead>
                                 <TableHead className="min-w-[160px]">Responsable Ruta</TableHead>
                                 <TableHead className="min-w-[160px]">Destino (Municipio / Barrio)</TableHead>
                                 <TableHead className="min-w-[140px]">Cliente</TableHead>
@@ -504,7 +503,7 @@ export default function HistorialModulacion({ planeaciones, placas_disponibles =
                         <TableBody>
                             {planeaciones.data.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={11} className="py-12 text-center text-muted-foreground">
+                                    <TableCell colSpan={10} className="py-12 text-center text-muted-foreground">
                                         <div className="flex flex-col items-center gap-2">
                                             <FileText className="size-9 text-muted-foreground/50" />
                                             <span>
@@ -554,7 +553,7 @@ export default function HistorialModulacion({ planeaciones, placas_disponibles =
                                             <TableCell className="align-top text-xs">
                                                 {plan.ud_programado_por || <span className="text-muted-foreground/70">—</span>}
                                             </TableCell>
-                                            <TableCell className="align-top">
+                                                                                        <TableCell className="align-top">
                                                 <div className="flex flex-col gap-1.5">
                                                     {rutas.length === 0 ? (
                                                         <span className="text-xs text-muted-foreground">—</span>
@@ -712,6 +711,11 @@ export default function HistorialModulacion({ planeaciones, placas_disponibles =
                                                     <Button size="icon" variant="outline" className="size-8" asChild title="Ver planeación">
                                                         <Link href={route('reparto.modulacion.index', { fecha: plan.fecha, readOnly: 'true' })}>
                                                             <Eye className="size-4" />
+                                                        </Link>
+                                                    </Button>
+                                                    <Button size="icon" variant="outline" className="size-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50" asChild title={`Editar planeación del ${formatFecha(plan.fecha)}`}>
+                                                        <Link href={route('reparto.modulacion.index', { fecha: plan.fecha })}>
+                                                            <Pencil className="size-4" />
                                                         </Link>
                                                     </Button>
                                                     <Button
