@@ -14,7 +14,7 @@ import { ImportarColaboradoresDialog } from '@/pages/gente/colaboradores/importa
 import { type WizardCatalogos } from '@/pages/gente/colaboradores/wizard/catalogos';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { ArrowRight, AlertTriangle, Briefcase, Calendar, CircleAlert, Download, Eye, FileText, FileWarning, Filter, Pencil, Plus, Search, Settings, Trash2, Upload, Users, X } from 'lucide-react';
+import { ArrowRight, AlertTriangle, Briefcase, Calendar, CircleAlert, Download, Eye, FileText, Filter, Pencil, Plus, Search, Settings, Trash2, Upload, Users, X } from 'lucide-react';
 import { FormEventHandler, useEffect, useRef, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -310,7 +310,7 @@ export default function ColaboradoresIndex({
                             <Filter className="h-3.5 w-3.5 text-green-700 dark:text-green-400" />
                             Filtros de búsqueda
                         </span>
-                        {(filters.search || filters.estado || filters.centro || filters.tipo_contrato || filters.fecha_ingreso_desde || filters.fecha_ingreso_hasta || filters.vencimiento_contrato || filters.licencia_vencimiento || filters.registro) && (
+                        {(filters.search || filters.estado || filters.cargo || filters.centro || filters.tipo_contrato || filters.fecha_ingreso_desde || filters.fecha_ingreso_hasta || filters.vencimiento_contrato || filters.licencia_vencimiento || filters.registro) && (
                             <button
                                 type="button"
                                 onClick={() => applyFilters({ search: '', estado: '', area: '', cargo: '', centro: '', tipo_contrato: '', fecha_ingreso_desde: '', fecha_ingreso_hasta: '', vencimiento_contrato: '', licencia_vencimiento: '', registro: '' })}
@@ -416,20 +416,20 @@ export default function ColaboradoresIndex({
                             />
                         </div>
 
-                        {/* Vencimiento contrato */}
+                        {/* Cargo */}
                         <div className="grid gap-1">
                             <Label className="text-[11px] font-medium text-muted-foreground flex items-center">
-                                <FileWarning className="h-3 w-3 inline mr-1 text-muted-foreground/70" />Venc. contrato
+                                <Briefcase className="h-3 w-3 inline mr-1 text-muted-foreground/70" />Cargo
                             </Label>
-                            <Select value={filters.vencimiento_contrato || TODOS} onValueChange={(value) => applyFilters({ vencimiento_contrato: value === TODOS ? '' : value })}>
+                            <Select value={filters.cargo || TODOS} onValueChange={(value) => applyFilters({ cargo: value === TODOS ? '' : value })}>
                                 <SelectTrigger className="text-xs h-8 rounded-lg">
                                     <SelectValue placeholder="Todos" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value={TODOS}>Todos</SelectItem>
-                                    <SelectItem value="proximos">Próximos a vencer</SelectItem>
-                                    <SelectItem value="vencidos">Vencidos</SelectItem>
-                                    <SelectItem value="vigentes">Vigentes</SelectItem>
+                                    {catalogos.cargos.map((c: string) => (
+                                        <SelectItem key={c} value={c}>{c}</SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
