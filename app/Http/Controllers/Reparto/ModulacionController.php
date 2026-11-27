@@ -270,6 +270,7 @@ class ModulacionController extends Controller
         $fechaHasta = $request->input('fecha_hasta', '');
         $placa = $request->input('placa', '');
         $centro = $request->input('centro', '');
+        $docTransporte = $request->input('doc_transporte', '');
         $perPage = 20;
 
         $query = Modulacion::withCount('items')
@@ -290,6 +291,13 @@ class ModulacionController extends Controller
         if ($placa) {
             $query->whereHas('items', function ($q) use ($placa) {
                 $q->where('placa', strtoupper($placa));
+            });
+        }
+
+        // Filtro por documento de transporte
+        if ($docTransporte) {
+            $query->whereHas('items', function ($q) use ($docTransporte) {
+                $q->where('doc_tras', 'like', '%' . $docTransporte . '%');
             });
         }
 
@@ -432,10 +440,11 @@ class ModulacionController extends Controller
             'planeaciones'       => $planeaciones,
             'placas_disponibles' => $placasDisponibles,
             'filters'            => [
-                'fecha_desde' => $fechaDesde,
-                'fecha_hasta' => $fechaHasta,
-                'placa'       => $placa,
-                'centro'      => $centro,
+                'fecha_desde'    => $fechaDesde,
+                'fecha_hasta'    => $fechaHasta,
+                'placa'          => $placa,
+                'centro'         => $centro,
+                'doc_transporte' => $docTransporte,
             ],
         ]);
     }
