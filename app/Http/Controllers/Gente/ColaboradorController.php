@@ -78,7 +78,9 @@ class ColaboradorController extends Controller
                 $query->where(function ($query) use ($search) {
                     $query->where('nombres', 'like', "%{$search}%")
                         ->orWhere('apellidos', 'like', "%{$search}%")
-                        ->orWhere('cedula', 'like', "%{$search}%");
+                        ->orWhere('cedula', 'like', "%{$search}%")
+                        ->orWhereRaw("CONCAT(nombres, ' ', apellidos) LIKE ?", ["%{$search}%"])
+                        ->orWhereRaw("CONCAT(apellidos, ' ', nombres) LIKE ?", ["%{$search}%"]);
                 });
             })
             ->when(

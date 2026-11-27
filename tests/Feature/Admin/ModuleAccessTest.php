@@ -158,7 +158,10 @@ class ModuleAccessTest extends TestCase
         $registro = ModuleAccessRegistry::all();
 
         $this->assertCount(25, $registro['seguridad']);
-        $this->assertCount(17, $regi        $this->assertCount(10, $registro['gente'    }
+        $this->assertCount(17, $registro['reparto']);
+        $this->assertCount(10, $registro['gente']);
+        $this->assertCount(10, $registro['flota']);
+    }
 
     public function test_extintores_es_personalizable_y_su_ruta_respeta_la_personalizacion(): void
     {
