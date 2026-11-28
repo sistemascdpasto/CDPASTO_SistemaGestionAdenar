@@ -216,17 +216,49 @@ class ModulacionController extends Controller
         $modulacion->load('novedades');
     }
 
-    /** Planeación exacta de (fecha, centro). Nunca mezcla centros. */
+    /** Planeación exacta de (fecha, centro). Nunca mezcla centros.
+     *  Para planeaciones antiguas (centro = null) busca por las placas de la flota del centro. */
     private function buscarModulacion(string $fecha, ?string $centro): ?Modulacion
     {
         if (! $centro) {
             return null;
         }
 
-        return Modulacion::with(['items', 'novedades'])
+        // Búsqueda principal: planeación ya migrada con centro explícito
+        $modulacion = Modulacion::with(['items', 'novedades'])
             ->whereDate('fecha', $fecha)
             ->where('centro', $centro)
             ->first();
+
+        if ($modulacion) {
+            return $modulacion;
+        }
+
+        // Respaldo legacy: planeación sin centro que tenga al menos una placa del centro solicitado
+        $placasDelCentro = Vehiculo::where('centro', $centro)
+            ->pluck('placa')
+            ->map(fn($p) => strtoupper(trim((string) $p)))
+            ->filter()
+            ->values()
+            ->toArray();
+
+        if (empty($placasDelCentro)) {
+            return null;
+        }
+
+        $legacy = Modulacion::with(['items', 'novedades'])
+            ->whereDate('fecha', $fecha)
+            ->whereNull('centro')
+            ->whereHas('items', fn($q) => $q->whereIn(DB::raw('UPPER(placa)'), $placasDelCentro))
+            ->first();
+
+        // Si encontró una planeación legacy, se migra su centro en background para las próximas consultas
+        if ($legacy) {
+            $legacy->updateQuietly(['centro' => $centro]);
+            $legacy->centro = $centro;
+        }
+
+        return $legacy;
     }
 
     /** Colaboradores activos únicamente del centro; sin centro no se devuelve nada. */
@@ -373,9 +405,35 @@ class ModulacionController extends Controller
 
         $planeaciones = $query->paginate($perPage)->withQueryString();
 
-        // Enriquecer cada modulación con resumen de placas y colaboradores
-        $planeaciones->getCollection()->transform(function (Modulacion $mod) {
+        // Enriquecer cada modulación con resumen de placas y colaboradores,
+        // e inferir el centro de las planeaciones legacy (centro = null)
+        $placasPorCentro = [];
+        if ($centroNormalizado) {
+            $placasPorCentro[$centroNormalizado] = Vehiculo::where('centro', $centroNormalizado)
+                ->pluck('placa')
+                ->map(fn($p) => strtoupper(trim((string) $p)))
+                ->flip()
+                ->all();
+        }
+
+        $planeaciones->getCollection()->transform(function (Modulacion $mod) use ($placasPorCentro) {
             $items = $mod->items;
+
+            // Inferir centro para planeaciones legacy (centro null): si tiene al menos una placa del centro buscado
+            $centroEfectivo = $mod->centro;
+            if (! $centroEfectivo && ! empty($placasPorCentro)) {
+                foreach ($placasPorCentro as $c => $placasFlip) {
+                    $tienePlacaDeCentro = $items->contains(
+                        fn($item) => isset($placasFlip[strtoupper(trim((string) $item->placa))])
+                    );
+                    if ($tienePlacaDeCentro) {
+                        $centroEfectivo = $c;
+                        // Migrar en background para próximas consultas
+                        $mod->updateQuietly(['centro' => $centroEfectivo]);
+                        break;
+                    }
+                }
+            }
             $placas = $items->pluck('placa')->filter()->unique()->values();
             $totalTripulantes = $items->sum(function ($item) {
                 return count($item->tripulacion ?? []);
@@ -459,7 +517,7 @@ class ModulacionController extends Controller
             return [
                 'id'                          => $mod->id,
                 'fecha'                       => $mod->fecha,
-                'centro'                      => $mod->centro,
+                'centro'                      => $centroEfectivo,
                 'ud_programado_por'           => $mod->ud_programado_por,
                 'despachado_por_nombre'       => $mod->despachado_por_nombre,
                 'total_rutas'                 => $mod->items_count,
