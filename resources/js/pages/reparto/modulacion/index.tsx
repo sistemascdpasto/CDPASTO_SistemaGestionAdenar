@@ -171,6 +171,7 @@ interface CheckFechaResponse {
     fijosIniciales?: FijoInicial[];
     cargosCatalogo?: string[];
     colaboradores?: ColaboradorOption[];
+    vehiculos?: VehiculoOption[];
 }
 
 interface UltimaRutaPlacaResponse {
@@ -1251,6 +1252,7 @@ export default function ModulacionIndex({
     );
     const [activeModulacionId, setActiveModulacionId] = useState<number | null>(modulacion?.id ?? null);
     const [colaboradores, setColaboradores] = useState<ColaboradorOption[]>(colaboradoresIniciales);
+    const [vehiculosState, setVehiculos] = useState<VehiculoOption[]>(vehiculos);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [cargosCatalogoActualizados, setCargosCatalogoActualizados] = useState<string[]>(cargosCatalogo);
 
@@ -1335,8 +1337,8 @@ export default function ModulacionIndex({
     }, [resetFormularioViaje]);
 
     const vehiculoDePlaca = useCallback(
-        (placa: string) => vehiculos.find((v) => normalizar(v.placa) === normalizar(placa)),
-        [vehiculos],
+        (placa: string) => vehiculosState.find((v) => normalizar(v.placa) === normalizar(placa)),
+        [vehiculosState],
     );
 
     /** Centro UC/UD del vehículo, o '' si no aplica. */
@@ -1364,6 +1366,7 @@ export default function ModulacionIndex({
     const aplicarCatalogos = (data: CheckFechaResponse) => {
         if (Array.isArray(data.cargosCatalogo)) setCargosCatalogoActualizados(data.cargosCatalogo);
         if (Array.isArray(data.colaboradores)) setColaboradores(data.colaboradores);
+        if (Array.isArray(data.vehiculos)) setVehiculos(data.vehiculos);
     };
 
     const aplicarPlaneacionExistente = (m: ModulacionRespuesta, rutasExistentes: RutaFormState[]) => {
@@ -1387,6 +1390,7 @@ export default function ModulacionIndex({
     }, [readOnly]);
 
     useEffect(() => setColaboradores(colaboradoresIniciales), [colaboradoresIniciales]);
+    useEffect(() => setVehiculos(vehiculos), [vehiculos]);
     useEffect(() => setCargosCatalogoActualizados(cargosCatalogo), [cargosCatalogo]);
     useEffect(() => () => dateCheckController.current?.abort(), []);
 
@@ -2003,7 +2007,20 @@ export default function ModulacionIndex({
                     });
                 }
 
-                if (data?.modulacion?.novedades) setNovedadesLocal([...data.modulacion.novedades]);
+                if (data?.modulacion?.novedades) {
+                    // Al recibir novedades del servidor, conservar las eliminaciones locales pendientes:
+                    // si una novedad no existe en novedadesLocal actual (fue eliminada) no la restauramos
+                    setNovedadesLocal((prevLocal) => {
+                        const idsLocales = new Set(prevLocal.map((n) => n.id));
+                        const novedadesServidor = (data.modulacion!.novedades ?? []).filter(
+                            (n) => idsLocales.has(n.id),
+                        );
+                        const pendientes = prevLocal.filter((n) => n.id < 0);
+                        const idsServidor = new Set(novedadesServidor.map((n) => n.id));
+                        const pendientesSinDuplicar = pendientes.filter((n) => !idsServidor.has(n.id));
+                        return [...novedadesServidor, ...pendientesSinDuplicar];
+                    });
+                }
 
                 // Limpiar formulario de viaje después del auto-guardado exitoso
                 resetFormularioViaje();
@@ -2058,11 +2075,8 @@ export default function ModulacionIndex({
     };
 
     // ─── Colaboradores del centro activo ─────────────────────────────────────
-    // Sin centro no hay colaboradores disponibles: nada se mezcla.
-    const colaboradoresDelCentro = useMemo(
-        () => (centroSeleccionado ? colaboradores.filter((col) => perteneceAlCentro(col.centro, filterCentro)) : []),
-        [colaboradores, centroSeleccionado, filterCentro],
-    );
+    // El back ya envía solo los colaboradores del centro activo — se usan directamente
+    const colaboradoresDelCentro = centroSeleccionado ? colaboradores : [];
 
     const colaboradoresOperativos = useMemo(
         () => colaboradoresDelCentro.filter((col) => esPersonalOperativoDeRuta(col.area)),
@@ -2155,15 +2169,35 @@ export default function ModulacionIndex({
         const esPendiente = id < 0; // Fila nunca guardada — solo quitar del estado local
         if (!esPendiente && !confirm('¿Desea eliminar este colaborador de la tabla de novedades?')) return;
 
+        // Quitar del estado inmediatamente (optimistic update)
         setNovedadesLocal((prev) => prev.filter((n) => n.id !== id));
         if (esPendiente) return;
 
-        // Eliminar en BD sin navegar (se envía el centro para que el backend valide la pertenencia)
+        // Eliminar en BD — si falla, restaurar la fila
+        const novedadOriginal = novedadesLocal.find((n) => n.id === id);
         fetch(`${route('reparto.modulacion.destroyNovedad', id)}?centro=${encodeURIComponent(filterCentro)}`, {
             method: 'DELETE',
             headers: { ...HEADERS_JSON, 'X-CSRF-TOKEN': getCsrfToken() },
             credentials: 'same-origin',
-        }).catch((err) => console.error('Error al eliminar novedad:', err));
+        })
+            .then((res) => {
+                if (!res.ok && novedadOriginal) {
+                    // El servidor rechazó el DELETE — devolver la fila al estado
+                    setNovedadesLocal((prev) => {
+                        const yaExiste = prev.some((n) => n.id === novedadOriginal.id);
+                        return yaExiste ? prev : [...prev, novedadOriginal];
+                    });
+                }
+            })
+            .catch((err) => {
+                console.error('Error al eliminar novedad:', err);
+                if (novedadOriginal) {
+                    setNovedadesLocal((prev) => {
+                        const yaExiste = prev.some((n) => n.id === novedadOriginal.id);
+                        return yaExiste ? prev : [...prev, novedadOriginal];
+                    });
+                }
+            });
     };
 
     // ─── Checklist de tripulación ────────────────────────────────────────────
@@ -2269,11 +2303,8 @@ export default function ModulacionIndex({
     }, [personalFaltantePorProgramar]);
 
     // ─── Placas ──────────────────────────────────────────────────────────────
-    // Sin selección de centro, no se muestran vehículos
-    const vehiculosFiltradosPorCentro = useMemo(
-        () => (centroSeleccionado ? vehiculos.filter((v) => perteneceAlCentro(v.centro, filterCentro)) : []),
-        [vehiculos, centroSeleccionado, filterCentro],
-    );
+    // El back ya envía solo los vehículos del centro activo — se usan directamente
+    const vehiculosFiltradosPorCentro = centroSeleccionado ? vehiculosState : [];
 
     /** ¿La placa ya es placa principal de otra ruta (distinta de la que se edita)? */
     const placaUsadaEnOtraRuta = (placaUpper: string) =>
@@ -2479,22 +2510,29 @@ export default function ModulacionIndex({
                     <div className="grid grid-cols-1 gap-4 rounded-xl border border-sidebar-border/70 bg-card p-4 sm:grid-cols-3 dark:border-sidebar-border">
                         {/* 1. CENTRO — primero, porque condiciona todo lo demás */}
                         <div>
-                            <Label htmlFor="filtro-centro" className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-foreground">
+                            <Label className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-foreground">
                                 <Filter className="size-3.5 text-emerald-600" />
                                 Centro <span className="text-red-500">*</span>
                                 {centroBloqueado && filterCentro && (
                                     <span className="ml-1 text-[10px] font-normal text-muted-foreground">— fijado en {filterCentro}</span>
                                 )}
                             </Label>
-                            <Select value={filterCentro} onValueChange={(val) => void handleCentroChange(val)}>
-                                <SelectTrigger id="filtro-centro" className="h-10 w-full text-sm">
-                                    <SelectValue placeholder="-- Seleccione UC o UD --" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="UC">UC</SelectItem>
-                                    <SelectItem value="UD">UD</SelectItem>
-                                </SelectContent>
-                            </Select>
+                            <div className="inline-flex rounded-lg border border-border p-0.5 bg-muted/50">
+                                {(['UC', 'UD'] as const).map((c) => (
+                                    <button
+                                        key={c}
+                                        type="button"
+                                        onClick={() => void handleCentroChange(c)}
+                                        className={`px-5 py-1.5 rounded-md text-sm font-bold transition-all ${
+                                            filterCentro === c
+                                                ? 'bg-emerald-600 text-white shadow-sm'
+                                                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                                        }`}
+                                    >
+                                        {c}
+                                    </button>
+                                ))}
+                            </div>
                             {centroBloqueado && filterCentro && (
                                 <p className="mt-1 text-[11px] text-muted-foreground">
                                     Centro fijado en <span className="font-semibold">{filterCentro}</span> para esta planeación.

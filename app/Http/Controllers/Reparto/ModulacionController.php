@@ -334,12 +334,22 @@ class ModulacionController extends Controller
         // Fijos iniciales filtrados por centro cuando no hay planeación todavía
         $fijosIniciales = $modulacion ? [] : $this->fijosInicialesDelCentro($fecha, $centro);
 
+        $vehiculos = $centro
+            ? Vehiculo::where('is_active', true)
+                ->where('centro', $centro)
+                ->orderBy('placa')
+                ->get(['placa', 'centro'])
+                ->map(fn ($v) => ['placa' => $v->placa, 'centro' => $v->centro])
+                ->values()
+            : collect();
+
         return response()->json([
             'exists'         => (bool) $modulacion,
             'modulacion'     => $modulacion,
             'fijosIniciales' => $fijosIniciales,
             'cargosCatalogo' => $catalogos->cargos(),
             'colaboradores'  => $this->colaboradoresDelCentro($tripulacion, $centro),
+            'vehiculos'      => $vehiculos,
         ]);
     }
 
