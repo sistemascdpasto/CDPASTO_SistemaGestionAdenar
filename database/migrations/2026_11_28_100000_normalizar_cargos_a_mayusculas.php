@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Normaliza todos los cargos existentes a MAYÚSCULAS en las tablas donde
@@ -42,7 +43,7 @@ return new class extends Migration
             DB::table($tabla)
                 ->whereNotNull($columna)
                 ->where($columna, '!=', '')
-                ->update([$columna => DB::raw("UPPER(TRIM(`{$columna}`))")]);
+                ->update([$columna => DB::raw("UPPER(TRIM({$columna}))")]);
         }
 
         // JSON de tripulación en modulacion_items: cargo de cada miembro a mayúsculas
@@ -86,9 +87,6 @@ return new class extends Migration
 
     private function tablaExiste(string $tabla): bool
     {
-        return (bool) DB::select(
-            "SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ?",
-            [$tabla]
-        );
+        return Schema::hasTable($tabla);
     }
 };
