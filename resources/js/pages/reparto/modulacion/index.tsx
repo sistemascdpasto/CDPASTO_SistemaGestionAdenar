@@ -1942,20 +1942,23 @@ export default function ModulacionIndex({
 
         // Fijos iniciales que el usuario eliminó explícitamente: se envían con fijo=false
         // para que queden en BD y sincronizarFijosAnteriores no los vuelva a propagar
-        const excluidos = fijosExcluidos.map((nov) => ({
-            colaborador_id: nov.colaborador_id ?? null,
-            cedula: nov.cedula ?? null,
-            nombres: nov.nombres ?? null,
-            cargo: nov.cargo ?? null,
-            observaciones: null,
-            fijo: false,
-            fijo_rescate: false,
-            fijo_taller: false,
-            permiso: false,
-            no_asitio: false,
-            incapacidad: false,
-            vacaciones: false,
-        }));
+        const novedadesConExcluidos = [
+            ...novedadesPayload,
+            ...fijosExcluidos.map((nov) => ({
+                colaborador_id: nov.colaborador_id ?? null,
+                cedula: nov.cedula ?? null,
+                nombres: nov.nombres ?? null,
+                cargo: nov.cargo ?? null,
+                observaciones: null,
+                fijo: false,
+                fijo_rescate: false,
+                fijo_taller: false,
+                permiso: false,
+                no_asitio: false,
+                incapacidad: false,
+                vacaciones: false,
+            })),
+        ];
 
         const payload = {
             modulacion_id: activeModulacionId,
@@ -1965,7 +1968,7 @@ export default function ModulacionIndex({
             despachado_por_colaborador_id: despachadoPorId ? Number(despachadoPorId) : null,
             despachado_por_nombre: despachadoPorNombre,
             rutas: finalRutas,
-            novedades: novedadesPayload,
+            novedades: novedadesConExcluidos,
             read_only: readOnlyMode,
         };
 
@@ -2095,7 +2098,10 @@ export default function ModulacionIndex({
 
     // ─── Colaboradores del centro activo ─────────────────────────────────────
     // El back ya envía solo los colaboradores del centro activo — se usan directamente
-    const colaboradoresDelCentro = centroSeleccionado ? colaboradores : [];
+    const colaboradoresDelCentro = useMemo(
+        () => (centroSeleccionado ? colaboradores : []),
+        [centroSeleccionado, colaboradores],
+    );
 
     const colaboradoresOperativos = useMemo(
         () => colaboradoresDelCentro.filter((col) => esPersonalOperativoDeRuta(col.area)),

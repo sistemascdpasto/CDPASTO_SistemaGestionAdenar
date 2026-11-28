@@ -15,7 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/react';
-import { Award, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Download, Filter, IdCard, Medal, Search, ShieldCheck, Trophy, UserRound, Users, X } from 'lucide-react';
+import { CheckCircle2, ChevronDown, Download, Filter, Medal, Search, ShieldCheck, Trophy, UserRound, Users, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
