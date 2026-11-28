@@ -17,4 +17,10 @@ class Cargo extends Model
     protected $casts = [
         'valor_cvd' => 'integer',
     ];
+
+    /** El nombre del cargo siempre se guarda en MAYÚSCULAS. */
+    protected function setNombreAttribute(string $value): void
+    {
+        $this->attributes['nombre'] = mb_strtoupper(trim($value), 'UTF-8');
+    }
 }

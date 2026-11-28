@@ -28,6 +28,14 @@ class ColaboradorCargo extends Model
         ];
     }
 
+    /** El cargo siempre se guarda en MAYÚSCULAS. */
+    protected function setCargoAttribute(?string $value): void
+    {
+        $this->attributes['cargo'] = $value !== null && $value !== ''
+            ? mb_strtoupper(trim($value), 'UTF-8')
+            : $value;
+    }
+
     public function colaborador(): BelongsTo
     {
         return $this->belongsTo(Colaborador::class);

@@ -21,7 +21,7 @@ class ColaboradorCatalogoService
             ->where('cargo', '!=', '')
             ->distinct()
             ->pluck('cargo')
-            ->map(fn (string $cargo) => trim($cargo))
+            ->map(fn (string $cargo) => mb_strtoupper(trim($cargo), 'UTF-8'))
             ->filter()
             ->unique()
             ->values();
@@ -34,6 +34,7 @@ class ColaboradorCatalogoService
                 ->where('cargo', '!=', '')
                 ->distinct()
                 ->pluck('cargo'))
+            ->map(fn (string $cargo) => mb_strtoupper(trim($cargo), 'UTF-8'))
             ->unique()
             ->sort()
             ->values()
@@ -48,7 +49,7 @@ class ColaboradorCatalogoService
      */
     public function sincronizarCargosGeovictoria(iterable $nombres): void
     {
-        foreach (collect($nombres)->map(fn ($cargo) => trim((string) $cargo))->filter()->unique() as $nombre) {
+        foreach (collect($nombres)->map(fn ($cargo) => mb_strtoupper(trim((string) $cargo), 'UTF-8'))->filter()->unique() as $nombre) {
             Cargo::firstOrCreate(['nombre' => $nombre]);
         }
     }

@@ -178,6 +178,14 @@ class Colaborador extends Model
         ];
     }
 
+    /** El cargo siempre se guarda en MAYÚSCULAS (CONDUCTOR, AUXILIAR DE REPARTO, …). */
+    protected function setCargoAttribute(?string $value): void
+    {
+        $this->attributes['cargo'] = $value !== null
+            ? mb_strtoupper(trim($value), 'UTF-8')
+            : null;
+    }
+
     public function scopeCompletos(Builder $query): Builder
     {
         return $query->where('estado_registro', 'completo');

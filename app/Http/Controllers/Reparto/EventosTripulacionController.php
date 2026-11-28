@@ -339,7 +339,7 @@ class EventosTripulacionController
                 [
                     'doc_transporte' => $item->doc_tras ?? null,
                     'nombre'         => $colaboradores[$docLimpio] ?: ($persona['nombres'] ?? $persona['nombre'] ?? null),
-                    'cargo'          => $persona['cargo'] ?? null,
+                    'cargo'          => isset($persona['cargo']) ? mb_strtoupper(trim((string) $persona['cargo']), 'UTF-8') : null,
                     'total_eventos'  => $totalEventos,
                 ]
             );
@@ -444,7 +444,7 @@ class EventosTripulacionController
                     $registro['mes']       = $mes;
                     $registro['documento'] = $cedula;
                     $registro['nombre']    = $colaboradores[$cedula] ?? ($miembro['nombres'] ?: null);
-                    $registro['cargo']     = $miembro['cargo'];
+                    $registro['cargo']     = isset($miembro['cargo']) ? mb_strtoupper(trim((string) $miembro['cargo']), 'UTF-8') : null;
 
                     $key = "{$diaKey}|{$placa}|{$cedula}";
                     $guardados[$cedula] = ($guardados[$cedula] ?? 0) + 1;

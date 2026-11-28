@@ -77,8 +77,9 @@ class CompensacionVariableDiariaImportService
 
         // ── Lookup valor CVD por cargo (una sola query) ───────────────────────
         // Mapa: CARGO_EN_MAYÚSCULAS → valor_cvd (int|null)
-        // El cargo de eventos_tripulacion viene de la planeación y debe coincidir
-        // (insensible a mayúsculas) con el nombre guardado en la tabla cargos.
+        // El cargo de eventos_tripulacion viene de la planeación y puede llegar
+        // como "CONDUCTOR DE REPARTO" mientras que la tabla cargos puede tener
+        // "Conductor" u otras variantes. Se normaliza a mayúsculas en ambos lados.
         $valorCvdPorCargo = Cargo::whereNotNull('valor_cvd')
             ->pluck('valor_cvd', 'nombre')
             ->mapWithKeys(fn($valor, $nombre) => [
@@ -127,19 +128,31 @@ class CompensacionVariableDiariaImportService
                 $cargo = (string) $evento->cargo;
 
                 // ── Valor diario según cargo ───────────────────────────────────
-                // Se lee de la tabla cargos (campo valor_cvd) configurada en
-                // Configuración de colaboradores. valor_x_dia = valor_cvd / 26.
+                // Se lee de la tabla cargos (campo valor_cvd). Ambos lados ya
+                // están en MAYÚSCULAS: el cargo del evento (normalizado al
+                // guardar en eventos_tripulacion) y las claves de $valorCvdPorCargo.
+                // Se intenta coincidencia exacta primero; si no hay, se acepta
+                // que un lado contenga al otro (ej. "CONDUCTOR" ⊂ "CONDUCTOR DE REPARTO").
                 $cargoUpper = mb_strtoupper(trim($cargo), 'UTF-8');
                 $valorMensual = $valorCvdPorCargo[$cargoUpper] ?? null;
+                if ($valorMensual === null) {
+                    foreach ($valorCvdPorCargo as $claveCargo => $valorCvd) {
+                        if (str_contains($cargoUpper, $claveCargo) || str_contains($claveCargo, $cargoUpper)) {
+                            $valorMensual = $valorCvd;
+                            break;
+                        }
+                    }
+                }
                 $valorXDia = $valorMensual !== null && $valorMensual > 0
                     ? round($valorMensual / 26, 2)
                     : 0.0;
 
                 if ($valorXDia <= 0) {
                     Log::warning("CVD: cargo sin valor_cvd configurado", [
-                        'cedula' => $cedula,
-                        'fecha'  => $fecha,
-                        'cargo'  => $cargo,
+                        'cedula'         => $cedula,
+                        'fecha'          => $fecha,
+                        'cargo'          => $cargo,
+                        'cargos_config'  => array_keys($valorCvdPorCargo),
                     ]);
                 }
 

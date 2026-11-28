@@ -764,11 +764,17 @@ class ModulacionController extends Controller
             $modulacion->items()->delete();
 
             foreach ($validated['rutas'] as $ruta) {
-                $tripulacion = $ruta['tripulacion'] ?? [];
+                // Normalizar cargos de la tripulación a MAYÚSCULAS antes de persistir
+                $tripulacion = array_map(function ($miembro) {
+                    if (is_array($miembro) && isset($miembro['cargo'])) {
+                        $miembro['cargo'] = mb_strtoupper(trim((string) $miembro['cargo']), 'UTF-8');
+                    }
+                    return $miembro;
+                }, $ruta['tripulacion'] ?? []);
                 $firstMember = $tripulacion[0] ?? null;
                 $cargoRuta = is_array($firstMember) && array_key_exists('cargo', $firstMember)
                     ? $firstMember['cargo']
-                    : ($ruta['cargo'] ?? null);
+                    : (isset($ruta['cargo']) ? mb_strtoupper(trim((string) $ruta['cargo']), 'UTF-8') : null);
 
                 $modulacion->items()->create([
                     'placa'           => $ruta['placa'],
@@ -1070,7 +1076,35 @@ class ModulacionController extends Controller
 
     public function destroyNovedad(int $id): mixed
     {
-        $novedad = ModulacionNovedad::findOrFail($id);
+        $novedad = ModulacionNovedad::with('modulacion')->findOrFail($id);
+
+        // Si era fijo, quitar el fijo en cascada en TODAS las planeaciones del mismo centro
+        // para que sincronizarFijosAnteriores no lo vuelva a propagar
+        if ($novedad->fijo || $novedad->fijo_rescate || $novedad->fijo_taller) {
+            $centro = $novedad->modulacion?->centro;
+
+            $queryFijosAnteriores = ModulacionNovedad::whereHas('modulacion', function ($q) use ($centro) {
+                    if ($centro) {
+                        $q->where('centro', $centro);
+                    }
+                })
+                ->where('id', '!=', $id)
+                ->where(function ($q) use ($novedad) {
+                    if ($novedad->colaborador_id) {
+                        $q->where('colaborador_id', $novedad->colaborador_id);
+                    } else {
+                        $q->where('cedula', $novedad->cedula);
+                    }
+                })
+                ->where(fn ($q) => $q->where('fijo', true)->orWhere('fijo_rescate', true)->orWhere('fijo_taller', true));
+
+            $queryFijosAnteriores->update([
+                'fijo'         => false,
+                'fijo_rescate' => false,
+                'fijo_taller'  => false,
+            ]);
+        }
+
         $novedad->delete();
 
         if (request()->expectsJson()) {

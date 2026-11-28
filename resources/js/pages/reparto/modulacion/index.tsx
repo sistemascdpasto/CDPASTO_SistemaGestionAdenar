@@ -1307,6 +1307,8 @@ export default function ModulacionIndex({
     const [novedadesLocal, setNovedadesLocal] = useState<ModulacionNovedadData[]>(() =>
         modulacion?.novedades?.length ? [...modulacion.novedades] : novedadesDesdeFijos(fijosIniciales),
     );
+    // Fijos iniciales (id < 0) que el usuario eliminó explícitamente — no deben re-propagarse al guardar
+    const [fijosExcluidos, setFijosExcluidos] = useState<ModulacionNovedadData[]>([]);
     const [nuevaNovedad, setNuevaNovedad] = useState(NUEVA_NOVEDAD_VACIA);
     const [novedadColaboradorSearch, setNovedadColaboradorSearch] = useState('');
     const [showNovedadColaboradorDropdown, setShowNovedadColaboradorDropdown] = useState(false);
@@ -1938,6 +1940,23 @@ export default function ModulacionIndex({
             vacaciones: Boolean(nov.vacaciones),
         }));
 
+        // Fijos iniciales que el usuario eliminó explícitamente: se envían con fijo=false
+        // para que queden en BD y sincronizarFijosAnteriores no los vuelva a propagar
+        const excluidos = fijosExcluidos.map((nov) => ({
+            colaborador_id: nov.colaborador_id ?? null,
+            cedula: nov.cedula ?? null,
+            nombres: nov.nombres ?? null,
+            cargo: nov.cargo ?? null,
+            observaciones: null,
+            fijo: false,
+            fijo_rescate: false,
+            fijo_taller: false,
+            permiso: false,
+            no_asitio: false,
+            incapacidad: false,
+            vacaciones: false,
+        }));
+
         const payload = {
             modulacion_id: activeModulacionId,
             fecha: fechaTexto,
@@ -2170,11 +2189,22 @@ export default function ModulacionIndex({
         if (!esPendiente && !confirm('¿Desea eliminar este colaborador de la tabla de novedades?')) return;
 
         // Quitar del estado inmediatamente (optimistic update)
+        const novedadOriginal = novedadesLocal.find((n) => n.id === id);
         setNovedadesLocal((prev) => prev.filter((n) => n.id !== id));
-        if (esPendiente) return;
+
+        if (esPendiente) {
+            // Fijo inicial (nunca guardado): registrar como excluido para que al guardar
+            // quede en BD con fijo=false y no sea re-propagado por sincronizarFijosAnteriores
+            if (novedadOriginal) {
+                setFijosExcluidos((prev) => {
+                    const yaExiste = prev.some((n) => n.id === id);
+                    return yaExiste ? prev : [...prev, { ...novedadOriginal, fijo: false, fijo_rescate: false, fijo_taller: false }];
+                });
+            }
+            return;
+        }
 
         // Eliminar en BD — si falla, restaurar la fila
-        const novedadOriginal = novedadesLocal.find((n) => n.id === id);
         fetch(`${route('reparto.modulacion.destroyNovedad', id)}?centro=${encodeURIComponent(filterCentro)}`, {
             method: 'DELETE',
             headers: { ...HEADERS_JSON, 'X-CSRF-TOKEN': getCsrfToken() },
@@ -2182,7 +2212,6 @@ export default function ModulacionIndex({
         })
             .then((res) => {
                 if (!res.ok && novedadOriginal) {
-                    // El servidor rechazó el DELETE — devolver la fila al estado
                     setNovedadesLocal((prev) => {
                         const yaExiste = prev.some((n) => n.id === novedadOriginal.id);
                         return yaExiste ? prev : [...prev, novedadOriginal];
@@ -2439,7 +2468,7 @@ export default function ModulacionIndex({
                         </div>
 
                         {/* Fila 2: Programado Por y Despachado Por debajo del título */}
-                        <div className="flex flex-wrap gap-4 border-t border-border/50 pt-3">
+                        <div className="flex flex-wrap items-end justify-between gap-4 border-t border-border/50 pt-3">
                             <div className="flex items-center gap-2">
                                 <Label htmlFor="ud_programado_por" className="w-36 text-xs font-semibold whitespace-nowrap text-muted-foreground">
                                     UD Programado Por:
@@ -2501,6 +2530,27 @@ export default function ModulacionIndex({
                                 </div>
                             </div>
                         </div>
+
+                        {/* Toggle UC / UD — esquina inferior derecha de la card */}
+                        <div className="flex items-center gap-2 ml-auto">
+                            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Centro:</span>
+                            <div className="inline-flex rounded-lg border border-border p-0.5 bg-muted/50">
+                                {(['UC', 'UD'] as const).map((c) => (
+                                    <button
+                                        key={c}
+                                        type="button"
+                                        onClick={() => void handleCentroChange(c)}
+                                        className={`px-5 py-1.5 rounded-md text-sm font-bold transition-all ${
+                                            filterCentro === c
+                                                ? 'bg-emerald-600 text-white shadow-sm'
+                                                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                                        }`}
+                                    >
+                                        {c}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -2533,11 +2583,7 @@ export default function ModulacionIndex({
                                     </button>
                                 ))}
                             </div>
-                            {centroBloqueado && filterCentro && (
-                                <p className="mt-1 text-[11px] text-muted-foreground">
-                                    Centro fijado en <span className="font-semibold">{filterCentro}</span> para esta planeación.
-                                </p>
-                            )}
+
                         </div>
 
                         {/* 2. FECHA — solo habilitado cuando hay centro */}

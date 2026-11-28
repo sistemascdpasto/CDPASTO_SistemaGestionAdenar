@@ -80,7 +80,7 @@ class ModulacionTripulacionService
 
         foreach ([[$cargosGuardados['por_id'], $id], [$cargosGuardados['por_cedula'], $cedula]] as [$guardados, $clave]) {
             if ($clave !== null && array_key_exists($clave, $guardados)) {
-                return array_merge($miembro, ['cargo' => $guardados[$clave]]);
+                return array_merge($miembro, ['cargo' => $this->mayusculas($guardados[$clave])]);
             }
         }
 
@@ -88,8 +88,18 @@ class ModulacionTripulacionService
             ?? $colaboradoresActuales['por_cedula']->get($cedula ?? '');
 
         return $colaborador
-            ? array_merge($miembro, ['cargo' => $colaborador->cargo])
+            ? array_merge($miembro, ['cargo' => $this->mayusculas($colaborador->cargo)])
             : $miembro;
+    }
+
+    /** Normaliza un cargo a MAYÚSCULAS (soporta tildes/Ñ). */
+    private function mayusculas(mixed $cargo): ?string
+    {
+        if ($cargo === null || $cargo === '') {
+            return $cargo;
+        }
+
+        return mb_strtoupper(trim((string) $cargo), 'UTF-8');
     }
 
     /**
