@@ -139,7 +139,7 @@ class ContratosExportTest extends TestCase
         $this->assertSame([
             '800100200',
             'Carlos Ramírez',
-            'Auxiliar',
+            'AUXILIAR',
             'Término fijo',
             'FINALIZADO',
             '01/01/2025',

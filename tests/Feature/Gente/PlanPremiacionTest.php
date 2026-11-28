@@ -600,7 +600,7 @@ class PlanPremiacionTest extends TestCase
             'cedula' => '10000001',
             'nombres' => 'Carlos',
             'apellidos' => 'Chofer',
-            'cargo' => 'Conductor',
+            'cargo' => 'CONDUCTOR',
             'area' => 'Operativa',
             'is_active' => true,
         ]);
@@ -609,19 +609,19 @@ class PlanPremiacionTest extends TestCase
             'cedula' => '10000002',
             'nombres' => 'Ana',
             'apellidos' => 'Auxiliar',
-            'cargo' => 'Auxiliar de Reparto',
+            'cargo' => 'AUXILIAR DE REPARTO',
             'is_active' => true,
         ]);
 
         $response = $this->actingAs($user)->get(route('gente.plan-premiacion.index', [
-            'cargo' => 'Conductor',
+            'cargo' => 'CONDUCTOR',
         ]));
 
         $response->assertOk();
         $response->assertInertia(fn ($page) => $page
             ->component('gente/plan-premiacion/index')
             ->has('colaboradores', 1)
-            ->where('colaboradores.0.cargo', 'Conductor')
+            ->where('colaboradores.0.cargo', 'CONDUCTOR')
         );
     }
 }

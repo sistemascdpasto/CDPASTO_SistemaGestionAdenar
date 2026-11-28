@@ -87,8 +87,8 @@ class ColaboradorRegistrosDuranteContratoTest extends TestCase
         $this->assertModelExists($colaboradorActualizado);
         $this->assertNull($colaboradorActualizado->fecha_ingreso_empresa);
         $this->assertNull($colaboradorActualizado->fecha_retiro_empresa);
-        $this->assertSame('Auxiliar', $colaboradorActualizado->cargo);
-        $this->assertSame('Auxiliar', $colaboradorActualizado->cargoActual?->cargo);
+        $this->assertSame('AUXILIAR', $colaboradorActualizado->cargo);
+        $this->assertSame('AUXILIAR', $colaboradorActualizado->cargoActual?->cargo);
         $this->assertNull($colaboradorActualizado->tipo_contrato);
         $this->assertNull($colaboradorActualizado->tipo_contrato_otro);
         $this->assertSame('SUR', $colaboradorActualizado->centro);

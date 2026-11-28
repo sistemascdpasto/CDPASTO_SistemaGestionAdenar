@@ -119,7 +119,7 @@ class UserColaboradorEstadoTest extends TestCase
         $this->assertSame('2026-12-01', $contratoNuevo->fecha_inicio->toDateString());
         $this->assertSame('INACTIVO', $cargoAnterior->fresh()->estado);
         $this->assertSame('2026-11-30', $cargoAnterior->fresh()->fecha_fin->toDateString());
-        $this->assertSame('Conductor', $cargoNuevo->cargo);
+        $this->assertSame('CONDUCTOR', $cargoNuevo->cargo);
         $this->assertSame('2026-12-01', $cargoNuevo->fecha_inicio->toDateString());
         $this->assertModelExists($finalizacion->fresh());
         $this->assertFalse($colaborador->fresh()->esReingreso());

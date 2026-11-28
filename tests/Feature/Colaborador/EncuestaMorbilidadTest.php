@@ -96,7 +96,7 @@ class EncuestaMorbilidadTest extends TestCase
                 ->where('colaborador.nombre_completo', 'Laura Portal')
                 ->where('colaborador.cedula', '1002003004')
                 ->where('colaborador.area', 'Ruta Norte')
-                ->where('colaborador.cargo', 'Conductor')
+                ->where('colaborador.cargo', 'CONDUCTOR')
             );
 
         $this->assertSame(1, EncuestaMorbilidad::where('colaborador_id', $colaborador->id)->count());

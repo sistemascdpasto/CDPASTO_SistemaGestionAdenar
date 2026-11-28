@@ -102,8 +102,8 @@ class PlanPremiacionController extends Controller
         string $mesesChecklistStr = ''
     ): array {
         $cargosSeleccionados = array_values(array_filter(
-            array_map('trim', explode(',', $filtroCargo)),
-            fn ($c) => $c !== '' && $c !== 'todos'
+            array_map(fn ($c) => mb_strtoupper(trim($c), 'UTF-8'), explode(',', $filtroCargo)),
+            fn ($c) => $c !== '' && $c !== 'TODOS'
         ));
 
         $mesesSeleccionados = array_values(array_filter(

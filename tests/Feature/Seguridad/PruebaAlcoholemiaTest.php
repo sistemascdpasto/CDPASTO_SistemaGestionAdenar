@@ -58,7 +58,7 @@ class PruebaAlcoholemiaTest extends TestCase
         $response = $this->actingAs($user)->get(route('seguridad.pruebas.create', ['tipo' => 'post_ruta']));
 
         $response->assertInertia(fn ($page) => $page
-            ->where('colaboradores.0.cargo', 'Conductor')
+            ->where('colaboradores.0.cargo', 'CONDUCTOR')
             ->where('preselectedTipo', 'post_ruta')
         );
     }
